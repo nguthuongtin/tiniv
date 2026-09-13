@@ -1,0 +1,15 @@
+Collection: nguoi_lien_he
+Danh ba lien he trong moi cong ty khach hang - Chuong 3.8
+
+Fields:
+- id (STRING, primary)
+- khach_hang_id (STRING, required): FK -> khach_hang.id
+- ho_va_ten (STRING, required)
+- chuc_vu (STRING|NULL): Giam doc, Pho giam doc, Ke toan...
+- so_dien_thoai (STRING|NULL)
+- email (STRING|NULL)
+- ghi_chu (STRING|NULL)
+- ngay_tao (STRING ISO 8601)
+
+Indexes:
+- khach_hang_id [asc] + ho_va_ten [asc]

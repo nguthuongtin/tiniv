@@ -1,26 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0a0f1c;
+  --muted: #f6f7f9;
+  --muted-foreground: #6b7280;
+  --border: #eaecf0;
+  --mau-chu-dao: #0f6bff;
+  --mau-thanh-cong: #10b981;
+  --mau-canh-bao: #f97316;
+  --mau-loi: #ef4444;
+  --mau-chu-dao-pha-12: color-mix(in srgb, var(--mau-chu-dao) 12%, transparent);
+  --mau-chu-dao-pha-18: color-mix(in srgb, var(--mau-chu-dao) 18%, transparent);
+  --mau-thanh-cong-pha-12: color-mix(in srgb, var(--mau-thanh-cong) 12%, transparent);
+  --mau-thanh-cong-pha-18: color-mix(in srgb, var(--mau-thanh-cong) 18%, transparent);
+  --mau-canh-bao-pha-12: color-mix(in srgb, var(--mau-canh-bao) 12%, transparent);
+  --mau-canh-bao-pha-18: color-mix(in srgb, var(--mau-canh-bao) 18%, transparent);
+  --mau-loi-pha-12: color-mix(in srgb, var(--mau-loi) 12%, transparent);
+  --mau-loi-pha-18: color-mix(in srgb, var(--mau-loi) 18%, transparent);
+  --card-icon-bg-primary: var(--mau-chu-dao-pha-12);
+  --card-icon-fg-primary: var(--mau-chu-dao);
+  --card-icon-br-primary: var(--mau-chu-dao-pha-18);
+  --card-icon-bg-success: var(--mau-thanh-cong-pha-12);
+  --card-icon-fg-success: var(--mau-thanh-cong);
+  --card-icon-br-success: var(--mau-thanh-cong-pha-18);
+  --card-icon-bg-warning: var(--mau-canh-bao-pha-12);
+  --card-icon-fg-warning: var(--mau-canh-bao);
+  --card-icon-br-warning: var(--mau-canh-bao-pha-18);
+  --card-icon-bg-danger: var(--mau-loi-pha-12);
+  --card-icon-fg-danger: var(--mau-loi);
+  --card-icon-br-danger: var(--mau-loi-pha-18);
+  --card-icon-bg-muted: color-mix(in srgb, var(--muted-foreground) 22%, white);
+  --card-icon-fg-muted: var(--muted-foreground);
+  --card-icon-br-muted: color-mix(in srgb, var(--muted-foreground) 32%, transparent);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--mau-chu-dao);
+  --color-primary-foreground: #ffffff;
+  --color-success: var(--mau-thanh-cong);
+  --color-success-foreground: #ffffff;
+  --color-warning: var(--mau-canh-bao);
+  --color-warning-foreground: #ffffff;
+  --color-danger: var(--mau-loi);
+  --color-danger-foreground: #ffffff;
+  --color-card-icon-bg-primary: var(--card-icon-bg-primary);
+  --color-card-icon-fg-primary: var(--card-icon-fg-primary);
+  --color-card-icon-br-primary: var(--card-icon-br-primary);
+  --color-card-icon-bg-success: var(--card-icon-bg-success);
+  --color-card-icon-fg-success: var(--card-icon-fg-success);
+  --color-card-icon-br-success: var(--card-icon-br-success);
+  --color-card-icon-bg-warning: var(--card-icon-bg-warning);
+  --color-card-icon-fg-warning: var(--card-icon-fg-warning);
+  --color-card-icon-br-warning: var(--card-icon-br-warning);
+  --color-card-icon-bg-danger: var(--card-icon-bg-danger);
+  --color-card-icon-fg-danger: var(--card-icon-fg-danger);
+  --color-card-icon-br-danger: var(--card-icon-br-danger);
+  --color-card-icon-bg-muted: var(--card-icon-bg-muted);
+  --color-card-icon-fg-muted: var(--card-icon-fg-muted);
+  --color-card-icon-br-muted: var(--card-icon-br-muted);
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'SF Mono', monospace;
+  --radius-button: 0.75rem;
+  --radius-input: 0.875rem;
+  --radius-card: 1.5rem;
+  --radius-pop: 1.75rem;
+  --shadow-card: 0 1px 2px 0 rgb(10 15 28 / 0.04), 0 10px 30px -12px rgb(10 15 28 / 0.10), 0 0 0 1px rgb(10 15 28 / 0.03);
+  --shadow-pop: 0 30px 60px -24px rgb(10 15 28 / 0.22), 0 12px 24px -14px rgb(10 15 28 / 0.12), 0 0 0 1px rgb(10 15 28 / 0.05);
+  --animate-duration-150: 150ms;
+  --animate-duration-200: 200ms;
+  --animate-duration-250: 250ms;
+  --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  box-sizing: border-box;
 }
-
+*, *::before, *::after {
+  box-sizing: inherit;
+}
 body {
-  background: var(--background);
+  margin: 0;
+  min-height: 100dvh;
+  background: linear-gradient(180deg, #f8faff 0%, #ffffff 320px);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+}
+
+.leading-display { line-height: 1.15; letter-spacing: -0.02em; }
+.leading-title   { line-height: 1.25; letter-spacing: -0.012em; }
+.leading-body    { line-height: 1.6;  letter-spacing: -0.003em; }
+.leading-small   { line-height: 1.5;  letter-spacing: 0; }
+
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: 100%;
 }

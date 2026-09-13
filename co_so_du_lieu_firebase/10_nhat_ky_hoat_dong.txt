@@ -1,0 +1,15 @@
+Collection: nhat_ky_hoat_dong
+Audit log / Lich su hoat dong he thong - Chuong 3.13
+
+Fields:
+- id (STRING, primary)
+- nguoi_dung_id (STRING, required): FK -> nhan_su.id (ai thuc hien)
+- module (STRING, required): khach_hang | ho_so_du_an | cong_viec | bao_cao_cong_viec | tai_lieu | nhan_su | xac_thuc | quan_tri
+- hanh_dong (STRING): tao_moi | cap_nhat | xoa | chuyen_giai_doan | phan_cong | upload_file | dang_nhap | dang_xuat | doi_mat_khau
+- ban_ghi_id (STRING|NULL): FK den ban ghi bi tac dong (du_an.id, khach_hang.id ...)
+- noi_dung (STRING|NULL): Mo ta chi tiet doi cho (de danh gia)
+- thoi_gian (STRING ISO 8601, required)
+
+Indexes:
+- nguoi_dung_id [asc] + thoi_gian [desc]
+- module [asc] + thoi_gian [desc]

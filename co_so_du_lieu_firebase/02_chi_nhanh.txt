@@ -1,0 +1,13 @@
+Collection: chi_nhanh
+Chua danh sach cac chi nhanh / don vi - Chuong 3.5
+
+Fields:
+- id (STRING, primary): Tu tao UUID / short code: CN001, CN002
+- ten_chi_nhanh (STRING): Ten day du chi nhanh (bat buoc)
+- dia_chi (STRING|NULL): So nha, duong, quan, tinh
+- so_dien_thoai (STRING|NULL): Hotline chi nhanh
+- ghi_chu (STRING|NULL): Ghi chu khac
+- ngay_tao (STRING ISO 8601)
+
+Indexes:
+- ngay_tao [desc]

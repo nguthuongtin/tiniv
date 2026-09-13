@@ -1,0 +1,21 @@
+Collection: cong_viec
+Task / To-do lien quan den ho so du an nao do - Chuong 3.10
+
+Fields:
+- id (STRING, primary)
+- du_an_id (STRING, required): FK -> ho_so_du_an.id
+- ten_cong_viec (STRING, required): Tua de cong viec
+- mo_ta (STRING|NULL): Noi dung chi tiet
+- nguoi_thuc_hien_id (STRING|NULL): FK -> nhan_su.id (nguoi duoc giao)
+- thoi_han_hoan_thanh (STRING ISO 8601|NULL): Deadline
+- trang_thai (STRING): chua_thuc_hien | dang_thuc_hien | hoan_thanh | tam_dung
+- ghi_chu (STRING|NULL)
+- nguoi_tao_id (STRING|NULL): FK -> nhan_su.id
+- ngay_tao (STRING ISO 8601)
+- ngay_cap_nhat (STRING ISO 8601)
+- trang_thai_du_lieu (STRING): hoat_dong | da_xoa
+
+Indexes:
+- du_an_id [asc] + trang_thai [asc]
+- nguoi_thuc_hien_id [asc] + trang_thai [asc]
+- nguoi_thuc_hien_id [asc] + thoi_han_hoan_thanh [asc]

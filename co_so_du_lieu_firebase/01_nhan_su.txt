@@ -1,0 +1,22 @@
+Collection: nhan_su
+Chua thong tin nguoi dung (users) - Chuong 3.4 Hethong.md
+
+Fields:
+- id (STRING, primary): UID tu Firebase Authentication (bat buoc)
+- ma_nhan_vien (STRING): NV001, NV002...
+- ho_va_ten (STRING): Ho va ten day du (bat buoc)
+- so_dien_thoai (STRING|NULL): 090x...
+- email (STRING): Email dang nhap Firebase (bat buoc, unique)
+- chi_nhanh_id (STRING|NULL): FK -> collection chi_nhanh.id
+- phong_ban_id (STRING|NULL): FK -> collection phong_ban.id
+- chuc_vu (STRING|NULL): Quan ly, Truong phong, Nhan vien...
+- vai_tro (STRING): quan_tri_he_thong | giam_doc | truong_phong | nhan_vien_kinh_doanh | nhan_vien_ky_thuat (bat buoc)
+- url_anh_dai_dien (STRING|NULL): Firebase Storage URL
+- trang_thai (BOOLEAN): TRUE = hoat dong, FALSE = khoa (khong cho dang nhap)
+- ngay_tao (STRING ISO 8601): UTC ISO string
+- ngay_cap_nhat (STRING ISO 8601): UTC ISO string
+
+Indexes can:
+- email [asc unique]
+- chi_nhanh_id [asc] + trang_thai [asc]
+- phong_ban_id [asc] + vai_tro [asc]

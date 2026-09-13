@@ -1,0 +1,17 @@
+Collection: bao_cao_cong_viec
+Nhan vien bao cao ngay - Chuong 3.11
+
+Fields:
+- id (STRING, primary)
+- ngay_bao_cao (STRING YYYY-MM-DD, required): Ngay lam bao cao
+- nhan_vien_id (STRING, required): FK -> nhan_su.id
+- du_an_id (STRING|NULL): FK -> ho_so_du_an.id
+- cong_viec_id (STRING|NULL): FK -> cong_viec.id
+- noi_dung_thuc_hien (STRING, required): Lam gi hom nay
+- ke_hoach_ngay_mai (STRING|NULL): Ngay mai lam gi
+- kho_khan (STRING|NULL): Gap kho khan gi
+- ngay_tao (STRING ISO 8601): Thoi gian gui bao cao
+
+Indexes:
+- nhan_vien_id [asc] + ngay_bao_cao [desc]
+- du_an_id [asc] + ngay_bao_cao [desc]

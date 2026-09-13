@@ -1,0 +1,18 @@
+Collection: tai_lieu_du_an
+Metadata file upload (file thuc nam trong Firebase Storage) - Chuong 3.12
+
+Fields:
+- id (STRING, primary)
+- du_an_id (STRING, required): FK -> ho_so_du_an.id
+- ten_file (STRING, required): Ten file ban dau (de hien thi)
+- url_file (STRING, required): Download URL lay tu Firebase Storage SDK (getDownloadURL)
+- kich_thuoc (NUMBER|NULL): Byte
+- loai_file (STRING|NULL): MIME type (application/pdf, image/png, application/vnd.ms-excel...)
+- nguoi_tai_len_id (STRING|NULL): FK -> nhan_su.id
+- ngay_tai_len (STRING ISO 8601)
+
+Storage path gợi ý (khi code upload file):
+gs://ebms-deb7c.appspot.com/ho_so_du_an/{du_an_id}/{yyyyMMdd_HHmmss}_{original_filename}
+
+Indexes:
+- du_an_id [asc] + ngay_tai_len [desc]

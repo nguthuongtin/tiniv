@@ -1,0 +1,12 @@
+Collection: phong_ban
+Phong ban truc thuoc chi nhanh nao do - Chuong 3.6
+
+Fields:
+- id (STRING, primary): PB001, PB002...
+- chi_nhanh_id (STRING|NULL): FK -> chi_nhanh.id
+- ten_phong_ban (STRING): Kinh doanh, Ky thuat, Hanh chinh... (bat buoc)
+- ghi_chu (STRING|NULL)
+- ngay_tao (STRING ISO 8601)
+
+Indexes:
+- chi_nhanh_id [asc] + ten_phong_ban [asc]

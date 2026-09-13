@@ -1,0 +1,22 @@
+Collection: khach_hang
+Thuong hieu, cong ty, khach hang ca nhan - Chuong 3.7
+
+Fields:
+- id (STRING, primary)
+- ten_khach_hang (STRING): Ten cong ty / ten ca nhan (bat buoc)
+- loai_khach_hang (STRING): doanh_nghiep | ca_nhan | to_chuc | khac
+- ma_so_thue (STRING|NULL): MST doanh nghiep
+- so_dien_thoai (STRING|NULL)
+- email (STRING|NULL)
+- dia_chi (STRING|NULL)
+- website (STRING|NULL)
+- nguoi_phu_trach_id (STRING|NULL): FK -> nhan_su.id (nguoi sale phu trach KH)
+- ghi_chu (STRING|NULL)
+- nguoi_tao_id (STRING|NULL): FK -> nhan_su.id
+- ngay_tao (STRING ISO 8601)
+- ngay_cap_nhat (STRING ISO 8601)
+- trang_thai (STRING): hoat_dong | tam_dung | da_xoa
+
+Indexes:
+- nguoi_phu_trach_id [asc] + ngay_tao [desc]
+- trang_thai [asc] + ngay_tao [desc]

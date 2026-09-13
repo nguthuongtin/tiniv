@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Chỉ cho người dùng đã đăng nhập & tài khoản hoạt động mới thao tác file
+    function dangNhapHoatDong() {
+      return request.auth != null
+        && exists(/databases/(default)/documents/nhan_su/$(request.auth.uid))
+        && get(/databases/(default)/documents/nhan_su/$(request.auth.uid)).data.trang_thai == true;
+    }
+
+    function laQuanTriHoacGiamDoc() {
+      return get(/databases/(default)/documents/nhan_su/$(request.auth.uid)).data.vai_tro in ['quan_tri_he_thong','giam_doc'];
+    }
+
+    // === Anh dai dien nhan vien ===
+    match /anh_dai_dien/{nhan_su_id}/{allPaths=**} {
+      allow read: if dangNhapHoatDong();
+      allow write: if dangNhapHoatDong()
+        && (nhan_su_id == request.auth.uid || laQuanTriHoacGiamDoc());
+    }
+
+    // === Tai lieu du an ===
+    match /ho_so_du_an/{du_an_id}/{allPaths=**} {
+      function laNguoiThuocDuAn() {
+        let doc = get(/databases/(default)/documents/ho_so_du_an/$(du_an_id));
+        return request.auth.uid == doc.data.nguoi_phu_trach_id
+          || request.auth.uid == doc.data.nguoi_quan_ly_id
+          || request.auth.uid in (doc.data.danh_sach_nguoi_ho_tro_ids || []);
+      }
+      allow read: if dangNhapHoatDong() && (laQuanTriHoacGiamDoc() || laNguoiThuocDuAn());
+      allow write: if dangNhapHoatDong() && laNguoiThuocDuAn();
+    }
+
+    // === Tat ca file khac (mac dinh) ===
+    match /{allPaths=**} {
+      allow read, write: if laQuanTriHoacGiamDoc();
+    }
+  }
+}

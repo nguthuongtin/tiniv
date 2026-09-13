@@ -1,0 +1,184 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "nhan_su",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "chi_nhanh_id", "order": "ASCENDING" },
+        { "fieldPath": "trang_thai", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "nhan_su",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "phong_ban_id", "order": "ASCENDING" },
+        { "fieldPath": "vai_tro", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "phong_ban",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "chi_nhanh_id", "order": "ASCENDING" },
+        { "fieldPath": "ten_phong_ban", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "khach_hang",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nguoi_phu_trach_id", "order": "ASCENDING" },
+        { "fieldPath": "ngay_tao", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "khach_hang",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "trang_thai", "order": "ASCENDING" },
+        { "fieldPath": "ngay_tao", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "khach_hang",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "trang_thai", "order": "ASCENDING" },
+        { "fieldPath": "ngay_cap_nhat", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "nguoi_lien_he",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "khach_hang_id", "order": "ASCENDING" },
+        { "fieldPath": "ho_va_ten", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ho_so_du_an",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "giai_doan", "order": "ASCENDING" },
+        { "fieldPath": "ngay_tao_ho_so", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ho_so_du_an",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nguoi_phu_trach_id", "order": "ASCENDING" },
+        { "fieldPath": "giai_doan", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ho_so_du_an",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "khach_hang_id", "order": "ASCENDING" },
+        { "fieldPath": "ngay_tao", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ho_so_du_an",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "trang_thai", "order": "ASCENDING" },
+        { "fieldPath": "ngay_cap_nhat", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cong_viec",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "du_an_id", "order": "ASCENDING" },
+        { "fieldPath": "trang_thai", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cong_viec",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nguoi_thuc_hien_id", "order": "ASCENDING" },
+        { "fieldPath": "trang_thai", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cong_viec",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nguoi_thuc_hien_id", "order": "ASCENDING" },
+        { "fieldPath": "thoi_han_hoan_thanh", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cong_viec",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "trang_thai_du_lieu", "order": "ASCENDING" },
+        { "fieldPath": "ngay_cap_nhat", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bao_cao_cong_viec",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nhan_vien_id", "order": "ASCENDING" },
+        { "fieldPath": "ngay_bao_cao", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bao_cao_cong_viec",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "du_an_id", "order": "ASCENDING" },
+        { "fieldPath": "ngay_bao_cao", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "bao_cao_cong_viec",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "trang_thai_du_lieu", "order": "ASCENDING" },
+        { "fieldPath": "ngay_bao_cao", "order": "DESCENDING" },
+        { "fieldPath": "ngay_cap_nhat", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tai_lieu_du_an",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "du_an_id", "order": "ASCENDING" },
+        { "fieldPath": "ngay_tai_len", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "nhat_ky_hoat_dong",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nguoi_dung_id", "order": "ASCENDING" },
+        { "fieldPath": "thoi_gian", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "nhat_ky_hoat_dong",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "module", "order": "ASCENDING" },
+        { "fieldPath": "thoi_gian", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "nhat_ky_hoat_dong",
+      "fieldPath": "noi_dung",
+      "ttl": false,
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" }
+      ]
+    }
+  ]
+}
