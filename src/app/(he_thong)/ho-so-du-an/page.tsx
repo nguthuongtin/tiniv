@@ -158,38 +158,30 @@ const CardThongKe = ({
   anGiaTri?: boolean;
 }) => {
   const mauMap = {
-    primary:
-      'from-primary/12 via-primary/6 to-transparent border-primary/20 text-primary',
-    warning:
-      'from-warning/12 via-warning/6 to-transparent border-warning/20 text-warning',
-    success:
-      'from-success/12 via-success/6 to-transparent border-success/20 text-success',
-    danger:
-      'from-danger/12 via-danger/6 to-transparent border-danger/20 text-danger'
+    primary: 'from-primary/12 via-primary/6 to-transparent border-primary/20 text-primary',
+    warning: 'from-warning/12 via-warning/6 to-transparent border-warning/20 text-warning',
+    success: 'from-success/12 via-success/6 to-transparent border-success/20 text-success',
+    danger: 'from-danger/12 via-danger/6 to-transparent border-danger/20 text-danger'
   };
   return (
     <div
       className={cn(
-        'rounded-[var(--radius-card)] border bg-gradient-to-br p-3 sm:p-5 flex flex-col gap-2 sm:gap-3.5 shadow-[var(--shadow-card)]',
+        'rounded-[12px] sm:rounded-[var(--radius-card)] border bg-gradient-to-br p-2 sm:p-5 flex flex-col gap-1.5 sm:gap-3.5 shadow-sm sm:shadow-[var(--shadow-card)]',
         mauMap[mau]
       )}
     >
-      <div className="flex items-start justify-between gap-2 sm:gap-3">
-        <div className="text-[9px] sm:text-[13px] font-black leading-small uppercase tracking-wide sm:tracking-wider opacity-90 truncate">
+      <div className="flex items-center justify-between gap-1 sm:gap-3">
+        <div className="text-[10px] sm:text-[13px] font-bold leading-none uppercase tracking-wide sm:tracking-wider opacity-90 truncate flex-1">
           {label}
         </div>
-        <div
-          className={cn(
-            'size-7 sm:size-10 shrink-0 rounded-lg sm:rounded-[var(--radius-button)] bg-background/80 border border-border inline-flex items-center justify-center'
-          )}
-        >
-          <Icon className="size-3.5 sm:size-5" strokeWidth={2.25} />
+        <div className="size-5 sm:size-10 shrink-0 rounded-md sm:rounded-[var(--radius-button)] bg-background/80 border border-border inline-flex items-center justify-center">
+          <Icon className="size-3 sm:size-5" strokeWidth={2.25} />
         </div>
       </div>
       <div
         className={cn(
-          'font-black tracking-tight leading-none break-words tabular-nums min-h-[20px] sm:min-h-[28px]',
-          giaTriTien ? 'text-[14px] sm:text-[22px]' : 'text-[16px] sm:text-[26px]'
+          'font-black tracking-tight leading-none break-words tabular-nums',
+          giaTriTien ? 'text-[15px] sm:text-[22px]' : 'text-[18px] sm:text-[26px]'
         )}
       >
         {anGiaTri && giaTriTien

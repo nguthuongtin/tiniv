@@ -445,28 +445,36 @@ export default function TrangNhanSu() {
                 }
               }}
               className={cn(
-                'text-left rounded-2xl border bg-card p-3 px-3 sm:p-3.5 sm:px-4 flex items-center gap-2 sm:gap-3.5 shadow-xs transition-all duration-200 cursor-pointer',
+                'text-left rounded-[12px] sm:rounded-2xl border bg-card p-2 px-2.5 sm:p-3.5 sm:px-4 flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3.5 shadow-xs transition-all duration-200 cursor-pointer',
                 dangChon
                   ? 'border-primary ring-2 ring-primary/20 bg-primary/5'
                   : 'border-border/80 hover:border-primary/40 hover:shadow-sm'
               )}
             >
-              <div
-                className={cn(
-                  'size-7 sm:size-9 shrink-0 rounded-lg sm:rounded-xl inline-flex items-center justify-center',
-                  c.mau_icon
-                )}
-              >
-                <Icon className="size-3.5 sm:size-4" strokeWidth={2.2} />
-              </div>
-              <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between w-full sm:w-auto">
                 <div
-                  className="text-[9px] sm:text-[11px] uppercase tracking-wide sm:tracking-wider font-semibold text-muted-foreground truncate"
+                  className="text-[10px] sm:text-[11px] uppercase tracking-wide sm:tracking-wider font-semibold text-muted-foreground truncate sm:hidden flex-1 pr-1"
                   title={c.label}
                 >
                   {c.label}
                 </div>
-                <div className="text-[16px] sm:text-xl font-bold tabular-nums text-foreground mt-0.5 tracking-tight">
+                <div
+                  className={cn(
+                    'size-6 sm:size-9 shrink-0 rounded-md sm:rounded-xl inline-flex items-center justify-center',
+                    c.mau_icon
+                  )}
+                >
+                  <Icon className="size-3.5 sm:size-4" strokeWidth={2.2} />
+                </div>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div
+                  className="hidden sm:block text-[11px] uppercase tracking-wider font-semibold text-muted-foreground truncate"
+                  title={c.label}
+                >
+                  {c.label}
+                </div>
+                <div className="text-[18px] sm:text-2xl font-black tabular-nums text-foreground mt-0.5 tracking-tight">
                   {c.gia_tri}
                 </div>
               </div>

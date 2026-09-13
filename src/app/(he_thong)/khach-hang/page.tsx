@@ -362,13 +362,18 @@ const CardThongKe = ({
 }) => {
   const c = MAU_CARD[mau];
   return (
-    <div className="rounded-[var(--radius-card)] border border-border bg-background min-h-[72px] sm:min-h-[96px] p-3 sm:p-6 flex items-center gap-3 sm:gap-5 shadow-[var(--shadow-card)]">
-      <div className={cn('size-8 sm:size-10 rounded-lg sm:rounded-[var(--radius-input)] inline-flex items-center justify-center shrink-0 shadow-sm', c.icon)}>
-        <Icon className="size-4 sm:size-[18px]" strokeWidth={2} />
+    <div className="rounded-[12px] sm:rounded-[var(--radius-card)] border border-border bg-background min-h-[56px] sm:min-h-[96px] p-2 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-5 shadow-sm sm:shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between w-full sm:w-auto">
+        <div className="text-[10px] sm:text-[11px] uppercase tracking-wide sm:tracking-[0.12em] font-semibold text-muted-foreground leading-none truncate sm:hidden flex-1">
+          {label}
+        </div>
+        <div className={cn('size-6 sm:size-10 rounded-md sm:rounded-[var(--radius-input)] inline-flex items-center justify-center shrink-0 shadow-sm', c.icon)}>
+          <Icon className="size-3.5 sm:size-[18px]" strokeWidth={2} />
+        </div>
       </div>
       <div className="min-w-0 flex-1 flex flex-col justify-center">
-        <div className="text-[9px] sm:text-[11px] uppercase tracking-wide sm:tracking-[0.12em] font-semibold text-muted-foreground leading-small truncate">{label}</div>
-        <div className="text-[16px] sm:text-[24px] font-black tracking-tight text-foreground mt-0.5 sm:mt-2 tabular-nums leading-none">
+        <div className="hidden sm:block text-[11px] uppercase tracking-[0.12em] font-semibold text-muted-foreground leading-small truncate">{label}</div>
+        <div className="text-[18px] sm:text-[24px] font-black tracking-tight text-foreground sm:mt-2 tabular-nums leading-none">
           {gia_tri}
         </div>
       </div>

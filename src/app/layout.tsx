@@ -69,7 +69,6 @@ export default function BoCucGoc({
               <ThanhDieuHuongDuoi />
             </main>
           </div>
-          <SidebarMobileDrawer />
         </BocXacThucToanUngDung>
       </body>
     </html>
