@@ -442,6 +442,11 @@ function TrangHoSoDuAn() {
     setMoDrawer(true);
   }, []);
 
+  useEffect(() => {
+    window.addEventListener('ebms:ho_so_du_an:them_moi', moThemMoi);
+    return () => window.removeEventListener('ebms:ho_so_du_an:them_moi', moThemMoi);
+  }, [moThemMoi]);
+
   const moSua = useCallback((hda: HoSoDuAn) => {
     setDangSua(hda);
     setLoiForm(null);
