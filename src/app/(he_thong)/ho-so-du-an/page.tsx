@@ -443,8 +443,9 @@ function TrangHoSoDuAn() {
   }, []);
 
   useEffect(() => {
-    window.addEventListener('ebms:ho_so_du_an:them_moi', moThemMoi);
-    return () => window.removeEventListener('ebms:ho_so_du_an:them_moi', moThemMoi);
+    const xuLy = () => moThemMoi();
+    window.addEventListener('ebms:ho_so_du_an:them_moi', xuLy);
+    return () => window.removeEventListener('ebms:ho_so_du_an:them_moi', xuLy);
   }, [moThemMoi]);
 
   const moSua = useCallback((hda: HoSoDuAn) => {
