@@ -157,13 +157,12 @@ export const duocXemBaoCaoCuaNhanVien = (
 
 /**
  * Kiểm tra xem người dùng hiện tại có được phép xem hồ sơ dự án cụ thể hay không:
- * - Admin / Giám đốc / Người có quyền xem toàn công ty: Xem được tất cả.
- * - Trưởng phòng: Xem được dự án thuộc chi nhánh/phòng ban mình phụ trách, HOẶC dự án mình liên quan.
- * - Nhân viên thường: CHỈ xem được khi có liên quan trực tiếp:
+ * - Admin / Giám đốc / Trưởng phòng: Xem được TOÀN BỘ dự án trong hệ thống.
+ * - Nhân viên thường: CHỈ xem được các dự án mà mình có liên quan trực tiếp:
  *   + Người phụ trách chính (nguoi_phu_trach_id)
  *   + Người quản lý dự án (nguoi_quan_ly_id)
  *   + Người tạo hồ sơ (nguoi_tao_id)
- *   + Nằm trong danh sách người hỗ trợ (danh_sach_nguoi_ho_tro_ids)
+ *   + Nằm trong danh sách người hỗ trợ / phối hợp (danh_sach_nguoi_ho_tro_ids)
  */
 export const duocXemHoSoDuAn = (
   nguoiDung: NguoiDungXacThuc,
@@ -182,16 +181,19 @@ export const duocXemHoSoDuAn = (
 
   const vaiTroKey = String(nguoiDung.vai_tro || '');
 
-  // 1. Quản trị hệ thống hoặc Giám đốc hoặc quyền xem toàn công ty
+  // 1. Quản trị hệ thống, Ban Giám đốc, Trưởng phòng (hoặc người có quyền xem toàn công ty):
+  // Xem được TOÀN BỘ dự án trong hệ thống
   if (
     vaiTroKey === 'quan_tri_he_thong' ||
     vaiTroKey === 'giam_doc' ||
-    coQuyen(nguoiDung, 'bao_cao.xem_toan_cong_ty', dsVaiTro)
+    vaiTroKey === 'truong_phong' ||
+    coQuyen(nguoiDung, 'bao_cao.xem_toan_cong_ty', dsVaiTro) ||
+    coQuyen(nguoiDung, 'du_an.xem_toan_cong_ty', dsVaiTro)
   ) {
     return true;
   }
 
-  // 2. Kiểm tra quan hệ trực tiếp với dự án (áp dụng cho mọi cấp)
+  // 2. Nhân viên thông thường: CHỈ xem được các dự án mà mình có liên quan trực tiếp:
   const uid = nguoiDung.id;
   const laLienQuanTrucTiep =
     duAn.nguoi_phu_trach_id === uid ||
@@ -199,19 +201,7 @@ export const duocXemHoSoDuAn = (
     duAn.nguoi_tao_id === uid ||
     (Array.isArray(duAn.danh_sach_nguoi_ho_tro_ids) && duAn.danh_sach_nguoi_ho_tro_ids.includes(uid));
 
-  if (laLienQuanTrucTiep) return true;
-
-  // 3. Trưởng phòng: xem được dự án trong phạm vi phòng ban phụ trách
-  if (vaiTroKey === 'truong_phong') {
-    const phamVi = layPhamViPhongBan(nguoiDung, dsVaiTro);
-    if (phamVi.toanCongTy) return true;
-    if (duAn.phong_ban_id && phamVi.danhSachPhongBanIds.includes(duAn.phong_ban_id)) {
-      return true;
-    }
-  }
-
-  // Nhân viên thường không liên quan: không được xem
-  return false;
+  return Boolean(laLienQuanTrucTiep);
 };
 
 /**
