@@ -63,6 +63,7 @@ import {
   Hieu,
   Rong,
   DaiDien,
+  TaiLenAnhDaiDien,
   Nut
 } from '../../../../thanh_phan/ui';
 
@@ -600,17 +601,16 @@ export default function TrangChiTietNhanSu() {
                     )}
                   </div>
 
-                  {/* Link ảnh đại diện */}
+                  {/* Ảnh đại diện nhân viên */}
                   <div className="space-y-1.5 sm:col-span-2">
                     <label className="text-xs font-semibold text-foreground">
-                      URL Ảnh đại diện
+                      Ảnh đại diện nhân viên
                     </label>
-                    <input
-                      type="url"
-                      value={formSua.url_anh_dai_dien}
-                      onChange={(e) => setFormSua((s) => ({ ...s, url_anh_dai_dien: e.target.value }))}
-                      placeholder="https://..."
-                      className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                    <TaiLenAnhDaiDien
+                      url_anh={formSua.url_anh_dai_dien}
+                      ho_ten={formSua.ho_va_ten || ns?.ho_va_ten}
+                      khiThayDoi={(url) => setFormSua((s) => ({ ...s, url_anh_dai_dien: url || '' }))}
+                      disabled={dangXuLySua}
                     />
                   </div>
                 </div>

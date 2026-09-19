@@ -158,30 +158,36 @@ const CardThongKe = ({
   anGiaTri?: boolean;
 }) => {
   const mauMap = {
-    primary: 'from-primary/12 via-primary/6 to-transparent border-primary/20 text-primary',
-    warning: 'from-warning/12 via-warning/6 to-transparent border-warning/20 text-warning',
-    success: 'from-success/12 via-success/6 to-transparent border-success/20 text-success',
-    danger: 'from-danger/12 via-danger/6 to-transparent border-danger/20 text-danger'
+    primary: 'bg-primary/[0.04] border-primary/25',
+    warning: 'bg-amber-500/[0.05] border-amber-500/25',
+    success: 'bg-emerald-500/[0.05] border-emerald-500/25',
+    danger: 'bg-rose-500/[0.05] border-rose-500/25'
+  };
+  const iconBgMap = {
+    primary: 'bg-primary/10 text-primary border-primary/20',
+    warning: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+    success: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+    danger: 'bg-rose-500/10 text-rose-600 border-rose-500/20'
   };
   return (
     <div
       className={cn(
-        'rounded-[12px] sm:rounded-[var(--radius-card)] border bg-gradient-to-br p-2 sm:p-5 flex flex-col gap-1.5 sm:gap-3.5 shadow-sm sm:shadow-[var(--shadow-card)]',
+        'rounded-xl sm:rounded-2xl border p-3 sm:p-4 flex flex-col justify-between transition-all duration-200 hover:shadow-xs hover:border-border/80 bg-card',
         mauMap[mau]
       )}
     >
-      <div className="flex items-center justify-between gap-1 sm:gap-3">
-        <div className="text-[10px] sm:text-[13px] font-bold leading-none uppercase tracking-wide sm:tracking-wider opacity-90 truncate flex-1">
+      <div className="flex items-center justify-between gap-1.5">
+        <span className="text-[11px] sm:text-[12.5px] font-semibold text-muted-foreground truncate uppercase tracking-wider">
           {label}
-        </div>
-        <div className="size-5 sm:size-10 shrink-0 rounded-md sm:rounded-[var(--radius-button)] bg-background/80 border border-border inline-flex items-center justify-center">
-          <Icon className="size-3 sm:size-5" strokeWidth={2.25} />
+        </span>
+        <div className={cn('size-6 sm:size-8 rounded-lg border flex items-center justify-center shrink-0 shadow-2xs', iconBgMap[mau])}>
+          <Icon className="size-3.5 sm:size-4" strokeWidth={2.25} />
         </div>
       </div>
       <div
         className={cn(
-          'font-black tracking-tight leading-none break-words tabular-nums',
-          giaTriTien ? 'text-[15px] sm:text-[22px]' : 'text-[18px] sm:text-[26px]'
+          'font-black tracking-tight leading-none break-words tabular-nums text-foreground mt-2 sm:mt-2.5',
+          giaTriTien ? 'text-[15px] sm:text-[20px]' : 'text-[18px] sm:text-[24px]'
         )}
       >
         {anGiaTri && giaTriTien
@@ -239,12 +245,12 @@ const TheHoSoDuAn = ({
     <div
       onClick={() => router.push(`/ho-so-du-an/${hda.id}`)}
       className={cn(
-        'relative rounded-[16px] border border-border/60 bg-white p-5 flex flex-col justify-between transition-all duration-300 hover:border-primary/40 hover:shadow-lg shadow-sm cursor-pointer group overflow-hidden h-full',
+        'relative rounded-[16px] border border-border/70 bg-card p-4 sm:p-5 flex flex-col justify-between transition-all duration-300 hover:border-primary/40 hover:shadow-md shadow-xs cursor-pointer group overflow-hidden h-full',
         hda.trang_thai === 'da_xoa' ? 'opacity-60 grayscale-[50%]' : 'hover:-translate-y-0.5'
       )}
     >
       {/* Thanh màu tiến độ (Top edge) */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-slate-100">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-muted">
         <div 
           className={cn("h-full transition-all duration-500", progressBgClass)} 
           style={{ width: `${phanTramTienDo}%` }} 
@@ -253,26 +259,26 @@ const TheHoSoDuAn = ({
 
       <div className="mt-1">
         {/* Top row: Stage pill & More icon */}
-        <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center justify-between gap-2 mb-2.5">
           <span
             className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-bold border-none shadow-xs',
+              'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11.5px] font-bold border-none shadow-2xs',
               gd.kieu === 'primary' ? 'bg-primary/10 text-primary' :
-              gd.kieu === 'success' ? 'bg-emerald-500/10 text-emerald-700' :
-              gd.kieu === 'warning' ? 'bg-amber-500/10 text-amber-700' :
-              gd.kieu === 'danger' ? 'bg-rose-500/10 text-rose-700' :
-              'bg-slate-100 text-slate-600'
+              gd.kieu === 'success' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' :
+              gd.kieu === 'warning' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400' :
+              gd.kieu === 'danger' ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400' :
+              'bg-muted text-muted-foreground'
             )}
           >
-            <span className={cn('size-2 rounded-full', gd.kieu !== 'muted' ? 'bg-current' : 'bg-slate-400')} />
-            <span className="truncate max-w-[150px] tracking-wide">{gd.nhan}</span>
+            <span className={cn('size-1.5 rounded-full', gd.kieu !== 'muted' ? 'bg-current' : 'bg-slate-400')} />
+            <span className="truncate max-w-[140px] tracking-wide">{gd.nhan}</span>
           </span>
-          <MoreHorizontal className="size-5 text-slate-400 group-hover:text-slate-700 transition" />
+          <MoreHorizontal className="size-4 text-muted-foreground group-hover:text-foreground transition" />
         </div>
 
-        {/* Project Name */}
+        {/* Project Name - Nổi bật với tông màu xanh dương đậm / primary đặc trưng */}
         <h3
-          className="font-bold text-[17px] text-slate-900 group-hover:text-primary transition-colors line-clamp-2 leading-snug tracking-tight mb-2"
+          className="font-bold text-[15.5px] sm:text-[16.5px] text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors line-clamp-2 leading-snug tracking-tight mb-2"
           title={hda.ten_du_an}
         >
           {hda.ten_du_an}
@@ -280,8 +286,8 @@ const TheHoSoDuAn = ({
 
         {/* Customer */}
         {kh && (
-          <div className="flex items-center gap-2 text-[13px] text-slate-500 truncate">
-            <Building2 className="size-4 shrink-0 text-slate-400" />
+          <div className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground truncate">
+            <Building2 className="size-3.5 shrink-0 text-muted-foreground/80" />
             <span className="truncate font-medium" title={kh.ten_khach_hang}>
               {kh.ten_khach_hang}
             </span>
@@ -289,30 +295,33 @@ const TheHoSoDuAn = ({
         )}
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-4">
+      <div className="mt-4 grid grid-cols-2 gap-3 pt-3 border-t border-border/50">
         <div>
-          <div className="text-[12px] text-slate-500 mb-1 font-medium">Giá trị dự kiến</div>
-          <div className="text-[16px] font-black text-slate-900 tabular-nums tracking-tight">
+          <div className="text-[11px] text-muted-foreground mb-0.5 font-semibold uppercase tracking-wider">Dự kiến</div>
+          <div className="text-[15px] font-black text-foreground tabular-nums tracking-tight">
             {anGiaTri ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien)}
           </div>
         </div>
         <div>
-          <div className="text-[12px] text-slate-500 mb-1 font-medium">Cập nhật gần nhất</div>
-          <div className="flex items-center gap-1.5 text-[13px] font-semibold text-slate-700 mt-0.5">
-            <CalendarIcon className="size-3.5 text-slate-400" />
+          <div className="text-[11px] text-muted-foreground mb-0.5 font-semibold uppercase tracking-wider">Gần nhất</div>
+          <div className="flex items-center gap-1 text-[12.5px] font-semibold text-muted-foreground mt-0.5">
+            <CalendarIcon className="size-3 text-muted-foreground/80" />
             {hda.ngay_cap_nhat ? formatNgay(hda.ngay_cap_nhat.slice(0, 10)) : '--/--/----'}
           </div>
         </div>
       </div>
 
-      <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="size-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-sm shrink-0 overflow-hidden shadow-xs border border-white">
-             {npt ? npt.ho_va_ten.charAt(0).toUpperCase() : <User className="size-4" />}
-          </div>
+      <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <DaiDien
+            ten={npt?.ho_va_ten || 'A'}
+            anh={npt?.url_anh_dai_dien || undefined}
+            kich_thuoc="xs"
+            className="size-7 shadow-xs"
+          />
           <div className="min-w-0">
-             <div className="text-[13px] font-semibold text-slate-700 truncate">{npt?.ho_va_ten || 'Chưa gán'}</div>
-             <div className="text-[11px] text-slate-500 font-medium">Phụ trách</div>
+            <div className="text-[12.5px] font-semibold text-foreground truncate">{npt?.ho_va_ten || 'Chưa gán'}</div>
+            <div className="text-[10.5px] text-muted-foreground font-medium leading-none">Phụ trách</div>
           </div>
         </div>
       </div>
@@ -578,16 +587,16 @@ function TrangHoSoDuAn() {
   );
 
   return (
-    <Bo_Cuc_Trang khoang_cach_trong="space-y-3.5 sm:space-y-8">
-      <div className="grid grid-cols-2 gap-2 sm:gap-3.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+    <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3">
         <CardThongKe
-          label="Tổng số hồ sơ"
+          label="Tổng dự án"
           giaTri={thongKe.tongSo}
           icon={FolderKanban}
           mau="primary"
         />
         <CardThongKe
-          label="Đang thực hiện"
+          label="Đang chạy"
           giaTri={thongKe.soDangThucHien}
           icon={TrendingUp}
           mau="warning"
@@ -599,13 +608,13 @@ function TrangHoSoDuAn() {
           mau="success"
         />
         <CardThongKe
-          label="Đã hủy / tạm dừng"
+          label="Tạm dừng / Hủy"
           giaTri={thongKe.soDaHuy}
           icon={AlertTriangle}
           mau="danger"
         />
         <CardThongKe
-          label="Tổng giá trị dự kiến"
+          label="Tổng giá trị"
           giaTri={thongKe.tongGiaTri}
           giaTriTien={true}
           icon={Wallet}

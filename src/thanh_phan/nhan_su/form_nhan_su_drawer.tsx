@@ -12,6 +12,7 @@ import type {
   CapNhatNhanSuDTO,
   TaoMoiNhanSuDTO
 } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
+import { TaiLenAnhDaiDien } from '../ui';
 
 const SchemaTaoMoi = z.object({
   ma_nhan_vien: z.string().trim().max(50, 'Mã nhân viên tối đa 50 ký tự').nullable().optional(),
@@ -41,7 +42,7 @@ const SchemaTaoMoi = z.object({
   phong_ban_id: z.string().nullable().optional(),
   chuc_vu: z.string().trim().max(100, 'Chức vụ tối đa 100 ký tự').nullable().optional().or(z.literal('')),
   vai_tro: z.string().min(1, 'Vai trò bắt buộc'),
-  url_anh_dai_dien: z.string().trim().max(500, 'URL ảnh đại diện quá dài').nullable().optional().or(z.literal('')),
+  url_anh_dai_dien: z.string().nullable().optional().or(z.literal('')),
   trang_thai: z.boolean().optional()
 });
 
@@ -563,13 +564,12 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">URL ảnh đại diện</label>
-              <input
-                type="url"
+              <label className="block text-sm font-medium text-slate-700 mb-2">Ảnh đại diện nhân viên</label>
+              <TaiLenAnhDaiDien
+                url_anh={watch('url_anh_dai_dien')}
+                ho_ten={watch('ho_va_ten')}
+                khiThayDoi={(url) => setValue('url_anh_dai_dien', url, { shouldValidate: true, shouldDirty: true })}
                 disabled={dangXuLy}
-                {...register('url_anh_dai_dien')}
-                placeholder="https://… (để trống nếu chưa có)"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition disabled:bg-slate-50 disabled:text-slate-500"
               />
             </div>
 

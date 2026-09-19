@@ -54,5 +54,7 @@ export type { ThanhTienDoProps as Thanh_Tien_DoProps } from './thanh_tien_do';
 export { DaiDien } from './dai_dien';
 export type { DaiDienProps } from './dai_dien';
 
+export { TaiLenAnhDaiDien } from './tai_len_anh_dai_dien';
+
 export { Bo_Cuc_Trang } from './bo_cuc_trang';
 export type { BoCucTrangProps } from './bo_cuc_trang';
