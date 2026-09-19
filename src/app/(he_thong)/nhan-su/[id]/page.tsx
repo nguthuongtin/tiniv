@@ -99,6 +99,7 @@ export default function TrangChiTietNhanSu() {
   const [formSua, setFormSua] = useState({
     ho_va_ten: '',
     ma_nhan_vien: '',
+    email: '',
     so_dien_thoai: '',
     chuc_vu: '',
     chi_nhanh_id: '',
@@ -168,6 +169,7 @@ export default function TrangChiTietNhanSu() {
     setFormSua({
       ho_va_ten: ns.ho_va_ten || '',
       ma_nhan_vien: ns.ma_nhan_vien || '',
+      email: ns.email || '',
       so_dien_thoai: ns.so_dien_thoai || '',
       chuc_vu: ns.chuc_vu || '',
       chi_nhanh_id: ns.chi_nhanh_id || '',
@@ -194,6 +196,10 @@ export default function TrangChiTietNhanSu() {
       setLoiSua('Họ và tên không được để trống.');
       return;
     }
+    if (!formSua.email.trim()) {
+      setLoiSua('Email tài khoản không được để trống.');
+      return;
+    }
     setDangXuLySua(true);
     setLoiSua(null);
     try {
@@ -202,6 +208,7 @@ export default function TrangChiTietNhanSu() {
         {
           ho_va_ten: formSua.ho_va_ten.trim(),
           ma_nhan_vien: formSua.ma_nhan_vien.trim() || undefined,
+          email: formSua.email.trim() !== ns.email ? formSua.email.trim() : undefined,
           so_dien_thoai: formSua.so_dien_thoai.trim() || null,
           chuc_vu: formSua.chuc_vu.trim() || null,
           chi_nhanh_id: formSua.chi_nhanh_id || null,
@@ -269,33 +276,40 @@ export default function TrangChiTietNhanSu() {
     e.preventDefault();
     if (!ns) return;
     setLoiMk(null);
-    const laChinhMinh = nguoiDungHienTai?.id === ns.id;
 
-    if (laChinhMinh) {
-      if (!mkMoi || mkMoi.length < 6) {
-        setLoiMk('Mật khẩu mới phải ít nhất 6 ký tự.');
-        return;
-      }
-      if (mkMoi !== nhapLaiMk) {
-        setLoiMk('Mật khẩu nhập lại không khớp.');
-        return;
-      }
+    if (!mkMoi || mkMoi.length < 6) {
+      setLoiMk('Mật khẩu mới phải ít nhất 6 ký tự.');
+      return;
+    }
+    if (mkMoi !== nhapLaiMk) {
+      setLoiMk('Mật khẩu nhập lại không khớp.');
+      return;
     }
 
     setDangXuLyMk(true);
     try {
-      if (laChinhMinh) {
-        await doiMatKhauNhanSu(ns.id, mkMoi, nguoiDungHienTai as any);
-        alert('Đổi mật khẩu thành công!');
-      } else {
-        await guiEmailDatLaiMatKhau(ns.email, nguoiDungHienTai as any);
-        alert(`Đã gửi email liên kết đặt lại mật khẩu đến: ${ns.email}`);
-      }
+      await doiMatKhauNhanSu(ns.id, mkMoi, nguoiDungHienTai as any);
+      alert('Đổi mật khẩu thành công!');
       setMoModalDoiMk(false);
       setMkMoi('');
       setNhapLaiMk('');
     } catch (err: any) {
       setLoiMk(err?.message ?? 'Thao tác thất bại');
+    } finally {
+      setDangXuLyMk(false);
+    }
+  };
+
+  const xuLyGuiEmailReset = async () => {
+    if (!ns?.email) return;
+    setDangXuLyMk(true);
+    setLoiMk(null);
+    try {
+      await guiEmailDatLaiMatKhau(ns.email, nguoiDungHienTai as any);
+      alert(`Đã gửi email khôi phục mật khẩu đến: ${ns.email}`);
+      setMoModalDoiMk(false);
+    } catch (err: any) {
+      setLoiMk(err?.message ?? 'Không thể gửi email khôi phục');
     } finally {
       setDangXuLyMk(false);
     }
@@ -877,17 +891,19 @@ export default function TrangChiTietNhanSu() {
             {dangChinhSua ? (
               <div className="space-y-3.5">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    Email tài khoản (không thể đổi)
+                  <label className="text-xs font-semibold text-foreground">
+                    Email đăng nhập tài khoản
                   </label>
                   <input
                     type="email"
-                    value={ns?.email || ''}
-                    disabled
-                    className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-muted/40 text-sm text-muted-foreground cursor-not-allowed"
+                    value={formSua.email}
+                    onChange={(e) => setFormSua((s) => ({ ...s, email: e.target.value }))}
+                    placeholder="VD: nhanvien@domain.com"
+                    required
+                    className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
                   />
                   <span className="text-[10.5px] text-muted-foreground block">
-                    Email dùng để định danh đăng nhập tài khoản Firebase.
+                    Đổi email tại đây sẽ tự động đồng bộ cả tài khoản đăng nhập Firebase và hồ sơ nhân sự.
                   </span>
                 </div>
 
@@ -1083,47 +1099,60 @@ export default function TrangChiTietNhanSu() {
                 </div>
               )}
 
-              {nguoiDungHienTai?.id === ns?.id ? (
-                <>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-foreground">Mật khẩu mới (tối thiểu 6 ký tự) *</label>
-                    <input
-                      type="password"
-                      value={mkMoi}
-                      onChange={(e) => setMkMoi(e.target.value)}
-                      placeholder="Nhập mật khẩu mới..."
-                      required
-                      className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-foreground">Xác nhận lại mật khẩu *</label>
-                    <input
-                      type="password"
-                      value={nhapLaiMk}
-                      onChange={(e) => setNhapLaiMk(e.target.value)}
-                      placeholder="Nhập lại mật khẩu..."
-                      required
-                      className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-[var(--radius-card)] border border-primary/20 bg-primary/5 p-4 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                      <Mail className="size-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-foreground">Gửi liên kết đặt lại mật khẩu</div>
-                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        Theo chính sách bảo mật của Firebase, Admin không can thiệp trực tiếp vào mật khẩu riêng tư của nhân viên. Hệ thống sẽ gửi email chứa đường link an toàn đến hòm thư <b>{ns?.email}</b> để nhân viên tự tạo mật khẩu mới.
-                      </p>
-                    </div>
-                  </div>
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-foreground">
+                    Mật khẩu mới (tối thiểu 6 ký tự) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMkMoi('123456');
+                      setNhapLaiMk('123456');
+                    }}
+                    className="text-[11px] font-semibold text-primary hover:underline bg-primary/10 px-2 py-0.5 rounded"
+                  >
+                    Gán nhanh: 123456
+                  </button>
                 </div>
-              )}
+
+                <input
+                  type="text"
+                  value={mkMoi}
+                  onChange={(e) => setMkMoi(e.target.value)}
+                  placeholder="Nhập mật khẩu mới..."
+                  required
+                  className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
+                />
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">
+                    Xác nhận lại mật khẩu *
+                  </label>
+                  <input
+                    type="text"
+                    value={nhapLaiMk}
+                    onChange={(e) => setNhapLaiMk(e.target.value)}
+                    placeholder="Nhập lại mật khẩu..."
+                    required
+                    className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
+                  />
+                </div>
+
+                {nguoiDungHienTai?.id !== ns?.id && (
+                  <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Hoặc gửi link qua email của nhân viên:</span>
+                    <button
+                      type="button"
+                      disabled={dangXuLyMk}
+                      onClick={xuLyGuiEmailReset}
+                      className="text-primary hover:underline font-semibold"
+                    >
+                      Gửi email khôi phục
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
                 <Nut
@@ -1138,9 +1167,9 @@ export default function TrangChiTietNhanSu() {
                   kich_thuoc="sm"
                   type="submit"
                   disabled={dangXuLyMk}
-                  icon_trai={dangXuLyMk ? Loader2 : nguoiDungHienTai?.id === ns?.id ? KeyRound : Mail}
+                  icon_trai={dangXuLyMk ? Loader2 : KeyRound}
                 >
-                  {nguoiDungHienTai?.id === ns?.id ? 'Cập nhật' : 'Gửi email đặt lại MK'}
+                  {dangXuLyMk ? 'Đang xử lý...' : 'Lưu mật khẩu mới'}
                 </Nut>
               </div>
             </form>

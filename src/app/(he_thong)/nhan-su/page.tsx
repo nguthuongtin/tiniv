@@ -573,13 +573,29 @@ export default function TrangNhanSu() {
                   </div>
                 </div>
 
-                {/* Phòng ban */}
-                {ns.phong_ban_id && (
-                  <div className="pt-2 border-t border-border/50 flex items-center gap-1.5 text-xs text-muted-foreground truncate mt-2.5">
+                {/* Phòng ban & Nút Đổi mật khẩu */}
+                <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-1.5 text-xs text-muted-foreground mt-2.5">
+                  <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
                     <Layers className="size-3.5 shrink-0 text-muted-foreground/70" />
-                    <span className="truncate">{tenPhongBan(ns.phong_ban_id)}</span>
+                    <span className="truncate">{ns.phong_ban_id ? tenPhongBan(ns.phong_ban_id) : 'Chưa gán PB'}</span>
                   </div>
-                )}
+                  {duocQuanLyNhanSu && (
+                    <button
+                      type="button"
+                      title="Đổi mật khẩu"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLoiMk(null);
+                        setMkMoiModal('');
+                        setNhapLaiMkModal('');
+                        setMoModalDoiMk(ns);
+                      }}
+                      className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition shrink-0"
+                    >
+                      <KeyRound className="size-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -631,43 +647,52 @@ export default function TrangNhanSu() {
               const laChinhMinh = nguoiDungHienTai?.id === moModalDoiMk.id;
               return (
                 <>
-                  <div className="p-8 space-y-4">
-                    {laChinhMinh ? (
-                      <>
-                        <div>
-                          <Nhan bat_buoc>Mật khẩu mới</Nhan>
-                          <input
-                            type="text"
-                            value={mkMoiModal}
-                            onChange={(e) => setMkMoiModal(e.target.value)}
-                            placeholder="Ít nhất 6 ký tự"
-                            className="w-full px-4 py-3 h-11 bg-background border border-border rounded-[var(--radius-input)] text-sm tabular tracking-wide focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/15 transition shadow-[var(--shadow-card)]"
-                          />
-                        </div>
-                        <div>
-                          <Nhan bat_buoc>Nhập lại mật khẩu</Nhan>
-                          <input
-                            type="text"
-                            value={nhapLaiMkModal}
-                            onChange={(e) => setNhapLaiMkModal(e.target.value)}
-                            placeholder="Nhập lại mật khẩu mới"
-                            className="w-full px-4 py-3 h-11 bg-background border border-border rounded-[var(--radius-input)] text-sm tabular tracking-wide focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/15 transition shadow-[var(--shadow-card)]"
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <div className="rounded-[var(--radius-card)] border border-primary/20 bg-primary/5 p-4 space-y-3">
-                        <div className="flex items-start gap-3">
-                          <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                            <Mail className="size-4" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold text-foreground">Gửi liên kết đặt lại mật khẩu</div>
-                            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                              Theo chính sách bảo mật của Firebase, Admin không được can thiệp trực tiếp vào mật khẩu riêng tư của nhân viên. Hệ thống sẽ gửi email chứa đường link an toàn đến hòm thư <b>{moModalDoiMk.email}</b> để nhân viên tự tạo mật khẩu mới.
-                            </p>
-                          </div>
-                        </div>
+                  <div className="p-6 space-y-4">
+                    <div className="space-y-3.5">
+                      <div className="flex items-center justify-between">
+                        <Nhan bat_buoc>Mật khẩu mới (tối thiểu 6 ký tự)</Nhan>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMkMoiModal('123456');
+                            setNhapLaiMkModal('123456');
+                          }}
+                          className="text-[11px] font-semibold text-primary hover:underline bg-primary/10 px-2 py-0.5 rounded"
+                        >
+                          Gán nhanh: 123456
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={mkMoiModal}
+                        onChange={(e) => setMkMoiModal(e.target.value)}
+                        placeholder="Nhập mật khẩu mới..."
+                        className="w-full px-4 py-3 h-11 bg-background border border-border rounded-[var(--radius-input)] text-sm font-mono tracking-wide focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/15 transition shadow-[var(--shadow-card)]"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Nhan bat_buoc>Xác nhận lại mật khẩu</Nhan>
+                      <input
+                        type="text"
+                        value={nhapLaiMkModal}
+                        onChange={(e) => setNhapLaiMkModal(e.target.value)}
+                        placeholder="Nhập lại mật khẩu..."
+                        className="w-full px-4 py-3 h-11 bg-background border border-border rounded-[var(--radius-input)] text-sm font-mono tracking-wide focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/15 transition shadow-[var(--shadow-card)]"
+                      />
+                    </div>
+
+                    {!laChinhMinh && (
+                      <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Hoặc gửi link qua email của nhân viên:</span>
+                        <button
+                          type="button"
+                          disabled={dangXuLyMk}
+                          onClick={() => void xuLyGuiEmailReset()}
+                          className="text-primary hover:underline font-semibold"
+                        >
+                          Gửi email khôi phục
+                        </button>
                       </div>
                     )}
 
@@ -687,27 +712,15 @@ export default function TrangNhanSu() {
                     >
                       Hủy
                     </Nut>
-                    {laChinhMinh ? (
-                      <Nut
-                        kieu="primary"
-                        icon_trai={dangXuLyMk ? Loader2 : KeyRound}
-                        onClick={() => void xuLyDoiMkModal()}
-                        disabled={dangXuLyMk}
-                        className={cn(dangXuLyMk && 'animate-pulse')}
-                      >
-                        Lưu mật khẩu mới
-                      </Nut>
-                    ) : (
-                      <Nut
-                        kieu="primary"
-                        icon_trai={dangXuLyMk ? Loader2 : Send}
-                        onClick={() => void xuLyGuiEmailReset()}
-                        disabled={dangXuLyMk}
-                        className={cn(dangXuLyMk && 'animate-pulse')}
-                      >
-                        Gửi email đổi mật khẩu
-                      </Nut>
-                    )}
+                    <Nut
+                      kieu="primary"
+                      icon_trai={dangXuLyMk ? Loader2 : KeyRound}
+                      onClick={() => void xuLyDoiMkModal()}
+                      disabled={dangXuLyMk}
+                      className={cn(dangXuLyMk && 'animate-pulse')}
+                    >
+                      {dangXuLyMk ? 'Đang lưu...' : 'Lưu mật khẩu mới'}
+                    </Nut>
                   </div>
                 </>
               );

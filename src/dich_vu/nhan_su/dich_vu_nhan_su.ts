@@ -434,16 +434,9 @@ export const capNhatNhanSu = async (
 
   if (dto.email !== undefined && dto.email !== hienTai.email) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dto.email.trim())) {
-      throw new Error('Email moi khong hop le.');
+      throw new Error('Email mới không hợp lệ.');
     }
-    const auth = authInstance();
-    if (auth?.currentUser && auth.currentUser.uid === id) {
-      try {
-        await authUpdateEmail(auth.currentUser, dto.email.trim().toLowerCase());
-      } catch {
-        throw new Error('Khong the doi email tren Firebase. Hay dang nhap lai tai khoan va thu lai.');
-      }
-    }
+    await doiEmailNhanSu(id, dto.email, nguoiThucHien as any);
   }
   if (dto.ho_va_ten || dto.url_anh_dai_dien) {
     const auth = authInstance();
@@ -531,32 +524,63 @@ export const guiEmailDatLaiMatKhau = async (
   );
 };
 
+export const doiEmailNhanSu = async (
+  id: string,
+  emailMoi: string,
+  _nguoiThucHien?: Pick<NhanSu, 'id' | 'vai_tro'> | null | undefined
+): Promise<void> => {
+  const emailChuan = emailMoi.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailChuan)) {
+    throw new Error('Email mới không hợp lệ.');
+  }
+  const auth = authInstance();
+  if (!auth?.currentUser) throw new Error('Chưa đăng nhập, không thể đổi email.');
+
+  const token = await auth.currentUser.getIdToken();
+  const res = await fetch('/api/nhan-su/doi-email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      nhan_su_id: id,
+      email_moi: emailChuan
+    })
+  });
+
+  const kq = await res.json();
+  if (!res.ok || !kq.thanh_cong) {
+    throw new Error(kq.thong_diep || 'Đổi email thất bại.');
+  }
+};
+
 export const doiMatKhauNhanSu = async (
   id: string,
   matKhauMoi: string,
-  nguoiThucHien: Pick<NhanSu, 'id' | 'vai_tro'> | null | undefined
+  _nguoiThucHien?: Pick<NhanSu, 'id' | 'vai_tro'> | null | undefined
 ): Promise<void> => {
   if (!matKhauMoi || matKhauMoi.length < 6) throw new Error('Mật khẩu tối thiểu 6 ký tự.');
   const auth = authInstance();
   if (!auth?.currentUser) throw new Error('Chưa đăng nhập, không thể đổi mật khẩu.');
-  const laQuanTri = nguoiThucHien?.vai_tro === 'quan_tri_he_thong' || nguoiThucHien?.vai_tro === 'giam_doc';
-  if (!laQuanTri && auth.currentUser.uid !== id) {
-    throw new Error('Chỉ quản trị hoặc chính tài khoản mới được đổi mật khẩu.');
+
+  const token = await auth.currentUser.getIdToken();
+  const res = await fetch('/api/nhan-su/doi-mat-khau', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      nhan_su_id: id,
+      mat_khau_moi: matKhauMoi
+    })
+  });
+
+  const kq = await res.json();
+  if (!res.ok || !kq.thanh_cong) {
+    throw new Error(kq.thong_diep || 'Đổi mật khẩu thất bại.');
   }
-  const uidDoi = laQuanTri ? id : auth.currentUser.uid;
-  if (uidDoi !== auth.currentUser.uid) {
-    throw new Error(
-      'Theo chính sách bảo mật Firebase Client SDK, Admin không thể trực tiếp đổi mật khẩu của nhân viên khác. Vui lòng sử dụng tính năng "Gửi link đặt lại mật khẩu qua email" cho nhân viên này.'
-    );
-  }
-  await authUpdatePassword(auth.currentUser, matKhauMoi);
-  await ghiNhatKyHoatDong(
-    nguoiThucHien?.id,
-    'nhan_su',
-    'doi_mat_khau',
-    id,
-    `Đổi mật khẩu thành công (uid=${id.slice(0, 6)}...)`
-  );
 };
 
 export const xoaMemNhanSu = async (
