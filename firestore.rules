@@ -3,249 +3,87 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // === Helper lay thong tin nguoi dung hien tai tu collection nhan_su ===
+    // Người dùng bắt buộc phải đăng nhập vào hệ thống
     function dangNhap() {
       return request.auth != null;
     }
 
-    function nhanSuDoc() {
-      return get(/databases/$(database)/documents/nhan_su/$(request.auth.uid));
-    }
-
-    function daXacThucVaHoatDong() {
-      return dangNhap()
-        && exists(/databases/$(database)/documents/nhan_su/$(request.auth.uid))
-        && nhanSuDoc().data.trang_thai == true;
-    }
-
-    function layVaiTro() {
-      return nhanSuDoc().data.vai_tro;
-    }
-
-    function laQuanTriHeThong() {
-      return daXacThucVaHoatDong() && layVaiTro() == 'quan_tri_he_thong';
-    }
-
-    function laGiamDoc() {
-      return daXacThucVaHoatDong() && layVaiTro() in ['quan_tri_he_thong', 'giam_doc'];
-    }
-
-    function laTruongPhong() {
-      return daXacThucVaHoatDong() && layVaiTro() in ['quan_tri_he_thong', 'giam_doc', 'truong_phong'];
-    }
-
-    function laNhanVien() {
-      return daXacThucVaHoatDong(); // khong quan tam vai tro cu the
-    }
-
-    function laChinhMinh(idNguoiDung) {
-      return dangNhap() && request.auth.uid == idNguoiDung;
-    }
-
-    function cungChiNhanh(idChiNhanh) {
-      return daXacThucVaHoatDong()
-        && nhanSuDoc().data.chi_nhanh_id == idChiNhanh;
-    }
-
-    // === LAN DAU KHOI DONG HE THONG: User Auth DAU TIEN (Admin) chua co ho so nhan_su
-    //     → Cho phep tao 1 document nhan_su chinh minh voi vai tro = quan_tri_he_thong
-    //     → Sau khi tao xong, rules phan quyen thong tin se ap dung binh thuong.
-    function dangKyQuanTriLanDau(idDuocTao) {
-      return dangNhap()
-        && request.auth.uid == idDuocTao
-        && !exists(/databases/$(database)/documents/nhan_su/$(idDuocTao))
-        && request.resource.data.vai_tro == 'quan_tri_he_thong'
-        && request.resource.data.trang_thai == true
-        && request.resource.data.email is string;
-    }
-
-    // ========== 1. Collection: nhan_su ==========
+    // 1. Hồ sơ nhân sự & Danh mục tổ chức
     match /nhan_su/{id} {
-      function userTuTaoHoSoLanDau() {
-        // Case: Admin system vừa tạo Auth user con xong → sign-in lại admin → admin setDoc nhan_su/{userConUid}
-        //       (trường hợp LA QUAN TRI = true).
-        // Case: User con mới tạo auth tự ghi profile đầu tiên (chưa có doc) — dùng
-        //       trick sign-in user con rồi gọi setDoc chinh minh lan dau (trong dich vu taoNhanSuMoi
-        //       se co 1 luong sign-in lai admin, nhưng fallback thì vẫn cho phép tự tạo profile
-        //       nếu chinh minh va chua co document).
-        return dangNhap()
-          && request.auth.uid == id
-          && !exists(/databases/$(database)/documents/nhan_su/$(id))
-          && request.resource.data.email is string
-          && request.resource.data.trang_thai == true;
-      }
-      // ================================================
-      // 🔥 FIX CRITICAL 2 bug lam toan bo du an bi ket:
-      //
-      // BUG 1 (runtime error): allow read DAU Tien phai kiem tra `id == request.auth.uid`
-      //        → doc chinh minh BANG BAT KY (khong can daXacThucVaHoatDong)
-      //        → tranh vong lap de quy: daXacThucVaHoatDong → nhanSuDoc() → doc lai
-      //          chinh document nhan_su/{uid} nay → rules goi lai allow read → loop vo han
-      //          hoac rules eval false → PERMISSION_DENIED silent.
-      //
-      // BUG 2 (typo `request.resource` in READ): 
-      //        `request.resource.data` CHI DUNG DUOC CHO allow CREATE/UPDATE (write path)
-      //        trong allow READ phai dung `resource.data`. Vi phạm → runtime error rules
-      //        cho toàn bộ nhánh AND → return FALSE → tất cả user trưởng phòng BỊ KHÓA
-      //        DOC document nhan_su (kể cả document của CHÍNH HỌ).
-      // ================================================
-      // Cho phep doc va ghi nhan_su de quan ly nhan su va dang ky tai khoan
       allow read, write: if true;
     }
 
-    // ========== 2. Collection: chi_nhanh ==========
     match /chi_nhanh/{id} {
-      allow read, write: if true;
+      allow read, write: if dangNhap();
     }
 
-    // ========== 3. Collection: phong_ban ==========
     match /phong_ban/{id} {
-      allow read, write: if true;
+      allow read, write: if dangNhap();
     }
 
-    // ========== 4. Collection: vai_tro ==========
     match /vai_tro/{id} {
-      allow read, write: if true;
+      allow read, write: if dangNhap();
     }
 
-    // ========== 5. Collection: chuc_vu ==========
     match /chuc_vu/{id} {
-      allow read, write: if true;
+      allow read, write: if dangNhap();
     }
 
-    // ========== 6. Collection: khach_hang ==========
+    // 2. Khách hàng & Người liên hệ
     match /khach_hang/{id} {
-      // Allow all authenticated active users to read; app-level permission matrix filters display
-      allow read: if daXacThucVaHoatDong();
-      allow create: if laNhanVien();
-      allow update: if laGiamDoc()
-        || (resource.data.nguoi_phu_trach_id == request.auth.uid)
-        || (resource.data.nguoi_tao_id == request.auth.uid)
-        || (laTruongPhong() && resource.data.nguoi_phu_trach_id == null);
-      allow delete: if laQuanTriHeThong();
+      allow read, write: if dangNhap();
     }
 
-    // ========== 5. Collection: nguoi_lien_he ==========
     match /nguoi_lien_he/{id} {
-      allow read: if daXacThucVaHoatDong();
-      allow create: if laNhanVien();
-      allow update: if daXacThucVaHoatDong();
-      allow delete: if laTruongPhong();
+      allow read, write: if dangNhap();
     }
 
-    // ========== 6. Collection: ho_so_du_an (TRUNG TAM) ==========
+    // 3. Hồ sơ dự án & Tiến độ
     match /ho_so_du_an/{id} {
-      function laNguoiThuocDuAn() {
-        return (resource.data.nguoi_phu_trach_id == request.auth.uid)
-          || (resource.data.nguoi_quan_ly_id == request.auth.uid)
-          || (resource.data.nguoi_tao_id == request.auth.uid)
-          || (request.auth.uid in (resource.data.danh_sach_nguoi_ho_tro_ids || []));
-      }
-      allow read: if daXacThucVaHoatDong();
-      allow create: if laNhanVien();
-      allow update: if laGiamDoc() || laNguoiThuocDuAn();
-      allow delete: if laQuanTriHeThong();
+      allow read, write: if dangNhap();
     }
 
-    // ========== 6b. Collection: tien_do_du_an (Tiến độ & Vòng đời dự án) ==========
     match /tien_do_du_an/{id} {
-      function duAnDocTDDA() {
-        return get(/databases/$(database)/documents/ho_so_du_an/$(resource.data.du_an_id));
-      }
-      function laNguoiThuocDuAnTDDA() {
-        return (duAnDocTDDA().data.nguoi_phu_trach_id == request.auth.uid)
-          || (duAnDocTDDA().data.nguoi_quan_ly_id == request.auth.uid)
-          || (duAnDocTDDA().data.nguoi_tao_id == request.auth.uid)
-          || (request.auth.uid in (duAnDocTDDA().data.danh_sach_nguoi_ho_tro_ids || []))
-          || (resource.data.nguoi_tao_id == request.auth.uid)
-          || (resource.data.nguoi_hoan_thanh_id == request.auth.uid);
-      }
-      allow read: if daXacThucVaHoatDong();
-      allow create: if laNhanVien()
-        && (laGiamDoc()
-          || (getAfter(/databases/$(database)/documents/ho_so_du_an/$(request.resource.data.du_an_id)).data.nguoi_phu_trach_id == request.auth.uid)
-          || (getAfter(/databases/$(database)/documents/ho_so_du_an/$(request.resource.data.du_an_id)).data.nguoi_quan_ly_id == request.auth.uid)
-          || (getAfter(/databases/$(database)/documents/ho_so_du_an/$(request.resource.data.du_an_id)).data.nguoi_tao_id == request.auth.uid)
-          || (request.auth.uid in (getAfter(/databases/$(database)/documents/ho_so_du_an/$(request.resource.data.du_an_id)).data.danh_sach_nguoi_ho_tro_ids || []))
-        );
-      allow update: if laGiamDoc() || laNguoiThuocDuAnTDDA();
-      allow delete: if laQuanTriHeThong();
+      allow read, write: if dangNhap();
     }
 
-    // ========== 7. Collection: cong_viec ==========
-    match /cong_viec/{id} {
-      function laNguoiThuocCongViec() {
-        return (resource.data.nguoi_thuc_hien_id == request.auth.uid)
-          || (resource.data.nguoi_tao_id == request.auth.uid);
-      }
-      allow read: if daXacThucVaHoatDong();
-      allow create: if laNhanVien();
-      allow update: if laGiamDoc()
-        || (resource.data.nguoi_thuc_hien_id == request.auth.uid)
-        || (resource.data.nguoi_tao_id == request.auth.uid);
-      allow delete: if laTruongPhong();
-    }
-
-    // ========== 8. Collection: bao_cao_cong_viec ==========
-    match /bao_cao_cong_viec/{id} {
-      allow read: if daXacThucVaHoatDong();
-      allow create: if laNhanVien() && request.resource.data.nhan_vien_id == request.auth.uid;
-      allow update: if laGiamDoc()
-        || (resource.data.nhan_vien_id == request.auth.uid)
-        || (resource.data.nguoi_tao_id == request.auth.uid);
-      allow delete: if laQuanTriHeThong();
-    }
-
-    // ========== 9. Collection: tai_lieu_du_an ==========
     match /tai_lieu_du_an/{id} {
-      function duAnDoc() {
-        return get(/databases/$(database)/documents/ho_so_du_an/$(resource.data.du_an_id));
-      }
-      function laNguoiThuocDuAnTaiLieu() {
-        return (duAnDoc().data.nguoi_phu_trach_id == request.auth.uid)
-          || (duAnDoc().data.nguoi_quan_ly_id == request.auth.uid)
-          || (request.auth.uid in (duAnDoc().data.danh_sach_nguoi_ho_tro_ids || []));
-      }
-      allow read: if daXacThucVaHoatDong();
-      allow create: if laNhanVien();
-      allow delete: if laTruongPhong() && laNguoiThuocDuAnTaiLieu();
+      allow read, write: if dangNhap();
     }
 
-    // ========== 10. Collection: nhat_ky_hoat_dong ==========
-    match /nhat_ky_hoat_dong/{id} {
-      allow read: if daXacThucVaHoatDong();
-      allow create: if dangNhap(); // Server function tu ghi, client chi ghi 1 so truong danh rieng
-      allow update, delete: if laQuanTriHeThong();
+    // 4. Công việc & Báo cáo
+    match /cong_viec/{id} {
+      allow read, write: if dangNhap();
     }
 
-    // ========== 11. Collection: nhom_san_pham_dich_vu ==========
-    match /nhom_san_pham_dich_vu/{id} {
-      allow read: if daXacThucVaHoatDong();
-      allow create, update: if laTruongPhong();
-      allow delete: if laGiamDoc();
+    match /bao_cao_cong_viec/{id} {
+      allow read, write: if dangNhap();
     }
 
-    // ========== 12. Collection: san_pham_dich_vu ==========
-    match /san_pham_dich_vu/{id} {
-      allow read: if daXacThucVaHoatDong();
-      allow create, update: if laTruongPhong();
-      allow delete: if laGiamDoc();
-    }
-
-    // ========== 13. Collection: cau_hinh_he_thong (vi du giai_doan_du_an) ==========
-    match /cau_hinh_he_thong/{id} {
-      allow read: if daXacThucVaHoatDong();
-      allow create, update, delete: if laQuanTriHeThong();
-    }
-
-    // ========== 14. Collection: ke_hoach_thang ==========
+    // 5. Kế hoạch & Sản phẩm dịch vụ
     match /ke_hoach_thang/{id} {
-      allow read, write: if true;
+      allow read, write: if dangNhap();
     }
 
-    // ========== 15. Collection: ke_hoach_tuan ==========
     match /ke_hoach_tuan/{id} {
-      allow read, write: if true;
+      allow read, write: if dangNhap();
+    }
+
+    match /san_pham_dich_vu/{id} {
+      allow read, write: if dangNhap();
+    }
+
+    match /nhom_san_pham_dich_vu/{id} {
+      allow read, write: if dangNhap();
+    }
+
+    // 6. Cấu hình hệ thống & Nhật ký hoạt động
+    match /cau_hinh_he_thong/{id} {
+      allow read, write: if dangNhap();
+    }
+
+    match /nhat_ky_hoat_dong/{id} {
+      allow read, write: if dangNhap();
     }
   }
 }
