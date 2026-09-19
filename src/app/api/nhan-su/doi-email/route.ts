@@ -70,18 +70,60 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 1. Cập nhật email trong Firebase Auth
-    await auth.updateUser(nhan_su_id, {
-      email: emailMoiChuan
-    });
+    // 1. Lấy thông tin nhân sự từ Firestore
+    const docTarget = await db.collection('nhan_su').doc(nhan_su_id).get();
+    const duLieuTarget = docTarget.data();
+    const emailCu = duLieuTarget?.email;
 
-    // 2. Cập nhật email trong Firestore collection nhan_su
-    await db.collection('nhan_su').doc(nhan_su_id).update({
-      email: emailMoiChuan,
-      ngay_cap_nhat: new Date().toISOString()
-    });
+    // 2. Tìm tài khoản Firebase Auth (thử qua UID trước, nếu không thấy thì thử qua Email cũ)
+    let targetAuthUid: string | null = null;
+    try {
+      const userByUid = await auth.getUser(nhan_su_id);
+      targetAuthUid = userByUid.uid;
+    } catch (_e1) {
+      if (emailCu) {
+        try {
+          const userByEmail = await auth.getUserByEmail(emailCu);
+          targetAuthUid = userByEmail.uid;
+        } catch (_e2) {
+          // Chưa có trong Auth
+        }
+      }
+    }
 
-    // 3. Ghi nhật ký hoạt động
+    if (targetAuthUid) {
+      // Cập nhật email cho Auth user hiện có
+      await auth.updateUser(targetAuthUid, {
+        email: emailMoiChuan
+      });
+    } else {
+      // Nếu nhân sự này chưa có tài khoản Firebase Auth, tự động tạo mới với mật khẩu mặc định 123456
+      try {
+        await auth.createUser({
+          uid: nhan_su_id,
+          email: emailMoiChuan,
+          password: '123456',
+          displayName: duLieuTarget?.ho_va_ten || undefined
+        });
+      } catch (createErr: any) {
+        if (createErr?.code === 'auth/uid-already-exists') {
+          await auth.updateUser(nhan_su_id, { email: emailMoiChuan });
+        } else {
+          throw createErr;
+        }
+      }
+    }
+
+    // 3. Cập nhật email trong Firestore collection nhan_su
+    await db.collection('nhan_su').doc(nhan_su_id).set(
+      {
+        email: emailMoiChuan,
+        ngay_cap_nhat: new Date().toISOString()
+      },
+      { merge: true }
+    );
+
+    // 4. Ghi nhật ký hoạt động
     try {
       await db.collection('nhat_ky_hoat_dong').add({
         nguoi_dung_id: nguoiGoiUid,
@@ -90,7 +132,7 @@ export async function POST(req: NextRequest) {
         ban_ghi_id: nhan_su_id,
         noi_dung: laChinhMinh
           ? `Tự cập nhật email tài khoản sang: ${emailMoiChuan}`
-          : `Admin cập nhật email nhân viên ${nhan_su_id} sang: ${emailMoiChuan}`,
+          : `Admin cập nhật email nhân viên sang: ${emailMoiChuan}`,
         thoi_gian: new Date().toISOString()
       });
     } catch (_logErr) {
@@ -106,8 +148,6 @@ export async function POST(req: NextRequest) {
     let thongDiep = error?.message || 'Đổi email thất bại';
     if (error?.code === 'auth/email-already-exists') {
       thongDiep = 'Email này đã được sử dụng bởi một tài khoản khác trong hệ thống';
-    } else if (error?.code === 'auth/user-not-found') {
-      thongDiep = 'Không tìm thấy tài khoản Firebase Auth tương ứng với nhân sự này';
     }
     return NextResponse.json(
       { thanh_cong: false, thong_diep: thongDiep },

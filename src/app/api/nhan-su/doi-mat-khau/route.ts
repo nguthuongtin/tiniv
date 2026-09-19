@@ -68,12 +68,49 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Thực hiện cập nhật mật khẩu trực tiếp qua Firebase Admin SDK
-    await auth.updateUser(nhan_su_id, {
-      password: mat_khau_moi
-    });
+    // 1. Lấy thông tin nhân sự từ Firestore
+    const docTarget = await db.collection('nhan_su').doc(nhan_su_id).get();
+    const duLieuTarget = docTarget.data();
+    const emailNhanSu = duLieuTarget?.email;
 
-    // Ghi nhật ký hoạt động
+    // 2. Tìm tài khoản Firebase Auth (thử qua UID trước, nếu không thấy thì thử qua Email)
+    let targetAuthUid: string | null = null;
+    try {
+      const userByUid = await auth.getUser(nhan_su_id);
+      targetAuthUid = userByUid.uid;
+    } catch (_e1) {
+      if (emailNhanSu) {
+        try {
+          const userByEmail = await auth.getUserByEmail(emailNhanSu);
+          targetAuthUid = userByEmail.uid;
+        } catch (_e2) {
+          // Chưa có trong Auth
+        }
+      }
+    }
+
+    if (targetAuthUid) {
+      // Thực hiện cập nhật mật khẩu trực tiếp qua Firebase Admin SDK
+      await auth.updateUser(targetAuthUid, {
+        password: mat_khau_moi
+      });
+    } else {
+      if (!emailNhanSu) {
+        return NextResponse.json(
+          { thanh_cong: false, thong_diep: 'Nhân sự này chưa có email để tạo tài khoản đăng nhập' },
+          { status: 400 }
+        );
+      }
+      // Tự động tạo tài khoản Firebase Auth với mật khẩu mới vừa nhập
+      await auth.createUser({
+        uid: nhan_su_id,
+        email: emailNhanSu,
+        password: mat_khau_moi,
+        displayName: duLieuTarget?.ho_va_ten || undefined
+      });
+    }
+
+    // 3. Ghi nhật ký hoạt động
     try {
       await db.collection('nhat_ky_hoat_dong').add({
         nguoi_dung_id: nguoiGoiUid,
@@ -82,7 +119,7 @@ export async function POST(req: NextRequest) {
         ban_ghi_id: nhan_su_id,
         noi_dung: laChinhMinh
           ? 'Đổi mật khẩu tài khoản của chính mình'
-          : `Admin đổi/reset mật khẩu cho nhân viên ${nhan_su_id}`,
+          : `Admin đổi/reset mật khẩu cho nhân viên ${duLieuTarget?.ho_va_ten || nhan_su_id}`,
         thoi_gian: new Date().toISOString()
       });
     } catch (_logErr) {
@@ -96,9 +133,6 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Lỗi API đổi mật khẩu:', error);
     let thongDiep = error?.message || 'Đổi mật khẩu thất bại';
-    if (error?.code === 'auth/user-not-found') {
-      thongDiep = 'Không tìm thấy tài khoản Firebase Auth tương ứng với nhân sự này';
-    }
     return NextResponse.json(
       { thanh_cong: false, thong_diep: thongDiep },
       { status: 500 }
