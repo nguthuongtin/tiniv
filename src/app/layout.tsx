@@ -21,6 +21,12 @@ export default function BoCucGoc({
       <head>
         <title>Đăng nhập - Tini PMS</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta name="theme-color" content="#007AFF" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Tini PMS" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -30,6 +36,11 @@ export default function BoCucGoc({
                   e.preventDefault();
                 }
               }, true);
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' });
+                });
+              }
             `
           }}
         />
@@ -46,6 +57,12 @@ export default function BoCucGoc({
       <head>
         <title>Tini PMS - Hệ thống Quản trị Dự án</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta name="theme-color" content="#007AFF" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Tini PMS" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -55,6 +72,11 @@ export default function BoCucGoc({
                   e.preventDefault();
                 }
               }, true);
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' });
+                });
+              }
             `
           }}
         />
