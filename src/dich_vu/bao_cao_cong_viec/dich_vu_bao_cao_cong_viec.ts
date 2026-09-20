@@ -43,6 +43,7 @@ export interface TaoMoiBaoCaoCongViecDTO {
   phong_ban_id?: string | null;
   danh_sach_chi_tiet: ChiTietBaoCaoCongViec[];
   kho_khan?: string | null;
+  trang_thai?: 'tam_luu' | 'da_gui';
   trang_thai_du_lieu?: 'hoat_dong' | 'da_xoa';
 }
 
@@ -52,6 +53,7 @@ export interface CapNhatBaoCaoCongViecDTO {
   phong_ban_id?: string | null;
   danh_sach_chi_tiet?: ChiTietBaoCaoCongViec[];
   kho_khan?: string | null;
+  trang_thai?: 'tam_luu' | 'da_gui';
   trang_thai_du_lieu?: 'hoat_dong' | 'da_xoa';
 }
 
@@ -105,6 +107,7 @@ const chuyenDoiDocThanhDoiTuong = (
     ke_hoach_ngay_mai: (r.ke_hoach_ngay_mai as string | null) ?? null,
 
     kho_khan: (r.kho_khan as string | null) ?? null,
+    trang_thai: (r.trang_thai as BaoCaoCongViec['trang_thai']) ?? 'da_gui',
     nguoi_tao_id: (r.nguoi_tao_id as string | null) ?? null,
     ngay_tao: (r.ngay_tao as string) ?? today,
     ngay_cap_nhat: (r.ngay_cap_nhat as string) ?? today,
@@ -255,7 +258,27 @@ export const taoBaoCaoCongViecMoi = async (
   }
   const biTrungLap = await kiemTraTrungLapBaoCao(dto.ngay_bao_cao, idNhanVien);
   if (biTrungLap) {
-    throw new Error('Bạn đã có báo cáo công việc cho ngày này rồi. Hãy chỉnh sửa báo cáo cũ.');
+    // Tìm bản ghi cũ để cập nhật thay vì báo lỗi
+    const snapCu = await getDocs(query(
+      thamChieuCollection(TEN_COLLECTION),
+      where('ngay_bao_cao', '==', dto.ngay_bao_cao),
+      where('nhan_vien_id', '==', idNhanVien),
+      where('trang_thai_du_lieu', '==', 'hoat_dong'),
+      limit(1)
+    ));
+    if (!snapCu.empty) {
+      const docCu = snapCu.docs[0];
+      return await capNhatBaoCaoCongViec(
+        docCu.id,
+        {
+          ngay_bao_cao: dto.ngay_bao_cao,
+          danh_sach_chi_tiet: dsChuanHoa,
+          kho_khan: dto.kho_khan ?? null,
+          trang_thai: dto.trang_thai ?? 'da_gui'
+        },
+        nguoiThucHien
+      );
+    }
   }
   const now = new Date().toISOString();
 
@@ -273,6 +296,7 @@ export const taoBaoCaoCongViecMoi = async (
     ke_hoach_ngay_mai: null,
 
     kho_khan: dto.kho_khan?.trim() || null,
+    trang_thai: dto.trang_thai ?? 'da_gui',
     nguoi_tao_id: idNguoiThucHien,
     ngay_tao: now,
     ngay_cap_nhat: now,
@@ -285,7 +309,7 @@ export const taoBaoCaoCongViecMoi = async (
     'bao_cao_cong_viec',
     'tao_moi',
     moi.id,
-    `Tạo báo cáo công việc ngày ${moi.ngay_bao_cao} (${dsChuanHoa.length} dòng)`
+    `${dto.trang_thai === 'tam_luu' ? 'Tạm lưu' : 'Gửi'} báo cáo công việc ngày ${moi.ngay_bao_cao} (${dsChuanHoa.length} dòng)`
   );
   return moi;
 };
@@ -336,6 +360,7 @@ export const capNhatBaoCaoCongViec = async (
     kho_khan: dto.kho_khan !== undefined
       ? (dto.kho_khan?.trim() || null)
       : hienTai.kho_khan,
+    trang_thai: dto.trang_thai !== undefined ? dto.trang_thai : (hienTai.trang_thai ?? 'da_gui'),
     ngay_cap_nhat: now,
     trang_thai_du_lieu: dto.trang_thai_du_lieu ?? hienTai.trang_thai_du_lieu
   };

@@ -42,7 +42,8 @@ import {
   Mail,
   Layers,
   X,
-  Plus
+  Plus,
+  Search
 } from 'lucide-react';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import type { HoSoDuAn, TienDoDuAn, GiaiDoanDuAn } from '../../../../thu_vien/types/du_an';
@@ -78,6 +79,7 @@ import { danhSachSanPhamDichVu } from '../../../../dich_vu/san_pham_dich_vu/dich
 import {
   danhSachTaiLieuDuAn,
   themTaiLieuDuAn,
+  xoaTaiLieuDuAn,
   type TaiLieuDuAn
 } from '../../../../dich_vu/tai_lieu_du_an/dich_vu_tai_lieu_du_an';
 import {
@@ -109,8 +111,8 @@ import {
 type TenTab = 'tien_do' | 'tai_lieu' | 'thong_tin';
 
 const DS_TAB: { key: TenTab; nhan: string; bieuTuong: any; dem?: number }[] = [
-  { key: 'tien_do', nhan: 'Tiến độ', bieuTuong: TrendingUp },
-  { key: 'tai_lieu', nhan: 'Tài liệu', bieuTuong: Paperclip },
+  { key: 'tien_do', nhan: 'Nhật ký & Tiến độ', bieuTuong: Activity },
+  { key: 'tai_lieu', nhan: 'Kho tài liệu', bieuTuong: Paperclip },
   { key: 'thong_tin', nhan: 'Thông tin dự án', bieuTuong: FolderKanban }
 ];
 
@@ -141,6 +143,31 @@ const GIAI_DOAN_DANG_TRIEN_KHAI: string[] = [
   'nghiem_thu',
   'hoan_thanh'
 ];
+
+const MAP_HIEU_GIAI_DOAN: Record<string, string> = {
+  moi_tao: 'bg-slate-100 text-slate-700 border-slate-200/80',
+  tiep_can: 'bg-sky-50 text-sky-700 border-sky-200/80',
+  khao_sat: 'bg-cyan-50 text-cyan-700 border-cyan-200/80',
+  len_giai_phap: 'bg-indigo-50 text-[#5E5CE6] border-indigo-200/80',
+  bao_gia: 'bg-amber-50 text-amber-700 border-amber-200/80',
+  dam_phan: 'bg-orange-50 text-[#FF9500] border-orange-200/80',
+  ky_hop_dong: 'bg-teal-50 text-teal-700 border-teal-200/80',
+  trien_khai: 'bg-blue-50 text-[#007AFF] border-blue-200/80',
+  nghiem_thu: 'bg-emerald-50 text-[#34C759] border-emerald-200/80',
+  hoan_thanh: 'bg-emerald-100/80 text-emerald-800 border-emerald-300/80',
+  tam_dung: 'bg-zinc-100 text-zinc-700 border-zinc-200/80',
+  huy: 'bg-rose-50 text-[#FF3B30] border-rose-200/80'
+};
+
+function BadgeGiaiDoan({ value }: { value?: string | null }) {
+  const cls = MAP_HIEU_GIAI_DOAN[value ?? 'moi_tao'] ?? 'bg-slate-100 text-slate-700 border-slate-200';
+  const ten = TEN_GIAI_DOAN_DA[value ?? 'moi_tao'] ?? value ?? 'Mới tạo';
+  return (
+    <span className={cn('text-[11px] px-2.5 py-0.5 rounded-full font-semibold border inline-flex items-center', cls)}>
+      {ten}
+    </span>
+  );
+}
 
 const TEN_TIEM_NANG: Record<string, string> = {
   rat_cao: 'Rất cao',
@@ -181,64 +208,60 @@ export default function TrangChiTietHoSoDuAn() {
   const [errTai, setErrTai] = useState<string | null>(null);
   const [tabHienTai, setTabHienTai] = useState<TenTab>('tien_do');
 
-  const [formTD, setFormTD] = useState({
-    tinh_hinh_hien_tai: '',
-    hanh_dong_tiep_theo: '',
-    deadline_hanh_dong: '',
-    link_tai_lieu: ''
-  });
-  const [dangXuLyTD, setDangXuLyTD] = useState(false);
-  const [loiFormTD, setLoiFormTD] = useState<string | null>(null);
-  const [dangHTTD, setDangHTTD] = useState<Record<string, boolean>>({});
-  const [formHT, setFormHT] = useState<Record<string, string>>({});
   const [dsTDKemCanhBao, setDsTDKemCanhBao] = useState<
     (TienDoDuAn & { canh_bao: 'sap_den' | 'qua_han' | null })[]
   >([]);
 
-  const [formTL, setFormTL] = useState({
-    ten_file: '',
-    url_file: '',
-    loai_file: 'link_khac' as 'google_drive' | 'youtube' | 'link_khac',
-    ghi_chu: ''
-  });
-  const [dangXuLyTL, setDangXuLyTL] = useState(false);
-  const [loiFormTL, setLoiFormTL] = useState<string | null>(null);
-
-  const xuLyThemTaiLieu = async () => {
+  const xuLyThemCapNhatTongHop = async (params: {
+    noi_dung: string;
+    file?: { ten_file: string; url_file: string; loai_file: string; ghi_chu?: string } | null;
+  }) => {
     if (!id) return;
-    setLoiFormTL(null);
-    const ten = formTL.ten_file.trim();
-    const url = formTL.url_file.trim();
-    if (!ten || !url) {
-      setLoiFormTL('Vui lòng nhập đủ: Tên tài liệu + Đường dẫn URL');
-      return;
-    }
-    try {
-      new URL(url);
-    } catch {
-      setLoiFormTL('Đường dẫn URL không hợp lệ (phải bắt đầu bằng https:// hoặc http://)');
-      return;
-    }
-    setDangXuLyTL(true);
-    try {
+    const nd = params.noi_dung.trim();
+    const f = params.file;
+    let urlFileChoTienDo: string | null = null;
+
+    // 1. Thêm tài liệu nếu có
+    if (f && f.ten_file.trim() && f.url_file.trim()) {
       await themTaiLieuDuAn(
         {
           du_an_id: id,
-          ten_file: ten,
-          url_file: url,
-          loai_file: formTL.loai_file,
-          ghi_chu: formTL.ghi_chu.trim() || null,
+          ten_file: f.ten_file.trim(),
+          url_file: f.url_file.trim(),
+          loai_file: f.loai_file || 'link_khac',
+          ghi_chu: f.ghi_chu?.trim() || null,
           nguoi_tai_len_id: nguoiDungHienTai?.id ?? null
         },
         nguoiDungHienTai ?? null
       );
-      setFormTL({ ten_file: '', url_file: '', loai_file: 'link_khac', ghi_chu: '' });
-      await taiLai();
-    } catch (e: any) {
-      setLoiFormTL(e?.message ?? 'Thêm liên kết tài liệu thất bại');
-    } finally {
-      setDangXuLyTL(false);
+      urlFileChoTienDo = f.url_file.trim();
     }
+
+    // 2. Thêm tiến độ (nếu có nội dung hoặc nếu chỉ đính kèm file)
+    const noiDungTD = nd || (f ? `Đính kèm tài liệu: ${f.ten_file.trim()}` : '');
+    if (noiDungTD) {
+      await taoTienDoDuAnMoi(
+        {
+          du_an_id: id,
+          tinh_hinh_hien_tai: noiDungTD,
+          hanh_dong_tiep_theo: null,
+          deadline_hanh_dong: null,
+          link_tai_lieu: urlFileChoTienDo,
+          nguoi_tao_id: nguoiDungHienTai?.id ?? null
+        },
+        hda?.ten_du_an ?? null
+      );
+    }
+
+    await taiLai();
+  };
+
+  const xuLyXoaTaiLieu = async (tl: TaiLieuDuAn) => {
+    if (!id) return;
+    try {
+      await xoaTaiLieuDuAn(tl.id, nguoiDungHienTai ?? null);
+      await taiLai();
+    } catch {}
   };
 
   const taiLai = useCallback(async () => {
@@ -618,70 +641,6 @@ export default function TrangChiTietHoSoDuAn() {
   }, [hda?.danh_sach_nguoi_ho_tro_ids, dsNS]);
 
 
-  const xuLyTaoTienDo = async () => {
-    if (!id) return;
-    setLoiFormTD(null);
-    const noiDung = formTD.tinh_hinh_hien_tai.trim();
-    if (!noiDung) {
-      setLoiFormTD('Vui lòng nhập nội dung báo cáo tình trạng làm việc.');
-      return;
-    }
-    setDangXuLyTD(true);
-    try {
-      await taoTienDoDuAnMoi(
-        {
-          du_an_id: id,
-          tinh_hinh_hien_tai: noiDung,
-          hanh_dong_tiep_theo: null,
-          deadline_hanh_dong: null,
-          link_tai_lieu: null,
-          nguoi_tao_id: nguoiDungHienTai?.id ?? null
-        },
-        hda?.ten_du_an ?? null
-      );
-      setFormTD({ tinh_hinh_hien_tai: '', hanh_dong_tiep_theo: '', deadline_hanh_dong: '', link_tai_lieu: '' });
-      await taiLai();
-    } catch (e: any) {
-      setLoiFormTD(e?.message ?? 'Tạo tiến độ thất bại');
-    } finally {
-      setDangXuLyTD(false);
-    }
-  };
-
-  const xuLyHoanThanhTienDo = async (td: TienDoDuAn) => {
-    if (!id) return;
-    const ketQua = (formHT[td.id] ?? '').trim();
-    if (!ketQua) {
-      setFormHT((o) => ({ ...o, [td.id]: '' }));
-    }
-    const key = `ht_${td.id}`;
-    setDangHTTD((o) => ({ ...o, [key]: true }));
-    try {
-      await capNhatTienDoDuAn(
-        td.id,
-        {
-          trang_thai_hanh_dong: 'da_hoan_thanh',
-          ket_qua_thuc_hien: ketQua || null,
-          ngay_hoan_thanh: new Date().toISOString(),
-          nguoi_hoan_thanh_id: nguoiDungHienTai?.id ?? null
-        },
-        {
-          nguoi_thuc_hien_id: nguoiDungHienTai?.id ?? null,
-          du_an_id: hda?.id ?? null,
-          ten_du_an: hda?.ten_du_an ?? null
-        }
-      );
-      setFormHT((o) => {
-        const next = { ...o };
-        delete next[td.id];
-        return next;
-      });
-      await taiLai();
-    } finally {
-      setDangHTTD((o) => ({ ...o, [key]: false }));
-    }
-  };
-
   const xuLyXoaTienDo = async (td: TienDoDuAn) => {
     if (!id) return;
     try {
@@ -911,7 +870,7 @@ export default function TrangChiTietHoSoDuAn() {
       )}
 
       {/* 2. Thanh tiến trình vòng đời dự án (Pipeline Stage Stepper) */}
-      <div className="rounded-[var(--radius-card)] border border-border bg-background p-4 sm:p-5 shadow-[var(--shadow-card)] space-y-4">
+      <div className="rounded-[22px] border border-slate-200/90 bg-white p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground">
@@ -1046,13 +1005,13 @@ export default function TrangChiTietHoSoDuAn() {
         {/* CỘT CHÍNH (Trái ~68% - 8 cột) */}
         <div className="lg:col-span-8 space-y-6">
 
-          <div className="rounded-[var(--radius-card)] border border-border bg-background overflow-hidden shadow-[var(--shadow-card)]">
+          <div className="rounded-[22px] border border-slate-200/90 bg-white overflow-hidden shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
             <BoCacTab
               gia_tri={tabHienTai}
               gia_tri_mac_dinh="tien_do"
               on_gia_tri_thay_doi={(gt) => setTabHienTai(gt as TenTab)}
             >
-              <div className="border-b border-border px-4 pt-2.5 pb-0 bg-muted/20">
+              <div className="border-b border-slate-200/80 px-4 pt-3 pb-3 bg-slate-50/50">
                 <DanhSachNutTab>
                   {tabs.map((t) => (
                     <NutTab
@@ -1069,35 +1028,37 @@ export default function TrangChiTietHoSoDuAn() {
 
               <div className="p-5 sm:p-6">
                 <NoiDungTab gia_tri="tien_do">
-                  <BanTienDoVaVongDoi
-                    ds={dsTDKemCanhBao}
+                  <BanNhatKyVaTienDo
+                    dsTD={dsTDKemCanhBao}
                     dangTai={dangTai}
                     err={errTai}
                     dsNS={dsNS}
-                    form={formTD}
-                    setForm={setFormTD}
-                    dangXuLy={dangXuLyTD}
-                    loiForm={loiFormTD}
-                    onTao={xuLyTaoTienDo}
-                    formHT={formHT}
-                    setFormHT={setFormHT}
-                    dangHT={dangHTTD}
-                    onHoanThanh={xuLyHoanThanhTienDo}
-                    onXoa={xuLyXoaTienDo}
+                    onTao={xuLyThemCapNhatTongHop}
+                    onXoaTD={xuLyXoaTienDo}
                   />
                 </NoiDungTab>
-
                 <NoiDungTab gia_tri="tai_lieu">
-                  <BanTaiLieuDuAn
-                    ds={dsTL}
+                  <BanKhoTaiLieu
+                    dsTL={dsTL}
                     dangTai={dangTai}
                     err={errTai}
                     dsNS={dsNS}
-                    form={formTL}
-                    setForm={setFormTL}
-                    dangXuLy={dangXuLyTL}
-                    loiForm={loiFormTL}
-                    onThemTaiLieu={xuLyThemTaiLieu}
+                    onThemTL={async (f) => {
+                      if (!id) return;
+                      await themTaiLieuDuAn(
+                        {
+                          du_an_id: id,
+                          ten_file: f.ten_file.trim(),
+                          url_file: f.url_file.trim(),
+                          loai_file: f.loai_file || 'link_khac',
+                          ghi_chu: f.ghi_chu?.trim() || null,
+                          nguoi_tai_len_id: nguoiDungHienTai?.id ?? null
+                        },
+                        nguoiDungHienTai ?? null
+                      );
+                      await taiLai();
+                    }}
+                    onXoaTL={xuLyXoaTaiLieu}
                   />
                 </NoiDungTab>
                 <NoiDungTab gia_tri="thong_tin">
@@ -1130,38 +1091,38 @@ export default function TrangChiTietHoSoDuAn() {
         {/* CỘT PHỤ (Phải ~32% - 4 cột) */}
         <div className="lg:col-span-4 space-y-5">
           {/* 1. Thẻ Tài chính & Tiềm năng */}
-          <div className="rounded-[var(--radius-card)] border border-border bg-background p-5 shadow-[var(--shadow-card)] space-y-4">
-            <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground block border-b border-border/70 pb-3">
+          <div className="rounded-[22px] border border-slate-200/90 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] space-y-4">
+            <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground block border-b border-slate-100 pb-3">
               Tài chính & Hiệu quả
             </span>
 
             <div className="space-y-3">
-              <div className="rounded-[var(--radius-input)] bg-muted/40 border border-border/70 p-3.5 flex items-center justify-between">
+              <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 p-3.5 flex items-center justify-between">
                 <div>
                   <div className="text-[11px] font-semibold text-muted-foreground uppercase">Giá trị dự kiến</div>
                   <div className="text-lg font-black text-foreground tabular-nums mt-0.5">
                     {laBackOffice ? '***' : hda?.gia_tri_du_kien ? formatTien(hda.gia_tri_du_kien) : '0 ₫'}
                   </div>
                 </div>
-                <div className="size-9 rounded-[var(--radius-input)] bg-card-icon-bg-success text-card-icon-fg-success flex items-center justify-center shrink-0">
+                <div className="size-9 rounded-[13px] bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
                   <Target className="size-4" />
                 </div>
               </div>
 
-              <div className="rounded-[var(--radius-input)] bg-muted/40 border border-border/70 p-3.5 flex items-center justify-between">
+              <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 p-3.5 flex items-center justify-between">
                 <div>
                   <div className="text-[11px] font-semibold text-muted-foreground uppercase">Giá trị hợp đồng</div>
-                  <div className="text-lg font-black text-primary tabular-nums mt-0.5">
+                  <div className="text-lg font-black text-[#007AFF] tabular-nums mt-0.5">
                     {laBackOffice ? '***' : hda?.gia_tri_hop_dong ? formatTien(hda.gia_tri_hop_dong) : 'Chưa ký HĐ'}
                   </div>
                 </div>
-                <div className="size-9 rounded-[var(--radius-input)] bg-card-icon-bg-primary text-card-icon-fg-primary flex items-center justify-center shrink-0">
+                <div className="size-9 rounded-[13px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0">
                   <Wallet className="size-4" />
                 </div>
               </div>
 
               {hda?.muc_do_tiem_nang && (
-                <div className="flex items-center justify-between p-3 rounded-[var(--radius-input)] bg-muted/40 border border-border/70 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 text-xs">
                   <span className="text-muted-foreground font-medium">Mức độ tiềm năng:</span>
                   <Hieu kieu="warning" kich_thuoc="sm">
                     {TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? hda.muc_do_tiem_nang}
@@ -1173,15 +1134,15 @@ export default function TrangChiTietHoSoDuAn() {
           </div>
 
           {/* 2. Thẻ Khách hàng */}
-          <div className="rounded-[var(--radius-card)] border border-border bg-background p-5 shadow-[var(--shadow-card)] space-y-4">
-            <div className="flex items-center justify-between border-b border-border/70 pb-3">
+          <div className="rounded-[22px] border border-slate-200/90 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground">
                 Đối tác khách hàng
               </span>
               {kh && (
                 <Link
                   href={`/khach-hang/${kh.id}`}
-                  className="text-xs text-primary font-semibold hover:underline inline-flex items-center gap-0.5"
+                  className="text-xs text-[#007AFF] font-semibold hover:underline inline-flex items-center gap-0.5"
                 >
                   Xem hồ sơ <ExternalLink className="size-3" />
                 </Link>
@@ -1198,7 +1159,7 @@ export default function TrangChiTietHoSoDuAn() {
                 </div>
 
                 {nlh ? (
-                  <div className="p-3 rounded-[var(--radius-input)] bg-muted/40 border border-border/70 space-y-2">
+                  <div className="p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-2">
                     <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                       Người liên hệ chính
                     </div>
@@ -1206,32 +1167,32 @@ export default function TrangChiTietHoSoDuAn() {
                       <DaiDien ten={nlh.ho_va_ten} kich_thuoc="sm" />
                       <div className="min-w-0">
                         <div className="font-bold text-xs text-foreground truncate">{nlh.ho_va_ten}</div>
-                        {nlh.chuc_vu && <div className="text-[11px] text-primary">{nlh.chuc_vu}</div>}
+                        {nlh.chuc_vu && <div className="text-[11px] text-[#007AFF]">{nlh.chuc_vu}</div>}
                       </div>
                     </div>
                     {nlh.so_dien_thoai && (
-                      <a href={`tel:${nlh.so_dien_thoai}`} className="flex items-center gap-1.5 text-xs text-primary font-mono hover:underline">
+                      <a href={`tel:${nlh.so_dien_thoai}`} className="flex items-center gap-1.5 text-xs text-[#007AFF] font-mono hover:underline">
                         <Phone className="size-3" /> {nlh.so_dien_thoai}
                       </a>
                     )}
                     {nlh.email && (
-                      <a href={`mailto:${nlh.email}`} className="flex items-center gap-1.5 text-xs text-primary truncate hover:underline">
+                      <a href={`mailto:${nlh.email}`} className="flex items-center gap-1.5 text-xs text-[#007AFF] truncate hover:underline">
                         <Mail className="size-3" /> {nlh.email}
                       </a>
                     )}
                   </div>
                 ) : (
-                  <div className="text-xs text-muted-foreground italic">Chưa gắn người liên hệ cụ thể</div>
+                  <div className="text-xs text-muted-foreground italic">Chưa gắn người liên hệ chính</div>
                 )}
               </div>
             ) : (
-              <div className="text-xs text-muted-foreground italic">Chưa liên kết khách hàng</div>
+              <div className="text-xs text-muted-foreground italic">Chưa gán khách hàng</div>
             )}
           </div>
 
           {/* 3. Thẻ Đội ngũ thực hiện */}
-          <div className="rounded-[var(--radius-card)] border border-border bg-background p-5 shadow-[var(--shadow-card)] space-y-4">
-            <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground block border-b border-border/70 pb-3">
+          <div className="rounded-[22px] border border-slate-200/90 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] space-y-4">
+            <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground block border-b border-slate-100 pb-3">
               Đội ngũ phụ trách
             </span>
 
@@ -1255,7 +1216,7 @@ export default function TrangChiTietHoSoDuAn() {
               </div>
 
               {dsNHT.length > 0 && (
-                <div className="pt-2 border-t border-border/70">
+                <div className="pt-2 border-t border-slate-100">
                   <div className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Thành viên hỗ trợ ({dsNHT.length})</div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {dsNHT.map((ns) => (
@@ -1270,24 +1231,24 @@ export default function TrangChiTietHoSoDuAn() {
           </div>
 
           {/* 4. Thẻ Thời hạn & Tuổi dự án */}
-          <div className="rounded-[var(--radius-card)] border border-border bg-background p-5 shadow-[var(--shadow-card)] space-y-4">
-            <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground block border-b border-border/70 pb-3">
+          <div className="rounded-[22px] border border-slate-200/90 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] space-y-4">
+            <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground block border-b border-slate-100 pb-3">
               Thời gian & Tiến độ
             </span>
 
             <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-[var(--radius-input)] bg-muted/40 border border-border/70 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 flex items-center justify-between">
                 <span className="text-muted-foreground">Đã tạo được:</span>
                 <span className="font-bold text-foreground">{tuoiDuAn.tu_tao_duoc}</span>
               </div>
-              <div className="p-3 rounded-[var(--radius-input)] bg-muted/40 border border-border/70 flex items-center justify-between">
+              <div className="p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 flex items-center justify-between">
                 <span className="text-muted-foreground">Cập nhật cuối:</span>
                 <span className="font-bold text-foreground">{tuoiDuAn.cap_nhat_cuoi}</span>
               </div>
               {hda?.thoi_han_hoan_thanh && (
-                <div className="p-3 rounded-[var(--radius-input)] bg-muted/40 border border-border/70 flex items-center justify-between">
+                <div className="p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 flex items-center justify-between">
                   <span className="text-muted-foreground">Hạn hoàn thành:</span>
-                  <span className="font-bold text-primary">{formatNgay(hda.thoi_han_hoan_thanh)}</span>
+                  <span className="font-bold text-[#007AFF]">{formatNgay(hda.thoi_han_hoan_thanh)}</span>
                 </div>
               )}
             </div>
@@ -1981,11 +1942,11 @@ function BanThongTinHDA({
                 {hda?.mo_ta ?? '(Chưa có mô tả chi tiết / phạm vi công việc)'}
               </p>
               {hda?.ghi_chu && (
-                <div className="mt-4 rounded-[var(--radius-card)] bg-amber-500/10 border border-amber-500/25 p-4">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1.5 flex items-center gap-1.5">
+                <div className="mt-4 rounded-2xl bg-[#FF9500]/5 border border-[#FF9500]/20 p-4">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#FF9500] mb-1.5 flex items-center gap-1.5">
                     <AlertTriangle className="size-3.5" /> Ghi chú nội bộ
                   </div>
-                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                  <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
                     {hda.ghi_chu}
                   </p>
                 </div>
@@ -2318,470 +2279,240 @@ function kichThuocFileReadable(byt: number | null | undefined): string {
   return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function BanTaiLieuDuAn({
-  ds,
-  dangTai,
-  err,
-  dsNS,
-  form,
-  setForm,
-  dangXuLy,
-  loiForm,
-  onThemTaiLieu
-}: {
-  ds: TaiLieuDuAn[];
-  dangTai: boolean;
-  err: string | null;
-  dsNS: NhanSu[];
-  form: { ten_file: string; url_file: string; loai_file: 'google_drive' | 'youtube' | 'link_khac'; ghi_chu: string };
-  setForm: (f: any) => void;
-  dangXuLy: boolean;
-  loiForm: string | null;
-  onThemTaiLieu: () => void;
-}) {
-  if (dangTai) return <SkeletonList so={3} />;
-  if (err)
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm p-4 font-semibold">
-        Lỗi tải: {err}
-      </div>
-    );
-
-  const LOAI_LINK: Record<'google_drive' | 'youtube' | 'link_khac', { nhan: string; mau: 'success' | 'danger' | 'primary' | 'warning' | 'muted'; icon: any }> = {
-    google_drive: { nhan: 'Google Drive', mau: 'success', icon: FileIcon },
-    youtube: { nhan: 'YouTube', mau: 'danger', icon: FileIcon },
-    link_khac: { nhan: 'Link khác', mau: 'primary', icon: ExternalLink }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="rounded-[var(--radius-card)] border border-border bg-background p-5 sm:p-6 shadow-[var(--shadow-card)]">
-        <div className="mb-4 flex items-center gap-2.5">
-          <div className="size-9 rounded-[var(--radius-input)] bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 shadow-xs">
-            <ExternalLink className="size-4" />
-          </div>
-          <div>
-            <div className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">
-              Thêm liên kết tài liệu
-            </div>
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="text-[11.5px] font-semibold text-foreground mb-1.5 inline-flex items-center gap-1.5">
-              <FileIcon className="size-3.5 text-muted-foreground" /> Tên tài liệu <span className="text-destructive">*</span>
-            </label>
-            <O_Nhap
-              type="text"
-              value={form.ten_file}
-              onChange={(e) => setForm((prev: any) => ({ ...prev, ten_file: e.target.value }))}
-              placeholder="VD: Báo giá chi tiết dự án ABC"
-            />
-          </div>
-          <div>
-            <label className="text-[11.5px] font-semibold text-foreground mb-1.5 inline-flex items-center gap-1.5">
-              <ExternalLink className="size-3.5 text-muted-foreground" /> Đường dẫn URL <span className="text-destructive">*</span>
-            </label>
-            <O_Nhap
-              type="url"
-              value={form.url_file}
-              onChange={(e) => setForm((prev: any) => ({ ...prev, url_file: e.target.value }))}
-              placeholder="https://drive.google.com/... hoặc https://youtu.be/..."
-            />
-          </div>
-          <div>
-            <label className="text-[11.5px] font-semibold text-foreground mb-1.5 inline-flex items-center gap-1.5">
-              <FolderKanban className="size-3.5 text-muted-foreground" /> Nguồn / Loại liên kết
-            </label>
-            <select
-              value={form.loai_file}
-              onChange={(e) => setForm((prev: any) => ({ ...prev, loai_file: e.target.value as any }))}
-              className="w-full rounded-[var(--radius-input)] border border-border bg-background px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="google_drive">Google Drive</option>
-              <option value="youtube">YouTube</option>
-              <option value="link_khac">Link khác (Website / Dropbox / OneDrive...)</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-[11.5px] font-semibold text-foreground mb-1.5 inline-flex items-center gap-1.5">
-              <FileCheck2 className="size-3.5 text-muted-foreground" /> Ghi chú mô tả (tùy chọn)
-            </label>
-            <O_Nhap
-              type="text"
-              value={form.ghi_chu}
-              onChange={(e) => setForm((prev: any) => ({ ...prev, ghi_chu: e.target.value }))}
-              placeholder="VD: Bản báo giá cuối đã chốt 17/08/2026"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-          {loiForm && (
-            <div className="text-[12px] font-semibold text-destructive flex items-center gap-1.5">
-              <AlertTriangle className="size-3.5" /> {loiForm}
-            </div>
-          )}
-          <Nut
-            kieu="primary"
-            disabled={dangXuLy}
-            onClick={() => onThemTaiLieu()}
-            icon_trai={Send}
-            className="ml-auto"
-          >
-            Thêm liên kết
-          </Nut>
-        </div>
-      </div>
-
-      {ds.length === 0 ? (
-        <Rong
-          kieu="mac_dinh"
-          icon_tuy_chinh={Paperclip}
-          nhan_tuy_chinh="Chưa có tài liệu liên kết nào"
-          nhan_phu_tuy_chinh="Điền form trên để thêm liên kết đầu tiên (Google Drive, YouTube, hoặc URL khác)."
-        />
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {ds.map((tl) => {
-            const nguoiTai = tl.nguoi_tai_len_id
-              ? dsNS.find((x) => x.id === tl.nguoi_tai_len_id) ?? null
-              : null;
-            const loaiKey = (tl.loai_file ?? 'link_khac') as keyof typeof LOAI_LINK;
-            const loai = LOAI_LINK[loaiKey] ?? LOAI_LINK.link_khac;
-            return (
-              <div
-                key={tl.id}
-                className="rounded-[var(--radius-card)] border border-border bg-background hover:shadow-[var(--shadow-card-hover)] transition p-4 flex flex-col gap-3 shadow-[var(--shadow-card)]"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="size-11 rounded-[var(--radius-input)] bg-muted border border-border flex items-center justify-center shrink-0 text-muted-foreground">
-                    <loai.icon className="size-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap gap-1.5 mb-1.5">
-                      <Hieu kieu={loai.mau as any} kich_thuoc="sm">{loai.nhan}</Hieu>
-                    </div>
-                    <div className="text-sm font-bold text-foreground line-clamp-2 leading-snug">
-                      {tl.ten_file}
-                    </div>
-                  </div>
-                </div>
-
-                {tl.ghi_chu && (
-                  <div className="rounded-[var(--radius-input)] bg-muted/40 border border-border/70 p-3">
-                    <p className="text-[12.5px] text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                      {tl.ghi_chu}
-                    </p>
-                  </div>
-                )}
-
-                <div className="text-[11px] text-muted-foreground flex items-center justify-between gap-2 pt-2 border-t border-border/70 mt-auto">
-                  <div className="inline-flex items-center gap-1.5 min-w-0">
-                    <Clock className="size-3.5 shrink-0" />
-                    <span className="truncate">
-                      {tl.ngay_tai_len ? formatNgay(tl.ngay_tai_len) : '—'}
-                      {nguoiTai && (
-                        <>
-                          {' · '}
-                          <span className="font-semibold text-foreground truncate">
-                            {nguoiTai.ho_va_ten}
-                          </span>
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  {tl.url_file && (
-                    <a
-                      href={tl.url_file}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 rounded-[var(--radius-input)] bg-primary/10 hover:bg-primary/20 text-primary px-2.5 py-1 text-[11px] font-bold transition shrink-0"
-                    >
-                      <ExternalLink className="size-3" /> Mở
-                    </a>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BanLichSuHoatDong({
-  ds,
-  dangTai,
-  err,
-  dsNS
-}: {
-  ds: NhatKyHoatDong[];
-  dangTai: boolean;
-  err: string | null;
-  dsNS: NhanSu[];
-}) {
-  if (dangTai) return <SkeletonList so={4} cotDoc={true} />;
-  if (err)
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm p-4 font-semibold">
-        Lỗi tải: {err}
-      </div>
-    );
-  if (ds.length === 0)
-    return (
-      <Rong
-        kieu="mac_dinh"
-        icon_tuy_chinh={Activity}
-        nhan_tuy_chinh="Chưa có nhật ký hoạt động"
-        nhan_phu_tuy_chinh="Tất cả thao tác Tạo, Cập nhật, Xóa liên quan đến hồ sơ dự án này sẽ hiện tại đây."
-      />
-    );
-  return (
-    <ol className="relative border-l border-slate-200 ml-2.5 space-y-5">
-      {ds.map((nk, i) => {
-        const nguoiThucHien = nk.nguoi_dung_id
-          ? dsNS.find((x) => x.id === nk.nguoi_dung_id) ?? null
-          : null;
-        const tenModule =
-          TEN_MODULE_NHAT_KY[nk.module as keyof typeof TEN_MODULE_NHAT_KY] ?? nk.module ?? '';
-        const tenHanhDong =
-          TEN_HANH_DONG_NHAT_KY[nk.hanh_dong as keyof typeof TEN_HANH_DONG_NHAT_KY] ??
-          nk.hanh_dong ?? '';
-        const kieuBadge: 'success' | 'warning' | 'primary' | 'muted' | 'danger' =
-          nk.hanh_dong === 'xoa' || nk.hanh_dong === 'khoa'
-            ? 'danger'
-            : nk.hanh_dong === 'tao'
-            ? 'success'
-            : nk.hanh_dong === 'sua' || nk.hanh_dong === 'cap_nhat'
-            ? 'warning'
-            : 'primary';
-        return (
-          <li key={nk.id} className="ml-5">
-            <span className="absolute -left-[11px] flex items-center justify-center size-5 rounded-full bg-white border border-slate-200 shadow-sm">
-              <span
-                className={cn(
-                  'size-2.5 rounded-full',
-                  i === 0 ? 'bg-indigo-500' : 'bg-slate-300'
-                )}
-              />
-            </span>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 hover:shadow-sm transition">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <Hieu kieu={kieuBadge} kich_thuoc="sm">
-                  {tenHanhDong}
-                </Hieu>
-                {tenModule && (
-                  <Hieu kieu="muted" kich_thuoc="sm">
-                    Module: {tenModule}
-                  </Hieu>
-                )}
-              </div>
-              {nk.noi_dung && (
-                <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed mb-2.5">
-                  {nk.noi_dung}
-                </p>
-              )}
-              <div className="text-[11.5px] text-slate-500 flex flex-wrap items-center gap-2.5 justify-between">
-                <div className="inline-flex items-center gap-2 min-w-0">
-                  {nguoiThucHien ? (
-                    <>
-                      <DaiDien ten={nguoiThucHien.ho_va_ten} anh={nguoiThucHien.url_anh_dai_dien} kich_thuoc="sm" />
-                      <span className="font-semibold text-slate-700 truncate">
-                        {nguoiThucHien.ho_va_ten}
-                      </span>
-                    </>
-                  ) : nk.nguoi_dung_id ? (
-                    <span className="font-mono text-[10.5px] bg-slate-100 rounded px-1.5 py-0.5">
-                      UID: {(nk.nguoi_dung_id ?? '').slice(0, 10)}…
-                    </span>
-                  ) : (
-                    <span className="italic">Hệ thống</span>
-                  )}
-                </div>
-                <div className="inline-flex items-center gap-1.5">
-                  <Clock className="size-3.5" />
-                  <span className="font-mono tabular-nums">
-                    {nk.thoi_gian ? formatNgay(nk.thoi_gian, 'DD/MM/YYYY HH:mm') : '—'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function PlaceholderMoRong({ icon: I, tieuDe, moTa }: { icon: any; tieuDe: string; moTa: string }) {
-  return (
-    <Rong
-      kieu="mac_dinh"
-      icon_tuy_chinh={I}
-      nhan_tuy_chinh={tieuDe}
-      nhan_phu_tuy_chinh={moTa}
-    />
-  );
-}
-
-const MAP_HIEU_GIAI_DOAN: Record<string, 'muted' | 'primary' | 'success' | 'warning' | 'danger'> = {
-  moi_tao: 'muted',
-  tiep_can: 'primary',
-  khao_sat: 'primary',
-  len_giai_phap: 'primary',
-  bao_gia: 'warning',
-  dam_phan: 'warning',
-  ky_hop_dong: 'success',
-  trien_khai: 'primary',
-  nghiem_thu: 'success',
-  hoan_thanh: 'success',
-  tam_dung: 'warning',
-  huy: 'danger'
+const LOAI_LINK_TL: Record<string, { nhan: string; mau: 'success' | 'danger' | 'primary' | 'warning' | 'muted'; icon: any }> = {
+  google_drive: { nhan: 'Google Drive', mau: 'success', icon: FileIcon },
+  youtube: { nhan: 'YouTube', mau: 'danger', icon: FileVideo },
+  link_khac: { nhan: 'Liên kết', mau: 'primary', icon: ExternalLink }
 };
 
-function BadgeGiaiDoan({ value }: { value?: string | null }) {
-  const kieu = MAP_HIEU_GIAI_DOAN[value ?? 'moi_tao'] ?? 'muted';
-  const ten = TEN_GIAI_DOAN_DA[value ?? 'moi_tao'] ?? value ?? 'Mới tạo';
-  return (
-    <Hieu kieu={kieu} kich_thuoc="sm">
-      {ten}
-    </Hieu>
-  );
-}
-
-const MAP_HIEU_TIEN_DO: Record<TienDoDuAn['trang_thai_hanh_dong'], 'primary' | 'success' | 'warning' | 'danger' | 'muted'> = {
-  dang_cho: 'muted',
-  dang_thuc_hien: 'primary',
-  da_hoan_thanh: 'success',
-  qua_han: 'danger'
-};
-
-function BanTienDoVaVongDoi(props: {
-  ds: (TienDoDuAn & { canh_bao: 'sap_den' | 'qua_han' | null })[];
+function BanNhatKyVaTienDo(props: {
+  dsTD: (TienDoDuAn & { canh_bao: 'sap_den' | 'qua_han' | null })[];
   dangTai: boolean;
   err: string | null;
   dsNS: NhanSu[];
-  form: { tinh_hinh_hien_tai: string; hanh_dong_tiep_theo: string; deadline_hanh_dong: string; link_tai_lieu: string };
-  setForm: (f: any) => void;
-  dangXuLy: boolean;
-  loiForm: string | null;
-  onTao: () => void;
-  formHT: Record<string, string>;
-  setFormHT: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  dangHT: Record<string, boolean>;
-  onHoanThanh: (td: TienDoDuAn) => void;
-  onXoa: (td: TienDoDuAn) => void;
+  onTao: (params: {
+    noi_dung: string;
+    file?: { ten_file: string; url_file: string; loai_file: string; ghi_chu?: string } | null;
+  }) => Promise<void>;
+  onXoaTD: (td: TienDoDuAn) => void;
 }) {
-  const {
-    ds,
-    dangTai,
-    err,
-    dsNS,
-    form,
-    setForm,
-    dangXuLy,
-    loiForm,
-    onTao,
-    formHT,
-    setFormHT,
-    dangHT,
-    onHoanThanh,
-    onXoa
-  } = props;
+  const { dsTD, dangTai, err, dsNS, onTao, onXoaTD } = props;
 
-  const [moFormTao, setMoFormTao] = useState(false);
+  const [moForm, setMoForm] = useState(false);
+  const [noiDung, setNoiDung] = useState('');
+  const [kemFile, setKemFile] = useState(false);
+  const [tenFile, setTenFile] = useState('');
+  const [urlFile, setUrlFile] = useState('');
+  const [loaiFile, setLoaiFile] = useState<'google_drive' | 'youtube' | 'link_khac'>('google_drive');
+  const [ghiChuFile, setGhiChuFile] = useState('');
+  const [dangXuLy, setDangXuLy] = useState(false);
+  const [loiForm, setLoiForm] = useState<string | null>(null);
 
-  // Hàm tính số ngày làm việc / thời gian xử lý
-  const tinhThoiGianXuLy = (ngayTaoStr: string, ngayHoanThanhStr?: string | null, daHT?: boolean) => {
-    const t1 = new Date(ngayTaoStr).getTime();
-    const t2 = daHT && ngayHoanThanhStr ? new Date(ngayHoanThanhStr).getTime() : new Date().getTime();
-    const diffMs = Math.max(0, t2 - t1);
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const xuLyLuu = async () => {
+    setLoiForm(null);
+    const nd = noiDung.trim();
+    const tf = tenFile.trim();
+    const uf = urlFile.trim();
 
-    if (daHT) {
-      if (diffDays === 0) return 'Hoàn thành trong ngày';
-      return `Hoàn thành sau ${diffDays} ngày`;
+    if (!nd && !tf && !uf) {
+      setLoiForm('Vui lòng nhập nội dung tiến độ hoặc điền thông tin tài liệu đính kèm.');
+      return;
     }
-    if (diffDays === 0) return 'Hôm nay';
-    return `Đang xử lý (${diffDays} ngày)`;
-  };
 
-  const xuLyLuuVaDongForm = () => {
-    onTao();
+    if (kemFile || tf || uf) {
+      if (!tf || !uf) {
+        setLoiForm('Vui lòng điền đủ: Tên tài liệu và Đường dẫn URL.');
+        return;
+      }
+      try {
+        new URL(uf);
+      } catch {
+        setLoiForm('Đường dẫn URL tài liệu không hợp lệ (phải bắt đầu bằng https:// hoặc http://)');
+        return;
+      }
+    }
+
+    setDangXuLy(true);
+    try {
+      await onTao({
+        noi_dung: nd,
+        file: (kemFile || (tf && uf)) ? {
+          ten_file: tf,
+          url_file: uf,
+          loai_file: loaiFile,
+          ghi_chu: ghiChuFile.trim() || undefined
+        } : null
+      });
+
+      // Reset form
+      setNoiDung('');
+      setKemFile(false);
+      setTenFile('');
+      setUrlFile('');
+      setGhiChuFile('');
+      setMoForm(false);
+    } catch (e: any) {
+      setLoiForm(e?.message ?? 'Lưu cập nhật thất bại');
+    } finally {
+      setDangXuLy(false);
+    }
   };
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header Bar & Nút thao tác */}
+    <div className="space-y-5">
+      {/* 1. Header Bar & Nút Thao tác */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
         <div>
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <TrendingUp className="size-4 text-primary" />
-            Nhật ký & Tiến độ thực hiện
+            <Activity className="size-4 text-primary" />
+            Nhật ký tiến độ dự án
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Cập nhật nhanh tình trạng làm việc, kết quả và theo dõi thời gian hoàn thành
+            Ghi nhận diễn biến công việc, tiến trình triển khai và trao đổi thực tế
           </p>
         </div>
         <Nut
-          kieu={moFormTao ? 'outline' : 'primary'}
+          kieu={moForm ? 'outline' : 'primary'}
           kich_thuoc="sm"
-          icon_trai={moFormTao ? X : Plus}
-          onClick={() => setMoFormTao((v) => !v)}
+          icon_trai={moForm ? X : Plus}
+          onClick={() => setMoForm((v) => !v)}
         >
-          {moFormTao ? 'Đóng form nhập' : 'Cập nhật tình trạng mới'}
+          {moForm ? 'Đóng form' : 'Cập nhật tiến độ mới'}
         </Nut>
       </div>
 
-      {/* 2. Form cập nhật tiến độ (Tối giản: Textarea ghi nhận tình trạng/kết quả + nút Lưu) */}
-      {(moFormTao || ds.length === 0) && (
-        <div className="rounded-[var(--radius-card)] border border-primary/30 bg-primary/5 p-4 sm:p-5 shadow-sm space-y-3 animate-in fade-in duration-200">
+      {/* 2. Form Cập nhật tiến độ & đính kèm tài liệu nhanh */}
+      {(moForm || dsTD.length === 0) && (
+        <div className="rounded-[var(--radius-card)] border border-primary/30 bg-primary/5 p-4 sm:p-5 shadow-sm space-y-4 animate-in fade-in duration-200">
           <div className="flex items-center justify-between border-b border-primary/20 pb-2.5">
             <div className="flex items-center gap-2">
               <div className="size-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0">
                 <Send className="size-3.5" />
               </div>
-              <div className="text-sm font-semibold text-foreground">
-                Ghi nhận tình trạng mới nhất
+              <div className="text-sm font-bold text-foreground">
+                Ghi nhận cập nhật tiến độ mới
               </div>
             </div>
-            {ds.length > 0 && (
+            {dsTD.length > 0 && (
               <button
                 type="button"
-                onClick={() => setMoFormTao(false)}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground transition"
+                onClick={() => setMoForm(false)}
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground transition cursor-pointer"
               >
                 <X className="size-4" />
               </button>
             )}
           </div>
 
-          <div className="space-y-3 pt-1">
+          <div className="space-y-3.5">
+            {/* Nội dung tiến độ */}
             <div>
+              <label className="text-xs font-semibold text-foreground mb-1 block">
+                Nội dung cập nhật tiến độ / Tình hình công việc <span className="text-destructive">*</span>
+              </label>
               <textarea
-                value={form.tinh_hinh_hien_tai}
-                onChange={(e) => setForm((prev: any) => ({ ...prev, tinh_hinh_hien_tai: e.target.value }))}
+                value={noiDung}
+                onChange={(e) => setNoiDung(e.target.value)}
                 rows={3}
-                placeholder="Nhập tình trạng làm việc, kết quả vừa đạt được hoặc báo cáo công việc tại đây..."
-                className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 resize-y min-h-[80px]"
+                placeholder="Nhập chi tiết tiến trình công việc, tình hình hiện tại hoặc trao đổi vừa diễn ra..."
+                className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 resize-y min-h-[75px]"
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            {/* Nút bật/tắt đính kèm tài liệu */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setKemFile((v) => !v)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer',
+                  kemFile
+                    ? 'bg-primary/15 border-primary/30 text-primary'
+                    : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}
+              >
+                <Paperclip className="size-3.5" />
+                <span>{kemFile ? 'Đang bật đính kèm tài liệu' : '+ Đính kèm tài liệu / Link URL'}</span>
+              </button>
+            </div>
+
+            {/* Khối nhập tài liệu đính kèm (nếu bật) */}
+            {kemFile && (
+              <div className="p-3.5 rounded-xl border border-border bg-background/80 space-y-3 animate-in fade-in duration-150">
+                <div className="text-xs font-bold text-foreground flex items-center gap-1.5 border-b border-border/60 pb-2">
+                  <ExternalLink className="size-3.5 text-primary" /> Thông tin tài liệu đính kèm
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11.5px] font-semibold text-foreground mb-1 block">
+                      Tên tài liệu <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={tenFile}
+                      onChange={(e) => setTenFile(e.target.value)}
+                      placeholder="VD: Báo giá chi tiết, Bản vẽ layout..."
+                      className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11.5px] font-semibold text-foreground mb-1 block">
+                      Đường dẫn URL <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={urlFile}
+                      onChange={(e) => setUrlFile(e.target.value)}
+                      placeholder="https://drive.google.com/... hoặc https://..."
+                      className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11.5px] font-semibold text-foreground mb-1 block">
+                      Loại liên kết
+                    </label>
+                    <select
+                      value={loaiFile}
+                      onChange={(e) => setLoaiFile(e.target.value as any)}
+                      className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
+                    >
+                      <option value="google_drive">Google Drive</option>
+                      <option value="youtube">YouTube</option>
+                      <option value="link_khac">Liên kết ngoài (Web / Cloud)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11.5px] font-semibold text-foreground mb-1 block">
+                      Ghi chú thêm (tùy chọn)
+                    </label>
+                    <input
+                      type="text"
+                      value={ghiChuFile}
+                      onChange={(e) => setGhiChuFile(e.target.value)}
+                      placeholder="VD: Bản chốt lần 2..."
+                      className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Thông báo lỗi và Nút submit */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
               <div>
                 {loiForm && (
-                  <div className="text-xs font-medium text-destructive flex items-center gap-1.5">
+                  <div className="text-xs font-semibold text-destructive flex items-center gap-1.5">
                     <AlertTriangle className="size-3.5 shrink-0" /> {loiForm}
                   </div>
                 )}
               </div>
               <div className="flex items-center gap-2 self-end sm:self-auto">
-                {ds.length > 0 && (
-                  <Nut kieu="outline" kich_thuoc="sm" onClick={() => setMoFormTao(false)}>
+                {dsTD.length > 0 && (
+                  <Nut kieu="outline" kich_thuoc="sm" onClick={() => setMoForm(false)}>
                     Hủy
                   </Nut>
                 )}
@@ -2789,10 +2520,11 @@ function BanTienDoVaVongDoi(props: {
                   kieu="primary"
                   kich_thuoc="sm"
                   disabled={dangXuLy}
-                  onClick={xuLyLuuVaDongForm}
+                  onClick={xuLyLuu}
                   icon_trai={dangXuLy ? Loader2 : Send}
+                  className="font-bold"
                 >
-                  Lưu cập nhật
+                  {dangXuLy ? 'Đang lưu...' : 'Lưu tiến độ'}
                 </Nut>
               </div>
             </div>
@@ -2800,167 +2532,523 @@ function BanTienDoVaVongDoi(props: {
         </div>
       )}
 
-      {/* 3. Dòng thời gian tiến độ (Timeline) */}
-      <div className="space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground flex items-center gap-2">
-            <Activity className="size-3.5 text-primary" /> Nhật ký làm việc ({ds.length})
-          </div>
-        </div>
-
+      {/* 3. Danh sách tiến độ */}
+      <div className="space-y-3">
         {dangTai ? (
-          <SkeletonList so={3} cotDoc={true} />
+          <SkeletonList so={3} cotDoc={false} />
         ) : err ? (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm p-4 font-semibold">
             Lỗi tải: {err}
           </div>
-        ) : ds.length === 0 ? (
+        ) : dsTD.length === 0 ? (
           <Rong
             kieu="mac_dinh"
             icon_tuy_chinh={TrendingUp}
-            nhan_tuy_chinh="Chưa có ghi nhận tình trạng làm việc"
-            nhan_phu_tuy_chinh="Bấm nút 'Cập nhật tình trạng mới' ở trên để báo cáo kết quả làm việc đầu tiên."
+            nhan_tuy_chinh="Chưa có ghi nhận tiến độ nào"
+            nhan_phu_tuy_chinh="Nhấn 'Cập nhật tiến độ mới' để bắt đầu ghi nhận tiến trình triển khai cho dự án này."
             hanh_dong={
-              <Nut kieu="primary" kich_thuoc="sm" icon_trai={Plus} onClick={() => setMoFormTao(true)}>
-                Cập nhật tình trạng đầu tiên
+              <Nut kieu="primary" kich_thuoc="sm" icon_trai={Plus} onClick={() => setMoForm(true)}>
+                Thêm tiến độ đầu tiên
               </Nut>
             }
           />
         ) : (
-          <ol className="relative border-l border-border ml-3 space-y-4">
-            {ds.map((td, i) => {
+          <div className="space-y-3.5">
+            {dsTD.map((td, i) => {
               const nguoiTao = td.nguoi_tao_id
                 ? dsNS.find((x) => x.id === td.nguoi_tao_id) ?? null
                 : null;
-              const nguoiHT = td.nguoi_hoan_thanh_id
-                ? dsNS.find((x) => x.id === td.nguoi_hoan_thanh_id) ?? null
-                : null;
-              const daHT = td.trang_thai_hanh_dong === 'da_hoan_thanh';
-              const textThoiGian = tinhThoiGianXuLy(td.ngay_tao, td.ngay_hoan_thanh, daHT);
-
-              const borderMau = daHT
-                ? 'border-emerald-500/30'
-                : i === 0
-                ? 'border-primary/40'
-                : 'border-border';
-              const bgMau = daHT
-                ? 'bg-emerald-500/[0.03]'
-                : i === 0
-                ? 'bg-primary/[0.02]'
-                : 'bg-card';
-              const dotMau = daHT
-                ? 'bg-emerald-500 ring-4 ring-emerald-500/20'
-                : i === 0
-                ? 'bg-primary ring-4 ring-primary/20'
-                : 'bg-muted-foreground/50';
 
               return (
-                <li key={td.id} className="ml-6">
-                  {/* Cột mốc Timeline */}
-                  <span className="absolute -left-[9px] flex items-center justify-center size-4 rounded-full bg-background shadow-xs">
-                    <span className={cn('size-2.5 rounded-full transition', dotMau)} />
-                  </span>
-
-                  <div
-                    className={cn(
-                      'rounded-[var(--radius-card)] border p-4 sm:p-5 hover:shadow-md transition space-y-3.5',
-                      borderMau,
-                      bgMau
-                    )}
-                  >
-                    {/* Header Card: Người báo cáo + Thời gian + Badge số ngày + Nút hành động */}
-                    <div className="flex flex-wrap items-center gap-2 justify-between">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        {/* Avatar & Tên người cập nhật */}
-                        <div className="inline-flex items-center gap-2">
-                          <DaiDien
-                            ten={nguoiTao?.ho_va_ten ?? 'Nhân viên'}
-                            anh={nguoiTao?.url_anh_dai_dien}
-                            kich_thuoc="sm"
-                          />
-                          <div>
-                            <div className="text-xs font-semibold text-foreground">
-                              {nguoiTao?.ho_va_ten ?? 'Nhân sự'}
-                            </div>
-                            <div className="text-[11px] text-muted-foreground tabular-nums flex items-center gap-1">
-                              <Clock className="size-3" />
-                              {formatNgay(td.ngay_tao, 'DD/MM/YYYY HH:mm')}
-                            </div>
-                          </div>
+                <div
+                  key={td.id}
+                  className={cn(
+                    'rounded-2xl border bg-white p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:border-slate-300 transition space-y-3',
+                    i === 0 ? 'border-[#007AFF]/40 ring-1 ring-[#007AFF]/15' : 'border-slate-200/90'
+                  )}
+                >
+                  {/* Header Tiến độ */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+                      <DaiDien
+                        ten={nguoiTao?.ho_va_ten ?? 'Nhân sự'}
+                        anh={nguoiTao?.url_anh_dai_dien}
+                        kich_thuoc="sm"
+                      />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-foreground truncate">
+                          {nguoiTao?.ho_va_ten ?? 'Nhân sự'}
                         </div>
+                        <div className="text-[11px] text-muted-foreground tabular-nums flex items-center gap-1">
+                          <Clock className="size-3" />
+                          {formatNgay(td.ngay_tao, 'DD/MM/YYYY HH:mm')}
+                        </div>
+                      </div>
 
-                        {/* Tag mới nhất */}
-                        {i === 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-primary font-bold text-[11px]">
-                            <Sparkles className="size-3" /> Mới nhất
-                          </span>
-                        )}
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#5E5CE6]/10 text-[#5E5CE6] border border-[#5E5CE6]/20 text-[10.5px] font-bold">
+                        <Activity className="size-3" /> Tiến độ
+                      </span>
 
-                        {/* Badge số ngày */}
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-medium text-xs border',
-                            daHT
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                              : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
-                          )}
-                        >
-                          {daHT ? <CheckCircle2 className="size-3" /> : <Timer className="size-3" />}
-                          {textThoiGian}
+                      {i === 0 && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/20 font-bold text-[10px]">
+                          <Sparkles className="size-3" /> Mới nhất
                         </span>
-                      </div>
+                      )}
+                    </div>
 
-                      {/* Nút thao tác nhanh */}
-                      <div className="flex items-center gap-1.5">
-                        {!daHT && (
-                          <Nut
-                            kieu="primary"
-                            kich_thuoc="xs"
-                            icon_trai={CheckCircle2}
-                            disabled={!!dangHT[`ht_${td.id}`]}
-                            onClick={() => onHoanThanh(td)}
-                          >
-                            Hoàn thành
-                          </Nut>
-                        )}
-                        <Nut
-                          kieu="ghost"
-                          kich_thuoc="xs"
-                          icon_trai={Trash2}
-                          onClick={() => onXoa(td)}
+                    <Nut
+                      kieu="ghost"
+                      kich_thuoc="xs"
+                      icon_trai={Trash2}
+                      onClick={() => onXoaTD(td)}
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    >
+                      Xóa
+                    </Nut>
+                  </div>
+
+                  {/* Nội dung Tiến độ */}
+                  <div className="rounded-xl bg-slate-50/70 border border-slate-200/80 p-3.5 space-y-2">
+                    <p className="text-xs sm:text-sm font-medium text-foreground whitespace-pre-wrap leading-relaxed">
+                      {td.tinh_hinh_hien_tai}
+                    </p>
+
+                    {td.link_tai_lieu && (
+                      <div className="pt-2 border-t border-border/60">
+                        <a
+                          href={td.link_tai_lieu}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold border border-primary/20 transition shadow-2xs"
                         >
-                          Xóa
-                        </Nut>
-                      </div>
-                    </div>
-
-                    {/* Nội dung báo cáo tình trạng / kết quả làm việc */}
-                    <div className="rounded-xl bg-muted/40 border border-border/70 p-3.5">
-                      <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                        {td.tinh_hinh_hien_tai}
-                      </p>
-                    </div>
-
-                    {/* Thông tin hoàn thành nếu có */}
-                    {daHT && (
-                      <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 flex items-center justify-between gap-3 text-xs">
-                        <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 font-medium">
-                          <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>Đã xác nhận hoàn thành</span>
-                        </div>
-                        {td.ngay_hoan_thanh && (
-                          <span className="text-muted-foreground tabular-nums">
-                            {formatNgay(td.ngay_hoan_thanh, 'DD/MM/YYYY HH:mm')}
-                            {nguoiHT ? ` (bởi ${nguoiHT.ho_va_ten})` : ''}
-                          </span>
-                        )}
+                          <ExternalLink className="size-3" />
+                          <span>Mở liên kết đính kèm</span>
+                        </a>
                       </div>
                     )}
                   </div>
-                </li>
+                </div>
               );
             })}
-          </ol>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BanKhoTaiLieu(props: {
+  dsTL: TaiLieuDuAn[];
+  dangTai: boolean;
+  err: string | null;
+  dsNS: NhanSu[];
+  onThemTL: (file: { ten_file: string; url_file: string; loai_file: string; ghi_chu?: string }) => Promise<void>;
+  onXoaTL: (tl: TaiLieuDuAn) => void;
+}) {
+  const { dsTL, dangTai, err, dsNS, onThemTL, onXoaTL } = props;
+
+  const [tuKhoa, setTuKhoa] = useState('');
+  const [loaiLoc, setLoaiLoc] = useState<'tat_ca' | 'google_drive' | 'youtube' | 'link_khac'>('tat_ca');
+
+  const [moForm, setMoForm] = useState(false);
+  const [tenFile, setTenFile] = useState('');
+  const [urlFile, setUrlFile] = useState('');
+  const [loaiFile, setLoaiFile] = useState<'google_drive' | 'youtube' | 'link_khac'>('google_drive');
+  const [ghiChuFile, setGhiChuFile] = useState('');
+  const [dangXuLy, setDangXuLy] = useState(false);
+  const [loiForm, setLoiForm] = useState<string | null>(null);
+
+  // Thống kê theo loại
+  const demGD = useMemo(() => dsTL.filter((x) => x.loai_file === 'google_drive').length, [dsTL]);
+  const demYT = useMemo(() => dsTL.filter((x) => x.loai_file === 'youtube').length, [dsTL]);
+  const demKhac = useMemo(() => dsTL.filter((x) => x.loai_file === 'link_khac' || !x.loai_file).length, [dsTL]);
+
+  // Lọc tài liệu theo từ khóa tìm kiếm và loại
+  const dsLoc = useMemo(() => {
+    let list = dsTL;
+    if (loaiLoc !== 'tat_ca') {
+      list = list.filter((tl) => (tl.loai_file || 'link_khac') === loaiLoc);
+    }
+    const tk = tuKhoa.trim().toLowerCase();
+    if (tk) {
+      list = list.filter((tl) => {
+        const ten = (tl.ten_file || '').toLowerCase();
+        const gc = (tl.ghi_chu || '').toLowerCase();
+        const url = (tl.url_file || '').toLowerCase();
+        return ten.includes(tk) || gc.includes(tk) || url.includes(tk);
+      });
+    }
+    return list;
+  }, [dsTL, loaiLoc, tuKhoa]);
+
+  const xuLyLuuTaiLieu = async () => {
+    setLoiForm(null);
+    const tf = tenFile.trim();
+    const uf = urlFile.trim();
+
+    if (!tf || !uf) {
+      setLoiForm('Vui lòng điền đủ Tên tài liệu và Đường dẫn URL.');
+      return;
+    }
+
+    try {
+      new URL(uf);
+    } catch {
+      setLoiForm('Đường dẫn URL không hợp lệ (phải bắt đầu bằng https:// hoặc http://)');
+      return;
+    }
+
+    setDangXuLy(true);
+    try {
+      await onThemTL({
+        ten_file: tf,
+        url_file: uf,
+        loai_file: loaiFile,
+        ghi_chu: ghiChuFile.trim() || undefined
+      });
+      // Reset form
+      setTenFile('');
+      setUrlFile('');
+      setGhiChuFile('');
+      setMoForm(false);
+    } catch (e: any) {
+      setLoiForm(e?.message ?? 'Thêm tài liệu thất bại');
+    } finally {
+      setDangXuLy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* 1. Header Bar & Nút Thêm mới */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Paperclip className="size-4 text-primary" />
+            Kho tài liệu dự án ({dsTL.length})
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Quản lý, tìm kiếm và truy cập nhanh các tệp liên kết, Google Drive, YouTube và tài liệu đã đính kèm
+          </p>
+        </div>
+        <Nut
+          kieu={moForm ? 'outline' : 'primary'}
+          kich_thuoc="sm"
+          icon_trai={moForm ? X : Plus}
+          onClick={() => setMoForm((v) => !v)}
+        >
+          {moForm ? 'Đóng form' : '+ Thêm tài liệu mới'}
+        </Nut>
+      </div>
+
+      {/* 2. Form Thêm tài liệu mới */}
+      {moForm && (
+        <div className="rounded-[var(--radius-card)] border border-primary/30 bg-primary/5 p-4 sm:p-5 shadow-sm space-y-4 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-primary/20 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="size-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0">
+                <Paperclip className="size-3.5" />
+              </div>
+              <div className="text-sm font-bold text-foreground">
+                Thêm tài liệu / Liên kết mới
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMoForm(false)}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground transition cursor-pointer"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="text-xs font-semibold text-foreground mb-1 block">
+                Tên tài liệu / Tiêu đề <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="text"
+                value={tenFile}
+                onChange={(e) => setTenFile(e.target.value)}
+                placeholder="VD: Hợp đồng nguyên tắc, Bản vẽ thiết kế..."
+                className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60 font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-foreground mb-1 block">
+                Đường dẫn URL <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="url"
+                value={urlFile}
+                onChange={(e) => setUrlFile(e.target.value)}
+                placeholder="https://drive.google.com/... hoặc https://..."
+                className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-foreground mb-1 block">
+                Loại liên kết
+              </label>
+              <select
+                value={loaiFile}
+                onChange={(e) => setLoaiFile(e.target.value as any)}
+                className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
+              >
+                <option value="google_drive">Google Drive</option>
+                <option value="youtube">YouTube</option>
+                <option value="link_khac">Liên kết ngoài (Web / Cloud)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-foreground mb-1 block">
+                Ghi chú thêm (tùy chọn)
+              </label>
+              <input
+                type="text"
+                value={ghiChuFile}
+                onChange={(e) => setGhiChuFile(e.target.value)}
+                placeholder="VD: File đính kèm lần nghiệm thu 1..."
+                className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-border/50">
+            <div>
+              {loiForm && (
+                <div className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+                  <AlertTriangle className="size-3.5 shrink-0" /> {loiForm}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Nut kieu="outline" kich_thuoc="sm" onClick={() => setMoForm(false)}>
+                Hủy
+              </Nut>
+              <Nut
+                kieu="primary"
+                kich_thuoc="sm"
+                disabled={dangXuLy}
+                onClick={xuLyLuuTaiLieu}
+                icon_trai={dangXuLy ? Loader2 : CheckCircle2}
+                className="font-bold"
+              >
+                {dangXuLy ? 'Đang lưu...' : 'Lưu tài liệu'}
+              </Nut>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Thanh tìm kiếm tài liệu thời gian thực & Bộ lọc loại */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Ô tìm kiếm trực quan */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={tuKhoa}
+            onChange={(e) => setTuKhoa(e.target.value)}
+            placeholder="Tìm kiếm tài liệu theo tên, ghi chú..."
+            className="w-full pl-9 pr-8 py-2 rounded-[var(--radius-input)] border border-border bg-background text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/15 transition"
+          />
+          {tuKhoa && (
+            <button
+              type="button"
+              onClick={() => setTuKhoa('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground rounded transition cursor-pointer"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Filter chips */}
+        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border text-xs overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setLoaiLoc('tat_ca')}
+            className={cn(
+              'px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap',
+              loaiLoc === 'tat_ca'
+                ? 'bg-background text-foreground shadow-xs font-bold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Tất cả ({dsTL.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoaiLoc('google_drive')}
+            className={cn(
+              'px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap',
+              loaiLoc === 'google_drive'
+                ? 'bg-white text-[#34C759] shadow-xs font-bold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Google Drive ({demGD})
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoaiLoc('youtube')}
+            className={cn(
+              'px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap',
+              loaiLoc === 'youtube'
+                ? 'bg-white text-[#FF3B30] shadow-xs font-bold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            YouTube ({demYT})
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoaiLoc('link_khac')}
+            className={cn(
+              'px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap',
+              loaiLoc === 'link_khac'
+                ? 'bg-white text-[#007AFF] shadow-xs font-bold'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Khác ({demKhac})
+          </button>
+        </div>
+      </div>
+
+      {/* 4. Danh sách tài liệu */}
+      <div>
+        {dangTai ? (
+          <SkeletonList so={4} cotDoc={false} />
+        ) : err ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm p-4 font-semibold">
+            Lỗi tải: {err}
+          </div>
+        ) : dsTL.length === 0 ? (
+          <Rong
+            kieu="mac_dinh"
+            icon_tuy_chinh={Paperclip}
+            nhan_tuy_chinh="Chưa có tài liệu đính kèm nào"
+            nhan_phu_tuy_chinh="Bấm '+ Thêm tài liệu mới' ở trên hoặc đính kèm khi cập nhật tiến độ."
+            hanh_dong={
+              <Nut kieu="primary" kich_thuoc="sm" icon_trai={Plus} onClick={() => setMoForm(true)}>
+                Thêm tài liệu đầu tiên
+              </Nut>
+            }
+          />
+        ) : dsLoc.length === 0 ? (
+          <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50">
+            <Search className="size-8 text-slate-300 mx-auto mb-2" />
+            <div className="text-sm font-bold text-foreground">
+              Không tìm thấy tài liệu phù hợp
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Không có tài liệu nào khớp với từ khóa "{tuKhoa}". Vui lòng thử từ khóa khác hoặc xóa bộ lọc.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setTuKhoa('');
+                setLoaiLoc('tat_ca');
+              }}
+              className="mt-3 text-xs font-bold text-[#007AFF] hover:underline"
+            >
+              Xóa bộ lọc tìm kiếm
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {dsLoc.map((tl) => {
+              const nguoiTai = tl.nguoi_tai_len_id
+                ? dsNS.find((x) => x.id === tl.nguoi_tai_len_id) ?? null
+                : null;
+              const loaiKey = (tl.loai_file ?? 'link_khac');
+              const loai = LOAI_LINK_TL[loaiKey] ?? LOAI_LINK_TL.link_khac;
+              const IconType = loai.icon;
+
+              return (
+                <div
+                  key={tl.id}
+                  className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:border-slate-300 transition flex flex-col justify-between gap-3 group"
+                >
+                  <div className="space-y-2.5">
+                    {/* Hàng 1: Icon loại, Loại badge, nút Xóa */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          'size-8 rounded-lg flex items-center justify-center shrink-0',
+                          loaiKey === 'google_drive' ? 'bg-[#34C759]/10 text-[#34C759]' :
+                          loaiKey === 'youtube' ? 'bg-[#FF3B30]/10 text-[#FF3B30]' :
+                          'bg-[#007AFF]/10 text-[#007AFF]'
+                        )}>
+                          <IconType className="size-4" />
+                        </div>
+                        <Hieu kieu={loai.mau} kich_thuoc="sm">
+                          {loai.nhan}
+                        </Hieu>
+                      </div>
+
+                      <Nut
+                        kieu="ghost"
+                        kich_thuoc="xs"
+                        icon_trai={Trash2}
+                        onClick={() => onXoaTL(tl)}
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      >
+                        Xóa
+                      </Nut>
+                    </div>
+
+                    {/* Hàng 2: Tên file & Ghi chú */}
+                    <div>
+                      <div className="text-xs sm:text-sm font-bold text-foreground break-words group-hover:text-primary transition-colors">
+                        {tl.ten_file}
+                      </div>
+                      {tl.ghi_chu && (
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">
+                          {tl.ghi_chu}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Hàng 3: Người tải, thời gian & Nút mở liên kết */}
+                  <div className="pt-2.5 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <DaiDien
+                        ten={nguoiTai?.ho_va_ten ?? 'Nhân sự'}
+                        anh={nguoiTai?.url_anh_dai_dien}
+                        kich_thuoc="xs"
+                      />
+                      <span className="truncate max-w-[120px] font-medium text-foreground">
+                        {nguoiTai?.ho_va_ten ?? 'Nhân sự'}
+                      </span>
+                      <span>·</span>
+                      <span className="tabular-nums">
+                        {formatNgay(tl.ngay_tai_len, 'DD/MM/YYYY')}
+                      </span>
+                    </div>
+
+                    {tl.url_file && (
+                      <a
+                        href={tl.url_file}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-xs transition shrink-0 ml-auto"
+                      >
+                        <ExternalLink className="size-3" /> Mở liên kết
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
@@ -2970,9 +3058,9 @@ function BanTienDoVaVongDoi(props: {
 function SkeletonList({ so, cotDoc = false }: { so: number; cotDoc?: boolean }) {
   if (cotDoc) {
     return (
-      <div className="relative border-l border-border ml-2.5 space-y-4">
+      <div className="space-y-3">
         {Array.from({ length: so }).map((_, i) => (
-          <div key={i} className="ml-5 rounded-[var(--radius-card)] border border-border bg-card p-4 space-y-3">
+          <div key={i} className="rounded-[var(--radius-card)] border border-border bg-card p-4 space-y-3">
             <div className="h-4 w-24 bg-muted animate-pulse rounded-md" />
             <div className="h-3 w-full bg-muted animate-pulse rounded-md" />
             <div className="h-3 w-4/5 bg-muted animate-pulse rounded-md" />

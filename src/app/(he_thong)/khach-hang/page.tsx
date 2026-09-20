@@ -258,22 +258,20 @@ export default function TrangKhachHang() {
   }, [danh_sach]);
 
   return (
-    <Bo_Cuc_Trang khoang_cach_trong="space-y-3.5 sm:space-y-10">
-      <div className="grid grid-cols-2 gap-2 sm:gap-6 md:grid-cols-4 md:gap-x-7 mb-2.5 sm:mb-10">
+    <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
         <CardThongKe label="Tổng khách hàng" gia_tri={so_luong_theo_trang_thai.tong} icon={Building2} mau="primary" />
         <CardThongKe label="Đang hợp tác" gia_tri={so_luong_theo_trang_thai.hoat_dong} icon={CheckCircle2} mau="success" />
         <CardThongKe label="Tạm dừng" gia_tri={so_luong_theo_trang_thai.tam_dung} icon={AlertTriangle} mau="warning" />
         <CardThongKe label="Đã xóa" gia_tri={so_luong_theo_trang_thai.da_xoa} icon={Trash2} mau="danger" />
       </div>
 
-      <div className="rounded-[var(--radius-card)] border border-border bg-background p-3 sm:p-6 shadow-[var(--shadow-card)] mb-3 sm:mb-10">
-        <BoLocKhachHang
-          gia_tri_hien_tai={dieu_kien}
-          khi_thay_doi={set_dieu_kien}
-          dsChiNhanh={dsChiNhanh}
-          dsNhanSu={dsNhanSu}
-        />
-      </div>
+      <BoLocKhachHang
+        gia_tri_hien_tai={dieu_kien}
+        khi_thay_doi={set_dieu_kien}
+        dsChiNhanh={dsChiNhanh}
+        dsNhanSu={dsNhanSu}
+      />
 
       {dang_tai ? (
         <div className="rounded-[var(--radius-card)] border border-border bg-background p-12 flex items-center justify-center text-muted-foreground gap-5 shadow-[var(--shadow-card)]">
@@ -341,14 +339,6 @@ export default function TrangKhachHang() {
   );
 }
 
-const MAU_CARD: Record<'muted' | 'primary' | 'success' | 'warning' | 'danger', { icon: string }> = {
-  muted: { icon: 'bg-card-icon-bg-muted text-card-icon-fg-muted' },
-  primary: { icon: 'bg-card-icon-bg-primary text-card-icon-fg-primary' },
-  success: { icon: 'bg-card-icon-bg-success text-card-icon-fg-success' },
-  warning: { icon: 'bg-card-icon-bg-warning text-card-icon-fg-warning' },
-  danger: { icon: 'bg-card-icon-bg-danger text-card-icon-fg-danger' }
-};
-
 const CardThongKe = ({
   label,
   gia_tri,
@@ -358,24 +348,27 @@ const CardThongKe = ({
   label: string;
   gia_tri: number;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  mau: keyof typeof MAU_CARD;
+  mau: 'muted' | 'primary' | 'success' | 'warning' | 'danger';
 }) => {
-  const c = MAU_CARD[mau];
+  const iconTheme = {
+    primary: 'bg-[#007AFF]/10 text-[#007AFF]',
+    warning: 'bg-[#FF9500]/10 text-[#FF9500]',
+    success: 'bg-[#34C759]/10 text-[#34C759]',
+    danger: 'bg-[#FF3B30]/10 text-[#FF3B30]',
+    muted: 'bg-slate-100 text-slate-500'
+  };
   return (
-    <div className="rounded-[12px] sm:rounded-[var(--radius-card)] border border-border bg-background min-h-[56px] sm:min-h-[96px] p-2 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-5 shadow-sm sm:shadow-[var(--shadow-card)]">
-      <div className="flex items-center justify-between w-full sm:w-auto">
-        <div className="text-[10px] sm:text-[11px] uppercase tracking-wide sm:tracking-[0.12em] font-semibold text-muted-foreground leading-none truncate sm:hidden flex-1">
+    <div className="rounded-[20px] border border-slate-200/90 bg-white p-3.5 sm:p-4 flex flex-col justify-between shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-all hover:shadow-md active:scale-[0.98]">
+      <div className="flex items-center justify-between gap-1.5">
+        <span className="text-[11.5px] sm:text-[12.5px] font-semibold text-slate-500 truncate">
           {label}
-        </div>
-        <div className={cn('size-6 sm:size-10 rounded-md sm:rounded-[var(--radius-input)] inline-flex items-center justify-center shrink-0 shadow-sm', c.icon)}>
-          <Icon className="size-3.5 sm:size-[18px]" strokeWidth={2} />
+        </span>
+        <div className={cn('size-8 rounded-[11px] flex items-center justify-center shrink-0', iconTheme[mau])}>
+          <Icon className="size-4" strokeWidth={2.2} />
         </div>
       </div>
-      <div className="min-w-0 flex-1 flex flex-col justify-center">
-        <div className="hidden sm:block text-[11px] uppercase tracking-[0.12em] font-semibold text-muted-foreground leading-small truncate">{label}</div>
-        <div className="text-[18px] sm:text-[24px] font-black tracking-tight text-foreground sm:mt-2 tabular-nums leading-none">
-          {gia_tri}
-        </div>
+      <div className="font-extrabold tracking-tight leading-none text-slate-900 mt-2.5 sm:mt-3 text-[20px] sm:text-[24px] tabular-nums">
+        {gia_tri}
       </div>
     </div>
   );
@@ -430,18 +423,21 @@ const TheKhachHang = ({
     <div
       onClick={() => router.push(`/khach-hang/${kh.id}`)}
       className={cn(
-        'rounded-2xl border border-border/80 bg-card p-4 flex items-center gap-3 transition-all duration-200 hover:border-primary/50 hover:shadow-md cursor-pointer group min-h-[90px]',
+        'rounded-[20px] border border-slate-200/90 bg-white p-4 flex items-center gap-3.5 transition-all duration-200 hover:border-slate-300 hover:shadow-md shadow-[0_2px_10px_rgba(0,0,0,0.03)] cursor-pointer group min-h-[84px] active:scale-[0.98]',
         kh.trang_thai === 'da_xoa' && 'opacity-60'
       )}
     >
-      <DaiDien ten={kh.ten_khach_hang} kich_thuoc="md" className="shadow-xs shrink-0 rounded-xl" />
+      <DaiDien ten={kh.ten_khach_hang} kich_thuoc="md" className="shadow-xs shrink-0 rounded-2xl" />
       <div className="min-w-0 flex-1">
         <h3
-          className="font-bold text-[14px] text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2 tracking-tight"
+          className="font-bold text-[14.5px] text-slate-900 group-hover:text-[#007AFF] transition-colors leading-snug line-clamp-2 tracking-tight"
           title={kh.ten_khach_hang}
         >
           {kh.ten_khach_hang}
         </h3>
+        {kh.ma_so_thue && (
+          <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">MST: {kh.ma_so_thue}</p>
+        )}
       </div>
     </div>
   );

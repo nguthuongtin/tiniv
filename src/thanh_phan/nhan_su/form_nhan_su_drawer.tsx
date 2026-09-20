@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { cn } from '../../thu_vien/utils/cn';
-import { DANH_SACH_QUYEN_HAN_HE_THONG } from '../../thu_vien/types/nhan_su';
+import { DANH_SACH_QUYEN_HAN_HE_THONG, CAC_VAI_TRO_CHUAN_HE_THONG } from '../../thu_vien/types/nhan_su';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
 import type {
   CapNhatNhanSuDTO,
@@ -119,6 +119,28 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
   const phongBanDangChon = watch('phong_ban_id');
   const vaiTroDangChon = watch('vai_tro');
   const chucVuDangChon = watch('chuc_vu');
+  const urlAnhHienTai = watch('url_anh_dai_dien');
+  const hoTenHienTai = watch('ho_va_ten');
+
+  const dsVaiTroHopLe = useMemo(() => {
+    const map = new Map<string, { id: string; ten: string }>();
+    CAC_VAI_TRO_CHUAN_HE_THONG.forEach((std) => {
+      map.set(std.key, { id: std.key, ten: std.tenMacDinh });
+    });
+    (danhSachVaiTro || []).forEach((v) => {
+      const ten = (v.ten_vai_tro || '').trim();
+      const id = (v.id || '').trim();
+      if (!ten || !id) return;
+      if (!map.has(id)) {
+        map.set(id, { id, ten });
+      }
+    });
+    const current = (dangSua?.vai_tro || '').trim();
+    if (current && !map.has(current)) {
+      map.set(current, { id: current, ten: current });
+    }
+    return Array.from(map.values()).filter((item) => item.ten && item.ten.trim().length > 0);
+  }, [danhSachVaiTro, dangSua?.vai_tro]);
 
   const dsPhongBanFiltered = useMemo(
     () => !chiNhanhDangChon
@@ -160,10 +182,10 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
       setQuyenChan([]);
       reset({
         ...GIA_TRI_MAC_DINH_TAO,
-        vai_tro: danhSachVaiTro[0]?.id ?? ''
+        vai_tro: dsVaiTroHopLe[0]?.id ?? 'nhan_vien_kinh_doanh'
       });
     }
-  }, [mo, dangSua, reset, danhSachVaiTro]);
+  }, [mo, dangSua, reset, dsVaiTroHopLe]);
 
   const xuLyLuu = handleSubmit(async (data) => {
     if (dangSua) {
@@ -331,19 +353,13 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                   Vai trò <span className="text-red-500">*</span>
                 </label>
                 <select
-                  disabled={dangXuLy || (danhSachVaiTro.length === 0 && !dangSua?.vai_tro)}
+                  disabled={dangXuLy || dsVaiTroHopLe.length === 0}
                   value={vaiTroDangChon}
                   {...register('vai_tro')}
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition disabled:bg-slate-50 disabled:text-slate-500"
                 >
-                  {danhSachVaiTro.length === 0 && !dangSua?.vai_tro && (
-                    <option value="">Chưa có vai trò — Quản trị → Vai trò để tạo</option>
-                  )}
-                  {dangSua?.vai_tro && !danhSachVaiTro.some((v) => v.id === dangSua.vai_tro || v.ma_vai_tro === dangSua.vai_tro) && (
-                    <option value={dangSua.vai_tro}>{dangSua.vai_tro}</option>
-                  )}
-                  {danhSachVaiTro.map((v) => (
-                    <option key={v.id} value={v.id}>{v.ten_vai_tro}{v.ma_vai_tro ? ` (${v.ma_vai_tro})` : ''}</option>
+                  {dsVaiTroHopLe.map((v) => (
+                    <option key={v.id} value={v.id}>{v.ten}</option>
                   ))}
                 </select>
                 {errors.vai_tro && (

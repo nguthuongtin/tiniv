@@ -5,12 +5,12 @@ import { cn } from '../../thu_vien/utils/cn';
 type KieuHieu = 'muted' | 'primary' | 'success' | 'warning' | 'danger' | 'secondary';
 
 const KIEU_HIEU: Record<KieuHieu, string> = {
-  muted: 'bg-card-icon-bg-muted text-card-icon-fg-muted',
-  primary: 'bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] text-primary border border-[color-mix(in_srgb,var(--color-primary)_15%,transparent)]',
-  success: 'bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)] text-success border border-[color-mix(in_srgb,var(--color-success)_15%,transparent)]',
-  warning: 'bg-[color-mix(in_srgb,var(--color-warning)_10%,transparent)] text-warning border border-[color-mix(in_srgb,var(--color-warning)_15%,transparent)]',
-  danger: 'bg-[color-mix(in_srgb,var(--color-danger)_10%,transparent)] text-danger border border-[color-mix(in_srgb,var(--color-danger)_15%,transparent)]',
-  secondary: 'bg-[color-mix(in_srgb,var(--color-secondary)_10%,transparent)] text-secondary-foreground border border-[color-mix(in_srgb,var(--color-secondary)_15%,transparent)]'
+  muted: 'bg-slate-100 text-slate-700 border-slate-200',
+  primary: 'bg-blue-50 text-[#007AFF] border-blue-200/80',
+  success: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+  warning: 'bg-amber-50 text-amber-700 border-amber-200/80',
+  danger: 'bg-rose-50 text-rose-700 border-rose-200/80',
+  secondary: 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
 };
 
 export interface HieuProps extends React.HTMLAttributes<HTMLSpanElement> {

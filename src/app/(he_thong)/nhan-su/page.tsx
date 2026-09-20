@@ -445,36 +445,23 @@ export default function TrangNhanSu() {
                 }
               }}
               className={cn(
-                'text-left rounded-[12px] sm:rounded-2xl border bg-card p-2 px-2.5 sm:p-3.5 sm:px-4 flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3.5 shadow-xs transition-all duration-200 cursor-pointer',
+                'text-left rounded-[20px] border bg-white p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-all duration-200 cursor-pointer active:scale-[0.98]',
                 dangChon
-                  ? 'border-primary ring-2 ring-primary/20 bg-primary/5'
-                  : 'border-border/80 hover:border-primary/40 hover:shadow-sm'
+                  ? 'border-[#007AFF] ring-2 ring-[#007AFF]/20 bg-[#007AFF]/5'
+                  : 'border-slate-200/90 hover:border-slate-300 hover:shadow-md'
               )}
             >
-              <div className="flex items-center justify-between w-full sm:w-auto">
-                <div
-                  className="text-[10px] sm:text-[11px] uppercase tracking-wide sm:tracking-wider font-semibold text-muted-foreground truncate sm:hidden flex-1 pr-1"
-                  title={c.label}
-                >
-                  {c.label}
-                </div>
-                <div
-                  className={cn(
-                    'size-6 sm:size-9 shrink-0 rounded-md sm:rounded-xl inline-flex items-center justify-center',
-                    c.mau_icon
-                  )}
-                >
-                  <Icon className="size-3.5 sm:size-4" strokeWidth={2.2} />
-                </div>
+              <div
+                className={cn(
+                  'size-8 rounded-[11px] flex items-center justify-center shrink-0',
+                  dangChon ? 'bg-[#007AFF] text-white' : c.mau_icon
+                )}
+              >
+                <Icon className="size-4" strokeWidth={2.2} />
               </div>
               <div className="min-w-0 flex-1">
-                <div
-                  className="hidden sm:block text-[11px] uppercase tracking-wider font-semibold text-muted-foreground truncate"
-                  title={c.label}
-                >
-                  {c.label}
-                </div>
-                <div className="text-[18px] sm:text-2xl font-black tabular-nums text-foreground mt-0.5 tracking-tight">
+                <div className="text-[11.5px] font-semibold text-slate-500 truncate">{c.label}</div>
+                <div className="text-[18px] sm:text-[20px] font-extrabold text-slate-900 leading-tight tabular-nums">
                   {c.gia_tri}
                 </div>
               </div>
@@ -493,16 +480,15 @@ export default function TrangNhanSu() {
       />
 
       {dangTai ? (
-        <div className="rounded-[var(--radius-card)] border border-border bg-background p-12 flex items-center justify-center text-muted-foreground gap-5 shadow-[var(--shadow-card)]">
-          <Loader2 className="size-7 animate-spin text-primary" strokeWidth={2.25} />
-          <span className="text-[14.5px] font-semibold leading-body">Đang tải danh sách nhân sự...</span>
+        <div className="flex items-center justify-center py-20 text-muted-foreground gap-3">
+          <Loader2 className="size-5 animate-spin" strokeWidth={2.25} />
+          <span className="font-semibold">Đang tải danh sách nhân sự...</span>
         </div>
       ) : danhSach.length === 0 ? (
         <Rong
-          kieu="mac_dinh"
           icon_tuy_chinh={UserRound}
-          nhan_tuy_chinh="Chưa có nhân viên nào"
-          nhan_phu_tuy_chinh="Hãy thêm nhân sự đầu tiên để bắt đầu phân quyền và quản lý công việc."
+          nhan_tuy_chinh="Không tìm thấy nhân sự"
+          nhan_phu_tuy_chinh="Thử thay đổi bộ lọc hoặc thêm nhân sự mới vào hệ thống."
           hanh_dong={
             duocQuanLyNhanSu ? (
               <Nut kieu="primary" icon_trai={Plus} onClick={moTaoMoi}>
@@ -521,28 +507,28 @@ export default function TrangNhanSu() {
                 key={ns.id}
                 onClick={() => router.push(`/nhan-su/${ns.id}`)}
                 className={cn(
-                  'rounded-2xl border border-border/80 bg-card p-4 flex flex-col justify-between transition-all duration-200 hover:border-primary/50 hover:shadow-md cursor-pointer group min-h-[135px]',
-                  biKhoa && 'opacity-75'
+                  'rounded-[20px] border border-slate-200/90 bg-white p-4 flex flex-col justify-between transition-all duration-200 hover:border-slate-300 hover:shadow-md shadow-[0_2px_10px_rgba(0,0,0,0.03)] cursor-pointer group min-h-[135px] active:scale-[0.98]',
+                  biKhoa && 'opacity-70'
                 )}
               >
                 <div>
                   {/* Top row: Vai trò badge & Trạng thái badge */}
                   <div className="flex items-center justify-between gap-1.5">
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground truncate max-w-[100px]">
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 truncate max-w-[100px]">
                       {thongTinVt.nhan}
                     </span>
                     <span
                       className={cn(
                         'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold shrink-0',
                         biKhoa
-                          ? 'bg-muted text-muted-foreground'
-                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          ? 'bg-slate-100 text-slate-500'
+                          : 'bg-emerald-500/10 text-emerald-600'
                       )}
                     >
                       <span
                         className={cn(
                           'size-1.5 rounded-full',
-                          biKhoa ? 'bg-muted-foreground' : 'bg-emerald-500'
+                          biKhoa ? 'bg-slate-400' : 'bg-emerald-500'
                         )}
                       />
                       {biKhoa ? 'Đã khóa' : 'Hoạt động'}

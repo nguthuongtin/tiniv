@@ -459,7 +459,7 @@ export default function TrangQuanTri() {
               className={cn(
                 'pointer-events-auto rounded-[var(--radius-input)] border px-4 py-3 shadow-lg flex items-center gap-2.5 text-sm font-medium animate-in fade-in slide-in-from-bottom-2 duration-150',
                 t.dang === 'thanh_cong'
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20'
+                  ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20'
                   : 'bg-destructive/10 text-destructive border-destructive/20'
               )}
             >

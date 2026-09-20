@@ -47,7 +47,7 @@ export const DanhSachNutTab = React.forwardRef<HTMLDivElement, React.HTMLAttribu
       ref={ref}
       role="tablist"
       className={cn(
-        'inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl overflow-x-auto max-w-full',
+        'inline-flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 overflow-x-auto max-w-full',
         className
       )}
       {...props}
@@ -74,10 +74,10 @@ export const NutTab = React.forwardRef<
         ctx?.chon(gia_tri);
       }}
       className={cn(
-        'inline-flex items-center gap-2 whitespace-nowrap px-3.5 py-2 text-xs md:text-sm font-semibold rounded-lg transition-all shrink-0',
+        'inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 text-xs md:text-sm font-semibold rounded-xl transition-all shrink-0 active:scale-95',
         active
-          ? 'bg-white text-blue-700 shadow-sm ring-1 ring-slate-200'
-          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/40',
+          ? 'bg-white text-slate-900 shadow-xs shadow-black/5 font-bold'
+          : 'text-slate-500 hover:text-slate-800 hover:bg-white/40',
         className
       )}
       {...props}
@@ -88,7 +88,7 @@ export const NutTab = React.forwardRef<
         <span
           className={cn(
             'h-5 min-w-[20px] px-1.5 rounded-full text-[10px] inline-flex items-center justify-center font-bold',
-            active ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'
+            active ? 'bg-[#007AFF]/10 text-[#007AFF]' : 'bg-slate-200 text-slate-600'
           )}
         >
           {so_luong}

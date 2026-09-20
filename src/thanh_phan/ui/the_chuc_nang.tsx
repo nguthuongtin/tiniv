@@ -16,7 +16,7 @@ export const The_Chuc_Nang = React.forwardRef<HTMLDivElement, TheChucNangProps>(
     <div
       ref={ref}
       className={cn(
-        'rounded-[var(--radius-card)] border border-border bg-background shadow-[var(--shadow-card)]',
+        'rounded-[20px] sm:rounded-[22px] border border-slate-200/90 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.02)] transition-all',
         className
       )}
       {...props}
@@ -29,7 +29,7 @@ export const The_Chuc_Nang_Header = React.forwardRef<HTMLDivElement, TheChucNang
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('flex flex-col space-y-1.5 p-6', className)}
+      className={cn('flex flex-col space-y-1.5 p-4 sm:p-6', className)}
       {...props}
     />
   )
@@ -40,7 +40,7 @@ export const The_Chuc_Nang_Tieu_De = React.forwardRef<HTMLHeadingElement, TheChu
   ({ className, ...props }, ref) => (
     <h3
       ref={ref}
-      className={cn('font-semibold leading-none tracking-tight text-foreground', className)}
+      className={cn('font-bold leading-snug tracking-tight text-slate-900 text-base sm:text-lg', className)}
       {...props}
     />
   )
@@ -49,7 +49,7 @@ The_Chuc_Nang_Tieu_De.displayName = 'The_Chuc_Nang_Tieu_De';
 
 export const The_Chuc_Nang_Phu_De = React.forwardRef<HTMLParagraphElement, TheChucNangPhuDeProps>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
+    <p ref={ref} className={cn('text-xs text-slate-400 font-normal', className)} {...props} />
   )
 );
 The_Chuc_Nang_Phu_De.displayName = 'The_Chuc_Nang_Phu_De';

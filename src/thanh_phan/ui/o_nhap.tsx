@@ -25,8 +25,8 @@ const O_Nhap = React.forwardRef<HTMLInputElement, ONhapProps>(
               disabled={disabled}
               ref={ref as any}
               className={cn(
-                'flex min-h-[88px] w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground shadow-[0_1px_0_rgb(15,23,42,0.03)]',
-                'focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-[color-mix(in_srgb,var(--color-primary),white_88%)]',
+                'flex min-h-[88px] w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-xs',
+                'focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#007AFF] focus-visible:ring-2 focus-visible:ring-[#007AFF]/20 transition-all',
                 'disabled:cursor-not-allowed disabled:opacity-50 resize-y',
                 className
               )}
@@ -44,26 +44,26 @@ const O_Nhap = React.forwardRef<HTMLInputElement, ONhapProps>(
       <div className={cn('w-full space-y-1.5', wrapperClassName)}>
         <div
           className={cn(
-            'flex h-10 w-full items-center gap-2 rounded-[var(--radius-input)] border border-border bg-background pl-3 pr-2 shadow-[0_1px_0_rgb(15,23,42,0.03)] transition',
-            'focus-within:border-primary focus-within:ring-4 focus-within:ring-[color-mix(in_srgb,var(--color-primary),white_88%)]',
+            'flex h-10 w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 pl-3 pr-2 shadow-xs transition-all',
+            'focus-within:bg-white focus-within:border-[#007AFF] focus-within:ring-2 focus-within:ring-[#007AFF]/20',
             disabled && 'opacity-50 pointer-events-none cursor-not-allowed'
           )}
         >
           {IconTrai ? (
-            <IconTrai className="size-4 shrink-0 text-muted-foreground pointer-events-none" />
+            <IconTrai className="size-4 shrink-0 text-slate-400 pointer-events-none" />
           ) : null}
           <input
             type={type}
             disabled={disabled}
             ref={ref}
             className={cn(
-              'flex h-full w-full min-w-0 bg-transparent px-0.5 py-1 text-sm text-foreground placeholder:text-muted-foreground outline-none',
+              'flex h-full w-full min-w-0 bg-transparent px-0.5 py-1 text-sm text-slate-900 placeholder:text-slate-400 outline-none',
               className
             )}
             {...props}
           />
           {IconPhai ? (
-            <IconPhai className="size-4 shrink-0 text-muted-foreground pointer-events-none" />
+            <IconPhai className="size-4 shrink-0 text-slate-400 pointer-events-none" />
           ) : null}
         </div>
         {phan_hoi ? (

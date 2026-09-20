@@ -138,7 +138,7 @@ export default function FormCongViecDrawer({
                 'size-10 rounded-xl flex items-center justify-center',
                 dang_sua
                   ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
               )}
             >
               {dang_sua ? <Edit3 className="size-5" /> : <ListTodo className="size-5" />}

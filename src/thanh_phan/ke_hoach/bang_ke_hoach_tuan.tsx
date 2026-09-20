@@ -46,10 +46,10 @@ export default function BangKeHoachTuan({
 
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 flex items-center justify-between shadow-xs">
           <div>
-            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">
               Đã hoàn thành
             </span>
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
+            <span className="text-2xl font-black text-emerald-600 mt-1 block">
               {soDaHoanThanh} / {ds.length}
             </span>
           </div>
@@ -60,10 +60,10 @@ export default function BangKeHoachTuan({
 
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-center justify-between shadow-xs">
           <div>
-            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
+            <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">
               Cần hỗ trợ
             </span>
-            <span className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 block">
+            <span className="text-2xl font-black text-amber-600 mt-1 block">
               {soPhaiHoTro}
             </span>
           </div>
@@ -160,7 +160,7 @@ export default function BangKeHoachTuan({
                           {dauRa}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-amber-700 dark:text-amber-400 font-medium">
+                      <td className="py-3 px-3 text-amber-700 font-medium">
                         {item.can_ho_tro ? (
                           <div className="flex items-center gap-1">
                             <span>💡</span>

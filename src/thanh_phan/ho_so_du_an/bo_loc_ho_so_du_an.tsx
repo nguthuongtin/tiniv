@@ -103,39 +103,39 @@ export default function BoLocHoSoDuAn({
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="size-4 pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="size-4 pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={tuKhoa}
             onChange={(e) => datGiaTri('tuKhoa', e.target.value)}
             placeholder="Tìm kiếm mã hồ sơ, tên dự án..."
-            className="w-full h-10 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition"
+            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
           />
         </div>
         <button
           type="button"
           onClick={() => setMoRong((m) => !m)}
           className={cn(
-            'inline-flex items-center gap-2 rounded-lg border h-10 px-3 text-sm font-medium transition',
+            'inline-flex items-center gap-2 rounded-xl border h-11 px-4 text-sm font-semibold transition active:scale-[0.98]',
             moRong || soLuongDieuKienKhacMacDinh > 0
-              ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              ? 'bg-[#007AFF]/10 border-[#007AFF]/30 text-[#007AFF]'
+              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
           )}
         >
           <Filter className="size-4" />
           Bộ lọc
           {soLuongDieuKienKhacMacDinh > 0 && (
-            <span className="rounded-full bg-indigo-600 text-white text-[11px] px-2 py-0.5 font-bold -mr-1">
+            <span className="rounded-full bg-[#007AFF] text-white text-[11px] px-2 py-0.5 font-bold -mr-1">
               {soLuongDieuKienKhacMacDinh}
             </span>
           )}
-          <ChevronDown className={cn('size-4 transition', moRong && 'rotate-180')} />
+          <ChevronDown className={cn('size-4 transition-transform duration-200', moRong && 'rotate-180')} />
         </button>
         {soLuongDieuKienKhacMacDinh > 0 || tuKhoa ? (
           <button
             type="button"
             onClick={xoaTatCa}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 h-10 px-3 text-sm text-slate-600 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200/80 bg-rose-50/60 h-11 px-3.5 text-sm font-semibold text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.98]"
           >
             <XCircle className="size-4" />
             Xóa bộ lọc
@@ -145,15 +145,15 @@ export default function BoLocHoSoDuAn({
       <div
         className={cn(
           'grid gap-3 transition-all duration-200 overflow-hidden',
-          moRong ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+          moRong ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'
         )}
       >
-        <div className="min-h-0 grid gap-3 md:grid-cols-2 lg:grid-cols-3 p-4 rounded-xl border border-slate-200 bg-white/50">
-          <BoLocMuc label={<><Building2 className="size-3.5" /> Khách hàng (Công ty)</>}>
+        <div className="min-h-0 grid gap-3.5 md:grid-cols-2 lg:grid-cols-3 p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+          <BoLocMuc label={<><Building2 className="size-3.5 text-slate-500" /> Khách hàng (Công ty)</>}>
             <select
               value={gia_tri_hien_tai.khach_hang_id ?? ''}
               onChange={(e) => datGiaTri('khach_hang_id', e.target.value ? e.target.value : null)}
-              className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               <option value="">Tất cả khách hàng</option>
               {ds_khach_hang.map((kh) => (
@@ -164,13 +164,13 @@ export default function BoLocHoSoDuAn({
               ))}
             </select>
           </BoLocMuc>
-          <BoLocMuc label={<><UserRound className="size-3.5" /> Giai đoạn dự án</>}>
+          <BoLocMuc label={<><UserRound className="size-3.5 text-slate-500" /> Giai đoạn dự án</>}>
             <select
               value={(gia_tri_hien_tai.giai_doan as string) ?? 'tat_ca'}
               onChange={(e) =>
                 datGiaTri('giai_doan', e.target.value as DieuKienLocHoSoDuAn['giai_doan'])
               }
-              className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               {CAC_GIAI_DOAN.map((x) => (
                 <option key={x.gia_tri} value={x.gia_tri}>
@@ -179,7 +179,7 @@ export default function BoLocHoSoDuAn({
               ))}
             </select>
           </BoLocMuc>
-          <BoLocMuc label={<><UserRound className="size-3.5" /> Mức tiềm năng ký</>}>
+          <BoLocMuc label={<><UserRound className="size-3.5 text-slate-500" /> Mức tiềm năng ký</>}>
             <select
               value={(gia_tri_hien_tai.muc_do_tiem_nang as string) ?? 'tat_ca'}
               onChange={(e) =>
@@ -188,7 +188,7 @@ export default function BoLocHoSoDuAn({
                   e.target.value as DieuKienLocHoSoDuAn['muc_do_tiem_nang']
                 )
               }
-              className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               {CAC_MUC_TIEM_NANG.map((x) => (
                 <option key={x.gia_tri} value={x.gia_tri}>
@@ -197,11 +197,11 @@ export default function BoLocHoSoDuAn({
               ))}
             </select>
           </BoLocMuc>
-          <BoLocMuc label={<><Users className="size-3.5" /> Người quản lý</>}>
+          <BoLocMuc label={<><Users className="size-3.5 text-slate-500" /> Người quản lý</>}>
             <select
               value={gia_tri_hien_tai.nguoi_quan_ly_id ?? ''}
               onChange={(e) => datGiaTri('nguoi_quan_ly_id', e.target.value ? e.target.value : null)}
-              className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               <option value="">Tất cả người quản lý</option>
               {ds_nhan_su.map((ns) => (
@@ -212,11 +212,11 @@ export default function BoLocHoSoDuAn({
               ))}
             </select>
           </BoLocMuc>
-          <BoLocMuc label={<><Users className="size-3.5" /> Người phụ trách chính (PIC)</>}>
+          <BoLocMuc label={<><Users className="size-3.5 text-slate-500" /> Người phụ trách chính (PIC)</>}>
             <select
               value={gia_tri_hien_tai.nguoi_phu_trach_id ?? ''}
               onChange={(e) => datGiaTri('nguoi_phu_trach_id', e.target.value ? e.target.value : null)}
-              className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               <option value="">Tất cả người phụ trách</option>
               {ds_nhan_su.map((ns) => (
@@ -233,7 +233,7 @@ export default function BoLocHoSoDuAn({
               onChange={(e) =>
                 datGiaTri('trang_thai', e.target.value as DieuKienLocHoSoDuAn['trang_thai'])
               }
-              className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               {CAC_TRANG_THAI.filter(Boolean).map((x) => (
                 <option key={x!.gia_tri} value={x!.gia_tri as string}>
@@ -243,42 +243,41 @@ export default function BoLocHoSoDuAn({
             </select>
           </BoLocMuc>
 
-          <div className="col-span-full h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent my-0.5" />
+          <div className="col-span-full h-px bg-slate-200/80 my-1" />
 
-          <BoLocMuc label={<><Calendar className="size-3.5" /> Ngày tạo HS từ ngày</>}>
+          <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tạo HS từ ngày</>}>
             <input
               type="date"
               value={gia_tri_hien_tai.ngay_tao_tu_ngay ?? ''}
               onChange={(e) => datGiaTri('ngay_tao_tu_ngay', e.target.value || null)}
-              className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             />
           </BoLocMuc>
-          <BoLocMuc label={<><Calendar className="size-3.5" /> Ngày tạo HS đến ngày</>}>
+          <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tạo HS đến ngày</>}>
             <input
               type="date"
               value={gia_tri_hien_tai.ngay_tao_den_ngay ?? ''}
               onChange={(e) => datGiaTri('ngay_tao_den_ngay', e.target.value || null)}
-              className="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             />
           </BoLocMuc>
-          <div className="h-9" />
-          <BoLocMuc label={<><Calendar className="size-3.5 text-amber-600" /> Deadline (THHT) từ ngày</>}>
+          <div className="hidden lg:block h-10" />
+          <BoLocMuc label={<><Calendar className="size-3.5 text-[#FF9500]" /> Hạn hoàn thành từ ngày</>}>
             <input
               type="date"
               value={gia_tri_hien_tai.thoi_han_hoan_thanh_tu_ngay ?? ''}
               onChange={(e) => datGiaTri('thoi_han_hoan_thanh_tu_ngay', e.target.value || null)}
-              className="w-full h-9 rounded-lg border border-amber-200 bg-amber-50/40 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+              className="w-full h-10 rounded-xl border border-[#FF9500]/30 bg-amber-50/40 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] shadow-2xs"
             />
           </BoLocMuc>
-          <BoLocMuc label={<><Calendar className="size-3.5 text-amber-600" /> Deadline (THHT) đến ngày</>}>
+          <BoLocMuc label={<><Calendar className="size-3.5 text-[#FF9500]" /> Hạn hoàn thành đến ngày</>}>
             <input
               type="date"
               value={gia_tri_hien_tai.thoi_han_hoan_thanh_den_ngay ?? ''}
               onChange={(e) => datGiaTri('thoi_han_hoan_thanh_den_ngay', e.target.value || null)}
-              className="w-full h-9 rounded-lg border border-amber-200 bg-amber-50/40 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+              className="w-full h-10 rounded-xl border border-[#FF9500]/30 bg-amber-50/40 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] shadow-2xs"
             />
           </BoLocMuc>
-          <div className="h-9" />
         </div>
       </div>
     </div>

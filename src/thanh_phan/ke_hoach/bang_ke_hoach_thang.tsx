@@ -59,10 +59,10 @@ export default function BangKeHoachThang({
 
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 flex items-center justify-between shadow-xs">
           <div>
-            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">
               Dự kiến thu tháng này
             </span>
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums mt-1 block">
+            <span className="text-2xl font-black text-emerald-600 tabular-nums mt-1 block">
               {DINH_DANG_TIEN_NGAN_GON(tongDuKienThu)}
             </span>
           </div>
@@ -139,7 +139,7 @@ export default function BangKeHoachThang({
                       <td className="py-3 px-3 text-right font-mono font-semibold tabular-nums text-foreground">
                         {DINH_DANG_TIEN_NGAN_GON(item.gia_tri_hd)}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-extrabold tabular-nums text-emerald-600 dark:text-emerald-400 bg-emerald-500/5">
+                      <td className="py-3 px-3 text-right font-mono font-extrabold tabular-nums text-emerald-600 bg-emerald-500/5">
                         {DINH_DANG_TIEN_NGAN_GON(item.du_kien_thu_thang_nay)}
                       </td>
                       <td className="py-3 px-3 text-muted-foreground leading-relaxed">
@@ -179,7 +179,7 @@ export default function BangKeHoachThang({
                   <td className="py-3 px-3 text-right font-mono text-sm tabular-nums text-foreground">
                     {DINH_DANG_TIEN_NGAN_GON(tongGiaTriHd)}
                   </td>
-                  <td className="py-3 px-3 text-right font-mono text-sm tabular-nums text-emerald-600 dark:text-emerald-400">
+                  <td className="py-3 px-3 text-right font-mono text-sm tabular-nums text-emerald-600">
                     {DINH_DANG_TIEN_NGAN_GON(tongDuKienThu)}
                   </td>
                   <td colSpan={laSuaDuoc ? 2 : 1}></td>

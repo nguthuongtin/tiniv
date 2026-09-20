@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import type { NhanSu, ChiNhanh, PhongBan, VaiTro, ChucVu } from '../../../../thu_vien/types/nhan_su';
-import { DANH_SACH_QUYEN_HAN_HE_THONG } from '../../../../thu_vien/types/nhan_su';
+import { DANH_SACH_QUYEN_HAN_HE_THONG, CAC_VAI_TRO_CHUAN_HE_THONG } from '../../../../thu_vien/types/nhan_su';
 import type { HoSoDuAn } from '../../../../thu_vien/types/du_an';
 import type { BaoCaoCongViec } from '../../../../thu_vien/types/bao_cao_cong_viec';
 import {
@@ -64,7 +64,8 @@ import {
   Rong,
   DaiDien,
   TaiLenAnhDaiDien,
-  Nut
+  Nut,
+  ToLichNgay
 } from '../../../../thanh_phan/ui';
 
 type TenTab = 'du_an' | 'bao_cao';
@@ -235,6 +236,30 @@ export default function TrangChiTietNhanSu() {
     return chonThongTinVaiTro(String(ns?.vai_tro), dsVaiTro);
   }, [ns?.vai_tro, dsVaiTro]);
 
+  const dsVaiTroHopLe = useMemo(() => {
+    const map = new Map<string, { id: string; ten: string }>();
+    // 1. Vai trò chuẩn hệ thống (tên thuần tiếng Việt, không kèm mã)
+    CAC_VAI_TRO_CHUAN_HE_THONG.forEach((std) => {
+      map.set(std.key, { id: std.key, ten: std.tenMacDinh });
+    });
+    // 2. Vai trò tùy chỉnh từ cơ sở dữ liệu
+    (dsVaiTro || []).forEach((vt) => {
+      const ten = (vt.ten_vai_tro || '').trim();
+      const id = (vt.id || '').trim();
+      if (!ten || !id) return;
+      if (!map.has(id)) {
+        map.set(id, { id, ten });
+      }
+    });
+    // 3. Fallback cho vai trò hiện tại nếu chưa có trong map
+    const current = (formSua.vai_tro || ns?.vai_tro || '').trim();
+    if (current && !map.has(current)) {
+      const info = chonThongTinVaiTro(current, dsVaiTro);
+      map.set(current, { id: current, ten: info.nhan || current });
+    }
+    return Array.from(map.values()).filter((item) => item.ten && item.ten.trim().length > 0);
+  }, [dsVaiTro, formSua.vai_tro, ns?.vai_tro]);
+
   const chiNhanh = useMemo(() => {
     if (!ns?.chi_nhanh_id) return null;
     return dsChiNhanh.find((c) => c.id === ns.chi_nhanh_id) ?? null;
@@ -372,7 +397,7 @@ export default function TrangChiTietNhanSu() {
           <div className="min-w-0 flex items-start gap-3.5">
             <DaiDien
               ten={ns?.ho_va_ten ?? 'NS'}
-              anh={ns?.url_anh_dai_dien || undefined}
+              anh={(dangChinhSua ? formSua.url_anh_dai_dien : ns?.url_anh_dai_dien) || undefined}
               kich_thuoc="xl"
               className="mt-0.5 shadow-sm"
             />
@@ -487,9 +512,9 @@ export default function TrangChiTietNhanSu() {
 
       {/* Banner thông báo chế độ chỉnh sửa */}
       {dangChinhSua && (
-        <div className="rounded-[var(--radius-card)] bg-amber-500/10 border border-amber-500/30 p-3.5 sm:p-4 text-xs sm:text-sm text-amber-700 dark:text-amber-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="rounded-2xl bg-[#FF9500]/10 border border-[#FF9500]/30 p-3.5 sm:p-4 text-xs sm:text-sm text-[#FF9500] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-medium">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <Sparkles className="size-4 shrink-0 text-[#FF9500]" />
             <span>Đang ở chế độ chỉnh sửa thông tin nhân sự. Chỉnh sửa trực tiếp trên form và bấm <b>Lưu thay đổi</b>.</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -588,9 +613,9 @@ export default function TrangChiTietNhanSu() {
                         onChange={(e) => setFormSua((s) => ({ ...s, vai_tro: e.target.value }))}
                         className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
                       >
-                        {dsVaiTro.map((vt) => (
+                        {dsVaiTroHopLe.map((vt) => (
                           <option key={vt.id} value={vt.id}>
-                            {vt.ten_vai_tro} {vt.ma_vai_tro ? `(${vt.ma_vai_tro})` : ''}
+                            {vt.ten}
                           </option>
                         ))}
                       </select>
@@ -802,7 +827,7 @@ export default function TrangChiTietNhanSu() {
                               {hda.giai_doan}
                             </Hieu>
                             {hda.muc_do_tiem_nang && (
-                              <span className="text-xs px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium border border-purple-500/20">
+                              <span className="text-xs px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-700 font-medium border border-purple-500/20">
                                 {hda.muc_do_tiem_nang}
                               </span>
                             )}
@@ -835,28 +860,64 @@ export default function TrangChiTietNhanSu() {
                   ) : (
                     <div className="space-y-3">
                       {dsBC.map((bc) => {
-                        const noiDungHienThi =
-                          bc.noi_dung_thuc_hien ||
-                          (bc.danh_sach_chi_tiet && bc.danh_sach_chi_tiet[0]?.noi_dung) ||
-                          '(Báo cáo không có nội dung văn bản)';
+                        const laTamLuu = bc.trang_thai === 'tam_luu';
+                        const dsChiTiet =
+                          bc.danh_sach_chi_tiet && bc.danh_sach_chi_tiet.length > 0
+                            ? bc.danh_sach_chi_tiet.filter((x) => x && x.noi_dung?.trim())
+                            : bc.noi_dung_thuc_hien
+                            ? [{ du_an_id: bc.du_an_id ?? null, noi_dung: bc.noi_dung_thuc_hien }]
+                            : [];
+
                         return (
                           <div
                             key={bc.id}
-                            className="rounded-[var(--radius-card)] border border-border bg-card p-4 space-y-2 hover:border-primary/40 hover:shadow-sm transition"
+                            className={cn(
+                              'rounded-[var(--radius-card)] border bg-card p-4 flex items-start gap-3.5 hover:shadow-sm transition',
+                              laTamLuu ? 'border-amber-300 bg-amber-50/10' : 'border-border hover:border-primary/40'
+                            )}
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-semibold text-foreground">
-                                {bc.ngay_bao_cao ? formatNgay(bc.ngay_bao_cao) : 'Báo cáo'}
-                              </span>
+                            <ToLichNgay
+                              ngayStr={bc.ngay_bao_cao}
+                              kichThuoc="sm"
+                              trangThai={bc.trang_thai}
+                            />
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                  {laTamLuu ? (
+                                    <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                                      📝 Tạm lưu (nháp)
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      ✓ Đã gửi
+                                    </span>
+                                  )}
+                                  <span className="text-xs text-muted-foreground font-medium">
+                                    {dsChiTiet.length} đầu việc
+                                  </span>
+                                </div>
+                                {bc.kho_khan && (
+                                  <span className="text-xs text-rose-600 font-medium flex items-center gap-1">
+                                    <AlertTriangle className="size-3" /> Vướng mắc
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="space-y-1 text-xs text-foreground/90">
+                                {dsChiTiet.map((ct, idx) => (
+                                  <div key={idx} className="line-clamp-2 leading-relaxed">
+                                    • {ct.noi_dung}
+                                  </div>
+                                ))}
+                              </div>
+
                               {bc.kho_khan && (
-                                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                                  Có khó khăn / vướng mắc
-                                </span>
+                                <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                                  <span className="font-bold">Khó khăn:</span> {bc.kho_khan}
+                                </div>
                               )}
                             </div>
-                            <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
-                              {noiDungHienThi}
-                            </p>
                           </div>
                         );
                       })}

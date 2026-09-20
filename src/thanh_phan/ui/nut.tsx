@@ -9,23 +9,23 @@ type KichThuocNut = 'xs' | 'sm' | 'md' | 'lg' | 'icon';
 
 const KIEU_NUT: Record<KieuNut, string> = {
   primary:
-    'bg-primary text-white shadow-[0_1px_2px_0_rgb(37,99,235,0.20),0_1px_3px_0_rgb(37,99,235,0.10)] hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] active:bg-[color-mix(in_srgb,var(--color-primary),black_18%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-primary),white_40%)] transition duration-[var(--animate-duration-200)]',
+    'bg-gradient-to-r from-[#007AFF] to-[#0055D4] text-white shadow-sm shadow-blue-500/20 hover:opacity-95 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 transition-all',
   secondary:
-    'bg-muted text-foreground hover:bg-[color-mix(in_srgb,var(--color-muted),black_4%)] active:bg-[color-mix(in_srgb,var(--color-muted),black_8%)] border border-border',
+    'bg-slate-100 text-slate-800 hover:bg-slate-200/80 active:scale-[0.97] border border-slate-200/60 transition-all',
   ghost:
-    'bg-transparent hover:bg-muted text-foreground active:bg-[color-mix(in_srgb,var(--color-muted),black_6%)]',
+    'bg-transparent hover:bg-slate-100 text-slate-700 active:scale-[0.97] transition-all',
   outline:
-    'border border-border bg-background text-foreground hover:bg-muted active:bg-[color-mix(in_srgb,var(--color-muted),black_5%)]',
+    'border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300 active:scale-[0.97] shadow-xs transition-all',
   danger:
-    'bg-danger text-white hover:bg-[color-mix(in_srgb,var(--color-danger),black_8%)] active:bg-[color-mix(in_srgb,var(--color-danger),black_16%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-danger),white_50%)]'
+    'bg-[#FF3B30] text-white hover:bg-red-600 active:scale-[0.97] shadow-sm shadow-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 transition-all'
 };
 
 const KICH_THUOC_NUT: Record<KichThuocNut, string> = {
-  xs: 'h-8 px-3 text-[11px] rounded-[var(--radius-button)] gap-1.5',
-  sm: 'h-11 px-4.5 text-[13px] rounded-[var(--radius-input)] gap-2',
-  md: 'h-14 px-5.5 text-[14px] rounded-[var(--radius-input)] gap-2.5',
-  lg: 'h-16 px-7 text-[15.5px] rounded-[var(--radius-input)] gap-3.5',
-  icon: 'size-11 rounded-[var(--radius-button)]'
+  xs: 'h-7.5 px-3 text-xs rounded-lg gap-1.5 font-medium',
+  sm: 'h-9 px-3.5 text-xs font-semibold rounded-xl gap-1.5',
+  md: 'h-11 px-4.5 text-sm font-semibold rounded-xl gap-2',
+  lg: 'h-13 px-6 text-base font-semibold rounded-2xl gap-2.5',
+  icon: 'size-10 rounded-xl'
 };
 
 export interface NutProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

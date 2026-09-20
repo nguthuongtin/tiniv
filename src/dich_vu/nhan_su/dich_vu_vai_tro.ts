@@ -199,7 +199,8 @@ export const danhSachVaiTro = async (dk: DieuKienLocVaiTro = {}): Promise<KetQua
     }
   }
 
-  const mang = sortTrongBoNho(danhSachTong);
+  const danhSachHopLe = danhSachTong.filter((x) => x.ten_vai_tro && x.ten_vai_tro.trim().length > 0 && x.id && x.id.trim().length > 0);
+  const mang = sortTrongBoNho(danhSachHopLe);
   const daLocTheoDieuKien = locTheoDieuKienBoNho(mang, full);
   const daLoc = locTheoTuKhoa(daLocTheoDieuKien, full.tuKhoa);
   return { mang: daLoc, tong: daLoc.length };

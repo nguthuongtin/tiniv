@@ -58,3 +58,6 @@ export { TaiLenAnhDaiDien } from './tai_len_anh_dai_dien';
 
 export { Bo_Cuc_Trang } from './bo_cuc_trang';
 export type { BoCucTrangProps } from './bo_cuc_trang';
+
+export { ToLichNgay } from './to_lich_ngay';
+

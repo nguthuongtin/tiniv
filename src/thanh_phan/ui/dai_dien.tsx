@@ -37,14 +37,22 @@ export const layKieuDaiDienTuTen = (ten: string | null | undefined): KieuDaiDien
 
 export const DaiDien = React.forwardRef<HTMLDivElement, DaiDienProps>(
   ({ className, kich_thuoc = 'md', kieu, ten, anh, khong_anh_gradient, ...props }, ref) => {
+    const [loiAnh, setLoiAnh] = React.useState(false);
     const chu_cai_dau = ten?.trim()?.charAt?.(0)?.toUpperCase?.() ?? '';
     const kieu_dung = kieu ?? layKieuDaiDienTuTen(ten);
-    const co_anh = anh && !khong_anh_gradient;
+
+    const anhHopLe = typeof anh === 'string' && anh.trim().length > 0 && anh !== 'null' && anh !== 'undefined' ? anh.trim() : null;
+    const co_anh = Boolean(anhHopLe && !khong_anh_gradient && !loiAnh);
+
+    React.useEffect(() => {
+      setLoiAnh(false);
+    }, [anhHopLe]);
+
     return (
       <div
         ref={ref}
         className={cn(
-          'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold border-0 ring-2 ring-background shadow-[var(--shadow-card)]',
+          'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold border-0 ring-2 ring-background shadow-[var(--shadow-card)] relative',
           KT_DD[kich_thuoc],
           co_anh ? 'bg-muted p-0' : MAP_KIEU_DAI_DIEN[kieu_dung],
           className
@@ -53,12 +61,10 @@ export const DaiDien = React.forwardRef<HTMLDivElement, DaiDienProps>(
       >
         {co_anh ? (
           <img
-            src={anh!}
+            src={anhHopLe!}
             alt={ten ?? 'Avatar'}
-            className="h-full w-full object-cover"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = 'none';
-            }}
+            className="h-full w-full object-cover rounded-full"
+            onError={() => setLoiAnh(true)}
           />
         ) : chu_cai_dau ? (
           <span>{chu_cai_dau}</span>

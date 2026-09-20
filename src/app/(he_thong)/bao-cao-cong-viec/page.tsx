@@ -53,7 +53,7 @@ import {
 } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
 import FormBaoCaoCongViecDrawer from '../../../thanh_phan/bao_cao_cong_viec/form_bao_cao_cong_viec_drawer';
-import { Nut, Rong, Bo_Cuc_Trang } from '../../../thanh_phan/ui';
+import { Nut, Rong, Bo_Cuc_Trang, ToLichNgay } from '../../../thanh_phan/ui';
 
 interface ThongBaoToast {
   id: number;
@@ -61,20 +61,20 @@ interface ThongBaoToast {
   noi_dung: string;
 }
 
-const NGAY_HOM_NAY = new Date().toISOString().split('T')[0];
+const formatYYYYMMDD = (d: Date): string => {
+  const nam = d.getFullYear();
+  const thang = String(d.getMonth() + 1).padStart(2, '0');
+  const ngay = String(d.getDate()).padStart(2, '0');
+  return `${nam}-${thang}-${ngay}`;
+};
+
+const NGAY_HOM_NAY = formatYYYYMMDD(new Date());
 
 const layBatDauTuan = (ngayChon: Date = new Date()): Date => {
   const d = new Date(ngayChon);
   const thu = d.getDay();
   const delta = d.getDate() - thu + (thu === 0 ? -6 : 1);
   return new Date(d.setDate(delta));
-};
-
-const formatYYYYMMDD = (d: Date): string => {
-  const nam = d.getFullYear();
-  const thang = String(d.getMonth() + 1).padStart(2, '0');
-  const ngay = String(d.getDate()).padStart(2, '0');
-  return `${nam}-${thang}-${ngay}`;
 };
 
 const layDanhSachChiTiet = (bccv: BaoCaoCongViec): ChiTietBaoCaoCongViec[] => {
@@ -109,6 +109,7 @@ export default function TrangBaoCaoCongViec() {
   // Quyền hạn & Chế độ xem
   const [cheDoXem, setCheDoXem] = useState<'bang_tong_hop' | 'lich' | 'danh_sach' | 'ma_tran_tuan'>('bang_tong_hop');
   const [ngayDangXemLich, setNgayDangXemLich] = useState<Date>(new Date());
+  const [ngayDangChonLichMobile, setNgayDangChonLichMobile] = useState<string>(NGAY_HOM_NAY);
   const [kieuLich, setKieuLich] = useState<'tuan' | 'thang'>('tuan');
   const [ngayChonTongHop, setNgayChonTongHop] = useState<string>(NGAY_HOM_NAY);
   const [phongBanFilter, setPhongBanFilter] = useState<string>('tat_ca');
@@ -242,8 +243,15 @@ export default function TrangBaoCaoCongViec() {
 
   // Handlers
   const moTaoMoi = (ngay?: string) => {
-    setDangSua(null);
-    setNgayTaoMacDinh(ngay || null);
+    const ngayChon = ngay || NGAY_HOM_NAY;
+    const banGhiCu = dsBaoCaoCuaToi.find((b) => b.ngay_bao_cao === ngayChon);
+    if (banGhiCu) {
+      setDangSua(banGhiCu);
+      setNgayTaoMacDinh(null);
+    } else {
+      setDangSua(null);
+      setNgayTaoMacDinh(ngayChon);
+    }
     setLoiForm(null);
     setMoDrawer(true);
   };
@@ -262,12 +270,13 @@ export default function TrangBaoCaoCongViec() {
     setDangXuLyForm(true);
     setLoiForm(null);
     try {
-      if (banGhi) {
-        await capNhatBaoCaoCongViec(banGhi.id, data, nguoiDungHienTai);
-        themToast('thanh_cong', 'Đã cập nhật báo cáo công việc.');
+      const banGhiHienCo = banGhi || (data.ngay_bao_cao ? dsBaoCaoCuaToi.find((b) => b.ngay_bao_cao === data.ngay_bao_cao) : null);
+      if (banGhiHienCo) {
+        await capNhatBaoCaoCongViec(banGhiHienCo.id, data, nguoiDungHienTai);
+        themToast('thanh_cong', data.trang_thai === 'tam_luu' ? 'Đã tạm lưu báo cáo công việc.' : 'Đã cập nhật báo cáo công việc.');
       } else {
         await taoBaoCaoCongViecMoi(data as TaoMoiBaoCaoCongViecDTO, nguoiDungHienTai);
-        themToast('thanh_cong', 'Đã nộp báo cáo công việc thành công.');
+        themToast('thanh_cong', data.trang_thai === 'tam_luu' ? 'Đã tạm lưu báo cáo công việc.' : 'Đã nộp báo cáo công việc thành công.');
       }
       setMoDrawer(false);
       setDangSua(null);
@@ -357,9 +366,6 @@ export default function TrangBaoCaoCongViec() {
       dsChiTiet.forEach((ct, i) => {
         text += `   - ${ct.noi_dung}\n`;
       });
-      if (bccv.kho_khan?.trim()) {
-        text += `   ⚠️ Vướng mắc: ${bccv.kho_khan.trim()}\n`;
-      }
       text += `\n`;
     });
 
@@ -382,9 +388,6 @@ export default function TrangBaoCaoCongViec() {
     dsChiTiet.forEach((ct, i) => {
       text += `${i + 1}. ${ct.noi_dung}\n`;
     });
-    if (bccv.kho_khan?.trim()) {
-      text += `⚠️ Khó khăn: ${bccv.kho_khan.trim()}\n`;
-    }
 
     navigator.clipboard.writeText(text).then(
       () => themToast('thanh_cong', `Đã sao chép báo cáo của ${ns.ho_va_ten}!`),
@@ -434,19 +437,33 @@ export default function TrangBaoCaoCongViec() {
   // Thống kê tổng hợp ngày (cho cấp quản lý)
   const thongKeNgayTongHop = useMemo(() => {
     const dsBaoCaoTrongNgay = dsBaoCaoHopLe.filter((b) => b.ngay_bao_cao === ngayChonTongHop);
-    const setDaNop = new Set(dsBaoCaoTrongNgay.map((b) => b.nhan_vien_id));
+    const mapBaoCao = new Map(dsBaoCaoTrongNgay.map((b) => [b.nhan_vien_id, b]));
 
     const nhanSuTrongPhamVi = dsNhanSuDuocXem.filter((ns) => {
       if (phongBanFilter !== 'tat_ca' && ns.phong_ban_id !== phongBanFilter) return false;
       return true;
     });
 
-    const daNop = nhanSuTrongPhamVi.filter((ns) => setDaNop.has(ns.id));
-    const chuaNop = nhanSuTrongPhamVi.filter((ns) => !setDaNop.has(ns.id));
+    const daGui: NhanSu[] = [];
+    const tamLuu: NhanSu[] = [];
+    const chuaNop: NhanSu[] = [];
+
+    for (const ns of nhanSuTrongPhamVi) {
+      const bc = mapBaoCao.get(ns.id);
+      if (!bc) {
+        chuaNop.push(ns);
+      } else if (bc.trang_thai === 'tam_luu') {
+        tamLuu.push(ns);
+      } else {
+        daGui.push(ns);
+      }
+    }
 
     return {
       tong: nhanSuTrongPhamVi.length,
-      daNop,
+      daGui,
+      tamLuu,
+      daNop: [...daGui, ...tamLuu],
       chuaNop,
       dsBaoCao: dsBaoCaoTrongNgay
     };
@@ -629,50 +646,70 @@ export default function TrangBaoCaoCongViec() {
           {cheDoXem === 'bang_tong_hop' && (
             <div className="space-y-3 sm:space-y-6">
               {/* Thanh chọn ngày & KPI tiến độ nộp của đội ngũ */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4">
-                <div className="col-span-2 md:col-span-1 p-3 sm:p-4 rounded-2xl border border-border bg-card flex flex-col justify-between">
-                  <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Chọn ngày kiểm tra
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={ngayChonTongHop}
-                      onChange={(e) => setNgayChonTongHop(e.target.value)}
-                      className="h-8 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setNgayChonTongHop(NGAY_HOM_NAY)}
-                      className="h-8 sm:h-10 px-2 sm:px-3 text-[10px] sm:text-xs font-bold rounded-lg sm:rounded-xl border border-border bg-muted hover:bg-muted/80 text-foreground transition"
-                    >
-                      Hôm nay
-                    </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+                {/* Hộp chọn ngày có Tờ Lịch Nổi Bật */}
+                <div className="p-3 sm:p-4 rounded-2xl border border-border bg-card flex items-center gap-3">
+                  <ToLichNgay ngayStr={ngayChonTongHop} kichThuoc="sm" noiBat />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                      Chọn ngày xem
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="date"
+                        value={ngayChonTongHop}
+                        onChange={(e) => setNgayChonTongHop(e.target.value)}
+                        className="h-8 px-2 text-xs font-bold rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 flex-1 min-w-0"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setNgayChonTongHop(NGAY_HOM_NAY)}
+                        className="h-8 px-2 text-[10px] sm:text-xs font-bold rounded-lg border border-border bg-muted hover:bg-muted/80 text-foreground transition shrink-0"
+                      >
+                        Hôm nay
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="col-span-1 p-3 sm:p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                  <div className="size-8 sm:size-12 rounded-lg sm:rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                    <UserCheck className="size-4 sm:size-6" />
+                {/* KPI 1: Đã Gửi */}
+                <div className="p-3 sm:p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 flex items-center gap-3">
+                  <div className="size-9 sm:size-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <UserCheck className="size-4 sm:size-5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[9px] sm:text-xs font-bold text-emerald-800 uppercase tracking-wider truncate">Đã Nộp Báo Cáo</div>
-                    <div className="text-[16px] sm:text-2xl font-black text-emerald-900 mt-0.5 tabular-nums">
-                      {thongKeNgayTongHop.daNop.length}{' '}
+                    <div className="text-[9px] sm:text-[11px] font-bold text-emerald-800 uppercase tracking-wider truncate">Đã Gửi Báo Cáo</div>
+                    <div className="text-base sm:text-xl font-black text-emerald-900 mt-0.5 tabular-nums">
+                      {thongKeNgayTongHop.daGui.length}{' '}
                       <span className="text-[10px] sm:text-xs font-normal text-emerald-700 truncate">
-                        / {thongKeNgayTongHop.tong} ({thongKeNgayTongHop.tong > 0 ? Math.round((thongKeNgayTongHop.daNop.length / thongKeNgayTongHop.tong) * 100) : 0}%)
+                        / {thongKeNgayTongHop.tong} ({thongKeNgayTongHop.tong > 0 ? Math.round((thongKeNgayTongHop.daGui.length / thongKeNgayTongHop.tong) * 100) : 0}%)
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="col-span-1 p-3 sm:p-4 rounded-2xl border border-rose-200 bg-rose-50/50 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                  <div className="size-8 sm:size-12 rounded-lg sm:rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                    <UserX className="size-4 sm:size-6" />
+                {/* KPI 2: Tạm lưu (Bản nháp) */}
+                <div className="p-3 sm:p-4 rounded-2xl border border-amber-200 bg-amber-50/50 flex items-center gap-3">
+                  <div className="size-9 sm:size-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                    <Pencil className="size-4 sm:size-5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[9px] sm:text-xs font-bold text-rose-800 uppercase tracking-wider truncate">Chưa Nộp</div>
-                    <div className="text-[16px] sm:text-2xl font-black text-rose-900 mt-0.5 tabular-nums">
+                    <div className="text-[9px] sm:text-[11px] font-bold text-amber-800 uppercase tracking-wider truncate">Đang Tạm Lưu</div>
+                    <div className="text-base sm:text-xl font-black text-amber-900 mt-0.5 tabular-nums">
+                      {thongKeNgayTongHop.tamLuu.length}{' '}
+                      <span className="text-[10px] sm:text-xs font-normal text-amber-700">bản nháp</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KPI 3: Chưa Nộp */}
+                <div className="p-3 sm:p-4 rounded-2xl border border-rose-200 bg-rose-50/50 flex items-center gap-3">
+                  <div className="size-9 sm:size-11 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                    <UserX className="size-4 sm:size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[9px] sm:text-[11px] font-bold text-rose-800 uppercase tracking-wider truncate">Chưa Có Báo Cáo</div>
+                    <div className="text-base sm:text-xl font-black text-rose-900 mt-0.5 tabular-nums">
                       {thongKeNgayTongHop.chuaNop.length}{' '}
                       <span className="text-[10px] sm:text-xs font-normal text-rose-700">nhân sự</span>
                     </div>
@@ -700,31 +737,42 @@ export default function TrangBaoCaoCongViec() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
-                  {/* Cột 1: Danh sách ĐÃ NỘP */}
+                  {/* Cột 1: Danh sách ĐÃ GHI NHẬN (Đã gửi + Tạm lưu) */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between pb-2 border-b border-border text-xs font-bold text-emerald-700">
-                      <span>ĐÃ NỘP ({thongKeNgayTongHop.daNop.length})</span>
+                      <span>ĐÃ BÁO CÁO / GHI NHẬN ({thongKeNgayTongHop.daNop.length})</span>
+                      {thongKeNgayTongHop.tamLuu.length > 0 && (
+                        <span className="text-[11px] font-semibold text-amber-700">
+                          (gồm {thongKeNgayTongHop.tamLuu.length} bản tạm lưu)
+                        </span>
+                      )}
                     </div>
                     {thongKeNgayTongHop.daNop.length === 0 ? (
                       <div className="p-8 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
-                        Chưa có nhân viên nào nộp báo cáo trong ngày này.
+                        Chưa có nhân viên nào nộp hoặc lưu báo cáo trong ngày này.
                       </div>
                     ) : (
                       thongKeNgayTongHop.daNop.map((ns) => {
                         const bccv = thongKeNgayTongHop.dsBaoCao.find((b) => b.nhan_vien_id === ns.id);
                         if (!bccv) return null;
+                        const laTamLuu = bccv.trang_thai === 'tam_luu';
                         const dsChiTiet = layDanhSachChiTiet(bccv);
-                        const coKhoKhan = (bccv.kho_khan ?? '').trim().length > 0;
                         const pb = dsPhongBan.find((x) => x.id === ns.phong_ban_id)?.ten_phong_ban || 'Phòng ban';
 
                         return (
                           <div
                             key={ns.id}
-                            className="p-4 rounded-xl border border-emerald-200 bg-card hover:shadow-sm transition space-y-3"
+                            className={cn(
+                              'p-4 rounded-xl border bg-card hover:shadow-sm transition space-y-3',
+                              laTamLuu ? 'border-amber-300/80 bg-amber-50/10' : 'border-emerald-200'
+                            )}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-center gap-3 min-w-0">
-                                <div className="size-9 rounded-xl bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0">
+                                <div className={cn(
+                                  'size-9 rounded-xl font-bold text-xs flex items-center justify-center shrink-0',
+                                  laTamLuu ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                                )}>
                                   {ns.ho_va_ten.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="min-w-0">
@@ -743,9 +791,15 @@ export default function TrangBaoCaoCongViec() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
-                                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
-                                  <Check className="size-3" /> {dsChiTiet.length} việc
-                                </span>
+                                {laTamLuu ? (
+                                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 flex items-center gap-1 border border-amber-200">
+                                    <Pencil className="size-3" /> Tạm lưu ({dsChiTiet.length} việc)
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                                    <Check className="size-3" /> Đã gửi ({dsChiTiet.length} việc)
+                                  </span>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => saoChepBaoCaoNhanVien(ns, bccv)}
@@ -761,7 +815,10 @@ export default function TrangBaoCaoCongViec() {
                             <div className="space-y-1.5 text-xs text-foreground bg-muted/30 p-2.5 rounded-lg border border-border/40">
                               {dsChiTiet.map((ct, idx) => (
                                 <div key={idx} className="flex items-start gap-2">
-                                  <span className="size-4 rounded-full bg-emerald-500/15 text-emerald-700 font-bold text-[10px] inline-flex items-center justify-center shrink-0 mt-0.5">
+                                  <span className={cn(
+                                    'size-4 rounded-full font-bold text-[10px] inline-flex items-center justify-center shrink-0 mt-0.5',
+                                    laTamLuu ? 'bg-amber-500/15 text-amber-700' : 'bg-emerald-500/15 text-emerald-700'
+                                  )}>
                                     {idx + 1}
                                   </span>
                                   <span className="leading-relaxed font-medium flex-1">{ct.noi_dung}</span>
@@ -774,16 +831,6 @@ export default function TrangBaoCaoCongViec() {
                               <div className="text-xs text-muted-foreground border-t border-border/40 pt-2">
                                 <span className="font-semibold text-foreground">Kế hoạch ngày mai:</span>{' '}
                                 {bccv.ke_hoach_ngay_mai}
-                              </div>
-                            )}
-
-                            {/* Khó khăn nếu có */}
-                            {coKhoKhan && (
-                              <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-1.5">
-                                <AlertTriangle className="size-3.5 shrink-0 mt-0.5 text-rose-600" />
-                                <div>
-                                  <span className="font-bold">Khó khăn/Vướng mắc:</span> {bccv.kho_khan}
-                                </div>
                               </div>
                             )}
 
@@ -808,11 +855,11 @@ export default function TrangBaoCaoCongViec() {
                   {/* Cột 2: Danh sách CHƯA NỘP */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between pb-2 border-b border-border text-xs font-bold text-rose-700">
-                      <span>CHƯA NỘP ({thongKeNgayTongHop.chuaNop.length})</span>
+                      <span>CHƯA BÁO CÁO ({thongKeNgayTongHop.chuaNop.length})</span>
                     </div>
                     {thongKeNgayTongHop.chuaNop.length === 0 ? (
                       <div className="p-8 text-center text-xs text-emerald-600 border border-dashed border-emerald-200 rounded-xl bg-emerald-50/20 font-medium">
-                        🎉 Tuyệt vời! 100% nhân viên trong phạm vi quản lý đã nộp báo cáo.
+                        🎉 Tuyệt vời! 100% nhân viên trong phạm vi quản lý đã nộp / lưu báo cáo.
                       </div>
                     ) : (
                       thongKeNgayTongHop.chuaNop.map((ns) => {
@@ -834,7 +881,7 @@ export default function TrangBaoCaoCongViec() {
                               </div>
                             </div>
                             <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-rose-100 text-rose-700 shrink-0">
-                              Chưa nộp
+                              Chưa có
                             </span>
                           </div>
                         );
@@ -850,9 +897,9 @@ export default function TrangBaoCaoCongViec() {
           {/* 2. CHẾ ĐỘ XEM: LỊCH CÁ NHÂN (TUẦN / THÁNG) */}
           {/* ========================================================================= */}
           {cheDoXem === 'lich' && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Điều hướng lịch */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-border bg-card">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl border border-border bg-card">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1">
                     <button
@@ -866,14 +913,17 @@ export default function TrangBaoCaoCongViec() {
                         }
                         setNgayDangXemLich(d);
                       }}
-                      className="size-9 rounded-xl border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground transition cursor-pointer"
+                      className="size-8 sm:size-9 rounded-xl border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground transition cursor-pointer"
                     >
                       <ChevronLeft className="size-4" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => setNgayDangXemLich(new Date())}
-                      className="h-9 px-3 text-xs font-bold rounded-xl border border-border bg-muted hover:bg-muted/80 text-foreground transition cursor-pointer"
+                      onClick={() => {
+                        setNgayDangXemLich(new Date());
+                        setNgayDangChonLichMobile(NGAY_HOM_NAY);
+                      }}
+                      className="h-8 sm:h-9 px-2.5 sm:px-3 text-xs font-bold rounded-xl border border-border bg-muted hover:bg-muted/80 text-foreground transition cursor-pointer"
                     >
                       Hôm nay
                     </button>
@@ -888,15 +938,15 @@ export default function TrangBaoCaoCongViec() {
                         }
                         setNgayDangXemLich(d);
                       }}
-                      className="size-9 rounded-xl border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground transition cursor-pointer"
+                      className="size-8 sm:size-9 rounded-xl border border-border bg-background hover:bg-muted flex items-center justify-center text-foreground transition cursor-pointer"
                     >
                       <ChevronRight className="size-4" />
                     </button>
                   </div>
 
-                  <div className="font-black text-base text-foreground tracking-tight">
+                  <div className="font-black text-sm sm:text-base text-foreground tracking-tight">
                     {kieuLich === 'tuan'
-                      ? `Tuần từ ${formatNgay(formatYYYYMMDD(ngayTrongTuan[0]))} đến ${formatNgay(formatYYYYMMDD(ngayTrongTuan[6]))}`
+                      ? `Tuần ${formatNgay(formatYYYYMMDD(ngayTrongTuan[0]))} - ${formatNgay(formatYYYYMMDD(ngayTrongTuan[6]))}`
                       : `Tháng ${ngayDangXemLich.getMonth() + 1}/${ngayDangXemLich.getFullYear()}`}
                   </div>
                 </div>
@@ -907,7 +957,7 @@ export default function TrangBaoCaoCongViec() {
                       type="button"
                       onClick={() => setKieuLich('tuan')}
                       className={cn(
-                        'px-3 py-1 rounded-lg transition cursor-pointer',
+                        'px-2.5 sm:px-3 py-1 rounded-lg transition cursor-pointer text-[11px] sm:text-xs',
                         kieuLich === 'tuan' ? 'bg-background text-foreground shadow-xs font-bold' : 'text-muted-foreground'
                       )}
                     >
@@ -917,7 +967,7 @@ export default function TrangBaoCaoCongViec() {
                       type="button"
                       onClick={() => setKieuLich('thang')}
                       className={cn(
-                        'px-3 py-1 rounded-lg transition cursor-pointer',
+                        'px-2.5 sm:px-3 py-1 rounded-lg transition cursor-pointer text-[11px] sm:text-xs',
                         kieuLich === 'thang' ? 'bg-background text-foreground shadow-xs font-bold' : 'text-muted-foreground'
                       )}
                     >
@@ -927,152 +977,396 @@ export default function TrangBaoCaoCongViec() {
                 </div>
               </div>
 
-              {/* Lưới Lịch */}
-              {kieuLich === 'tuan' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-3">
-                  {ngayTrongTuan.map((dateObj, idx) => {
-                    const dateStr = formatYYYYMMDD(dateObj);
-                    const laHomNay = dateStr === NGAY_HOM_NAY;
-                    const bccv = dsBaoCaoCuaToi.find((b) => b.ngay_bao_cao === dateStr);
-                    const thuTen = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'][idx];
+              {/* GIAO DIỆN MOBILE (< 768px): Dạng lịch trực quan (Thanh ngày + Chi tiết ngày được chọn) */}
+              <div className="block md:hidden space-y-3.5">
+                {kieuLich === 'tuan' ? (
+                  /* Thanh tuần 7 ngày dạng lịch tương tác */
+                  <div className="p-2 rounded-2xl border border-border bg-card shadow-xs">
+                    <div className="grid grid-cols-7 gap-1">
+                      {ngayTrongTuan.map((dateObj, idx) => {
+                        const dateStr = formatYYYYMMDD(dateObj);
+                        const laHomNay = dateStr === NGAY_HOM_NAY;
+                        const laDangChon = dateStr === ngayDangChonLichMobile;
+                        const bccv = dsBaoCaoCuaToi.find((b) => b.ngay_bao_cao === dateStr);
+                        const laTamLuu = bccv?.trang_thai === 'tam_luu';
+                        const thuVietTat = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'][idx];
 
-                    return (
-                      <div
-                        key={dateStr}
-                        className={cn(
-                          'rounded-2xl border p-3.5 flex flex-col justify-between min-h-[220px] transition-all',
-                          laHomNay ? 'border-purple-500/80 bg-purple-50/20 ring-2 ring-purple-500/10' : 'border-border bg-card',
-                          bccv ? 'hover:border-primary/50' : 'hover:border-border'
-                        )}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between pb-2 border-b border-border/50">
-                            <div>
-                              <div className="text-xs font-bold text-muted-foreground">{thuTen}</div>
-                              <div className="text-sm font-black text-foreground">{dateObj.getDate()}</div>
-                            </div>
-                            {laHomNay && (
-                              <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-purple-600 text-white">
-                                Hôm nay
-                              </span>
+                        return (
+                          <button
+                            key={dateStr}
+                            type="button"
+                            onClick={() => setNgayDangChonLichMobile(dateStr)}
+                            className={cn(
+                              'flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all relative cursor-pointer text-center select-none',
+                              laDangChon
+                                ? 'bg-primary text-primary-foreground font-black shadow-sm ring-2 ring-primary/40'
+                                : laHomNay
+                                ? 'bg-primary/10 text-primary border border-primary/30 font-bold'
+                                : 'bg-muted/40 hover:bg-muted text-foreground font-medium'
                             )}
-                          </div>
-
-                          <div className="pt-3">
-                            {bccv ? (
-                              <div className="space-y-2">
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                                  <Check className="size-3" /> Đã nộp ({layDanhSachChiTiet(bccv).length} việc)
-                                </span>
-                                <div className="space-y-1 text-xs text-foreground/80 max-h-[90px] overflow-hidden">
-                                  {layDanhSachChiTiet(bccv).slice(0, 2).map((ct, i) => (
-                                    <div key={i} className="line-clamp-1 leading-snug">
-                                      • {ct.noi_dung}
-                                    </div>
-                                  ))}
-                                  {layDanhSachChiTiet(bccv).length > 2 && (
-                                    <div className="text-[10px] text-muted-foreground italic">
-                                      + {layDanhSachChiTiet(bccv).length - 2} việc khác...
-                                    </div>
+                          >
+                            <span className={cn('text-[10px] uppercase font-bold tracking-tight', laDangChon ? 'text-primary-foreground/90' : 'text-muted-foreground')}>
+                              {thuVietTat}
+                            </span>
+                            <span className="text-sm font-black mt-0.5 tabular-nums">
+                              {dateObj.getDate()}
+                            </span>
+                            {/* Dấu chấm trạng thái */}
+                            <div className="mt-1 h-1.5 flex items-center justify-center">
+                              {bccv ? (
+                                <span
+                                  className={cn(
+                                    'size-1.5 rounded-full',
+                                    laDangChon
+                                      ? 'bg-primary-foreground'
+                                      : laTamLuu
+                                      ? 'bg-amber-500 ring-1 ring-amber-200'
+                                      : 'bg-emerald-500 ring-1 ring-emerald-200'
                                   )}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-muted-foreground py-4 text-center">
-                                {dateStr <= NGAY_HOM_NAY ? (
-                                  <span className="text-amber-600 font-medium">Chưa nộp báo cáo</span>
-                                ) : (
-                                  <span>Chưa tới ngày</span>
-                                )}
-                              </div>
+                                />
+                              ) : (
+                                <span className={cn('size-1 rounded-full opacity-20', laDangChon ? 'bg-primary-foreground' : 'bg-muted-foreground')} />
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  /* Lưới tháng trên mobile */
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden p-2">
+                    <div className="grid grid-cols-7 text-center pb-1 text-[10px] font-bold text-muted-foreground uppercase">
+                      <div>T2</div>
+                      <div>T3</div>
+                      <div>T4</div>
+                      <div>T5</div>
+                      <div>T6</div>
+                      <div>T7</div>
+                      <div>CN</div>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {ngayTrongThang.map(({ date, trongThang }, idx) => {
+                        const dateStr = formatYYYYMMDD(date);
+                        const laHomNay = dateStr === NGAY_HOM_NAY;
+                        const laDangChon = dateStr === ngayDangChonLichMobile;
+                        const bccv = dsBaoCaoCuaToi.find((b) => b.ngay_bao_cao === dateStr);
+                        const laTamLuu = bccv?.trang_thai === 'tam_luu';
+
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setNgayDangChonLichMobile(dateStr)}
+                            className={cn(
+                              'py-1.5 px-0.5 rounded-lg flex flex-col items-center justify-center transition cursor-pointer text-center select-none',
+                              !trongThang && 'opacity-25 pointer-events-none',
+                              laDangChon
+                                ? 'bg-primary text-primary-foreground font-black ring-2 ring-primary/40'
+                                : laHomNay
+                                ? 'bg-primary/10 text-primary font-bold border border-primary/20'
+                                : 'hover:bg-muted text-foreground'
                             )}
+                          >
+                            <span className="text-xs tabular-nums">{date.getDate()}</span>
+                            <div className="h-1 flex items-center justify-center mt-0.5">
+                              {bccv && (
+                                <span
+                                  className={cn(
+                                    'size-1 rounded-full',
+                                    laDangChon ? 'bg-primary-foreground' : laTamLuu ? 'bg-amber-500' : 'bg-emerald-500'
+                                  )}
+                                />
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Chi tiết báo cáo ngày đang chọn trên Mobile */}
+                {(() => {
+                  const bccvChon = dsBaoCaoCuaToi.find((b) => b.ngay_bao_cao === ngayDangChonLichMobile);
+                  const laTamLuu = bccvChon?.trang_thai === 'tam_luu';
+                  const dsChiTiet = bccvChon ? layDanhSachChiTiet(bccvChon) : [];
+                  const laHomNay = ngayDangChonLichMobile === NGAY_HOM_NAY;
+                  const dateObjChon = new Date(ngayDangChonLichMobile + 'T00:00:00');
+                  const dayOfWeekIdx = dateObjChon.getDay();
+                  const thuChon = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][dayOfWeekIdx];
+
+                  return (
+                    <div className={cn(
+                      'p-4 rounded-2xl border bg-card space-y-3.5 shadow-sm transition-all',
+                      laTamLuu ? 'border-amber-300 bg-amber-50/10' : bccvChon ? 'border-emerald-200' : 'border-border'
+                    )}>
+                      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border/60">
+                        <div className="flex items-center gap-2">
+                          <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <CalendarIcon className="size-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-muted-foreground">{thuChon}</div>
+                            <div className="text-sm font-black text-foreground flex items-center gap-1.5">
+                              <span>{formatNgay(ngayDangChonLichMobile)}</span>
+                              {laHomNay && (
+                                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-primary text-primary-foreground">
+                                  Hôm nay
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="pt-3 border-t border-border/40">
-                          {bccv ? (
-                            <button
-                              type="button"
-                              onClick={() => moChinhSua(bccv)}
-                              className="w-full py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-muted text-foreground transition cursor-pointer flex items-center justify-center gap-1"
-                            >
-                              <Pencil className="size-3" /> Xem / Sửa
-                            </button>
-                          ) : dateStr <= NGAY_HOM_NAY ? (
-                            <button
-                              type="button"
-                              onClick={() => moTaoMoi(dateStr)}
-                              className="w-full py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1"
-                            >
-                              <Plus className="size-3" /> Nộp báo cáo
-                            </button>
+                        <div>
+                          {bccvChon ? (
+                            laTamLuu ? (
+                              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                                <Pencil className="size-3" /> Tạm lưu ({dsChiTiet.length} việc)
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                                <Check className="size-3" /> Đã nộp ({dsChiTiet.length} việc)
+                              </span>
+                            )
                           ) : (
-                            <div className="h-7" />
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                              Chưa có báo cáo
+                            </span>
                           )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                /* Lưới Lịch Tháng */
-                <div className="rounded-2xl border border-border bg-card overflow-hidden">
-                  <div className="grid grid-cols-7 border-b border-border bg-muted/40 text-center py-2 text-xs font-bold text-muted-foreground uppercase">
-                    <div>Thứ 2</div>
-                    <div>Thứ 3</div>
-                    <div>Thứ 4</div>
-                    <div>Thứ 5</div>
-                    <div>Thứ 6</div>
-                    <div>Thứ 7</div>
-                    <div>CN</div>
-                  </div>
-                  <div className="grid grid-cols-7 divide-x divide-y divide-border">
-                    {ngayTrongThang.map(({ date, trongThang }, idx) => {
-                      const dateStr = formatYYYYMMDD(date);
+
+                      {bccvChon ? (
+                        <div className="space-y-3">
+                          <div className="space-y-1.5 text-xs text-foreground bg-muted/30 p-3 rounded-xl border border-border/40">
+                            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                              Công việc đã ghi nhận:
+                            </div>
+                            {dsChiTiet.map((ct, idx) => (
+                              <div key={idx} className="flex items-start gap-2">
+                                <span className={cn(
+                                  'size-4 rounded-full font-bold text-[10px] inline-flex items-center justify-center shrink-0 mt-0.5',
+                                  laTamLuu ? 'bg-amber-500/20 text-amber-800' : 'bg-emerald-500/20 text-emerald-800'
+                                )}>
+                                  {idx + 1}
+                                </span>
+                                <span className="leading-relaxed font-medium flex-1">{ct.noi_dung}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() => moChinhSua(bccvChon)}
+                              className={cn(
+                                'w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs',
+                                laTamLuu
+                                  ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                  : 'border border-border text-foreground hover:bg-muted'
+                              )}
+                            >
+                              <Pencil className="size-3.5" />
+                              {laTamLuu ? 'Bổ sung thêm việc / Hoàn tất gửi' : 'Xem / Chỉnh sửa chi tiết'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-6 text-center space-y-3">
+                          <p className="text-xs text-muted-foreground">
+                            {ngayDangChonLichMobile <= NGAY_HOM_NAY
+                              ? 'Bạn chưa ghi nhận báo cáo công việc cho ngày này.'
+                              : 'Chưa tới ngày báo cáo.'}
+                          </p>
+                          {ngayDangChonLichMobile <= NGAY_HOM_NAY && (
+                            <button
+                              type="button"
+                              onClick={() => moTaoMoi(ngayDangChonLichMobile)}
+                              className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold transition hover:bg-primary/90 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <Plus className="size-3.5" /> Ghi nhận / Nộp báo cáo ngày này
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* GIAO DIỆN DESKTOP (>= 768px): Giữ nguyên chuẩn 7 cột */}
+              <div className="hidden md:block">
+                {kieuLich === 'tuan' ? (
+                  <div className="grid grid-cols-7 gap-3">
+                    {ngayTrongTuan.map((dateObj, idx) => {
+                      const dateStr = formatYYYYMMDD(dateObj);
                       const laHomNay = dateStr === NGAY_HOM_NAY;
                       const bccv = dsBaoCaoCuaToi.find((b) => b.ngay_bao_cao === dateStr);
+                      const laTamLuu = bccv?.trang_thai === 'tam_luu';
+                      const dsChiTiet = bccv ? layDanhSachChiTiet(bccv) : [];
+                      const thuTen = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'][idx];
 
                       return (
                         <div
-                          key={idx}
+                          key={dateStr}
                           className={cn(
-                            'p-2.5 min-h-[95px] flex flex-col justify-between transition',
-                            !trongThang && 'bg-muted/20 text-muted-foreground/40',
-                            laHomNay && 'bg-purple-50/30'
+                            'rounded-2xl border p-3.5 flex flex-col justify-between min-h-[220px] transition-all bg-card',
+                            laHomNay ? 'border-primary ring-2 ring-primary/20' : 'border-border',
+                            laTamLuu ? 'border-amber-300 bg-amber-50/10' : '',
+                            bccv ? 'hover:border-primary/50' : 'hover:border-border'
                           )}
                         >
-                          <div className="flex items-center justify-between text-xs">
-                            <span className={cn('font-bold', laHomNay && 'text-purple-600')}>{date.getDate()}</span>
-                            {bccv && (
-                              <span className="size-2 rounded-full bg-emerald-500" title="Đã nộp báo cáo" />
-                            )}
+                          <div>
+                            <div className="flex items-center justify-between pb-2 border-b border-border/50">
+                              <div>
+                                <div className="text-xs font-bold text-muted-foreground">{thuTen}</div>
+                                <div className="text-sm font-black text-foreground">{dateObj.getDate()}</div>
+                              </div>
+                              {laHomNay && (
+                                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-primary text-primary-foreground">
+                                  Hôm nay
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="pt-3">
+                              {bccv ? (
+                                <div className="space-y-2">
+                                  {laTamLuu ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200">
+                                      <Pencil className="size-3" /> Tạm lưu ({dsChiTiet.length} việc)
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                                      <Check className="size-3" /> Đã nộp ({dsChiTiet.length} việc)
+                                    </span>
+                                  )}
+                                  <div className="space-y-1 text-xs text-foreground/80 max-h-[90px] overflow-hidden">
+                                    {dsChiTiet.slice(0, 2).map((ct, i) => (
+                                      <div key={i} className="line-clamp-1 leading-snug">
+                                        • {ct.noi_dung}
+                                      </div>
+                                    ))}
+                                    {dsChiTiet.length > 2 && (
+                                      <div className="text-[10px] text-muted-foreground italic">
+                                        + {dsChiTiet.length - 2} việc khác...
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-muted-foreground py-4 text-center">
+                                  {dateStr <= NGAY_HOM_NAY ? (
+                                    <span className="text-amber-600 font-medium">Chưa nộp báo cáo</span>
+                                  ) : (
+                                    <span>Chưa tới ngày</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
 
-                          <div className="mt-1">
+                          <div className="pt-3 border-t border-border/40">
                             {bccv ? (
                               <button
                                 type="button"
                                 onClick={() => moChinhSua(bccv)}
-                                className="w-full text-left p-1 rounded bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-semibold line-clamp-1 hover:bg-emerald-100 transition cursor-pointer"
+                                className={cn(
+                                  'w-full py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1',
+                                  laTamLuu
+                                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold'
+                                    : 'border border-border text-foreground hover:bg-muted'
+                                )}
                               >
-                                {layDanhSachChiTiet(bccv).length} việc
+                                <Pencil className="size-3" /> {laTamLuu ? 'Bổ sung việc / Gửi' : 'Xem / Sửa'}
                               </button>
-                            ) : trongThang && dateStr <= NGAY_HOM_NAY ? (
+                            ) : dateStr <= NGAY_HOM_NAY ? (
                               <button
                                 type="button"
                                 onClick={() => moTaoMoi(dateStr)}
-                                className="w-full py-0.5 text-[10px] text-primary hover:underline font-semibold text-center cursor-pointer"
+                                className="w-full py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1"
                               >
-                                + Nộp
+                                <Plus className="size-3" /> Nộp báo cáo
                               </button>
-                            ) : null}
+                            ) : (
+                              <div className="h-7" />
+                            )}
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              )}
+                ) : (
+                  /* Lưới Lịch Tháng Desktop */
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                    <div className="grid grid-cols-7 border-b border-border bg-muted/40 text-center py-2 text-xs font-bold text-muted-foreground uppercase">
+                      <div>Thứ 2</div>
+                      <div>Thứ 3</div>
+                      <div>Thứ 4</div>
+                      <div>Thứ 5</div>
+                      <div>Thứ 6</div>
+                      <div>Thứ 7</div>
+                      <div>CN</div>
+                    </div>
+                    <div className="grid grid-cols-7 divide-x divide-y divide-border">
+                      {ngayTrongThang.map(({ date, trongThang }, idx) => {
+                        const dateStr = formatYYYYMMDD(date);
+                        const laHomNay = dateStr === NGAY_HOM_NAY;
+                        const bccv = dsBaoCaoCuaToi.find((b) => b.ngay_bao_cao === dateStr);
+                        const laTamLuu = bccv?.trang_thai === 'tam_luu';
+
+                        return (
+                          <div
+                            key={idx}
+                            className={cn(
+                              'p-2.5 min-h-[95px] flex flex-col justify-between transition',
+                              !trongThang && 'bg-muted/20 text-muted-foreground/40',
+                              laHomNay && 'bg-primary/5'
+                            )}
+                          >
+                            <div className="flex items-center justify-between text-xs">
+                              <span className={cn('font-bold', laHomNay && 'text-primary')}>{date.getDate()}</span>
+                              {bccv && (
+                                <span
+                                  className={cn('size-2 rounded-full', laTamLuu ? 'bg-amber-500' : 'bg-emerald-500')}
+                                  title={laTamLuu ? 'Tạm lưu (nháp)' : 'Đã nộp báo cáo'}
+                                />
+                              )}
+                            </div>
+
+                            <div className="mt-1">
+                              {bccv ? (
+                                <button
+                                  type="button"
+                                  onClick={() => moChinhSua(bccv)}
+                                  className={cn(
+                                    'w-full text-left p-1 rounded text-[11px] font-semibold line-clamp-1 transition cursor-pointer',
+                                    laTamLuu
+                                      ? 'bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100'
+                                      : 'bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+                                  )}
+                                >
+                                  {laTamLuu ? '📝 ' : ''}{layDanhSachChiTiet(bccv).length} việc
+                                </button>
+                              ) : trongThang && dateStr <= NGAY_HOM_NAY ? (
+                                <button
+                                  type="button"
+                                  onClick={() => moTaoMoi(dateStr)}
+                                  className="w-full py-0.5 text-[10px] text-primary hover:underline font-semibold text-center cursor-pointer"
+                                >
+                                  + Nộp
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1158,10 +1452,15 @@ export default function TrangBaoCaoCongViec() {
                                     <button
                                       type="button"
                                       onClick={() => moChinhSua(bccv)}
-                                      className="size-7 rounded-lg bg-emerald-100 text-emerald-800 font-bold inline-flex items-center justify-center hover:scale-110 transition cursor-pointer"
-                                      title={`Đã nộp: ${layDanhSachChiTiet(bccv).length} việc`}
+                                      className={cn(
+                                        'size-7 rounded-lg font-bold inline-flex items-center justify-center hover:scale-110 transition cursor-pointer',
+                                        bccv.trang_thai === 'tam_luu'
+                                          ? 'bg-amber-100 text-amber-800'
+                                          : 'bg-emerald-100 text-emerald-800'
+                                      )}
+                                      title={bccv.trang_thai === 'tam_luu' ? `Tạm lưu: ${layDanhSachChiTiet(bccv).length} việc` : `Đã nộp: ${layDanhSachChiTiet(bccv).length} việc`}
                                     >
-                                      ✓
+                                      {bccv.trang_thai === 'tam_luu' ? '📝' : '✓'}
                                     </button>
                                   ) : dateStr <= NGAY_HOM_NAY ? (
                                     <span className="size-2 rounded-full bg-rose-300 inline-block" title="Chưa nộp" />
@@ -1186,7 +1485,7 @@ export default function TrangBaoCaoCongViec() {
           )}
 
           {/* ========================================================================= */}
-          {/* 4. CHẾ ĐỘ XEM: DANH SÁCH TẤT CẢ (CARDS PHẲNG) */}
+          {/* 4. CHẾ ĐỘ XEM: DANH SÁCH TẤT CẢ (CARDS PHẲNG CÓ TỜ LỊCH NỔI BẬT) */}
           {/* ========================================================================= */}
           {cheDoXem === 'danh_sach' && (
             <div className="space-y-4">
@@ -1209,27 +1508,46 @@ export default function TrangBaoCaoCongViec() {
                   {dsBaoCaoHopLe.map((bccv) => {
                     const ns = dsNhanSu.find((x) => x.id === bccv.nhan_vien_id);
                     const tenNs = ns?.ho_va_ten || 'Nhân viên';
+                    const laTamLuu = bccv.trang_thai === 'tam_luu';
                     const dsChiTiet = layDanhSachChiTiet(bccv);
                     const dsIdDuAn = layDanhSachDuAnTrongBaoCao(bccv);
-                    const coKhoKhan = (bccv.kho_khan ?? '').trim().length > 0;
 
                     return (
                       <div
                         key={bccv.id}
-                        className="rounded-2xl border border-border bg-card p-5 flex flex-col justify-between hover:border-primary/40 hover:shadow-sm transition"
+                        className={cn(
+                          'rounded-2xl border bg-card p-4 sm:p-5 flex flex-col justify-between hover:shadow-md transition',
+                          laTamLuu ? 'border-amber-300 hover:border-amber-400' : 'border-border hover:border-primary/40'
+                        )}
                       >
                         <div>
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="font-bold text-sm text-foreground">{tenNs}</div>
-                              <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                                <CalendarDays className="size-3.5" />
-                                <span>{formatNgay(bccv.ngay_bao_cao)}</span>
+                          {/* Header card: Tờ lịch ngày nổi bật + Thông tin nhân viên & trạng thái */}
+                          <div className="flex items-start gap-3">
+                            <ToLichNgay
+                              ngayStr={bccv.ngay_bao_cao}
+                              kichThuoc="md"
+                              trangThai={bccv.trang_thai}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="font-bold text-sm text-foreground truncate">{tenNs}</div>
+                              <div className="text-[11px] text-muted-foreground truncate">
+                                {ns?.ma_nhan_vien} {ns?.chuc_vu && `• ${ns.chuc_vu}`}
+                              </div>
+                              <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                {laTamLuu ? (
+                                  <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                                    📝 Tạm lưu (nháp)
+                                  </span>
+                                ) : (
+                                  <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    ✓ Đã gửi
+                                  </span>
+                                )}
+                                <span className="text-[10.5px] font-semibold px-2 py-0.5 rounded-full bg-muted text-foreground">
+                                  {dsChiTiet.length} việc
+                                </span>
                               </div>
                             </div>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                              {dsChiTiet.length} việc
-                            </span>
                           </div>
 
                           {/* Projects tags */}
@@ -1259,12 +1577,6 @@ export default function TrangBaoCaoCongViec() {
                               </div>
                             )}
                           </div>
-
-                          {coKhoKhan && (
-                            <div className="mt-3 p-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700">
-                              <span className="font-bold">Khó khăn:</span> {bccv.kho_khan}
-                            </div>
-                          )}
                         </div>
 
                         <div className="pt-3 mt-4 border-t border-border flex items-center justify-end gap-2">
@@ -1273,7 +1585,7 @@ export default function TrangBaoCaoCongViec() {
                             onClick={() => moChinhSua(bccv)}
                             className="h-8 px-3 rounded-lg border border-border text-xs font-semibold hover:bg-muted text-foreground transition cursor-pointer"
                           >
-                            Chi tiết
+                            {laTamLuu ? 'Xem / Nhập tiếp' : 'Chi tiết'}
                           </button>
                           {(bccv.nhan_vien_id === nguoiDungHienTai?.id || coQuyenXemToanCongTy) && (
                             <button

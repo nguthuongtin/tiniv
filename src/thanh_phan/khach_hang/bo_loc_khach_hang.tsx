@@ -66,66 +66,62 @@ export default function BoLocKhachHang({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center h-12 rounded-[var(--radius-input)] border border-border bg-muted/45 shadow-[var(--shadow-card)] transition focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15 focus-within:bg-background overflow-hidden">
-            <span className="inline-flex items-center justify-center shrink-0 size-9 rounded-[var(--radius-button)] bg-card-icon-bg-muted text-card-icon-fg-muted ml-2">
-              <Search className="size-[17px]" strokeWidth={2} />
-            </span>
-            <input
-              type="text"
-              value={tuKhoa}
-              onChange={(e) => datGiaTri('tuKhoa', e.target.value)}
-              placeholder="Tìm kiếm tên, MST, SĐT, email khách hàng..."
-              className="flex-1 h-full w-full pl-2.5 pr-5 text-[14px] font-semibold text-foreground placeholder:text-foreground/55 placeholder:font-medium outline-none border-0 shadow-none rounded-none bg-transparent leading-body"
-            />
-          </div>
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="size-4 pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={tuKhoa}
+            onChange={(e) => datGiaTri('tuKhoa', e.target.value)}
+            placeholder="Tìm kiếm tên, MST, SĐT, email khách hàng..."
+            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
+          />
         </div>
         <button
           type="button"
           onClick={() => setMoRong((m) => !m)}
           className={cn(
-            'inline-flex items-center gap-3 rounded-[var(--radius-input)] border h-12 px-5 text-[13.5px] font-black transition shrink-0 active:scale-[0.98] leading-title',
+            'inline-flex items-center gap-2 rounded-xl border h-11 px-4 text-sm font-semibold transition active:scale-[0.98]',
             moRong || soLuongDieuKienKhacMacDinh > 0
-              ? 'bg-card-icon-bg-primary border-card-icon-br-primary text-card-icon-fg-primary shadow-[var(--shadow-card)]'
-              : 'bg-background border-border text-foreground hover:bg-muted shadow-[var(--shadow-card)]'
+              ? 'bg-[#007AFF]/10 border-[#007AFF]/30 text-[#007AFF]'
+              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
           )}
         >
-          <Filter className="size-[17.5px]" strokeWidth={2} />
+          <Filter className="size-4" />
           Bộ lọc
           {soLuongDieuKienKhacMacDinh > 0 && (
-            <span className="rounded-full bg-primary/12 text-primary text-[11.5px] px-2.5 h-6 inline-flex items-center font-black border border-primary/18 ml-0.5 mr-0.5 shadow-none">
+            <span className="rounded-full bg-[#007AFF] text-white text-[11px] px-2 py-0.5 font-bold -mr-1">
               {soLuongDieuKienKhacMacDinh}
             </span>
           )}
-          <ChevronDown className={cn('size-[17.5px] transition shrink-0', moRong && 'rotate-180')} />
+          <ChevronDown className={cn('size-4 transition-transform duration-200', moRong && 'rotate-180')} />
         </button>
         {soLuongDieuKienKhacMacDinh > 0 || tuKhoa ? (
           <button
             type="button"
             onClick={xoaTatCa}
-            className="inline-flex items-center gap-2.5 rounded-[var(--radius-input)] border border-border bg-background h-12 px-5 text-[13.5px] text-muted-foreground hover:bg-danger/10 hover:border-danger/25 hover:text-danger transition shrink-0 shadow-[var(--shadow-card)] active:scale-[0.98] font-black leading-title"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200/80 bg-rose-50/60 h-11 px-3.5 text-sm font-semibold text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.98]"
           >
-            <XCircle className="size-[17.5px]" strokeWidth={2} />
+            <XCircle className="size-4" />
             Xóa bộ lọc
           </button>
         ) : null}
       </div>
       <div
         className={cn(
-          'transition-all duration-250 overflow-hidden',
-          moRong ? 'max-h-[1200px] opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'
+          'grid gap-3 transition-all duration-200 overflow-hidden',
+          moRong ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'
         )}
       >
-        <div className="min-h-0 grid gap-4 md:grid-cols-3 lg:grid-cols-4 p-5 rounded-[var(--radius-card)] border border-border bg-muted/35">
+        <div className="min-h-0 grid gap-3.5 md:grid-cols-2 lg:grid-cols-3 p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
           <BoLocMuc label="Loại khách hàng">
             <select
               value={(gia_tri_hien_tai.loai_khach_hang as string) ?? 'tat_ca'}
               onChange={(e) =>
                 datGiaTri('loai_khach_hang', e.target.value as DieuKienLocKhachHang['loai_khach_hang'])
               }
-              className="w-full h-11 rounded-[var(--radius-input)] border border-border bg-background px-4.5 text-[14px] font-black text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 shadow-[var(--shadow-card)] leading-body"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               {CAC_LOAI_KH.map((x) => (
                 <option key={x.gia_tri} value={x.gia_tri}>
@@ -140,7 +136,7 @@ export default function BoLocKhachHang({
               onChange={(e) =>
                 datGiaTri('trang_thai', e.target.value as DieuKienLocKhachHang['trang_thai'])
               }
-              className="w-full h-11 rounded-[var(--radius-input)] border border-border bg-background px-4.5 text-[14px] font-black text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 shadow-[var(--shadow-card)] leading-body"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               {CAC_TRANG_THAI.filter(Boolean).map((x) => (
                 <option key={x!.gia_tri} value={x!.gia_tri as string}>
@@ -155,7 +151,7 @@ export default function BoLocKhachHang({
               onChange={(e) =>
                 datGiaTri('chi_nhanh_id', e.target.value === 'tat_ca' ? null : e.target.value)
               }
-              className="w-full h-11 rounded-[var(--radius-input)] border border-border bg-background px-4.5 text-[14px] font-black text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 shadow-[var(--shadow-card)] leading-body"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               <option value="tat_ca">Tất cả chi nhánh</option>
               {dsChiNhanh.map((cn) => (
@@ -171,7 +167,7 @@ export default function BoLocKhachHang({
               onChange={(e) =>
                 datGiaTri('nguoi_phu_trach_id', e.target.value === 'tat_ca' ? null : e.target.value)
               }
-              className="w-full h-11 rounded-[var(--radius-input)] border border-border bg-background px-4.5 text-[14px] font-black text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 shadow-[var(--shadow-card)] leading-body"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               <option value="tat_ca">Tất cả phụ trách</option>
               {dsNhanSu.map((ns) => (
@@ -186,7 +182,7 @@ export default function BoLocKhachHang({
               type="date"
               value={gia_tri_hien_tai.ngay_tao_tu_ngay ?? ''}
               onChange={(e) => datGiaTri('ngay_tao_tu_ngay', e.target.value || null)}
-              className="w-full h-11 rounded-[var(--radius-input)] border border-border bg-background px-4.5 text-[14px] font-black text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 shadow-[var(--shadow-card)] leading-body"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             />
           </BoLocMuc>
           <BoLocMuc label="Ngày tạo đến">
@@ -194,7 +190,7 @@ export default function BoLocKhachHang({
               type="date"
               value={gia_tri_hien_tai.ngay_tao_den_ngay ?? ''}
               onChange={(e) => datGiaTri('ngay_tao_den_ngay', e.target.value || null)}
-              className="w-full h-11 rounded-[var(--radius-input)] border border-border bg-background px-4.5 text-[14px] font-black text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 shadow-[var(--shadow-card)] leading-body"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             />
           </BoLocMuc>
         </div>
@@ -205,7 +201,7 @@ export default function BoLocKhachHang({
 
 const BoLocMuc = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <label className="block">
-    <span className="block text-[11.5px] font-black text-muted-foreground uppercase tracking-[0.14em] mb-3 leading-small">{label}</span>
+    <span className="block text-xs font-semibold text-slate-600 mb-1">{label}</span>
     {children}
   </label>
 );

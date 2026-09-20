@@ -1,6 +1,6 @@
-﻿'use client';
+'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Camera, Trash2, Upload, Loader2, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
 import { DaiDien } from './dai_dien';
 import { nenVaThuNhoAnh } from '../../thu_vien/utils/xu_ly_anh';
@@ -27,6 +27,11 @@ export function TaiLenAnhDaiDien({
   const [urlTam, setUrlTam] = useState(url_anh || '');
   const [loi, setLoi] = useState<string | null>(null);
 
+  // Đồng bộ khi url_anh từ component cha thay đổi
+  useEffect(() => {
+    setUrlTam(url_anh || '');
+  }, [url_anh]);
+
   const xuLyChonFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -35,9 +40,9 @@ export function TaiLenAnhDaiDien({
     setLoi(null);
     try {
       // Tự động resize ảnh về kích thước tối đa 256px và nén chất lượng cao ~15KB - 25KB
-      const dataUrlNen = await nenVaThuNhoAnh(file, 256, 0.82);
-      khiThayDoi(dataUrlNen);
+      const dataUrlNen = await nenVaThuNhoAnh(file, 256, 0.85);
       setUrlTam(dataUrlNen);
+      khiThayDoi(dataUrlNen);
     } catch (err: any) {
       setLoi(err?.message || 'Không thể xử lý ảnh này.');
     } finally {
@@ -49,8 +54,8 @@ export function TaiLenAnhDaiDien({
   };
 
   const xuLyXoaAnh = () => {
-    khiThayDoi(null);
     setUrlTam('');
+    khiThayDoi(null);
     setLoi(null);
   };
 
@@ -60,6 +65,8 @@ export function TaiLenAnhDaiDien({
     setHienNhapUrl(false);
   };
 
+  const anhHienThi = url_anh || urlTam || undefined;
+
   return (
     <div className={cn('space-y-2.5', className)}>
       <div className="flex items-center gap-4">
@@ -67,7 +74,7 @@ export function TaiLenAnhDaiDien({
         <div className="relative group shrink-0">
           <DaiDien
             ten={ho_ten || 'A'}
-            anh={url_anh || undefined}
+            anh={anhHienThi}
             kich_thuoc="xl"
             className="size-16 sm:size-20 border-2 border-border shadow-md"
           />

@@ -25,6 +25,7 @@ export interface BaoCaoCongViec {
   // ===================================================================
 
   kho_khan: string | null;
+  trang_thai?: 'tam_luu' | 'da_gui';
   nguoi_tao_id: string | null;
   ngay_tao: string;
   ngay_cap_nhat: string;

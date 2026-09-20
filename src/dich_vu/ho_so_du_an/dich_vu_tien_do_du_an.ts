@@ -16,6 +16,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import type { TienDoDuAn } from '../../thu_vien/types/du_an';
+export type { TienDoDuAn };
 import {
   thamChieuCollection,
   thamChieuBanGhi,

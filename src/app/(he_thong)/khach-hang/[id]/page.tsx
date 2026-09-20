@@ -891,7 +891,7 @@ export default function TrangChiTietKhachHang() {
               </div>
               <div className="rounded-xl bg-muted/40 border border-border p-3">
                 <div className="text-xs text-muted-foreground">Hoàn thành</div>
-                <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
+                <div className="text-xl font-bold text-emerald-600 mt-1 tabular-nums">
                   {thongKeDA.hoanThanh}
                 </div>
               </div>
@@ -1024,7 +1024,7 @@ function BanNguoiLienHe({
                     {nlh.so_dien_thoai ? (
                       <a
                         href={`tel:${nlh.so_dien_thoai}`}
-                        className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                        className="flex items-center gap-1.5 text-xs text-emerald-600 hover:underline"
                       >
                         <Phone className="size-3" /> <span className="font-mono">{nlh.so_dien_thoai}</span>
                       </a>
@@ -1095,7 +1095,7 @@ function BanHoSoDuAnCuaKhach({
         <Link
           key={hda.id}
           href={`/ho-so-du-an/${hda.id}`}
-          className="group rounded-[var(--radius-card)] border border-border bg-card hover:border-primary/40 hover:shadow-sm transition p-4 block space-y-3"
+          className="group rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-md transition p-4 block space-y-3 shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -1110,7 +1110,7 @@ function BanHoSoDuAnCuaKhach({
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs pt-1.5 border-t border-border">
+          <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-100">
             <span className="text-muted-foreground">Giá trị dự kiến:</span>
             <span className="font-semibold text-foreground tabular-nums">
               {hda.gia_tri_du_kien ? formatTien(hda.gia_tri_du_kien) : '0 ₫'}
@@ -1120,7 +1120,7 @@ function BanHoSoDuAnCuaKhach({
           <div className="flex flex-wrap items-center gap-2">
             <BadgeGiaiDoan value={hda.giai_doan} />
             {hda.muc_do_tiem_nang && (
-              <span className="text-xs px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium border border-purple-500/20">
+              <span className="text-xs px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-700 font-medium border border-purple-500/20">
                 Tiềm năng: {hda.muc_do_tiem_nang}
               </span>
             )}

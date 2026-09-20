@@ -22,6 +22,7 @@ import {
 import { cn } from '../thu_vien/utils/cn';
 import useStoreXacThuc from '../thu_vien/zustand/store_xac_thuc';
 import { coQuyen } from '../thu_vien/phan_quyen/kiem_tra_quyen';
+import { DaiDien } from './ui/dai_dien';
 
 interface MucSidebar {
   href: string;
@@ -113,7 +114,7 @@ const useSidebarShared = () => {
     if (pathname.startsWith('/ho-so-du-an')) return 'Hồ sơ dự án';
     if (pathname.startsWith('/nhan-su')) return 'Nhân sự';
     if (pathname.startsWith('/quan-tri')) return 'Quản trị hệ thống';
-    return 'EBMS';
+    return 'Tini PMS';
   })();
 
   const laQuyenQuanTri =
@@ -144,7 +145,7 @@ const renderDanhMuc = (
   };
 
   return (
-    <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-5">
+    <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
       {['Tổng quan', 'Module', 'Quản trị'].map((tenNhom) => {
         const ds = DANH_MUC_SIDEBAR.filter(
           (m) => m.nhom === tenNhom && kiemTraQuyenMuc(m)
@@ -152,7 +153,7 @@ const renderDanhMuc = (
         if (!ds.length) return null;
         return (
           <div key={tenNhom}>
-            <div className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-1.5">
+            <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">
               {tenNhom}
             </div>
             <ul className="space-y-1">
@@ -184,29 +185,29 @@ const renderDanhMuc = (
                     <Wrapper href={muc.href}>
                       <span
                         className={cn(
-                          'group flex items-center gap-2.5 px-3 py-2 rounded-[var(--radius-input)] text-[13.5px] font-medium transition-all',
+                          'group flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13.5px] transition-all',
                           khoa_muc_doan && 'opacity-60',
                           active
-                            ? 'bg-primary/10 text-primary font-semibold shadow-xs'
-                            : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                            ? 'bg-[#007AFF]/10 text-[#007AFF] font-bold shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 font-medium'
                         )}
                       >
                         <span
                           className={cn(
-                            'size-7 rounded-md inline-flex items-center justify-center shrink-0 transition-colors',
+                            'size-7.5 rounded-[9px] inline-flex items-center justify-center shrink-0 transition-colors',
                             active
-                              ? 'bg-primary/15 text-primary'
-                              : 'text-muted-foreground/80 group-hover:text-foreground group-hover:bg-background'
+                              ? 'bg-[#007AFF] text-white shadow-xs shadow-blue-500/20'
+                              : 'text-slate-400 group-hover:text-slate-700'
                           )}
                         >
-                          <muc.icon className="size-4" strokeWidth={active ? 2.2 : 1.9} />
+                          <muc.icon className="size-4" strokeWidth={active ? 2.4 : 1.9} />
                         </span>
                         <span className="truncate flex-1">{muc.nhan}</span>
                         {active && (
-                          <span className="size-1.5 rounded-full bg-primary shrink-0" />
+                          <span className="size-1.5 rounded-full bg-[#007AFF] shrink-0" />
                         )}
                         {(muc as any).soon && (
-                          <span className="text-[10px] px-2 h-5 rounded-full bg-primary/10 text-primary border border-primary/20 inline-flex items-center font-bold shrink-0">
+                          <span className="text-[10px] px-2 h-5 rounded-full bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 inline-flex items-center font-bold shrink-0">
                             Soon
                           </span>
                         )}
@@ -228,20 +229,23 @@ const renderCuoiSidebar = (
   dangXuLy: boolean,
   xuLyDangXuat: () => Promise<void>
 ) => {
-  const tenNguoiDung = hoTenCoDau(nguoiDungHienTai?.ho_va_ten) || 'Nhân viên EBMS';
+  const tenNguoiDung = hoTenCoDau(nguoiDungHienTai?.ho_va_ten) || 'Nhân viên Tini PMS';
   const vaiTro = hienThiTenVaiTro(nguoiDungHienTai?.vai_tro);
 
   return (
-    <div className="border-t border-border p-3 bg-muted/20 shrink-0">
-      <div className="flex items-center justify-between gap-2.5 p-2 rounded-[var(--radius-card)] bg-background border border-border/80 shadow-xs">
-        <div className="size-8.5 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shrink-0">
-          {dauTiengVietHoa(nguoiDungHienTai?.ho_va_ten)}
-        </div>
+    <div className="border-t border-slate-200/80 p-3 bg-slate-50/50 shrink-0">
+      <div className="flex items-center justify-between gap-2.5 p-2 rounded-2xl bg-white border border-slate-200/90 shadow-xs">
+        <DaiDien
+          ten={nguoiDungHienTai?.ho_va_ten}
+          anh={nguoiDungHienTai?.url_anh_dai_dien}
+          kich_thuoc="sm"
+          className="shrink-0 rounded-xl"
+        />
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-bold text-foreground truncate leading-snug">
+          <div className="text-[13px] font-bold text-slate-900 truncate leading-snug">
             {tenNguoiDung}
           </div>
-          <div className="text-[11px] text-muted-foreground truncate leading-tight font-medium">
+          <div className="text-[11px] text-slate-400 truncate leading-tight font-medium">
             {vaiTro}
           </div>
         </div>
@@ -249,7 +253,7 @@ const renderCuoiSidebar = (
           type="button"
           onClick={xuLyDangXuat}
           disabled={dangXuLy}
-          className="size-8 rounded-[var(--radius-input)] text-muted-foreground hover:text-danger hover:bg-danger/10 flex items-center justify-center shrink-0 transition disabled:opacity-50"
+          className="size-8 rounded-xl text-slate-400 hover:text-[#FF3B30] hover:bg-red-50 flex items-center justify-center shrink-0 transition disabled:opacity-50 active:scale-95"
           title="Đăng xuất khỏi hệ thống"
         >
           <LogOut className="size-4" />
@@ -260,21 +264,21 @@ const renderCuoiSidebar = (
 };
 
 const renderHeaderSidebar = (nhomHienTai: string) => (
-  <div className="h-16 px-4 border-b border-border flex items-center justify-between gap-3 shrink-0 bg-background">
+  <div className="h-16 px-4 border-b border-slate-200/80 flex items-center justify-between gap-3 shrink-0 bg-white">
     <div className="flex items-center gap-2.5 min-w-0">
-      <div className="size-8.5 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-xs shrink-0 font-black text-sm">
+      <div className="size-9 rounded-[13px] bg-gradient-to-br from-[#007AFF] to-[#0055D4] text-white flex items-center justify-center shadow-sm shadow-blue-500/25 shrink-0 font-black text-sm">
         <Shield className="size-4.5" strokeWidth={2.2} />
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="font-extrabold tracking-tight text-foreground text-[15px] leading-none">
-            EBMS
+          <span className="font-extrabold tracking-tight text-slate-900 text-[15.5px] leading-none">
+            Tini PMS
           </span>
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 leading-none">
-            PRO
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 leading-none">
+            PMS
           </span>
         </div>
-        <p className="text-[11px] text-muted-foreground truncate mt-1 leading-none font-medium">
+        <p className="text-[11px] text-slate-400 truncate mt-1 leading-none font-medium">
           {nhomHienTai}
         </p>
       </div>
@@ -285,7 +289,7 @@ const renderHeaderSidebar = (nhomHienTai: string) => (
 export function SidebarDesktop() {
   const { pathname, nguoiDungHienTai, dangXuLy, nhomHienTai, laQuyenQuanTri, xuLyDangXuat } = useSidebarShared();
   return (
-    <aside className="hidden md:flex w-full h-full shrink-0 flex-col bg-background border-r border-border overflow-hidden min-h-0">
+    <aside className="hidden md:flex w-full h-full shrink-0 flex-col bg-white border-r border-slate-200/80 overflow-hidden min-h-0">
       {renderHeaderSidebar(nhomHienTai)}
       {renderDanhMuc(pathname, laQuyenQuanTri, nguoiDungHienTai)}
       {renderCuoiSidebar(nguoiDungHienTai, dangXuLy, xuLyDangXuat)}
@@ -317,14 +321,14 @@ export function SidebarMobileDrawer() {
       aria-label="Menu điều hướng"
     >
       <div
-        className="absolute inset-0 bg-foreground/50 backdrop-blur-md min-h-[100dvh] animate-in fade-in duration-200"
+        className="absolute inset-0 bg-slate-900/25 backdrop-blur-xs min-h-[100dvh] animate-in fade-in duration-200"
         onClick={() => setMoMobile(false)}
         aria-hidden="true"
       />
-      <aside className="relative z-[1] w-[82%] max-w-[280px] h-full flex flex-col bg-background shadow-2xl animate-in slide-in-from-left duration-250 border-r border-border shrink-0 overflow-hidden">
+      <aside className="relative z-[1] w-[82%] max-w-[280px] h-full flex flex-col bg-white shadow-2xl animate-in slide-in-from-left duration-250 border-r border-slate-200/80 shrink-0 overflow-hidden">
         <div className="flex flex-col h-full min-h-0">
           {renderHeaderSidebar(nhomHienTai)}
-          <div className="flex-1 overflow-y-auto min-h-0 pr-3">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {renderDanhMuc(pathname, laQuyenQuanTri, nguoiDungHienTai)}
           </div>
           {renderCuoiSidebar(nguoiDungHienTai, dangXuLy, xuLyDangXuat)}

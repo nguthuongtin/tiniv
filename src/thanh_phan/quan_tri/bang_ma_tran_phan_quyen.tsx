@@ -162,8 +162,8 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
           className={cn(
             'p-3.5 rounded-xl border text-sm font-medium flex items-center justify-between gap-3 shadow-xs',
             thongBao.loai === 'thanh_cong'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
-              : 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700'
+              : 'bg-red-500/10 border-red-500/30 text-red-700'
           )}
         >
           <div className="flex items-center gap-2.5">
@@ -297,7 +297,7 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
                       {/* Action Cell */}
                       <td className="py-3.5 px-4 text-center sticky right-0 bg-background group-hover:bg-muted/40 z-20 border-l border-border">
                         {isSystemAdmin ? (
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded-md inline-block">
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md inline-block">
                             Full Admin
                           </span>
                         ) : (

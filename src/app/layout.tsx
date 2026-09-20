@@ -19,6 +19,7 @@ export default function BoCucGoc({
     return (
       <html lang="vi-VN" className="antialiased">
       <head>
+        <title>Đăng nhập - Tini PMS</title>
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -40,8 +41,9 @@ export default function BoCucGoc({
   }
 
   return (
-    <html lang="vi-VN" className="antialiased">
+    <html lang="vi-VN" className="antialiased light" style={{ colorScheme: 'light' }}>
       <head>
+        <title>Tini PMS - Hệ thống Quản trị Dự án</title>
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -55,7 +57,7 @@ export default function BoCucGoc({
           }}
         />
       </head>
-      <body className="bg-[linear-gradient(180deg,#f8faff_0%,#ffffff_320px)]">
+      <body className="bg-[linear-gradient(180deg,#f8faff_0%,#ffffff_320px)] bg-slate-50 text-slate-900" style={{ colorScheme: 'light' }}>
         <BocXacThucToanUngDung>
           <div className="flex h-[100dvh] w-full overflow-hidden min-w-0 max-w-none">
             <aside className="hidden md:flex w-64 h-full flex-shrink-0 flex-col min-h-0 overflow-hidden bg-background/85 backdrop-blur-md">

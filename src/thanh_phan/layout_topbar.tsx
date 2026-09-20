@@ -3,11 +3,10 @@
 import { usePathname } from 'next/navigation';
 import { Plus, Search, Bell } from 'lucide-react';
 
-const MAP_TIEU_DE: Record<string, { nhan: string; mo_ta: string; nut_them: string; placeholder_tim: string; event_them?: string }> = {
+const MAP_TIEU_DE: Record<string, { nhan: string; mo_ta: string; nut_them?: string; placeholder_tim: string; event_them?: string }> = {
   '/': {
     nhan: 'Tổng quan',
     mo_ta: 'Bảng điều khiển hệ thống và các module chính',
-    nut_them: 'Xem báo cáo',
     placeholder_tim: 'Tìm kiếm hồ sơ, khách hàng...'
   },
   '/khach-hang': {
@@ -85,13 +84,13 @@ export default function ThanhPhanTopbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 h-13 sm:h-[72px] shrink-0 bg-background/95 backdrop-blur-xl border-b border-border px-3.5 sm:px-9 md:px-14 flex items-center justify-between gap-3 sm:gap-5 min-w-0 w-full">
+    <header className="sticky top-0 z-30 h-13 sm:h-[70px] shrink-0 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 px-3.5 sm:px-8 md:px-10 flex items-center justify-between gap-3 sm:gap-5 min-w-0 w-full transition-colors">
       <div className="min-w-0 flex-1">
         <div className="flex flex-col gap-0.5 min-w-0">
-          <h1 className="text-base sm:text-[19.5px] lg:text-[21px] font-black text-foreground truncate leading-tight sm:leading-title">
+          <h1 className="text-base sm:text-lg lg:text-xl font-bold text-slate-900 truncate tracking-tight">
             {thongTin.nhan}
           </h1>
-          <span className="hidden md:block text-[13.5px] text-muted-foreground truncate leading-small font-normal">
+          <span className="hidden md:block text-xs text-slate-400 truncate font-normal">
             {thongTin.mo_ta}
           </span>
         </div>
@@ -100,21 +99,23 @@ export default function ThanhPhanTopbar() {
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <button
           type="button"
-          className="hidden md:inline-flex items-center justify-center size-12 rounded-[var(--radius-input)] border border-border bg-background text-card-icon-fg-muted hover:bg-muted transition relative shadow-[var(--shadow-card)]"
+          className="hidden md:inline-flex items-center justify-center size-10 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition relative shadow-xs active:scale-95"
           aria-label="Thông báo"
         >
-          <Bell className="size-[18px]" strokeWidth={2} />
-          <span className="absolute top-[11px] right-[11px] size-2.5 rounded-full bg-danger ring-2 ring-background" />
+          <Bell className="size-4.5" strokeWidth={2} />
+          <span className="absolute top-2.5 right-2.5 size-2 rounded-full bg-[#FF3B30] ring-2 ring-white" />
         </button>
-        <button
-          type="button"
-          onClick={nhanNutThem}
-          title={thongTin.nut_them}
-          className="inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-[var(--radius-input)] bg-primary hover:bg-primary/93 active:bg-primary/88 text-primary-foreground text-xs sm:text-[14.5px] font-bold size-9 sm:w-auto sm:h-12 sm:px-5 shadow-sm sm:shadow-[var(--shadow-card)] transition shrink-0 active:scale-[0.96]"
-        >
-          <Plus className="size-4 sm:size-[18px]" strokeWidth={2.5} />
-          <span className="hidden sm:inline leading-title">{thongTin.nut_them}</span>
-        </button>
+        {thongTin.nut_them && (
+          <button
+            type="button"
+            onClick={nhanNutThem}
+            title={thongTin.nut_them}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#007AFF] to-[#0055D4] hover:opacity-95 text-white text-xs sm:text-sm font-semibold size-9 sm:w-auto sm:h-10 sm:px-4 shadow-sm shadow-blue-500/20 transition-all shrink-0 active:scale-95"
+          >
+            <Plus className="size-4" strokeWidth={2.5} />
+            <span className="hidden sm:inline">{thongTin.nut_them}</span>
+          </button>
+        )}
       </div>
     </header>
   );
