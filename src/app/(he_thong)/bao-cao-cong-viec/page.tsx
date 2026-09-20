@@ -124,6 +124,7 @@ export default function TrangBaoCaoCongViec() {
 
   const [dsToast, setDsToast] = useState<ThongBaoToast[]>([]);
   const [dangXuLyKhac, setDangXuLyKhac] = useState<Record<string, boolean>>({});
+  const [dangXuatDoc, setDangXuatDoc] = useState<boolean>(false);
 
   // 1. Đánh giá quyền hạn người dùng hiện tại
   const phamVi = useMemo(() => layPhamViPhongBan(nguoiDungHienTai, dsVaiTro), [nguoiDungHienTai, dsVaiTro]);
@@ -353,7 +354,7 @@ export default function TrangBaoCaoCongViec() {
       return;
     }
 
-    let text = `📋 TỔNG HỢP BÁO CÁO CÔNG VIỆC NGÀY ${formatNgay(ngayChonTongHop)}\n`;
+    let text = `TỔNG HỢP BÁO CÁO CÔNG VIỆC NGÀY ${formatNgay(ngayChonTongHop)}\n`;
     text += `(Đã nộp: ${thongKeNgayTongHop.daNop.length}/${thongKeNgayTongHop.tong} nhân sự)\n\n`;
 
     thongKeNgayTongHop.daNop.forEach((ns, index) => {
@@ -362,7 +363,7 @@ export default function TrangBaoCaoCongViec() {
       const pb = dsPhongBan.find((x) => x.id === ns.phong_ban_id)?.ten_phong_ban || '';
       const dsChiTiet = layDanhSachChiTiet(bccv);
 
-      text += `👤 ${index + 1}. ${ns.ho_va_ten} ${pb ? `(${pb})` : ''}:\n`;
+      text += `${index + 1}. ${ns.ho_va_ten} ${pb ? `(${pb})` : ''}:\n`;
       dsChiTiet.forEach((ct, i) => {
         text += `   - ${ct.noi_dung}\n`;
       });
@@ -370,7 +371,7 @@ export default function TrangBaoCaoCongViec() {
     });
 
     if (thongKeNgayTongHop.chuaNop.length > 0) {
-      text += `⏳ Chưa nộp (${thongKeNgayTongHop.chuaNop.length}): ${thongKeNgayTongHop.chuaNop.map((x) => x.ho_va_ten).join(', ')}\n`;
+      text += `Chưa nộp (${thongKeNgayTongHop.chuaNop.length}): ${thongKeNgayTongHop.chuaNop.map((x) => x.ho_va_ten).join(', ')}\n`;
     }
 
     navigator.clipboard.writeText(text).then(
@@ -384,7 +385,7 @@ export default function TrangBaoCaoCongViec() {
     const pb = dsPhongBan.find((x) => x.id === ns.phong_ban_id)?.ten_phong_ban || '';
     const dsChiTiet = layDanhSachChiTiet(bccv);
 
-    let text = `👤 ${ns.ho_va_ten} ${pb ? `(${pb})` : ''} - Báo cáo ngày ${formatNgay(bccv.ngay_bao_cao)}:\n`;
+    let text = `${ns.ho_va_ten} ${pb ? `(${pb})` : ''} - Báo cáo ngày ${formatNgay(bccv.ngay_bao_cao)}:\n`;
     dsChiTiet.forEach((ct, i) => {
       text += `${i + 1}. ${ct.noi_dung}\n`;
     });
@@ -474,6 +475,186 @@ export default function TrangBaoCaoCongViec() {
     return dsDuAn.find((x) => x.id === id)?.ten_du_an ?? `DA#${id.slice(0, 6)}`;
   };
 
+  // Xuất file Word (.doc) tổng hợp báo cáo ngày của tất cả mọi người trong ngày
+  const xuatWordTongHopNgay = async () => {
+    if (thongKeNgayTongHop.tong === 0) {
+      themToast('loi', 'Không có dữ liệu nhân sự trong phạm vi để xuất báo cáo!');
+      return;
+    }
+
+    try {
+      setDangXuatDoc(true);
+      await new Promise((r) => setTimeout(r, 40));
+
+      const ngayStr = formatNgay(ngayChonTongHop);
+      const ngayTaoStr = formatNgay(NGAY_HOM_NAY);
+
+      // Bảng nhân sự đã nộp báo cáo
+      let rowsDaNop = '';
+      if (thongKeNgayTongHop.daNop.length === 0) {
+        rowsDaNop = '<tr><td colspan="4" style="text-align: center; padding: 14px; font-style: italic; color: #6b7280;">Chưa có nhân sự nào nộp báo cáo trong ngày này.</td></tr>';
+      } else {
+        thongKeNgayTongHop.daNop.forEach((ns, idx) => {
+          const bccv = thongKeNgayTongHop.dsBaoCao.find((b) => b.nhan_vien_id === ns.id);
+          if (!bccv) return;
+          const pb = dsPhongBan.find((x) => x.id === ns.phong_ban_id)?.ten_phong_ban || '-';
+          const chucVu = ns.chuc_vu ? ` - ${ns.chuc_vu}` : '';
+          const dsChiTiet = layDanhSachChiTiet(bccv);
+
+          // Danh sách công việc
+          let viecHtml = '';
+          if (dsChiTiet.length === 0) {
+            viecHtml = 'Chưa nhập nội dung chi tiết';
+          } else {
+            viecHtml = dsChiTiet.map((ct, i) => {
+              const daTen = ct.du_an_id ? chonTenDuAn(ct.du_an_id) : '';
+              return `<div style="margin-bottom: 4px;"><b>${i + 1}.</b> ${ct.noi_dung}${daTen ? ` <i>[Dự án: ${daTen}]</i>` : ''}</div>`;
+            }).join('');
+          }
+
+          rowsDaNop += `
+            <tr>
+              <td style="text-align: center; vertical-align: top; padding: 6px;">${idx + 1}</td>
+              <td style="vertical-align: top; padding: 6px;">
+                <b>${ns.ho_va_ten}</b>
+              </td>
+              <td style="vertical-align: top; padding: 6px;">
+                ${pb}${chucVu}
+              </td>
+              <td style="vertical-align: top; padding: 6px; line-height: 1.4;">
+                ${viecHtml}
+              </td>
+            </tr>
+          `;
+        });
+      }
+
+      const docHtml = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset="utf-8">
+          <title>Báo cáo tổng hợp công việc ngày ${ngayStr}</title>
+          <!--[if gte mso 9]>
+          <xml>
+            <w:WordDocument>
+              <w:View>Print</w:View>
+              <w:Zoom>100</w:Zoom>
+              <w:DoNotOptimizeForBrowser/>
+            </w:WordDocument>
+          </xml>
+          <![endif]-->
+          <style>
+            @page Section1 {
+              size: 841.9pt 595.3pt; /* A4 Landscape */
+              mso-page-orientation: landscape;
+              margin: 1.5cm 1.5cm 1.5cm 1.5cm;
+            }
+            div.Section1 {
+              page: Section1;
+            }
+            body {
+              font-family: Arial, Helvetica, sans-serif;
+              font-size: 10.5pt;
+              color: #111827;
+              line-height: 1.4;
+            }
+            table {
+              font-family: Arial, Helvetica, sans-serif;
+            }
+            .header-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 12px;
+            }
+            .header-table td {
+              border: none;
+              padding: 2px 0;
+              vertical-align: top;
+            }
+            .doc-title {
+              text-align: center;
+              font-size: 15pt;
+              font-weight: bold;
+              text-transform: uppercase;
+              margin-top: 10px;
+              margin-bottom: 16px;
+              color: #0f2744;
+            }
+            .data-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 8px;
+            }
+            .data-table th {
+              background-color: #1f4788;
+              color: #ffffff;
+              font-weight: bold;
+              font-size: 9.5pt;
+              padding: 7px 6px;
+              border: 1px solid #1f4788;
+              text-align: left;
+            }
+            .data-table th.center {
+              text-align: center;
+            }
+            .data-table td {
+              border: 1px solid #d1d5db;
+              padding: 6px 6px;
+              font-size: 9.5pt;
+              vertical-align: top;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="Section1">
+            <table class="header-table">
+              <tr>
+                <td style="width: 50%; text-align: left;">
+                  <div style="font-weight: bold; font-size: 11.5pt; color: #0f2744; text-transform: uppercase;">VDCD AN GIANG</div>
+                </td>
+                <td style="width: 50%; text-align: right;">
+                  <div style="font-size: 9pt; color: #6b7280;">Ngày xuất: ${ngayTaoStr}</div>
+                </td>
+              </tr>
+            </table>
+
+            <div class="doc-title">BÁO CÁO TỔNG HỢP CÔNG VIỆC NGÀY ${ngayStr}</div>
+
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="center" style="width: 40px;">STT</th>
+                  <th style="width: 180px;">Họ và tên</th>
+                  <th style="width: 170px;">Phòng ban / Chức vụ</th>
+                  <th>Nội dung công việc</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsDaNop}
+              </tbody>
+            </table>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff', docHtml], { type: 'application/msword;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Tong_hop_bao_cao_ngay_${ngayChonTongHop || NGAY_HOM_NAY}.doc`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      themToast('thanh_cong', 'Đã xuất file Word (.doc) thành công!');
+    } catch (err: any) {
+      themToast('loi', 'Xuất file Word thất bại: ' + (err?.message || 'Lỗi'));
+    } finally {
+      setDangXuatDoc(false);
+    }
+  };
+
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-4 sm:space-y-8">
       {/* Header Bar - Hidden on mobile because Topbar already contains title and Add button */}
@@ -496,15 +677,25 @@ export default function TrangBaoCaoCongViec() {
 
         <div className="flex items-center gap-2.5 flex-wrap">
           {coQuyenXuatFile && (
-            <Nut
-              kieu="outline"
-              kich_thuoc="sm"
-              icon_trai={FileSpreadsheet}
-              onClick={xuLyXuatCSV}
-              className="font-semibold text-xs border-success/40 text-success hover:bg-success/10"
-            >
-              Xuất File Tổng Hợp (Excel)
-            </Nut>
+            <>
+              <Nut
+                kieu="outline"
+                kich_thuoc="sm"
+                onClick={xuatWordTongHopNgay}
+                disabled={dangXuatDoc}
+                className="font-semibold text-xs border-blue-500/40 text-blue-600 hover:bg-blue-50 cursor-pointer"
+              >
+                {dangXuatDoc ? 'Đang xuất Word...' : 'Xuất Word Báo Cáo Ngày'}
+              </Nut>
+              <Nut
+                kieu="outline"
+                kich_thuoc="sm"
+                onClick={xuLyXuatCSV}
+                className="font-semibold text-xs border-success/40 text-success hover:bg-success/10 cursor-pointer"
+              >
+                Xuất Excel
+              </Nut>
+            </>
           )}
 
           <Nut
@@ -603,29 +794,47 @@ export default function TrangBaoCaoCongViec() {
               ))}
             </select>
             {coQuyenXuatFile && (
-              <button
-                type="button"
-                onClick={xuLyXuatCSV}
-                className="md:hidden inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-success/30 bg-success/10 text-success shrink-0"
-                title="Xuất file Excel"
-              >
-                <FileSpreadsheet className="size-3.5" />
-                <span>Xuất Excel</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={dangXuatDoc}
+                  onClick={xuatWordTongHopNgay}
+                  className="md:hidden inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600 shrink-0"
+                  title="Xuất file Word (.doc)"
+                >
+                  <span>Xuất Word</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={xuLyXuatCSV}
+                  className="md:hidden inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-success/30 bg-success/10 text-success shrink-0"
+                  title="Xuất file Excel"
+                >
+                  <span>Xuất Excel</span>
+                </button>
+              </>
             )}
           </div>
         )}
 
         {/* Nút xuất file khi không phải Quản lý trên Mobile */}
         {(!laQuanLy || cheDoXem === 'lich') && coQuyenXuatFile && (
-          <div className="flex md:hidden items-center justify-end w-full">
+          <div className="flex md:hidden items-center justify-end gap-2 w-full">
+            <button
+              type="button"
+              disabled={dangXuatDoc}
+              onClick={xuatWordTongHopNgay}
+              className="inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600"
+              title="Xuất file Word (.doc)"
+            >
+              <span>Xuất Word</span>
+            </button>
             <button
               type="button"
               onClick={xuLyXuatCSV}
               className="inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-success/30 bg-success/10 text-success"
               title="Xuất file Excel"
             >
-              <FileSpreadsheet className="size-3.5" />
               <span>Xuất Excel</span>
             </button>
           </div>
@@ -723,17 +932,31 @@ export default function TrangBaoCaoCongViec() {
                   <h3 className="text-sm font-bold text-foreground">
                     Chi tiết báo cáo ngày {formatNgay(ngayChonTongHop)} ({thongKeNgayTongHop.tong} nhân viên)
                   </h3>
-                  {thongKeNgayTongHop.daNop.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={saoChepTongHopNgay}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition cursor-pointer self-start sm:self-auto"
-                      title="Sao chép toàn bộ danh sách công việc đã làm của đội ngũ hôm nay"
-                    >
-                      <Copy className="size-3.5" />
-                      <span>Sao chép tổng hợp hôm nay</span>
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {coQuyenXuatFile && (
+                      <button
+                        type="button"
+                        disabled={dangXuatDoc}
+                        onClick={xuatWordTongHopNgay}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition cursor-pointer self-start sm:self-auto disabled:opacity-50"
+                        title="Xuất báo cáo tổng hợp ngày của tất cả mọi người ra file Word (.doc)"
+                      >
+                        {dangXuatDoc && <Loader2 className="size-3.5 animate-spin" />}
+                        <span>Xuất Word (.doc)</span>
+                      </button>
+                    )}
+                    {thongKeNgayTongHop.daNop.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={saoChepTongHopNgay}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition cursor-pointer self-start sm:self-auto"
+                        title="Sao chép toàn bộ danh sách công việc đã làm của đội ngũ hôm nay"
+                      >
+                        <Copy className="size-3.5" />
+                        <span>Sao chép tổng hợp hôm nay</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">

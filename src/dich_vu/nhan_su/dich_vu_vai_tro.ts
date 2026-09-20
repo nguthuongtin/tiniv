@@ -73,15 +73,18 @@ const chuyenDoiDocThanhDoiTuong = (id: string, raw: DocumentData | RawBanGhi | u
   const kieuHopLe = DS_KIEU_HOP_LE.includes(kieuRaw as any) ? (kieuRaw as KieuBadgeVaiTro) : 'muted';
   const dsQuyenRaw = Array.isArray(r.danh_sach_quyen) ? r.danh_sach_quyen : [];
 
+  const stdInfo = CAC_VAI_TRO_CHUAN_HE_THONG.find((s) => s.key === id || s.key === r.ma_vai_tro);
+  const tenVaiTro = String(r.ten_vai_tro || stdInfo?.tenMacDinh || id).trim();
+
   return {
     id,
-    ma_vai_tro: r.ma_vai_tro ?? null,
-    ten_vai_tro: String(r.ten_vai_tro ?? ''),
-    mo_ta: r.mo_ta ?? null,
-    kieu_hien_thi: kieuHopLe,
-    thu_tu_sap_xep: typeof r.thu_tu_sap_xep === 'number' ? r.thu_tu_sap_xep : 0,
+    ma_vai_tro: r.ma_vai_tro ?? stdInfo?.key ?? id,
+    ten_vai_tro: tenVaiTro,
+    mo_ta: r.mo_ta ?? stdInfo?.moTa ?? null,
+    kieu_hien_thi: kieuHopLe !== 'muted' ? kieuHopLe : (stdInfo?.badge ?? 'muted'),
+    thu_tu_sap_xep: typeof r.thu_tu_sap_xep === 'number' ? r.thu_tu_sap_xep : (stdInfo ? (CAC_VAI_TRO_CHUAN_HE_THONG.indexOf(stdInfo) + 1) * 10 : 0),
     danh_sach_quyen: dsQuyenRaw,
-    is_he_thong: Boolean(r.is_he_thong),
+    is_he_thong: Boolean(r.is_he_thong || stdInfo),
     nguoi_tao_id: r.nguoi_tao_id ?? null,
     ngay_tao: String(r.ngay_tao ?? today),
     ngay_cap_nhat: String(r.ngay_cap_nhat ?? today),
@@ -107,6 +110,12 @@ const luuVaoLocalStorage = (mang: VaiTro[]): void => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(mang));
   } catch (e) {
     console.warn('[dich_vu_vai_tro] luuVaoLocalStorage failed:', e);
+  }
+};
+
+const thongBaoCapNhat = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ebms:vai_tro:cap_nhat'));
   }
 };
 
@@ -170,32 +179,63 @@ export const danhSachVaiTro = async (dk: DieuKienLocVaiTro = {}): Promise<KetQua
     const mangFirestore = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
     
     const local = layTuLocalStorage();
-    const map = new Map<string, VaiTro>();
+    const uniqueMap = new Map<string, VaiTro>();
     
-    local.forEach((item) => map.set(item.id, item));
-    mangFirestore.forEach((item) => map.set(item.id, item));
-    
-    danhSachTong = Array.from(map.values());
+    // 1. Nạp từ local trước
+    local.forEach((item) => {
+      const converted = chuyenDoiDocThanhDoiTuong(item.id, item);
+      uniqueMap.set(converted.id, converted);
+    });
 
-    if (danhSachTong.length === 0) {
-      danhSachTong = khoiTaoVaiTroChuan();
-      luuVaoLocalStorage(danhSachTong);
-    } else {
-      // Đảm bảo các vai trò chuẩn hệ thống luôn có mặt
-      const stdRoles = khoiTaoVaiTroChuan();
-      stdRoles.forEach((std) => {
-        if (!map.has(std.id) && (!std.ma_vai_tro || !map.has(std.ma_vai_tro))) {
-          danhSachTong.push(std);
-        }
-      });
-      luuVaoLocalStorage(danhSachTong);
-    }
+    // 2. Firestore là nguồn thật sự (source of truth), ghi đè local
+    mangFirestore.forEach((item) => {
+      uniqueMap.set(item.id, item);
+    });
+
+    // 3. Đảm bảo toàn bộ vai trò chuẩn hệ thống luôn có mặt
+    const stdRoles = khoiTaoVaiTroChuan();
+    stdRoles.forEach((std) => {
+      const coSan = uniqueMap.get(std.id) || (std.ma_vai_tro && Array.from(uniqueMap.values()).find((x) => x.ma_vai_tro === std.ma_vai_tro));
+      if (!coSan) {
+        uniqueMap.set(std.id, std);
+      }
+    });
+
+    danhSachTong = Array.from(uniqueMap.values());
+    luuVaoLocalStorage(danhSachTong);
   } catch (err) {
-    console.warn('[dich_vu_vai_tro] danhSachVaiTro getDocs error, using fallback:', err);
-    danhSachTong = layTuLocalStorage();
-    if (danhSachTong.length === 0) {
-      danhSachTong = khoiTaoVaiTroChuan();
-      luuVaoLocalStorage(danhSachTong);
+    console.warn('[dich_vu_vai_tro] danhSachVaiTro getDocs error, trying API fallback:', err);
+    let daLayDuocTuApi = false;
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch('/api/quan-tri/phan-quyen');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.thanh_cong && Array.isArray(json.mang) && json.mang.length > 0) {
+            danhSachTong = json.mang;
+            luuVaoLocalStorage(danhSachTong);
+            daLayDuocTuApi = true;
+          }
+        }
+      } catch {
+        /* Bỏ qua lỗi fetch */
+      }
+    }
+
+    if (!daLayDuocTuApi) {
+      danhSachTong = layTuLocalStorage();
+      if (danhSachTong.length === 0) {
+        danhSachTong = khoiTaoVaiTroChuan();
+        luuVaoLocalStorage(danhSachTong);
+      } else {
+        const stdRoles = khoiTaoVaiTroChuan();
+        stdRoles.forEach((std) => {
+          if (!danhSachTong.some((x) => x.id === std.id || (std.ma_vai_tro && x.ma_vai_tro === std.ma_vai_tro))) {
+            danhSachTong.push(std);
+          }
+        });
+        luuVaoLocalStorage(danhSachTong);
+      }
     }
   }
 
@@ -351,63 +391,133 @@ export const capNhatQuyenHanVaiTro = async (
 ): Promise<VaiTro> => {
   const hienTai = await layChiTietVaiTro(vaiTroId);
   const now = new Date().toISOString();
+  const stdInfo = CAC_VAI_TRO_CHUAN_HE_THONG.find((x) => x.key === vaiTroId || x.key === hienTai?.ma_vai_tro);
 
-  if (!hienTai) {
-    const stdInfo = CAC_VAI_TRO_CHUAN_HE_THONG.find((x) => x.key === vaiTroId);
-    const duLieuRaw = {
-      ten_vai_tro: stdInfo?.tenMacDinh || vaiTroId,
-      ma_vai_tro: vaiTroId,
-      mo_ta: stdInfo?.moTa || null,
-      kieu_hien_thi: stdInfo?.badge || 'primary',
-      thu_tu_sap_xep: 0,
-      danh_sach_quyen: danhSachQuyen,
-      is_he_thong: true,
-      nguoi_tao_id: nguoiThucHien?.id || null,
-      ngay_tao: now,
-      ngay_cap_nhat: now,
-      trang_thai_du_lieu: 'hoat_dong' as const
-    };
-    try {
-      await setDoc(thamChieuBanGhi(TEN_COLLECTION, vaiTroId), duLieuRaw as any, { merge: true });
-    } catch (e) {
-      console.warn('[dich_vu_vai_tro] capNhatQuyenHanVaiTro error:', e);
+  const tenVaiTro = (hienTai?.ten_vai_tro || stdInfo?.tenMacDinh || vaiTroId).trim();
+  const maVaiTro = hienTai?.ma_vai_tro || stdInfo?.key || vaiTroId;
+  const isHeThong = Boolean(hienTai?.is_he_thong || stdInfo);
+  const kieuHienThi = hienTai?.kieu_hien_thi || stdInfo?.badge || 'primary';
+  const moTa = hienTai?.mo_ta ?? stdInfo?.moTa ?? null;
+  const thuTu = typeof hienTai?.thu_tu_sap_xep === 'number'
+    ? hienTai.thu_tu_sap_xep
+    : (stdInfo ? (CAC_VAI_TRO_CHUAN_HE_THONG.indexOf(stdInfo) + 1) * 10 : 0);
+  const trangThai = hienTai?.trang_thai_du_lieu || 'hoat_dong';
+
+  const duLieuRaw: RawBanGhi = {
+    ten_vai_tro: tenVaiTro,
+    ma_vai_tro: maVaiTro,
+    mo_ta: moTa,
+    kieu_hien_thi: kieuHienThi,
+    thu_tu_sap_xep: thuTu,
+    danh_sach_quyen: danhSachQuyen,
+    is_he_thong: isHeThong,
+    nguoi_tao_id: hienTai?.nguoi_tao_id ?? nguoiThucHien?.id ?? null,
+    ngay_tao: hienTai?.ngay_tao ?? now,
+    ngay_cap_nhat: now,
+    trang_thai_du_lieu: trangThai
+  };
+
+  // 1. Thử gọi API Server-side (dùng Admin SDK - 100% không bị chặn bởi Rules)
+  let daLuuApiThanhCong = false;
+  try {
+    const res = await fetch('/api/quan-tri/phan-quyen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        vai_tro_id: vaiTroId,
+        danh_sach_quyen: danhSachQuyen,
+        nguoi_thuc_hien_id: nguoiThucHien?.id || null
+      })
+    });
+    if (res.ok) {
+      daLuuApiThanhCong = true;
     }
-    const moi = { id: vaiTroId, ...duLieuRaw };
-    const dsHienTai = layTuLocalStorage();
-    const dsMoi = [moi, ...dsHienTai.filter((x) => x.id !== moi.id)];
-    luuVaoLocalStorage(dsMoi);
-    return moi;
+  } catch (e) {
+    console.warn('[dich_vu_vai_tro] Gọi API /api/quan-tri/phan-quyen thất bại, fallback sang Client SDK:', e);
   }
 
+  // 2. Ghi trực tiếp bằng Client Firestore SDK (backup / cache sync)
   try {
-    await setDoc(
-      thamChieuBanGhi(TEN_COLLECTION, vaiTroId),
-      {
-        danh_sach_quyen: danhSachQuyen,
-        ngay_cap_nhat: now
-      },
-      { merge: true }
-    );
+    await setDoc(thamChieuBanGhi(TEN_COLLECTION, vaiTroId), duLieuRaw as any, { merge: true });
     try {
       await ghiNhatKyHoatDong(
         nguoiThucHien?.id,
         TEN_COLLECTION,
         'cap_nhat',
         vaiTroId,
-        `Cập nhật ma trận phân quyền cho vai trò "${hienTai.ten_vai_tro}" (${danhSachQuyen.length} quyền)`
+        `Cập nhật ma trận phân quyền cho vai trò "${tenVaiTro}" (${danhSachQuyen.length} quyền)`
       );
     } catch { /* Bỏ qua nhật ký */ }
   } catch (e) {
-    console.warn('[dich_vu_vai_tro] capNhatQuyenHanVaiTro setDoc error:', e);
+    if (!daLuuApiThanhCong) {
+      console.warn('[dich_vu_vai_tro] capNhatQuyenHanVaiTro Firestore error:', e);
+    }
   }
 
-  const moi = { ...hienTai, danh_sach_quyen: danhSachQuyen, ngay_cap_nhat: now };
+  const moi: VaiTro = {
+    id: vaiTroId,
+    ...duLieuRaw
+  };
+
+  // 3. Cập nhật localStorage
   const dsHienTai = layTuLocalStorage();
-  const dsMoi = dsHienTai.map((x) => (x.id === vaiTroId ? moi : x));
-  if (!dsMoi.some((x) => x.id === vaiTroId)) dsMoi.push(moi);
+  const dsMoi = dsHienTai.map((x) => (x.id === vaiTroId || (x.ma_vai_tro && x.ma_vai_tro === vaiTroId) ? moi : x));
+  if (!dsMoi.some((x) => x.id === vaiTroId || (x.ma_vai_tro && x.ma_vai_tro === vaiTroId))) {
+    dsMoi.push(moi);
+  }
   luuVaoLocalStorage(dsMoi);
 
+  thongBaoCapNhat();
   return moi;
+};
+
+export const capNhatHangLoatQuyenHanVaiTro = async (
+  danhSachCapNhat: Array<{ vai_tro_id: string; danh_sach_quyen: string[] }>,
+  nguoiThucHien: Pick<NhanSu, 'id'> | null | undefined
+): Promise<boolean> => {
+  if (!danhSachCapNhat || danhSachCapNhat.length === 0) return true;
+
+  // 1. Gọi API Server-side với batch
+  try {
+    const res = await fetch('/api/quan-tri/phan-quyen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        danh_sach_cap_nhat: danhSachCapNhat,
+        nguoi_thuc_hien_id: nguoiThucHien?.id || null
+      })
+    });
+    if (!res.ok) {
+      throw new Error(`Server status ${res.status}`);
+    }
+  } catch (e) {
+    console.warn('[dich_vu_vai_tro] Batch API call error, fallback to individual saves:', e);
+    // Fallback: Lưu từng vai trò
+    for (const item of danhSachCapNhat) {
+      await capNhatQuyenHanVaiTro(item.vai_tro_id, item.danh_sach_quyen, nguoiThucHien);
+    }
+    return true;
+  }
+
+  // 2. Cập nhật đồng bộ LocalStorage
+  const dsHienTai = layTuLocalStorage();
+  const now = new Date().toISOString();
+  const mapCapNhat = new Map<string, string[]>();
+  danhSachCapNhat.forEach((c) => mapCapNhat.set(c.vai_tro_id, c.danh_sach_quyen));
+
+  const dsMoi = dsHienTai.map((x) => {
+    if (mapCapNhat.has(x.id)) {
+      return { ...x, danh_sach_quyen: mapCapNhat.get(x.id)!, ngay_cap_nhat: now };
+    }
+    if (x.ma_vai_tro && mapCapNhat.has(x.ma_vai_tro)) {
+      return { ...x, danh_sach_quyen: mapCapNhat.get(x.ma_vai_tro)!, ngay_cap_nhat: now };
+    }
+    return x;
+  });
+
+  luuVaoLocalStorage(dsMoi);
+  thongBaoCapNhat();
+  return true;
 };
 
 export const langNgheThayDoiDanhSachVaiTro = (

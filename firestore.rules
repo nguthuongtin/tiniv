@@ -22,7 +22,7 @@ service cloud.firestore {
     }
 
     match /vai_tro/{id} {
-      allow read, write: if dangNhap();
+      allow read, write: if true;
     }
 
     match /chuc_vu/{id} {

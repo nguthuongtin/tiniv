@@ -46,14 +46,16 @@ export const layQuyenHieuLuc = (
     } catch {}
   }
 
+  let daTimThayVaiTro = false;
   if (effectiveRoles && effectiveRoles.length > 0) {
     const vt = effectiveRoles.find((v) => v.id === vaiTroKey || v.ma_vai_tro === vaiTroKey);
-    if (vt && Array.isArray(vt.danh_sach_quyen) && vt.danh_sach_quyen.length > 0) {
+    if (vt && Array.isArray(vt.danh_sach_quyen)) {
       quyenGoc = vt.danh_sach_quyen;
+      daTimThayVaiTro = true;
     }
   }
 
-  if (quyenGoc.length === 0 && QUYEN_MAC_DINH_SYSTEM[vaiTroKey]) {
+  if (!daTimThayVaiTro && QUYEN_MAC_DINH_SYSTEM[vaiTroKey]) {
     quyenGoc = QUYEN_MAC_DINH_SYSTEM[vaiTroKey];
   }
 

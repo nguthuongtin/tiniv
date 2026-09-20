@@ -7,7 +7,11 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Lock
+  Lock,
+  RotateCcw,
+  CheckCheck,
+  XCircle,
+  Undo2
 } from 'lucide-react';
 import type { VaiTro } from '../../thu_vien/types/nhan_su';
 import {
@@ -15,7 +19,10 @@ import {
   CAC_VAI_TRO_CHUAN_HE_THONG,
   type ItemQuyenHan
 } from '../../thu_vien/types/nhan_su';
-import { capNhatQuyenHanVaiTro } from '../../dich_vu/nhan_su/dich_vu_vai_tro';
+import {
+  capNhatQuyenHanVaiTro,
+  capNhatHangLoatQuyenHanVaiTro
+} from '../../dich_vu/nhan_su/dich_vu_vai_tro';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
 import { Nut } from '../ui';
 import { cn } from '../../thu_vien/utils/cn';
@@ -45,7 +52,9 @@ const QUYEN_MAC_DINH_SYSTEM: Record<string, string[]> = {
 export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props) {
   const { nguoiDungHienTai } = useStoreXacThuc();
   const [quyenState, setQuyenState] = useState<Record<string, string[]>>({});
+  const [vaiTroDaSua, setVaiTroDaSua] = useState<Set<string>>(new Set());
   const [dangLuu, setDangLuu] = useState<Record<string, boolean>>({});
+  const [dangLuuTatCa, setDangLuuTatCa] = useState(false);
   const [thongBao, setThongBao] = useState<{ loai: 'thanh_cong' | 'loi'; text: string } | null>(null);
 
   // Combine standard system roles + custom roles
@@ -91,20 +100,33 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
     return list;
   }, [danhSachVaiTro]);
 
-  // Sync initial roles state
-  useEffect(() => {
-    const mapQuyen: Record<string, string[]> = {};
+  // Initial map of permissions from database/defaults
+  const initialMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
     danhSachEffective.forEach((vt) => {
-      if (vt.danh_sach_quyen && vt.danh_sach_quyen.length > 0) {
-        mapQuyen[vt.id] = vt.danh_sach_quyen;
+      if (Array.isArray(vt.danh_sach_quyen)) {
+        map[vt.id] = vt.danh_sach_quyen;
       } else if (vt.ma_vai_tro && QUYEN_MAC_DINH_SYSTEM[vt.ma_vai_tro]) {
-        mapQuyen[vt.id] = QUYEN_MAC_DINH_SYSTEM[vt.ma_vai_tro];
+        map[vt.id] = QUYEN_MAC_DINH_SYSTEM[vt.ma_vai_tro];
       } else {
-        mapQuyen[vt.id] = [];
+        map[vt.id] = [];
       }
     });
-    setQuyenState(mapQuyen);
+    return map;
   }, [danhSachEffective]);
+
+  // Sync initial roles state without overwriting active user edits
+  useEffect(() => {
+    setQuyenState((prev) => {
+      const next = { ...prev };
+      danhSachEffective.forEach((vt) => {
+        if (!next[vt.id] || !vaiTroDaSua.has(vt.id)) {
+          next[vt.id] = initialMap[vt.id] ?? [];
+        }
+      });
+      return next;
+    });
+  }, [initialMap, danhSachEffective, vaiTroDaSua]);
 
   // Group permissions by module
   const nhomQuyen = useMemo(() => {
@@ -121,7 +143,27 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
     return map;
   }, []);
 
+  const tatCaMaQuyen = useMemo(() => {
+    return DANH_SACH_QUYEN_HAN_HE_THONG.map((q) => q.ma_quyen);
+  }, []);
+
+  const coThayDoi = (vaiTroId: string): boolean => {
+    const curr = quyenState[vaiTroId] ?? [];
+    const init = initialMap[vaiTroId] ?? [];
+    if (curr.length !== init.length) return true;
+    const setInit = new Set(init);
+    return curr.some((q) => !setInit.has(q));
+  };
+
+  const danhSachVaiTroCoThayDoi = useMemo(() => {
+    return danhSachEffective.filter((vt) => {
+      if (vt.ma_vai_tro === 'quan_tri_he_thong') return false;
+      return coThayDoi(vt.id);
+    });
+  }, [danhSachEffective, quyenState, initialMap]);
+
   const toggleQuyen = (vaiTroId: string, maQuyen: string) => {
+    setVaiTroDaSua((prev) => new Set(prev).add(vaiTroId));
     setQuyenState((prev) => {
       const currentList = prev[vaiTroId] ?? [];
       const hasQuyen = currentList.includes(maQuyen);
@@ -132,15 +174,63 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
     });
   };
 
+  const chonTatCaQuyen = (vaiTroId: string) => {
+    setVaiTroDaSua((prev) => new Set(prev).add(vaiTroId));
+    setQuyenState((prev) => ({
+      ...prev,
+      [vaiTroId]: [...tatCaMaQuyen]
+    }));
+  };
+
+  const boChonTatCaQuyen = (vaiTroId: string) => {
+    setVaiTroDaSua((prev) => new Set(prev).add(vaiTroId));
+    setQuyenState((prev) => ({
+      ...prev,
+      [vaiTroId]: []
+    }));
+  };
+
+  const khoiPhucMacDinh = (vt: VaiTro) => {
+    const def = (vt.ma_vai_tro && QUYEN_MAC_DINH_SYSTEM[vt.ma_vai_tro]) || [];
+    setVaiTroDaSua((prev) => new Set(prev).add(vt.id));
+    setQuyenState((prev) => ({
+      ...prev,
+      [vt.id]: [...def]
+    }));
+  };
+
+  const huyThayDoi = (vaiTroId: string) => {
+    setVaiTroDaSua((prev) => {
+      const copy = new Set(prev);
+      copy.delete(vaiTroId);
+      return copy;
+    });
+    setQuyenState((prev) => ({
+      ...prev,
+      [vaiTroId]: initialMap[vaiTroId] ? [...initialMap[vaiTroId]] : []
+    }));
+  };
+
+  const huyTatCaThayDoi = () => {
+    setVaiTroDaSua(new Set());
+    setQuyenState({ ...initialMap });
+    setThongBao(null);
+  };
+
   const luuPhanQuyen = async (vt: VaiTro) => {
     setDangLuu((prev) => ({ ...prev, [vt.id]: true }));
     setThongBao(null);
     try {
       const listQuyen = quyenState[vt.id] ?? [];
       await capNhatQuyenHanVaiTro(vt.id, listQuyen, nguoiDungHienTai);
+      setVaiTroDaSua((prev) => {
+        const copy = new Set(prev);
+        copy.delete(vt.id);
+        return copy;
+      });
       setThongBao({
         loai: 'thanh_cong',
-        text: `Đã lưu ma trận phân quyền cho vai trò "${vt.ten_vai_tro}"!`
+        text: `Đã lưu thành công ma trận phân quyền cho vai trò "${vt.ten_vai_tro}" (${listQuyen.length} quyền)!`
       });
       onThayDoi?.();
     } catch (err: any) {
@@ -154,13 +244,39 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
     }
   };
 
+  const luuTatCaThayDoi = async () => {
+    if (danhSachVaiTroCoThayDoi.length === 0) return;
+    setDangLuuTatCa(true);
+    setThongBao(null);
+    try {
+      const danhSachCapNhat = danhSachVaiTroCoThayDoi.map((vt) => ({
+        vai_tro_id: vt.id,
+        danh_sach_quyen: quyenState[vt.id] ?? []
+      }));
+
+      await capNhatHangLoatQuyenHanVaiTro(danhSachCapNhat, nguoiDungHienTai);
+      setVaiTroDaSua(new Set());
+      setThongBao({
+        loai: 'thanh_cong',
+        text: `Đã lưu thành công phân quyền cho tất cả ${danhSachCapNhat.length} vai trò!`
+      });
+      onThayDoi?.();
+    } catch (err: any) {
+      setThongBao({ loai: 'loi', text: 'Lưu tất cả thất bại: ' + (err?.message || 'Lỗi hệ thống') });
+    } finally {
+      setDangLuuTatCa(false);
+    }
+  };
+
+  const soLuongThayDoi = danhSachVaiTroCoThayDoi.length;
+
   return (
     <div className="space-y-5">
       {/* Alert banner */}
       {thongBao && (
         <div
           className={cn(
-            'p-3.5 rounded-xl border text-sm font-medium flex items-center justify-between gap-3 shadow-xs',
+            'p-3.5 rounded-xl border text-sm font-medium flex items-center justify-between gap-3 shadow-xs transition-all duration-200',
             thongBao.loai === 'thanh_cong'
               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700'
               : 'bg-red-500/10 border-red-500/30 text-red-700'
@@ -177,24 +293,59 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
           <button
             type="button"
             onClick={() => setThongBao(null)}
-            className="text-xs underline font-semibold"
+            className="text-xs underline font-semibold hover:opacity-80"
           >
             Đóng
           </button>
         </div>
       )}
 
-      {/* Main Grid Matrix Table */}
+      {/* Main Grid Matrix Table Card */}
       <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-border/80 bg-muted/20 flex items-center justify-between gap-3 flex-wrap">
-          <div>
+        {/* Header with Save All Bar */}
+        <div className="p-4 border-b border-border/80 bg-muted/20 flex items-center justify-between gap-4 flex-wrap">
+          <div className="space-y-0.5">
             <h3 className="font-bold text-base text-foreground flex items-center gap-2">
               <ShieldCheck className="size-5 text-primary" />
               Ma Trận Phân Quyền Hệ Thống (Permission Matrix)
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground">
               Tích chọn các quyền được phép thực thi cho từng vai trò người dùng trong hệ thống
             </p>
+          </div>
+
+          {/* Quick Global Action Buttons */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {soLuongThayDoi > 0 && (
+              <>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-700 border border-amber-500/30 animate-pulse">
+                  <span className="size-2 rounded-full bg-amber-500" />
+                  {soLuongThayDoi} vai trò chưa lưu
+                </span>
+
+                <Nut
+                  kieu="outline"
+                  kich_thuoc="sm"
+                  onClick={huyTatCaThayDoi}
+                  disabled={dangLuuTatCa}
+                  icon_trai={Undo2}
+                  className="h-8 text-xs font-semibold"
+                >
+                  Hủy thay đổi
+                </Nut>
+
+                <Nut
+                  kieu="primary"
+                  kich_thuoc="sm"
+                  onClick={luuTatCaThayDoi}
+                  disabled={dangLuuTatCa}
+                  icon_trai={dangLuuTatCa ? Loader2 : Save}
+                  className="h-8 text-xs font-bold px-4 shadow-sm bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {dangLuuTatCa ? 'Đang lưu...' : `Lưu tất cả (${soLuongThayDoi})`}
+                </Nut>
+              </>
+            )}
           </div>
         </div>
 
@@ -207,7 +358,7 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
             <table className="w-full text-left text-xs border-collapse min-w-[900px]">
               <thead>
                 <tr className="border-b border-border bg-muted/60 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                  <th className="py-3 px-4 min-w-[220px] max-w-[240px] sticky left-0 bg-muted/90 backdrop-blur-xs z-30 border-r border-border shadow-xs">
+                  <th className="py-3 px-4 min-w-[240px] max-w-[260px] sticky left-0 bg-muted/95 backdrop-blur-xs z-30 border-r border-border shadow-xs">
                     Vai trò người dùng
                   </th>
                   {Object.entries(nhomQuyen).map(([keyModule, listQuyen]) => {
@@ -225,12 +376,12 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
                       </th>
                     );
                   })}
-                  <th className="py-3 px-4 w-28 text-center sticky right-0 bg-muted/90 backdrop-blur-xs z-30 border-l border-border shadow-xs">
+                  <th className="py-3 px-4 w-32 text-center sticky right-0 bg-muted/95 backdrop-blur-xs z-30 border-l border-border shadow-xs">
                     Hành động
                   </th>
                 </tr>
                 <tr className="border-b border-border bg-muted/30 text-[10px] font-semibold text-muted-foreground">
-                  <th className="py-2 px-4 sticky left-0 bg-muted/90 backdrop-blur-xs z-30 border-r border-border">
+                  <th className="py-2 px-4 sticky left-0 bg-muted/95 backdrop-blur-xs z-30 border-r border-border">
                     Chi tiết quyền
                   </th>
                   {Object.values(nhomQuyen).flatMap((listQuyen) =>
@@ -244,32 +395,93 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
                       </th>
                     ))
                   )}
-                  <th className="py-2 px-4 sticky right-0 bg-muted/90 backdrop-blur-xs z-30 border-l border-border"></th>
+                  <th className="py-2 px-4 sticky right-0 bg-muted/95 backdrop-blur-xs z-30 border-l border-border"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60 bg-background">
                 {danhSachEffective.map((vt) => {
                   const isSystemAdmin = vt.ma_vai_tro === 'quan_tri_he_thong';
-                  const isSaving = Boolean(dangLuu[vt.id]);
+                  const isSaving = Boolean(dangLuu[vt.id]) || dangLuuTatCa;
                   const currentPermissions = quyenState[vt.id] ?? [];
+                  const isDirty = !isSystemAdmin && coThayDoi(vt.id);
 
                   return (
-                    <tr key={vt.id} className="hover:bg-muted/40 transition-colors group">
+                    <tr
+                      key={vt.id}
+                      className={cn(
+                        'transition-colors group',
+                        isDirty ? 'bg-amber-500/[0.03] hover:bg-amber-500/[0.06]' : 'hover:bg-muted/40'
+                      )}
+                    >
                       {/* Role Info Cell */}
-                      <td className="py-3.5 px-4 font-bold text-foreground sticky left-0 bg-background group-hover:bg-muted/40 z-20 border-r border-border">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-sm">{vt.ten_vai_tro}</span>
-                          {vt.is_he_thong && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded bg-muted text-muted-foreground shrink-0">
-                              <Lock className="size-3" /> Hệ thống
-                            </span>
+                      <td
+                        className={cn(
+                          'py-3 px-4 sticky left-0 z-20 border-r border-border backdrop-blur-xs',
+                          isDirty ? 'bg-background/95' : 'bg-background/95 group-hover:bg-muted/40'
+                        )}
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-sm text-foreground">{vt.ten_vai_tro}</span>
+                            {vt.is_he_thong && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded bg-muted text-muted-foreground shrink-0">
+                                <Lock className="size-3" /> Hệ thống
+                              </span>
+                            )}
+                            {isDirty ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 border border-amber-500/30 shrink-0">
+                                • Chưa lưu
+                              </span>
+                            ) : (
+                              !isSystemAdmin && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 shrink-0">
+                                  ✓ Đã lưu
+                                </span>
+                              )
+                            )}
+                          </div>
+
+                          {vt.mo_ta && (
+                            <p className="text-[11px] font-normal text-muted-foreground line-clamp-1">
+                              {vt.mo_ta}
+                            </p>
+                          )}
+
+                          {/* Quick Role Actions */}
+                          {!isSystemAdmin && (
+                            <div className="flex items-center gap-2 pt-1 text-[10px] text-muted-foreground">
+                              <button
+                                type="button"
+                                onClick={() => chonTatCaQuyen(vt.id)}
+                                disabled={isSaving}
+                                className="inline-flex items-center gap-1 hover:text-primary transition font-medium"
+                                title="Chọn tất cả quyền"
+                              >
+                                <CheckCheck className="size-3" /> Chọn hết
+                              </button>
+                              <span>•</span>
+                              <button
+                                type="button"
+                                onClick={() => boChonTatCaQuyen(vt.id)}
+                                disabled={isSaving}
+                                className="inline-flex items-center gap-1 hover:text-red-600 transition font-medium"
+                                title="Bỏ chọn tất cả quyền"
+                              >
+                                <XCircle className="size-3" /> Bỏ hết
+                              </button>
+                              <span>•</span>
+                              <button
+                                type="button"
+                                onClick={() => khoiPhucMacDinh(vt)}
+                                disabled={isSaving}
+                                className="inline-flex items-center gap-1 hover:text-amber-600 transition font-medium"
+                                title="Khôi phục quyền mặc định ban đầu"
+                              >
+                                <RotateCcw className="size-3" /> Mặc định
+                              </button>
+                            </div>
                           )}
                         </div>
-                        {vt.mo_ta && (
-                          <p className="text-[11px] font-normal text-muted-foreground mt-0.5 line-clamp-1">
-                            {vt.mo_ta}
-                          </p>
-                        )}
                       </td>
 
                       {/* Permissions Grid Cells */}
@@ -286,7 +498,7 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
                                 disabled={isSystemAdmin || isSaving}
                                 checked={isChecked}
                                 onChange={() => toggleQuyen(vt.id, q.ma_quyen)}
-                                className="size-4 rounded text-primary focus:ring-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+                                className="size-4 rounded text-primary focus:ring-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition"
                                 title={`${vt.ten_vai_tro}: ${q.ten_quyen}`}
                               />
                             </td>
@@ -295,22 +507,44 @@ export default function BangMaTranPhanQuyen({ danhSachVaiTro, onThayDoi }: Props
                       )}
 
                       {/* Action Cell */}
-                      <td className="py-3.5 px-4 text-center sticky right-0 bg-background group-hover:bg-muted/40 z-20 border-l border-border">
+                      <td
+                        className={cn(
+                          'py-3 px-4 text-center sticky right-0 z-20 border-l border-border backdrop-blur-xs',
+                          isDirty ? 'bg-background/95' : 'bg-background/95 group-hover:bg-muted/40'
+                        )}
+                      >
                         {isSystemAdmin ? (
                           <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md inline-block">
                             Full Admin
                           </span>
                         ) : (
-                          <Nut
-                            kieu="primary"
-                            kich_thuoc="sm"
-                            onClick={() => luuPhanQuyen(vt)}
-                            disabled={isSaving}
-                            icon_trai={isSaving ? Loader2 : Save}
-                            className="h-7.5 text-xs font-bold px-3 shadow-xs"
-                          >
-                            {isSaving ? 'Lưu...' : 'Lưu'}
-                          </Nut>
+                          <div className="flex items-center justify-center gap-1.5">
+                            {isDirty && (
+                              <button
+                                type="button"
+                                onClick={() => huyThayDoi(vt.id)}
+                                disabled={isSaving}
+                                title="Hoàn tác thay đổi của vai trò này"
+                                className="p-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition disabled:opacity-50"
+                              >
+                                <Undo2 className="size-3.5" />
+                              </button>
+                            )}
+
+                            <Nut
+                              kieu={isDirty ? 'primary' : 'secondary'}
+                              kich_thuoc="sm"
+                              onClick={() => luuPhanQuyen(vt)}
+                              disabled={isSaving || !isDirty}
+                              icon_trai={isSaving ? Loader2 : Save}
+                              className={cn(
+                                'h-7.5 text-xs font-bold px-3 shadow-xs transition',
+                                isDirty && 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+                              )}
+                            >
+                              {isSaving ? 'Lưu...' : isDirty ? 'Lưu' : 'Đã lưu'}
+                            </Nut>
+                          </div>
                         )}
                       </td>
                     </tr>
