@@ -306,6 +306,48 @@ export const taoNhanSuMoi = async (
   if (!dto.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dto.email.trim())) {
     throw new Error('Email không hợp lệ.');
   }
+
+  const auth = authInstance();
+  const currentUser = auth?.currentUser;
+
+  // 1. Ưu tiên gọi Server-side Admin API (bảo đảm 100% không bị chặn Firestore Rules & không sign-out admin)
+  if (currentUser) {
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch('/api/nhan-su/tao-moi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...dto,
+          nguoi_tao_id: nguoiThucHien?.id ?? currentUser.uid
+        })
+      });
+
+      const kq = await res.json();
+      if (res.ok && kq.thanh_cong && kq.du_lieu) {
+        return chuyenDoiDocThanhDoiTuong(kq.du_lieu.id, kq.du_lieu);
+      }
+      if (!res.ok || !kq.thanh_cong) {
+        throw new Error(kq.thong_diep || 'Không thể tạo tài khoản nhân sự.');
+      }
+    } catch (eServer: any) {
+      const msg = eServer.message || '';
+      if (
+        msg.includes('đã tồn tại') ||
+        msg.includes('không có quyền') ||
+        msg.includes('không hợp lệ') ||
+        msg.includes('trống') ||
+        msg.includes('yếu')
+      ) {
+        throw eServer;
+      }
+      console.warn('Gặp lỗi khi gọi API /api/nhan-su/tao-moi, thử fallback client:', eServer);
+    }
+  }
+
   const idNguoiTao = nguoiThucHien?.id ?? null;
   const emailSach = dto.email.trim().toLowerCase();
   const mkThucTe = dto.mat_khau && dto.mat_khau.trim().length >= 6 ? dto.mat_khau.trim() : 'Ebms@2026';
@@ -314,7 +356,7 @@ export const taoNhanSuMoi = async (
   let secondaryApp: any = null;
 
   try {
-    // 🌟 KHỞI TẠO SECONDARY APP TẠM THỜI:
+    // 🌟 KHỞI TẠO SECONDARY APP TẠM THỜI (Fallback):
     // Đảm bảo tạo user con mà KHÔNG bao giờ làm sign-out tài khoản Admin chính đang đăng nhập!
     const config = layCauHinhFirebase();
     const appName = `temp-create-user-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;

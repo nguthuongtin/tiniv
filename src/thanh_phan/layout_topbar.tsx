@@ -14,7 +14,8 @@ import {
   BarChart3,
   Settings,
   Plus,
-  Bell
+  Bell,
+  User
 } from 'lucide-react';
 
 interface ThongTinTrang {
@@ -88,6 +89,12 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     nut_them: 'Làm mới',
     placeholder_tim: 'Tìm kiếm thiết lập...',
     event_them: 'ebms:quan_tri:tai_lai'
+  },
+  '/tai-khoan': {
+    nhan: 'Tài khoản cá nhân',
+    mo_ta: 'Quản lý thông tin cá nhân, ảnh đại diện và mật khẩu đăng nhập',
+    icon: User,
+    placeholder_tim: 'Tìm kiếm thiết lập...'
   }
 };
 

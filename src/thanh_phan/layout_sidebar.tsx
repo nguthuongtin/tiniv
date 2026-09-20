@@ -114,6 +114,7 @@ const useSidebarShared = () => {
     if (pathname.startsWith('/ho-so-du-an')) return 'Hồ sơ dự án';
     if (pathname.startsWith('/nhan-su')) return 'Nhân sự';
     if (pathname.startsWith('/quan-tri')) return 'Quản trị hệ thống';
+    if (pathname.startsWith('/tai-khoan')) return 'Tài khoản cá nhân';
     return 'TiniPMS';
   })();
 
@@ -227,28 +228,46 @@ const renderDanhMuc = (
 const renderCuoiSidebar = (
   nguoiDungHienTai: any,
   dangXuLy: boolean,
-  xuLyDangXuat: () => Promise<void>
+  xuLyDangXuat: () => Promise<void>,
+  pathname?: string
 ) => {
   const tenNguoiDung = hoTenCoDau(nguoiDungHienTai?.ho_va_ten) || 'Nhân viên TiniPMS';
   const vaiTro = hienThiTenVaiTro(nguoiDungHienTai?.vai_tro);
+  const laTrangTaiKhoan = pathname === '/tai-khoan';
 
   return (
     <div className="border-t border-slate-200/80 p-3 bg-slate-50/50 shrink-0">
-      <div className="flex items-center justify-between gap-2.5 p-2 rounded-2xl bg-white border border-slate-200/90 shadow-xs">
-        <DaiDien
-          ten={nguoiDungHienTai?.ho_va_ten}
-          anh={nguoiDungHienTai?.url_anh_dai_dien}
-          kich_thuoc="sm"
-          className="shrink-0 rounded-xl"
-        />
-        <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-bold text-slate-900 truncate leading-snug">
-            {tenNguoiDung}
+      <div
+        className={cn(
+          'flex items-center justify-between gap-2 p-1.5 rounded-2xl border transition-all',
+          laTrangTaiKhoan
+            ? 'bg-[#007AFF]/10 border-[#007AFF]/35 shadow-xs'
+            : 'bg-white border-slate-200/90 shadow-xs hover:border-slate-300'
+        )}
+      >
+        <Link
+          href="/tai-khoan"
+          className="flex items-center gap-2.5 min-w-0 flex-1 group/user p-1 rounded-xl text-left"
+          title="Tài khoản cá nhân: Đổi ảnh đại diện, mật khẩu"
+        >
+          <DaiDien
+            ten={nguoiDungHienTai?.ho_va_ten}
+            anh={nguoiDungHienTai?.url_anh_dai_dien}
+            kich_thuoc="sm"
+            className="shrink-0 rounded-xl group-hover/user:ring-2 group-hover/user:ring-[#007AFF]/40 transition"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-bold text-slate-900 group-hover/user:text-[#007AFF] truncate leading-snug transition-colors">
+              {tenNguoiDung}
+            </div>
+            <div className="text-[11px] text-slate-400 truncate leading-tight font-medium flex items-center gap-1 mt-0.5">
+              <span>{vaiTro}</span>
+              <span className="text-[9.5px] px-1 py-0.2 rounded bg-slate-100 text-slate-500 font-semibold group-hover/user:bg-[#007AFF]/10 group-hover/user:text-[#007AFF]">
+                Hồ sơ
+              </span>
+            </div>
           </div>
-          <div className="text-[11px] text-slate-400 truncate leading-tight font-medium">
-            {vaiTro}
-          </div>
-        </div>
+        </Link>
         <button
           type="button"
           onClick={xuLyDangXuat}
@@ -293,7 +312,7 @@ export function SidebarDesktop() {
     <aside className="hidden md:flex w-full h-full shrink-0 flex-col bg-white border-r border-slate-200/80 overflow-hidden min-h-0">
       {renderHeaderSidebar(nhomHienTai)}
       {renderDanhMuc(pathname, laQuyenQuanTri, nguoiDungHienTai)}
-      {renderCuoiSidebar(nguoiDungHienTai, dangXuLy, xuLyDangXuat)}
+      {renderCuoiSidebar(nguoiDungHienTai, dangXuLy, xuLyDangXuat, pathname)}
     </aside>
   );
 }
@@ -332,7 +351,7 @@ export function SidebarMobileDrawer() {
           <div className="flex-1 overflow-y-auto min-h-0">
             {renderDanhMuc(pathname, laQuyenQuanTri, nguoiDungHienTai)}
           </div>
-          {renderCuoiSidebar(nguoiDungHienTai, dangXuLy, xuLyDangXuat)}
+          {renderCuoiSidebar(nguoiDungHienTai, dangXuLy, xuLyDangXuat, pathname)}
         </div>
       </aside>
     </div>

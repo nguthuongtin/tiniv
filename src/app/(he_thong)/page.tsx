@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { useStoreXacThuc } from '../../thu_vien/zustand/store_xac_thuc';
 import { cn } from '../../thu_vien/utils/cn';
+import { DaiDien } from '../../thanh_phan/ui/dai_dien';
 import { DINH_DANG_TIEN_NGAN_GON } from '../../thu_vien/utils/format_tien';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
 import type { BaoCaoCongViec } from '../../thu_vien/types/bao_cao_cong_viec';
@@ -493,6 +494,7 @@ interface CapNhatDuAnHienThi {
   tepDinhKem?: TepDinhKemHienThi | null;
   loaiHanhDong: 'chuyen_giai_doan' | 'tao_moi' | 'tai_lieu' | 'tien_do' | 'cap_nhat' | 'khac';
   nguoiThucHien: string;
+  nguoiThucHienAnh?: string | null;
   thoiGian: string;
 }
 
@@ -672,6 +674,15 @@ export default function TrangChu() {
     return ns?.ho_va_ten || 'Thành viên';
   };
 
+  const layThongTinNhanSu = (nsId?: string | null) => {
+    if (!nsId) return { ten: 'Hệ thống', anh: null };
+    const ns = dsNhanSu.find((n) => n.id === nsId);
+    return {
+      ten: ns?.ho_va_ten || 'Thành viên',
+      anh: ns?.url_anh_dai_dien || null
+    };
+  };
+
   // Thống kê phân bổ 12 giai đoạn dự án
   const thongKe12GiaiDoan = useMemo(() => {
     const dem: Record<string, number> = {};
@@ -818,7 +829,8 @@ export default function TrangChu() {
           chiTietNoiBat: noiDungHienThi,
           tepDinhKem,
           loaiHanhDong: tepDinhKem && !noiDungHienThi ? 'tai_lieu' : 'tien_do',
-          nguoiThucHien: layTenNhanSu(td.nguoi_tao_id),
+          nguoiThucHien: layThongTinNhanSu(td.nguoi_tao_id).ten,
+          nguoiThucHienAnh: layThongTinNhanSu(td.nguoi_tao_id).anh,
           thoiGian: td.ngay_tao || td.ngay_cap_nhat || new Date().toISOString()
         });
       }
@@ -850,7 +862,8 @@ export default function TrangChu() {
               loai: tl.loai_file
             },
             loaiHanhDong: 'tai_lieu',
-            nguoiThucHien: layTenNhanSu(tl.nguoi_tai_len_id),
+            nguoiThucHien: layThongTinNhanSu(tl.nguoi_tai_len_id).ten,
+            nguoiThucHienAnh: layThongTinNhanSu(tl.nguoi_tai_len_id).anh,
             thoiGian: tl.ngay_tai_len || new Date().toISOString()
           });
         }
@@ -879,7 +892,8 @@ export default function TrangChu() {
             chiTietNoiBat: info.chiTietNoiBat || layTenGiaiDoan(da.giai_doan),
             tepDinhKem: null,
             loaiHanhDong: 'chuyen_giai_doan',
-            nguoiThucHien: layTenNhanSu(nk.nguoi_dung_id),
+            nguoiThucHien: layThongTinNhanSu(nk.nguoi_dung_id).ten,
+            nguoiThucHienAnh: layThongTinNhanSu(nk.nguoi_dung_id).anh,
             thoiGian: nk.thoi_gian
           });
         }
@@ -901,6 +915,23 @@ export default function TrangChu() {
       return true;
     });
   }, [dsCapNhatMoiNhat, locHoatDong]);
+
+  const demHoatDong = useMemo(() => {
+    let tienDo = 0;
+    let taiLieu = 0;
+    let giaiDoan = 0;
+    dsCapNhatMoiNhat.forEach((item) => {
+      if (item.loaiHanhDong === 'tien_do') tienDo++;
+      else if (item.loaiHanhDong === 'tai_lieu') taiLieu++;
+      else if (item.loaiHanhDong === 'chuyen_giai_doan') giaiDoan++;
+    });
+    return {
+      tat_ca: dsCapNhatMoiNhat.length,
+      tien_do: tienDo,
+      tai_lieu: taiLieu,
+      chuyen_giai_doan: giaiDoan
+    };
+  }, [dsCapNhatMoiNhat]);
 
   const tileHoanThanh = useMemo(() => {
     if (dsDuAnLienQuan.length === 0) return 0;
@@ -1274,152 +1305,217 @@ export default function TrangChu() {
         {/* CỘT 1: DÒNG CẬP NHẬT TIẾN ĐỘ & TÀI LIỆU */}
         <section
           className={cn(
-            'lg:col-span-7 xl:col-span-8 rounded-[22px] border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-3 sm:space-y-4',
+            'lg:col-span-7 xl:col-span-8 rounded-[24px] border border-slate-200/90 bg-white p-4 sm:p-5 shadow-[0_2px_14px_rgba(0,0,0,0.03)] space-y-4',
             tabMobile !== 'cap_nhat' && 'hidden sm:block'
           )}
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 sm:pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <div className="size-7 sm:size-9 rounded-[11px] sm:rounded-[13px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0">
-                <Activity className="size-3.5 sm:size-4" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="size-8 sm:size-9.5 rounded-2xl bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0">
+                <Activity className="size-4 sm:size-4.5" />
               </div>
-              <h2 className="text-xs sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                <span>Cập nhật tiến độ & tài liệu</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-200/60">
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Trực tiếp
-                </span>
-              </h2>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                  <span>Cập nhật tiến độ & tài liệu</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-200/60">
+                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Trực tiếp
+                  </span>
+                </h2>
+                <p className="text-[11px] text-slate-400 font-medium">
+                  Nhật ký hoạt động và tiến độ mới nhất của các dự án
+                </p>
+              </div>
             </div>
 
-            {/* Filter Tabs Apple Capsule */}
-            <div className="flex items-center gap-1 p-0.5 bg-slate-100/80 rounded-xl overflow-x-auto no-scrollbar shrink-0">
+            {/* Filter Tabs Capsule */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100/90 rounded-xl overflow-x-auto no-scrollbar shrink-0">
               {[
-                { key: 'tat_ca', label: 'Tất cả' },
-                { key: 'tien_do', label: 'Tiến độ' },
-                { key: 'tai_lieu', label: 'Tài liệu' },
-                { key: 'chuyen_giai_doan', label: 'Giai đoạn' }
+                { key: 'tat_ca', label: 'Tất cả', count: demHoatDong.tat_ca },
+                { key: 'tien_do', label: 'Tiến độ', count: demHoatDong.tien_do },
+                { key: 'tai_lieu', label: 'Tài liệu', count: demHoatDong.tai_lieu },
+                { key: 'chuyen_giai_doan', label: 'Giai đoạn', count: demHoatDong.chuyen_giai_doan }
               ].map((tab) => (
                 <button
                   key={tab.key}
                   type="button"
                   onClick={() => setLocHoatDong(tab.key as any)}
                   className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all whitespace-nowrap',
+                    'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5',
                     locHoatDong === tab.key
-                      ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                      ? 'bg-white text-slate-900 shadow-xs font-bold'
                       : 'text-slate-500 hover:text-slate-800'
                   )}
                 >
-                  {tab.label}
+                  <span>{tab.label}</span>
+                  <span
+                    className={cn(
+                      'text-[10px] px-1.5 py-0.2 rounded-full font-bold tabular-nums',
+                      locHoatDong === tab.key
+                        ? 'bg-slate-100 text-slate-700'
+                        : 'bg-transparent text-slate-400'
+                    )}
+                  >
+                    {tab.count}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
 
           {dangTai ? (
-            <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
-              <Loader2 className="size-5 animate-spin text-[#007AFF]" />
-              <span className="text-xs">Đang đồng bộ cập nhật mới nhất...</span>
+            <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2.5">
+              <Loader2 className="size-6 animate-spin text-[#007AFF]" />
+              <span className="text-xs font-medium">Đang đồng bộ cập nhật mới nhất...</span>
             </div>
           ) : dsCapNhatLoc.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
-              <History className="size-8 text-slate-300 stroke-1" />
+            <div className="py-16 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+              <History className="size-9 text-slate-300 stroke-1" />
               <p className="text-xs font-semibold text-slate-600">Chưa có dữ liệu cập nhật</p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-400 max-w-sm">
                 Các ghi chú tiến độ, báo cáo giai đoạn và tài liệu tải lên sẽ xuất hiện tại đây.
               </p>
             </div>
           ) : (
-            <div className="space-y-2.5 sm:space-y-3">
+            <div className="space-y-3.5 sm:space-y-4">
               {dsCapNhatLoc.map((cnItem) => {
                 const badgeClass = layBadgeGiaiDoanClass(cnItem.giaiDoan);
                 const tenGD = layTenGiaiDoan(cnItem.giaiDoan);
                 const laChuyenGiaiDoan = cnItem.loaiHanhDong === 'chuyen_giai_doan';
+                const laTaiLieu = cnItem.loaiHanhDong === 'tai_lieu';
 
                 return (
                   <div
                     key={cnItem.id}
-                    className="group relative rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 space-y-2 transition-all hover:border-slate-300 hover:shadow-2xs"
+                    className={cn(
+                      'group relative rounded-2xl border bg-white p-3.5 sm:p-4.5 space-y-2.5 transition-all duration-200',
+                      'shadow-[0_2px_8px_rgba(15,23,42,0.03)] hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)]',
+                      laTaiLieu
+                        ? 'border-slate-200/90 border-l-[4px] border-l-indigo-500 hover:border-indigo-300'
+                        : laChuyenGiaiDoan
+                        ? 'border-slate-200/90 border-l-[4px] border-l-emerald-500 hover:border-emerald-300'
+                        : 'border-slate-200/90 border-l-[4px] border-l-[#007AFF] hover:border-blue-300'
+                    )}
                   >
-                    {/* Hàng 1: Mã, Tên dự án, Giai đoạn, Thời gian */}
-                    <div className="flex items-start justify-between gap-1.5">
-                      <div className="min-w-0 flex-1 flex items-center gap-1.5 flex-wrap">
-                        {cnItem.maDuAn && (
-                          <span className="font-mono text-[10px] sm:text-[11px] font-bold text-[#007AFF] px-1.5 py-0.5 rounded-md bg-[#007AFF]/10 shrink-0">
-                            {cnItem.maDuAn}
+                    {/* HÀNG 1: Avatar + Tên người cập nhật + Badge hành động + Thời gian */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <DaiDien
+                          ten={cnItem.nguoiThucHien}
+                          anh={cnItem.nguoiThucHienAnh}
+                          kich_thuoc="xs"
+                          className="size-7.5 sm:size-8 rounded-full shrink-0 ring-1 ring-slate-200/80 shadow-2xs"
+                        />
+                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                          <span className="text-xs sm:text-[13.5px] font-bold text-slate-900 truncate">
+                            {cnItem.nguoiThucHien}
                           </span>
-                        )}
-                        <Link
-                          href={`/ho-so-du-an/${cnItem.duAnId}`}
-                          className="text-[13px] sm:text-[14px] font-bold text-slate-900 hover:text-[#007AFF] transition-colors truncate"
-                        >
-                          {cnItem.tenDuAn}
-                        </Link>
-                        <span className={cn('text-[9.5px] px-2 py-0.5 rounded-full font-bold border shrink-0', badgeClass)}>
-                          {tenGD}
-                        </span>
+                          <span className="text-slate-300 text-xs">·</span>
+                          {laTaiLieu ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60 shrink-0">
+                              <Paperclip className="size-2.5" /> Tài liệu mới
+                            </span>
+                          ) : laChuyenGiaiDoan ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 shrink-0">
+                              <ArrowRightCircle className="size-2.5" /> Giai đoạn
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-blue-50 text-[#007AFF] border border-blue-200/60 shrink-0">
+                              <TrendingUp className="size-2.5" /> Tiến độ
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1 shrink-0 ml-auto tabular-nums">
+
+                      <span className="text-[11px] sm:text-xs font-medium text-slate-400 flex items-center gap-1 shrink-0 tabular-nums whitespace-nowrap">
                         <Clock className="size-3" />
                         {dinhDangThoiGian(cnItem.thoiGian)}
                       </span>
                     </div>
 
-                    {/* Hàng 2: Nội dung / Chuyển giai đoạn / File đính kèm */}
+                    {/* HÀNG 2: Khung dự án & giai đoạn nổi bật, tách biệt hoàn toàn */}
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50/90 border border-slate-200/70">
+                      <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                        {cnItem.maDuAn && (
+                          <span className="font-mono text-[10px] sm:text-[10.5px] font-bold text-[#007AFF] px-1.5 py-0.5 rounded-md bg-white border border-[#007AFF]/25 shrink-0 shadow-2xs">
+                            {cnItem.maDuAn}
+                          </span>
+                        )}
+                        <Link
+                          href={`/ho-so-du-an/${cnItem.duAnId}`}
+                          className="text-xs sm:text-[13px] font-bold text-slate-900 hover:text-[#007AFF] transition-colors truncate"
+                        >
+                          {cnItem.tenDuAn}
+                        </Link>
+                        {cnItem.tenKhachHang && cnItem.tenKhachHang !== 'Chưa gắn khách hàng' && (
+                          <span className="text-[11px] text-slate-400 font-medium truncate hidden md:inline">
+                            • KH: {cnItem.tenKhachHang}
+                          </span>
+                        )}
+                      </div>
+                      <span className={cn('text-[9.5px] sm:text-[10px] px-2.5 py-0.5 rounded-full font-bold border shrink-0', badgeClass)}>
+                        {tenGD}
+                      </span>
+                    </div>
+
+                    {/* HÀNG 3: Nội dung chi tiết */}
                     {laChuyenGiaiDoan ? (
-                      <div className="rounded-xl bg-sky-50/70 border border-sky-100 px-3 py-2 flex items-center gap-2 text-xs text-slate-900">
-                        <ArrowRightCircle className="size-3.5 text-sky-600 shrink-0" />
+                      <div className="rounded-xl bg-emerald-50/70 border border-emerald-200/70 p-3 flex items-center gap-2.5 text-xs sm:text-[13px] text-slate-900">
+                        <ArrowRightCircle className="size-4 text-emerald-600 shrink-0" />
                         <span>
-                          Chuyển sang giai đoạn: <b className="text-sky-700 font-bold">{cnItem.chiTietNoiBat || tenGD}</b>
+                          Dự án chuyển sang: <b className="text-emerald-800 font-bold">{cnItem.chiTietNoiBat || tenGD}</b>
                         </span>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         {cnItem.chiTietNoiBat && (
-                          <p className="text-xs sm:text-[13px] text-slate-700 font-normal leading-relaxed whitespace-pre-wrap">
+                          <p className="text-xs sm:text-[13.5px] text-slate-800 font-normal leading-relaxed whitespace-pre-wrap pl-1">
                             {cnItem.chiTietNoiBat}
                           </p>
                         )}
 
-                        {/* File đính kèm pill */}
+                        {/* File đính kèm pill / card */}
                         {cnItem.tepDinhKem && cnItem.tepDinhKem.url && (
-                          <div>
-                            <a
-                              href={cnItem.tepDinhKem.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="group/file inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-xs text-slate-800 transition-all max-w-full"
-                              title="Bấm để mở tài liệu đính kèm"
-                            >
-                              <Paperclip className="size-3 text-[#007AFF] shrink-0" />
-                              <span className="truncate font-medium group-hover/file:text-[#007AFF]">
-                                {cnItem.tepDinhKem.ten}
-                              </span>
-                              <ExternalLink className="size-3 text-slate-400 shrink-0 ml-0.5" />
-                            </a>
-                          </div>
+                          <a
+                            href={cnItem.tepDinhKem.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center justify-between gap-3 p-2.5 sm:p-3 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100/90 text-xs text-slate-800 transition-all group/file shadow-2xs"
+                            title="Bấm để mở tài liệu đính kèm"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="size-7 sm:size-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                                <Paperclip className="size-3.5 sm:size-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <span className="truncate font-semibold text-slate-800 group-hover/file:text-indigo-600 block text-xs sm:text-[13px]">
+                                  {cnItem.tepDinhKem.ten}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  Tài liệu đính kèm
+                                </span>
+                              </div>
+                            </div>
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 shrink-0 bg-white px-2.5 py-1 rounded-lg border border-indigo-200/60 shadow-2xs group-hover/file:bg-indigo-600 group-hover/file:text-white transition-colors">
+                              Mở tệp <ExternalLink className="size-3" />
+                            </span>
+                          </a>
                         )}
                       </div>
                     )}
 
-                    {/* Hàng 3: Khách hàng & Người thực hiện */}
-                    <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 text-[11px] text-slate-500">
-                      <div className="flex items-center gap-1.5 truncate">
-                        <span className="truncate">
-                          KH: <b className="text-slate-700 font-semibold">{cnItem.tenKhachHang}</b>
-                        </span>
-                        <span>•</span>
-                        <span className="truncate">
-                          Bởi: <b className="text-slate-700 font-semibold">{cnItem.nguoiThucHien}</b>
-                        </span>
-                      </div>
+                    {/* HÀNG 4: Footer điều hướng sang chi tiết dự án */}
+                    <div className="flex items-center justify-between gap-2 pt-1.5 text-[11px] text-slate-400">
+                      <span className="text-[11px] text-slate-500 truncate md:hidden">
+                        KH: <b className="text-slate-700 font-medium">{cnItem.tenKhachHang}</b>
+                      </span>
                       <Link
                         href={`/ho-so-du-an/${cnItem.duAnId}`}
-                        className="text-[11px] text-[#007AFF] font-bold hover:underline inline-flex items-center gap-0.5 shrink-0 ml-auto"
+                        className="text-[11.5px] text-[#007AFF] font-bold hover:underline inline-flex items-center gap-0.5 shrink-0 ml-auto group/link"
                       >
-                        Chi tiết <ChevronRight className="size-3" />
+                        <span>Xem hồ sơ dự án</span>
+                        <ChevronRight className="size-3 transition-transform group-hover/link:translate-x-0.5" />
                       </Link>
                     </div>
                   </div>
