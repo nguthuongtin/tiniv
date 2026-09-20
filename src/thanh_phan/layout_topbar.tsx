@@ -180,14 +180,15 @@ export default function ThanhPhanTopbar() {
           </Link>
         )}
 
-        <nav aria-label="Breadcrumb" className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-[13.5px] min-w-0">
+        {/* Breadcrumb trên Desktop (sm trở lên) */}
+        <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-1.5 text-[13.5px] min-w-0">
           <Link
             href="/"
             className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium shrink-0"
             title="Trang chủ Tổng quan"
           >
-            <Home className="size-3.5 sm:size-4 text-slate-400" strokeWidth={2} />
-            <span className="hidden sm:inline">Tổng quan</span>
+            <Home className="size-4 text-slate-400" strokeWidth={2} />
+            <span>Tổng quan</span>
           </Link>
 
           {pathname !== '/' && (
@@ -198,15 +199,15 @@ export default function ThanhPhanTopbar() {
                 <>
                   <Link
                     href={thongTin.parent.href}
-                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium shrink-0 max-w-[110px] sm:max-w-none truncate"
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium shrink-0"
                   >
                     {ParentIcon && <ParentIcon className="size-3.5 text-slate-400 shrink-0" strokeWidth={2} />}
-                    <span className="truncate">{thongTin.parent.nhan}</span>
+                    <span>{thongTin.parent.nhan}</span>
                   </Link>
 
                   <ChevronRight className="size-3.5 text-slate-300 shrink-0" strokeWidth={2} />
 
-                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-900 px-2 py-1 rounded-lg bg-slate-100/80 border border-slate-200/50 truncate max-w-[130px] sm:max-w-[260px] tracking-tight">
+                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-900 px-2 py-1 rounded-lg bg-slate-100/80 border border-slate-200/50 truncate max-w-[260px] tracking-tight">
                     <PageIcon className="size-3.5 text-[#007AFF] shrink-0" strokeWidth={2.2} />
                     <span className="truncate">{tieuDeChiTiet ?? thongTin.nhan}</span>
                   </span>
@@ -220,6 +221,14 @@ export default function ThanhPhanTopbar() {
             </>
           )}
         </nav>
+
+        {/* Tiêu đề thanh Topbar trên Mobile (chuẩn Mobile App tinh gọn) */}
+        <div className="sm:hidden flex items-center gap-1.5 min-w-0">
+          <span className="inline-flex items-center gap-1.5 font-bold text-slate-900 text-sm truncate tracking-tight">
+            <PageIcon className="size-4 text-[#007AFF] shrink-0" strokeWidth={2.2} />
+            <span className="truncate">{tieuDeChiTiet ?? thongTin.nhan}</span>
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">

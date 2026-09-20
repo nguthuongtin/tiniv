@@ -1,4 +1,4 @@
-﻿// Service Worker for Tini PMS PWA
+// Service Worker for Tini PMS PWA
 const CACHE_NAME = 'tini-pms-v1';
 
 // Cache static assets on install
@@ -27,13 +27,19 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Network first, fallback to cache for navigation
+// Network first for navigation, never intercept Next.js chunks or APIs
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET and non-http requests
   if (event.request.method !== 'GET') return;
   if (!event.request.url.startsWith('http')) return;
 
-  // For navigation requests (HTML pages) — network first
+  const url = new URL(event.request.url);
+
+  // CRITICAL: NEVER intercept or cache /_next/ (Turbopack, HMR, JS chunks) or /api/
+  if (url.pathname.startsWith('/_next') || url.pathname.startsWith('/api')) {
+    return;
+  }
+
+  // For navigation requests (HTML pages) — network first, fallback to cached '/'
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() =>
@@ -43,19 +49,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets — cache first
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type === 'opaque') {
-          return response;
-        }
-        const toCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, toCache));
-        return response;
-      });
-    })
-  );
+  // Only cache static public assets (icons, images, manifest)
+  if (
+    url.pathname.startsWith('/icon-') ||
+    url.pathname === '/apple-touch-icon.png' ||
+    url.pathname === '/favicon-32x32.png' ||
+    url.pathname.endsWith('.webmanifest')
+  ) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        return (
+          cached ||
+          fetch(event.request).then((response) => {
+            if (!response || response.status !== 200 || response.type === 'opaque') {
+              return response;
+            }
+            const toCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, toCache));
+            return response;
+          })
+        );
+      })
+    );
+  }
 });
 
 // Push notification support

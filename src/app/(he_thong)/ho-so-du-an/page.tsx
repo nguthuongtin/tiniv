@@ -194,7 +194,9 @@ const CardThongKe = ({
 
 const TheHoSoDuAn = ({
   hda,
+  ds_nhan_su,
   ds_khach_hang,
+  tien_do_cuoi_cung,
   tenGiaiDoan,
   anGiaTri
 }: {
@@ -217,69 +219,141 @@ const TheHoSoDuAn = ({
     ? ds_khach_hang.find((k) => k.id === hda.khach_hang_id) ?? null
     : null;
 
+  const nguoiLead = useMemo(() => {
+    const idLead = hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id;
+    return idLead && ds_nhan_su ? ds_nhan_su.find((n) => n.id === idLead) ?? null : null;
+  }, [hda.nguoi_phu_trach_id, hda.nguoi_quan_ly_id, ds_nhan_su]);
+
   const laHoanThanh = hda.giai_doan === 'hoan_thanh';
   const laTamDung = ['tam_dung', 'huy'].includes(String(hda.giai_doan)) || hda.trang_thai === 'da_xoa';
 
-  const badgeStyle = laHoanThanh
-    ? { text: 'Hoàn thành', bg: 'bg-[#007AFF]/10 text-[#007AFF]', dot: 'bg-[#007AFF]' }
-    : laTamDung
-    ? { text: 'Tạm dừng/Hủy', bg: 'bg-[#FF9500]/10 text-[#FF9500]', dot: 'bg-[#FF9500]' }
-    : { text: gd.nhan || 'Đang chạy', bg: 'bg-[#34C759]/10 text-[#34C759]', dot: 'bg-[#34C759]' };
+  // Thanh tiến độ chuẩn xác 10 giai đoạn từ Mới tạo (10%) đến Hoàn thành (100%)
+  const thongTinTienDo = useMemo(() => {
+    const TIEN_DO_MAP: Record<string, { phanTram: number; mau: string; nhan: string; dot: string; capsule: string }> = {
+      moi_tao:       { phanTram: 10,  mau: 'bg-slate-400',       nhan: '1. Mới tạo',    dot: 'bg-slate-400',       capsule: 'bg-slate-100 text-slate-700 border-slate-200' },
+      tiep_can:      { phanTram: 20,  mau: 'bg-blue-400',        nhan: '2. Tiếp cận',   dot: 'bg-blue-400',        capsule: 'bg-blue-50 text-blue-700 border-blue-200' },
+      khao_sat:      { phanTram: 30,  mau: 'bg-blue-500',        nhan: '3. Khảo sát',   dot: 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.5)] animate-pulse', capsule: 'bg-blue-50 text-blue-700 border-blue-200' },
+      len_giai_phap: { phanTram: 40,  mau: 'bg-sky-500',         nhan: '4. Giải pháp',  dot: 'bg-sky-500 shadow-[0_0_6px_rgba(14,165,233,0.5)] animate-pulse', capsule: 'bg-sky-50 text-sky-700 border-sky-200' },
+      bao_gia:       { phanTram: 50,  mau: 'bg-amber-500',       nhan: '5. Báo giá',    dot: 'bg-amber-500',       capsule: 'bg-amber-50 text-amber-700 border-amber-200' },
+      dam_phan:      { phanTram: 60,  mau: 'bg-amber-600',       nhan: '6. Đàm phán',   dot: 'bg-amber-600',       capsule: 'bg-amber-50 text-amber-800 border-amber-200' },
+      ky_hop_dong:   { phanTram: 70,  mau: 'bg-teal-500',        nhan: '7. Ký HĐ',      dot: 'bg-teal-500 shadow-[0_0_6px_rgba(20,184,166,0.5)]', capsule: 'bg-teal-50 text-teal-700 border-teal-200' },
+      trien_khai:    { phanTram: 80,  mau: 'bg-emerald-500',     nhan: '8. Triển khai', dot: 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)] animate-pulse', capsule: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+      nghiem_thu:    { phanTram: 90,  mau: 'bg-emerald-600',     nhan: '9. Nghiệm thu', dot: 'bg-emerald-600 shadow-[0_0_6px_rgba(5,150,105,0.5)]', capsule: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+      hoan_thanh:    { phanTram: 100, mau: 'bg-[#007AFF]',       nhan: '10. Hoàn thành',dot: 'bg-[#007AFF] shadow-[0_0_8px_rgba(0,122,255,0.6)]', capsule: 'bg-blue-50 text-[#007AFF] border-blue-200' },
+      tam_dung:      { phanTram: 50,  mau: 'bg-amber-500',       nhan: 'Tạm dừng',      dot: 'bg-amber-500',       capsule: 'bg-amber-50 text-amber-700 border-amber-200' },
+      huy:           { phanTram: 100, mau: 'bg-rose-500',        nhan: 'Đã hủy',        dot: 'bg-rose-500',        capsule: 'bg-rose-50 text-rose-700 border-rose-200' }
+    };
+
+    return TIEN_DO_MAP[hda.giai_doan] ?? {
+      phanTram: 10,
+      mau: 'bg-slate-400',
+      nhan: gd.nhan || 'Đang chạy',
+      dot: 'bg-slate-400',
+      capsule: 'bg-slate-100 text-slate-700 border-slate-200'
+    };
+  }, [hda.giai_doan, gd.nhan]);
+
+  const giaTriHienThi = Number(hda.gia_tri_hop_dong) > 0 ? hda.gia_tri_hop_dong : hda.gia_tri_du_kien;
 
   return (
     <div
       onClick={() => router.push(`/ho-so-du-an/${hda.id}`)}
       className={cn(
-        'relative rounded-[20px] border border-slate-200/80 bg-white p-3.5 sm:p-4.5 flex items-center justify-between gap-3 sm:gap-4 transition-all duration-200 hover:border-blue-300 hover:shadow-md shadow-[0_2px_8px_rgba(0,0,0,0.02)] cursor-pointer group active:scale-[0.99]',
-        hda.trang_thai === 'da_xoa' && 'opacity-60 grayscale-[50%]'
+        'group relative bg-white rounded-[22px] border border-slate-200/80 p-4 sm:p-5 pt-5 sm:pt-6 transition-all duration-200 ease-out flex flex-col justify-between overflow-hidden',
+        'hover:border-blue-300 hover:shadow-[0_8px_30px_rgba(0,122,255,0.08),0_2px_8px_rgba(0,0,0,0.04)]',
+        'active:scale-[0.985] active:bg-slate-50/60 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.03),0_6px_16px_rgba(0,0,0,0.02)]',
+        hda.trang_thai === 'da_xoa' && 'opacity-60 grayscale-[40%]'
       )}
     >
-      <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-        {/* Blue Squircle Folder Icon */}
-        <div className="size-11 sm:size-12 rounded-[16px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0 border border-[#007AFF]/15 shadow-2xs">
-          <Folder className="size-5 sm:size-5.5 text-[#007AFF]" strokeWidth={2.2} />
+      {/* 1. THANH TIẾN ĐỘ MÉP TRÊN THẺ (Apple Top-Edge Progress Bar) */}
+      <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-100/90 overflow-hidden">
+        <div
+          className={cn('h-full transition-all duration-500 ease-out', thongTinTienDo.mau)}
+          style={{ width: `${thongTinTienDo.phanTram}%` }}
+        />
+      </div>
+
+      <div>
+        {/* TẦNG ĐỈNH: STATUS CAPSULE & GIÁ TRỊ DỰ ÁN */}
+        <div className="flex items-center justify-between gap-3 pb-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Apple Status Capsule */}
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide border shrink-0',
+                thongTinTienDo.capsule
+              )}
+            >
+              <span className={cn('size-1.5 rounded-full shrink-0', thongTinTienDo.dot)} />
+              <span className="truncate max-w-[140px]">{thongTinTienDo.nhan}</span>
+            </span>
+
+            {hda.ma_ho_so && (
+              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-slate-100/90 text-slate-500 font-mono text-[11px] font-medium border border-slate-200/60">
+                {hda.ma_ho_so}
+              </span>
+            )}
+          </div>
+
+          {/* Hero Value */}
+          <div className="text-right shrink-0">
+            <span className="text-[15.5px] sm:text-[17px] font-extrabold text-slate-900 tabular-nums tracking-tight group-hover:text-[#007AFF] transition-colors">
+              {anGiaTri ? '••••••' : DINH_DANG_TIEN_NGAN_GON(giaTriHienThi)}
+            </span>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="min-w-0 flex-1">
+        {/* TẦNG TRỌNG TÂM: TÊN DỰ ÁN 2 DÒNG & KHÁCH HÀNG */}
+        <div className="space-y-1.5 my-1">
           <h3
-            className="font-bold text-[15px] sm:text-[16.5px] text-slate-900 group-hover:text-[#007AFF] transition-colors truncate tracking-tight"
+            className="font-bold text-[15.5px] sm:text-[16.5px] text-slate-900 leading-[1.38] tracking-tight line-clamp-2 group-hover:text-[#007AFF] transition-colors"
             title={hda.ten_du_an}
           >
             {hda.ten_du_an}
           </h3>
 
-          <div className="text-[12.5px] sm:text-[13px] text-slate-500 font-normal truncate mt-0.5">
-            KH: {kh?.ten_khach_hang || 'Chưa liên kết'}
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-2.5 text-[11.5px] sm:text-[12.5px] text-slate-500 mt-1.5 flex-wrap">
-            <span className="inline-flex items-center gap-1 text-slate-600">
-              <CalendarIcon className="size-3.5 text-slate-400 shrink-0" />
-              <span>{hda.ngay_tao ? formatNgay(hda.ngay_tao.slice(0, 10)) : hda.ngay_cap_nhat ? formatNgay(hda.ngay_cap_nhat.slice(0, 10)) : '--/--/----'}</span>
-            </span>
-            <span className="text-slate-200">│</span>
-            <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
-              <Coins className="size-3.5 text-slate-400 shrink-0" />
-              <span>{anGiaTri ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien)}</span>
-            </span>
+          <div className="flex items-center gap-1.5 text-[12.5px] sm:text-[13px] text-slate-500 font-normal truncate">
+            <Building2 className="size-3.5 text-slate-400 shrink-0" />
+            <span className="truncate font-medium">{kh?.ten_khach_hang || 'Chưa liên kết khách hàng'}</span>
           </div>
         </div>
       </div>
 
-      {/* Right: Badge & Chevron */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        <span
-          className={cn(
-            'inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide shrink-0',
-            badgeStyle.bg
-          )}
-        >
-          <span className={cn('size-1.5 rounded-full', badgeStyle.dot)} />
-          <span className="truncate max-w-[90px] sm:max-w-[130px]">{badgeStyle.text}</span>
-        </span>
+      {/* TẦNG CHÂN: THỜI GIAN, NGƯỜI PHỤ TRÁCH LIỀN SAU & CHEVRON ACTION */}
+      <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-100 text-[11.5px] sm:text-[12px] text-slate-500">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+          {/* Thời gian */}
+          <span className="inline-flex items-center gap-1 text-slate-600">
+            <CalendarIcon className="size-3.5 text-slate-400 shrink-0" />
+            <span>{hda.ngay_tao ? formatNgay(hda.ngay_tao.slice(0, 10)) : '--/--/----'}</span>
+          </span>
 
-        <ChevronRight className="size-4.5 sm:size-5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+          {/* Tên người phụ trách đặt liền ngay sau thời gian */}
+          {nguoiLead && (
+            <>
+              <span className="text-slate-300">│</span>
+              <span className="inline-flex items-center gap-1 text-slate-700 font-medium truncate" title={`Phụ trách: ${nguoiLead.ho_va_ten}`}>
+                <User className="size-3 text-slate-400 shrink-0" />
+                <span className="truncate max-w-[110px] sm:max-w-[130px]">{nguoiLead.ho_va_ten}</span>
+              </span>
+            </>
+          )}
+
+          {hda.thoi_han_hoan_thanh && (
+            <>
+              <span className="text-slate-300">│</span>
+              <span className="inline-flex items-center gap-1 text-slate-500">
+                <Clock className="size-3 text-slate-400 shrink-0" />
+                <span className="truncate">Hạn: {formatNgay(hda.thoi_han_hoan_thanh.slice(0, 10))}</span>
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Nút hành động tròn Apple */}
+        <div className="size-7 rounded-full bg-slate-100/90 group-hover:bg-[#007AFF] text-slate-400 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-2xs group-hover:translate-x-0.5 shrink-0">
+          <ChevronRight className="size-3.5" strokeWidth={2.5} />
+        </div>
       </div>
     </div>
   );
@@ -594,40 +668,72 @@ function TrangHoSoDuAn() {
         </div>
       </div>
 
-      {/* Summary Cards đầy đủ trên Desktop */}
-      <div className="hidden sm:grid sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3">
-        <CardThongKe
-          label="Tổng dự án"
-          giaTri={thongKe.tongSo}
-          icon={FolderKanban}
-          mau="primary"
-        />
-        <CardThongKe
-          label="Đang chạy"
-          giaTri={thongKe.soDangThucHien}
-          icon={TrendingUp}
-          mau="warning"
-        />
-        <CardThongKe
-          label="Hoàn thành"
-          giaTri={thongKe.soHoanThanh}
-          icon={CheckCircle2}
-          mau="success"
-        />
-        <CardThongKe
-          label="Tạm dừng / Hủy"
-          giaTri={thongKe.soDaHuy}
-          icon={AlertTriangle}
-          mau="danger"
-        />
-        <CardThongKe
-          label="Tổng giá trị"
-          giaTri={thongKe.tongGiaTri}
-          giaTriTien={true}
-          icon={Wallet}
-          mau="warning"
-          anGiaTri={laBackOffice}
-        />
+      {/* Bảng số liệu điều hành tinh gọn chuẩn Apple trên Desktop */}
+      <div className="hidden sm:grid sm:grid-cols-5 bg-white rounded-[20px] border border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)] divide-x divide-slate-100/90 overflow-hidden">
+        {/* 1. Tổng dự án */}
+        <div className="p-3.5 xl:p-4 flex items-center gap-3">
+          <div className="size-10 rounded-[14px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0 border border-[#007AFF]/15">
+            <FolderKanban className="size-5" strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Tổng dự án</div>
+            <div className="text-[18px] xl:text-[20px] font-extrabold text-slate-900 tabular-nums tracking-tight leading-none mt-1">
+              {thongKe.tongSo}
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Tổng giá trị */}
+        <div className="p-3.5 xl:p-4 flex items-center gap-3">
+          <div className="size-10 rounded-[14px] bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 border border-amber-500/15">
+            <Wallet className="size-5" strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Tổng giá trị</div>
+            <div className="text-[18px] xl:text-[20px] font-extrabold text-amber-600 tabular-nums tracking-tight leading-none mt-1 truncate">
+              {laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(thongKe.tongGiaTri)}
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Đang chạy */}
+        <div className="p-3.5 xl:p-4 flex items-center gap-3">
+          <div className="size-10 rounded-[14px] bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-500/15">
+            <TrendingUp className="size-5" strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Đang chạy</div>
+            <div className="text-[18px] xl:text-[20px] font-extrabold text-emerald-600 tabular-nums tracking-tight leading-none mt-1">
+              {thongKe.soDangThucHien}
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Hoàn thành */}
+        <div className="p-3.5 xl:p-4 flex items-center gap-3">
+          <div className="size-10 rounded-[14px] bg-blue-500/10 text-[#007AFF] flex items-center justify-center shrink-0 border border-blue-500/15">
+            <CheckCircle2 className="size-5" strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Hoàn thành</div>
+            <div className="text-[18px] xl:text-[20px] font-extrabold text-[#007AFF] tabular-nums tracking-tight leading-none mt-1">
+              {thongKe.soHoanThanh}
+            </div>
+          </div>
+        </div>
+
+        {/* 5. Tạm dừng / Hủy */}
+        <div className="p-3.5 xl:p-4 flex items-center gap-3">
+          <div className="size-10 rounded-[14px] bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0 border border-rose-500/15">
+            <AlertTriangle className="size-5" strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Tạm dừng / Hủy</div>
+            <div className="text-[18px] xl:text-[20px] font-extrabold text-rose-600 tabular-nums tracking-tight leading-none mt-1">
+              {thongKe.soDaHuy}
+            </div>
+          </div>
+        </div>
       </div>
 
       <BoLocHoSoDuAn
@@ -646,7 +752,7 @@ function TrangHoSoDuAn() {
         <EmptyState onThemMoi={moThemMoi} />
       ) : (
         <div className="space-y-3">
-          {/* Header danh sách chuẩn ảnh */}
+          {/* Header danh sách */}
           <div className="flex items-center justify-between px-1 pt-1">
             <h2 className="text-[17px] sm:text-[19px] font-bold text-slate-900 tracking-tight">
               Danh sách dự án
@@ -668,8 +774,8 @@ function TrangHoSoDuAn() {
             </div>
           </div>
 
-          {/* List items chuẩn như ảnh */}
-          <div className="space-y-3">
+          {/* Lưới danh sách thẻ dự án chuẩn Apple (1 cột Mobile, 2-3 cột PC) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
             {danhSachDaSapXep.map((hda) => (
               <TheHoSoDuAn
                 key={hda.id}

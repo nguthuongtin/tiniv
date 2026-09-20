@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, SlidersHorizontal, X, ChevronDown, Plus } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Search, Filter, X, XCircle, Building2, Layers, ShieldCheck, UserCheck, Calendar } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
 import type { DieuKienLocNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 
@@ -27,29 +27,31 @@ const BO_LOC_MAC_DINH: DieuKienLocNhanSu = {
   ngay_tao_den_ngay: null
 };
 
-const demDieuKienThem = (bl: DieuKienLocNhanSu): number => {
-  let dem = 0;
-  if (bl.chi_nhanh_id) dem++;
-  if (bl.phong_ban_id) dem++;
-  if (bl.trang_thai_hoat_dong && bl.trang_thai_hoat_dong !== 'tat_ca') dem++;
-  if (bl.ngay_tao_tu_ngay) dem++;
-  if (bl.ngay_tao_den_ngay) dem++;
-  if (bl.trang_thai_du_lieu && bl.trang_thai_du_lieu !== 'hoat_dong') dem++;
-  return dem;
-};
-
 export default function BoLocNhanSu(props: BoLocNhanSuProps) {
   const {
     boLocHienTai,
     onChange,
     onLamMoi,
-    onThemMoi,
     danhSachChiNhanh = [],
     danhSachPhongBan = [],
     danhSachVaiTro = []
   } = props;
-  const [moMoRong, setMoMoRong] = useState(false);
-  const soDieuKien = demDieuKienThem(boLocHienTai);
+  const [moRong, setMoRong] = useState(false);
+
+  const tuKhoa = boLocHienTai.tuKhoa ?? '';
+
+  const soDieuKien = useMemo(() => {
+    let dem = 0;
+    if (tuKhoa && tuKhoa.trim().length > 0) dem++;
+    if (boLocHienTai.vai_tro && boLocHienTai.vai_tro !== 'tat_ca') dem++;
+    if (boLocHienTai.chi_nhanh_id) dem++;
+    if (boLocHienTai.phong_ban_id) dem++;
+    if (boLocHienTai.trang_thai_hoat_dong && boLocHienTai.trang_thai_hoat_dong !== 'tat_ca') dem++;
+    if (boLocHienTai.ngay_tao_tu_ngay) dem++;
+    if (boLocHienTai.ngay_tao_den_ngay) dem++;
+    if (boLocHienTai.trang_thai_du_lieu && boLocHienTai.trang_thai_du_lieu !== 'hoat_dong') dem++;
+    return dem;
+  }, [boLocHienTai, tuKhoa]);
 
   const capNhatMotTruong = <K extends keyof DieuKienLocNhanSu>(
     key: K,
@@ -64,159 +66,151 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 mb-6">
-      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search className="size-4 pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            value={boLocHienTai.tuKhoa ?? ''}
+            value={tuKhoa}
             onChange={(e) => capNhatMotTruong('tuKhoa', e.target.value || null)}
-            placeholder="Tìm kiếm: Họ tên, Mã NV, Email, SĐT, Chức vụ…"
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition"
+            placeholder="Tìm kiếm họ tên, mã NV, email, SĐT..."
+            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
           />
-          {boLocHienTai.tuKhoa && (
+          {tuKhoa && (
             <button
               type="button"
               onClick={() => capNhatMotTruong('tuKhoa', null)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 size-5 text-slate-400 hover:text-slate-700"
+              aria-label="Xóa từ khóa tìm kiếm"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
             >
-              <X className="size-4" />
+              <X className="size-3.5" />
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-2 md:flex md:items-center md:gap-2 md:shrink-0">
-          <select
-            value={boLocHienTai.vai_tro ?? 'tat_ca'}
-            onChange={(e) => capNhatMotTruong('vai_tro', (e.target.value as any) || 'tat_ca')}
-            className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-purple-500 transition"
-          >
-            <option value="tat_ca">Tất cả vai trò</option>
-            {danhSachVaiTro.map((v) => (
-              <option key={v.id} value={v.id}>{v.ten_vai_tro}</option>
-            ))}
-          </select>
+        {/* Nút biểu tượng Phễu lọc tinh gọn bên cạnh ô tìm kiếm */}
+        <button
+          type="button"
+          onClick={() => setMoRong((m) => !m)}
+          title={moRong ? 'Đóng bộ lọc' : 'Mở bộ lọc'}
+          className={cn(
+            'relative size-11 rounded-xl border flex items-center justify-center transition active:scale-[0.96] shrink-0',
+            moRong || soDieuKien > 0
+              ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-xs shadow-blue-500/20'
+              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
+          )}
+        >
+          <Filter className="size-[18px]" />
+          {soDieuKien > 0 && (
+            <span
+              className={cn(
+                'absolute -top-1 -right-1 size-5 rounded-full text-[10px] font-extrabold flex items-center justify-center border-2 border-white',
+                moRong ? 'bg-amber-400 text-slate-900' : 'bg-[#007AFF] text-white'
+              )}
+            >
+              {soDieuKien}
+            </span>
+          )}
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setMoMoRong((x) => !x)}
-            className={cn(
-              'relative inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition',
-              moMoRong || soDieuKien > 0
-                ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100'
-                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-            )}
-          >
-            <SlidersHorizontal className="size-4" />
-            Bộ lọc thêm
-            {soDieuKien > 0 && (
-              <span className="inline-flex items-center justify-center size-5 rounded-full bg-red-500 text-white text-[10px] font-bold">
-                {soDieuKien}
-              </span>
-            )}
-            <ChevronDown className={cn('size-4 transition', moMoRong && 'rotate-180')} />
-          </button>
-
+        {/* Nút reset nhanh nếu đang có điều kiện lọc */}
+        {soDieuKien > 0 && (
           <button
             type="button"
             onClick={datLai}
-            className="col-span-2 md:col-span-1 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+            title="Xóa tất cả điều kiện lọc"
+            className="size-11 rounded-xl border border-rose-200/80 bg-rose-50/60 flex items-center justify-center text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.96] shrink-0"
           >
-            <X className="size-4" />
-            Đặt lại
+            <XCircle className="size-5" />
           </button>
-
-          {onThemMoi && (
-            <button
-              type="button"
-              onClick={onThemMoi}
-              className="col-span-2 md:col-span-1 inline-flex items-center justify-center gap-2 px-4.5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 active:bg-primary/80 text-white text-sm font-bold shadow-sm transition shrink-0"
-            >
-              <Plus className="size-4" strokeWidth={2.5} />
-              <span>Thêm nhân viên</span>
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
-      {moMoRong && (
-        <div className="mt-4 pt-4 border-t border-slate-100 grid gap-4 md:grid-cols-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Chi nhánh</label>
+      <div
+        className={cn(
+          'grid gap-3 transition-all duration-200 overflow-hidden',
+          moRong ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'
+        )}
+      >
+        <div className="min-h-0 grid gap-3.5 md:grid-cols-2 lg:grid-cols-3 p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+          <BoLocMuc label={<><UserCheck className="size-3.5 text-slate-500" /> Vai trò nhân sự</>}>
+            <select
+              value={boLocHienTai.vai_tro ?? 'tat_ca'}
+              onChange={(e) => capNhatMotTruong('vai_tro', (e.target.value as any) || 'tat_ca')}
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+            >
+              <option value="tat_ca">Tất cả vai trò</option>
+              {danhSachVaiTro.map((v) => (
+                <option key={v.id} value={v.id}>{v.ten_vai_tro}</option>
+              ))}
+            </select>
+          </BoLocMuc>
+
+          <BoLocMuc label={<><Building2 className="size-3.5 text-slate-500" /> Chi nhánh</>}>
             <select
               value={boLocHienTai.chi_nhanh_id ?? ''}
               onChange={(e) => capNhatMotTruong('chi_nhanh_id', e.target.value || null)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-purple-500 transition"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               <option value="">Tất cả chi nhánh</option>
               {danhSachChiNhanh.map((cn) => (
                 <option key={cn.id} value={cn.id}>{cn.ten_chi_nhanh}</option>
               ))}
             </select>
-          </div>
+          </BoLocMuc>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Phòng ban</label>
+          <BoLocMuc label={<><Layers className="size-3.5 text-slate-500" /> Phòng ban</>}>
             <select
               value={boLocHienTai.phong_ban_id ?? ''}
               onChange={(e) => capNhatMotTruong('phong_ban_id', e.target.value || null)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-purple-500 transition"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               <option value="">Tất cả phòng ban</option>
               {danhSachPhongBan.map((pb) => (
                 <option key={pb.id} value={pb.id}>{pb.ten_phong_ban}</option>
               ))}
             </select>
-          </div>
+          </BoLocMuc>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Trạng thái tài khoản</label>
+          <BoLocMuc label={<><ShieldCheck className="size-3.5 text-slate-500" /> Trạng thái tài khoản</>}>
             <select
               value={boLocHienTai.trang_thai_hoat_dong ?? 'tat_ca'}
               onChange={(e) => capNhatMotTruong('trang_thai_hoat_dong', (e.target.value as any) || 'tat_ca')}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-purple-500 transition"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             >
               <option value="tat_ca">Hiển thị tất cả</option>
               <option value="hoat_dong">Chỉ hoạt động</option>
               <option value="khoa">Chỉ đã khóa</option>
             </select>
-          </div>
+          </BoLocMuc>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Dữ liệu</label>
-            <select
-              value={boLocHienTai.trang_thai_du_lieu ?? 'hoat_dong'}
-              onChange={(e) => capNhatMotTruong('trang_thai_du_lieu', (e.target.value as any) || null)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-purple-500 transition"
-            >
-              <option value="hoat_dong">Không hiển thị đã xóa</option>
-              <option value="tat_ca">Hiển thị cả đã xóa</option>
-              <option value="da_xoa">Chỉ đã xóa</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Ngày tạo (từ)</label>
+          <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tạo (từ)</>}>
             <input
               type="date"
               value={boLocHienTai.ngay_tao_tu_ngay ?? ''}
               onChange={(e) => capNhatMotTruong('ngay_tao_tu_ngay', e.target.value || null)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-purple-500 transition"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             />
-          </div>
+          </BoLocMuc>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">Ngày tạo (đến)</label>
+          <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tạo (đến)</>}>
             <input
               type="date"
               value={boLocHienTai.ngay_tao_den_ngay ?? ''}
               onChange={(e) => capNhatMotTruong('ngay_tao_den_ngay', e.target.value || null)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-purple-500 transition"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
             />
-          </div>
+          </BoLocMuc>
         </div>
-      )}
+      </div>
     </div>
   );
 }
+
+const BoLocMuc = ({ label, children }: { label: React.ReactNode; children: React.ReactNode }) => (
+  <label className="block space-y-1.5">
+    <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">{label}</span>
+    {children}
+  </label>
+);

@@ -207,6 +207,7 @@ export default function TrangChiTietHoSoDuAn() {
   const [dangTai, setDangTai] = useState(true);
   const [errTai, setErrTai] = useState<string | null>(null);
   const [tabHienTai, setTabHienTai] = useState<TenTab>('tien_do');
+  const [moFormTienDo, setMoFormTienDo] = useState(false);
 
   const [dsTDKemCanhBao, setDsTDKemCanhBao] = useState<
     (TienDoDuAn & { canh_bao: 'sap_den' | 'qua_han' | null })[]
@@ -267,6 +268,7 @@ export default function TrangChiTietHoSoDuAn() {
     }
 
     await taiLai();
+    setMoFormTienDo(false);
   };
 
   const xuLyXoaTaiLieu = async (tl: TaiLieuDuAn) => {
@@ -716,8 +718,8 @@ export default function TrangChiTietHoSoDuAn() {
     <div className="w-full space-y-6 pb-12">
       {/* 1. Header Bar chuẩn Enterprise SaaS */}
       <div className="space-y-3 pb-2 border-b border-border">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-xs sm:text-[13px] font-medium text-slate-500">
+        {/* Breadcrumb (ẩn trên mobile để tránh trùng với thanh Topbar) */}
+        <div className="hidden sm:flex items-center gap-1.5 text-xs sm:text-[13px] font-medium text-slate-500">
           <Link href="/ho-so-du-an" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors font-semibold active:scale-95">
             <ArrowLeft className="size-3.5 text-slate-500" />
             Danh sách hồ sơ dự án
@@ -791,6 +793,7 @@ export default function TrangChiTietHoSoDuAn() {
                     icon_trai={X}
                     onClick={huyChinhSua}
                     disabled={dangXuLyLuuDA}
+                    className="whitespace-nowrap"
                   >
                     Hủy
                   </Nut>
@@ -800,9 +803,9 @@ export default function TrangChiTietHoSoDuAn() {
                     icon_trai={dangXuLyLuuDA ? Loader2 : CheckCircle2}
                     onClick={xuLyLuuChinhSuaDA}
                     disabled={dangXuLyLuuDA}
-                    className="font-bold shadow-sm"
+                    className="font-bold shadow-sm whitespace-nowrap"
                   >
-                    {dangXuLyLuuDA ? 'Đang lưu...' : 'Lưu thay đổi'}
+                    {dangXuLyLuuDA ? 'Đang lưu...' : 'Lưu'}
                   </Nut>
                 </>
               ) : (
@@ -810,11 +813,30 @@ export default function TrangChiTietHoSoDuAn() {
                   <Nut
                     kieu="primary"
                     kich_thuoc="sm"
+                    icon_trai={Plus}
+                    onClick={() => {
+                      setTabHienTai('tien_do');
+                      setMoFormTienDo(true);
+                      setTimeout(() => {
+                        const el = document.getElementById('form-cap-nhat-tien-do');
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }, 100);
+                    }}
+                    className="font-bold shadow-sm whitespace-nowrap"
+                    title="Cập nhật tiến độ dự án"
+                  >
+                    + Tiến độ
+                  </Nut>
+                  <Nut
+                    kieu="outline"
+                    kich_thuoc="sm"
                     icon_trai={Pencil}
                     onClick={batDauChinhSua}
-                    className="font-bold shadow-sm"
+                    className="font-medium shadow-2xs whitespace-nowrap"
                   >
-                    Chỉnh sửa dự án
+                    Chỉnh sửa
                   </Nut>
                   <Nut
                     kieu="danger"
@@ -822,7 +844,7 @@ export default function TrangChiTietHoSoDuAn() {
                     icon_trai={dangXuLyKhac['xoa_detail'] ? Loader2 : Trash2}
                     onClick={xuLyXoaMem}
                     disabled={dangXuLyKhac['xoa_detail'] || hda.trang_thai === 'da_xoa'}
-                    className="font-semibold"
+                    className="font-semibold whitespace-nowrap"
                   >
                     Xóa
                   </Nut>
@@ -1001,6 +1023,8 @@ export default function TrangChiTietHoSoDuAn() {
                     dsNS={dsNS}
                     onTao={xuLyThemCapNhatTongHop}
                     onXoaTD={xuLyXoaTienDo}
+                    moForm={moFormTienDo}
+                    onToggleForm={setMoFormTienDo}
                   />
                 </NoiDungTab>
                 <NoiDungTab gia_tri="tai_lieu">
@@ -2261,10 +2285,21 @@ function BanNhatKyVaTienDo(props: {
     file?: { ten_file: string; url_file: string; loai_file: string; ghi_chu?: string } | null;
   }) => Promise<void>;
   onXoaTD: (td: TienDoDuAn) => void;
+  moForm?: boolean;
+  onToggleForm?: (mo: boolean) => void;
 }) {
   const { dsTD, dangTai, err, dsNS, onTao, onXoaTD } = props;
 
-  const [moForm, setMoForm] = useState(false);
+  const isControlled = props.moForm !== undefined;
+  const [moFormInternal, setMoFormInternal] = useState(false);
+  const moForm = isControlled ? Boolean(props.moForm) : moFormInternal;
+  const capNhatMoForm = (val: boolean) => {
+    if (props.onToggleForm) {
+      props.onToggleForm(val);
+    }
+    setMoFormInternal(val);
+  };
+
   const [noiDung, setNoiDung] = useState('');
   const [kemFile, setKemFile] = useState(false);
   const [tenFile, setTenFile] = useState('');
@@ -2316,7 +2351,7 @@ function BanNhatKyVaTienDo(props: {
       setTenFile('');
       setUrlFile('');
       setGhiChuFile('');
-      setMoForm(false);
+      capNhatMoForm(false);
     } catch (e: any) {
       setLoiForm(e?.message ?? 'Lưu cập nhật thất bại');
     } finally {
@@ -2338,15 +2373,16 @@ function BanNhatKyVaTienDo(props: {
           kieu={moForm ? 'outline' : 'primary'}
           kich_thuoc="sm"
           icon_trai={moForm ? X : Plus}
-          onClick={() => setMoForm((v) => !v)}
+          onClick={() => capNhatMoForm(!moForm)}
+          className="whitespace-nowrap font-medium"
         >
-          {moForm ? 'Đóng form' : 'Cập nhật tiến độ mới'}
+          {moForm ? 'Đóng form' : '+ Tiến độ'}
         </Nut>
       </div>
 
       {/* 2. Form Cập nhật tiến độ & đính kèm tài liệu nhanh */}
       {(moForm || dsTD.length === 0) && (
-        <div className="rounded-[var(--radius-card)] border border-primary/30 bg-primary/5 p-4 sm:p-5 shadow-sm space-y-4 animate-in fade-in duration-200">
+        <div id="form-cap-nhat-tien-do" className="rounded-[var(--radius-card)] border border-primary/30 bg-primary/5 p-4 sm:p-5 shadow-sm space-y-4 animate-in fade-in duration-200 scroll-mt-24">
           <div className="flex items-center justify-between border-b border-primary/20 pb-2.5">
             <div className="flex items-center gap-2">
               <div className="size-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0">
@@ -2359,7 +2395,7 @@ function BanNhatKyVaTienDo(props: {
             {dsTD.length > 0 && (
               <button
                 type="button"
-                onClick={() => setMoForm(false)}
+                onClick={() => capNhatMoForm(false)}
                 className="p-1 rounded-md text-muted-foreground hover:text-foreground transition cursor-pointer"
               >
                 <X className="size-4" />
@@ -2475,7 +2511,7 @@ function BanNhatKyVaTienDo(props: {
               </div>
               <div className="flex items-center gap-2 self-end sm:self-auto">
                 {dsTD.length > 0 && (
-                  <Nut kieu="outline" kich_thuoc="sm" onClick={() => setMoForm(false)}>
+                  <Nut kieu="outline" kich_thuoc="sm" onClick={() => capNhatMoForm(false)}>
                     Hủy
                   </Nut>
                 )}
@@ -2510,13 +2546,13 @@ function BanNhatKyVaTienDo(props: {
             nhan_tuy_chinh="Chưa có ghi nhận tiến độ nào"
             nhan_phu_tuy_chinh="Nhấn 'Cập nhật tiến độ mới' để bắt đầu ghi nhận tiến trình triển khai cho dự án này."
             hanh_dong={
-              <Nut kieu="primary" kich_thuoc="sm" icon_trai={Plus} onClick={() => setMoForm(true)}>
+              <Nut kieu="primary" kich_thuoc="sm" icon_trai={Plus} onClick={() => capNhatMoForm(true)}>
                 Thêm tiến độ đầu tiên
               </Nut>
             }
           />
         ) : (
-          <div className="space-y-3.5">
+          <div className="space-y-3">
             {dsTD.map((td, i) => {
               const nguoiTao = td.nguoi_tao_id
                 ? dsNS.find((x) => x.id === td.nguoi_tao_id) ?? null
@@ -2526,69 +2562,64 @@ function BanNhatKyVaTienDo(props: {
                 <div
                   key={td.id}
                   className={cn(
-                    'rounded-2xl border bg-white p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:border-slate-300 transition space-y-3',
-                    i === 0 ? 'border-[#007AFF]/40 ring-1 ring-[#007AFF]/15' : 'border-slate-200/90'
+                    'group relative rounded-2xl border bg-white p-3.5 sm:p-4.5 transition-all duration-200 space-y-2.5',
+                    i === 0
+                      ? 'border-blue-200/90 shadow-[0_2px_12px_rgba(0,122,255,0.06)] ring-1 ring-blue-500/10'
+                      : 'border-slate-200/80 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
                   )}
                 >
-                  {/* Header Tiến độ: Ngày giờ & Nhân sự nổi bật */}
+                  {/* Header: Avatar, Tên, Thời gian & Nút Xóa */}
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <DaiDien
                         ten={nguoiTao?.ho_va_ten ?? 'Nhân sự'}
                         anh={nguoiTao?.url_anh_dai_dien}
                         kich_thuoc="sm"
+                        className="size-8 sm:size-8.5 rounded-full shrink-0 ring-1 ring-slate-200/80"
                       />
-                      <div className="min-w-0">
-                        <div className="text-xs sm:text-sm font-bold text-foreground truncate">
+                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                        <span className="text-[13.5px] sm:text-sm font-bold text-slate-900 truncate">
                           {nguoiTao?.ho_va_ten ?? 'Nhân sự'}
-                        </div>
-                        {/* Ngày tháng & Giờ nổi bật với badge iOS rõ ràng */}
-                        <div className="inline-flex items-center gap-1.5 mt-0.5 px-2 py-0.5 rounded-md bg-slate-100/90 border border-slate-200 text-[#007AFF] font-bold text-[11px] sm:text-xs tabular-nums">
-                          <Clock className="size-3.5 text-[#007AFF]" />
-                          <span>{formatNgay(td.ngay_tao, 'DD/MM/YYYY')}</span>
-                          <span className="text-slate-400 font-normal">|</span>
-                          <span className="text-slate-700">{formatNgay(td.ngay_tao, 'HH:mm')}</span>
-                        </div>
-                      </div>
-
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#5E5CE6]/10 text-[#5E5CE6] border border-[#5E5CE6]/20 text-[11px] font-bold">
-                        <Activity className="size-3" /> Tiến độ
-                      </span>
-
-                      {i === 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/20 font-bold text-[10.5px]">
-                          <Sparkles className="size-3" /> Mới nhất
                         </span>
-                      )}
+                        <span className="text-slate-300">·</span>
+                        <span className="text-[11.5px] sm:text-xs text-slate-500 font-medium tabular-nums shrink-0">
+                          {formatNgay(td.ngay_tao, 'DD/MM/YYYY')} <span className="text-slate-400 font-normal">lúc</span> {formatNgay(td.ngay_tao, 'HH:mm')}
+                        </span>
+                        {i === 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#007AFF]/10 text-[#007AFF] font-bold text-[10.5px] border border-[#007AFF]/20 shrink-0">
+                            <Sparkles className="size-2.5" /> Mới nhất
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <Nut
-                      kieu="ghost"
-                      kich_thuoc="xs"
-                      icon_trai={Trash2}
+                    {/* Nút Xóa tinh gọn - icon ghost */}
+                    <button
+                      type="button"
+                      title="Xóa ghi nhận này"
                       onClick={() => onXoaTD(td)}
-                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      className="size-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition opacity-60 group-hover:opacity-100 shrink-0"
                     >
-                      Xóa
-                    </Nut>
+                      <Trash2 className="size-3.5" />
+                    </button>
                   </div>
 
-                  {/* Nội dung Tiến độ */}
-                  <div className="rounded-xl bg-slate-50/70 border border-slate-200/80 p-3.5 space-y-2">
-                    <p className="text-xs sm:text-sm font-medium text-foreground whitespace-pre-wrap leading-relaxed">
+                  {/* Nội dung Tiến độ hiển thị tự nhiên, không lồng hộp xám */}
+                  <div className="pl-10 sm:pl-11 pr-1">
+                    <p className="text-[13.5px] sm:text-[14px] text-slate-800 leading-relaxed whitespace-pre-wrap font-normal">
                       {td.tinh_hinh_hien_tai}
                     </p>
 
                     {td.link_tai_lieu && (
-                      <div className="pt-2 border-t border-border/60">
+                      <div className="mt-2.5">
                         <a
                           href={td.link_tai_lieu}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold border border-primary/20 transition shadow-2xs"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/90 hover:bg-blue-50 text-slate-700 hover:text-[#007AFF] text-xs font-semibold border border-slate-200/70 transition shadow-2xs group/link"
                         >
-                          <ExternalLink className="size-3" />
-                          <span>Mở liên kết đính kèm</span>
+                          <ExternalLink className="size-3 text-slate-400 group-hover/link:text-[#007AFF] transition-colors" />
+                          <span>Mở tài liệu đính kèm</span>
                         </a>
                       </div>
                     )}

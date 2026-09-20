@@ -577,102 +577,24 @@ export default function TrangNhanSu() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {danhSachDaSapXep.map((ns) => {
-              const thongTinVt = chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS);
-              const biKhoa = !ns.trang_thai;
-              return (
-                <div
-                  key={ns.id}
-                  onClick={() => router.push(`/nhan-su/${ns.id}`)}
-                  className={cn(
-                    'relative rounded-[20px] border border-slate-200/80 bg-white p-3.5 sm:p-4.5 flex items-center justify-between gap-3 sm:gap-4 transition-all duration-200 hover:border-blue-300 hover:shadow-md shadow-[0_2px_8px_rgba(0,0,0,0.02)] cursor-pointer group active:scale-[0.99]',
-                    biKhoa && 'opacity-60 grayscale-[50%]'
-                  )}
-                >
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                    {/* Squircle Avatar or Blue User Icon */}
-                    {ns.url_anh_dai_dien ? (
-                      <DaiDien
-                        ten={ns.ho_va_ten}
-                        anh={ns.url_anh_dai_dien}
-                        kich_thuoc="md"
-                        className="size-11 sm:size-12 rounded-[16px] shadow-2xs shrink-0"
-                      />
-                    ) : (
-                      <div className="size-11 sm:size-12 rounded-[16px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0 border border-[#007AFF]/15 shadow-2xs">
-                        <User className="size-5 sm:size-5.5 text-[#007AFF]" strokeWidth={2.2} />
-                      </div>
-                    )}
-
-                    {/* Content */}
-                    <div className="min-w-0 flex-1">
-                      <h3
-                        className="font-bold text-[15px] sm:text-[16.5px] text-slate-900 group-hover:text-[#007AFF] transition-colors truncate tracking-tight"
-                        title={ns.ho_va_ten}
-                      >
-                        {ns.ho_va_ten}
-                      </h3>
-
-                      <div className="text-[12.5px] sm:text-[13px] text-slate-500 font-normal truncate mt-0.5">
-                        {thongTinVt.nhan} • {tenPhongBan(ns.phong_ban_id) || 'Chưa phân PB'}
-                      </div>
-
-                      <div className="flex items-center gap-2 sm:gap-2.5 text-[11.5px] sm:text-[12.5px] text-slate-500 mt-1.5 flex-wrap">
-                        <span className="inline-flex items-center gap-1 text-slate-600 truncate max-w-[200px]">
-                          <Mail className="size-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate">{ns.email}</span>
-                        </span>
-                        <span className="text-slate-200">│</span>
-                        <span className="inline-flex items-center gap-1 text-slate-600">
-                          <Phone className="size-3.5 text-slate-400 shrink-0" />
-                          <span>{ns.so_dien_thoai || '--'}</span>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Badge, KeyRound & Chevron */}
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide shrink-0',
-                        biKhoa
-                          ? 'bg-[#FF3B30]/10 text-[#FF3B30]'
-                          : 'bg-[#34C759]/10 text-[#34C759]'
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'size-1.5 rounded-full',
-                          biKhoa ? 'bg-[#FF3B30]' : 'bg-[#34C759]'
-                        )}
-                      />
-                      <span>{biKhoa ? 'Đã khóa' : 'Hoạt động'}</span>
-                    </span>
-
-                    {duocQuanLyNhanSu && (
-                      <button
-                        type="button"
-                        title="Đổi mật khẩu"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLoiMk(null);
-                          setMkMoiModal('');
-                          setNhapLaiMkModal('');
-                          setMoModalDoiMk(ns);
-                        }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-[#007AFF] hover:bg-blue-50 transition shrink-0"
-                      >
-                        <KeyRound className="size-4" />
-                      </button>
-                    )}
-
-                    <ChevronRight className="size-4.5 sm:size-5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
-                  </div>
-                </div>
-              );
-            })}
+          {/* Lưới danh sách thẻ nhân sự chuẩn Apple (1 cột Mobile, 2-3 cột PC) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
+            {danhSachDaSapXep.map((ns) => (
+              <TheNhanSu
+                key={ns.id}
+                ns={ns}
+                thongTinVt={chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS)}
+                tenPhongBan={tenPhongBan(ns.phong_ban_id)}
+                tenChiNhanh={tenChiNhanh(ns.chi_nhanh_id)}
+                duocQuanLyNhanSu={duocQuanLyNhanSu}
+                onDoiMatKhau={(nsTarget) => {
+                  setLoiMk(null);
+                  setMkMoiModal('');
+                  setNhapLaiMkModal('');
+                  setMoModalDoiMk(nsTarget);
+                }}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -829,3 +751,159 @@ export default function TrangNhanSu() {
     </Bo_Cuc_Trang>
   );
 }
+
+const TheNhanSu = ({
+  ns,
+  thongTinVt,
+  tenPhongBan,
+  tenChiNhanh,
+  duocQuanLyNhanSu,
+  onDoiMatKhau
+}: {
+  ns: NhanSu;
+  thongTinVt: { nhan: string };
+  tenPhongBan: string;
+  tenChiNhanh: string;
+  duocQuanLyNhanSu?: boolean;
+  onDoiMatKhau?: (ns: NhanSu) => void;
+}) => {
+  const router = useRouter();
+  const biKhoa = !ns.trang_thai;
+
+  return (
+    <div
+      onClick={() => router.push(`/nhan-su/${ns.id}`)}
+      className={cn(
+        'group relative bg-white rounded-[22px] border border-slate-200/80 p-4 sm:p-5 pt-5 sm:pt-6 transition-all duration-200 ease-out flex flex-col justify-between overflow-hidden',
+        'hover:border-blue-300 hover:shadow-[0_8px_30px_rgba(0,122,255,0.08),0_2px_8px_rgba(0,0,0,0.04)]',
+        'active:scale-[0.985] active:bg-slate-50/60 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.03),0_6px_16px_rgba(0,0,0,0.02)]',
+        biKhoa && 'opacity-60 grayscale-[40%]'
+      )}
+    >
+      {/* 1. THANH TRẠNG THÁI MÉP TRÊN THẺ (Apple Top-Edge Bar) */}
+      <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-100/90 overflow-hidden">
+        <div
+          className={cn(
+            'h-full w-full transition-all duration-500 ease-out',
+            biKhoa ? 'bg-rose-500' : 'bg-emerald-500'
+          )}
+        />
+      </div>
+
+      <div>
+        {/* TẦNG ĐỈNH: STATUS CAPSULE & MÃ NHÂN VIÊN & VAI TRÒ */}
+        <div className="flex items-center justify-between gap-3 pb-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Apple Status Capsule */}
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide border shrink-0',
+                biKhoa
+                  ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+              )}
+            >
+              <span
+                className={cn(
+                  'size-1.5 rounded-full shrink-0',
+                  biKhoa ? 'bg-rose-500' : 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+                )}
+              />
+              <span className="truncate max-w-[120px]">{biKhoa ? 'Đã khóa' : 'Hoạt động'}</span>
+            </span>
+
+            {ns.ma_nhan_vien && (
+              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-slate-100/90 text-slate-500 font-mono text-[11px] font-medium border border-slate-200/60 truncate max-w-[110px]">
+                {ns.ma_nhan_vien}
+              </span>
+            )}
+          </div>
+
+          {/* Vai trò Pill */}
+          <div className="text-right shrink-0">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11.5px] font-semibold bg-blue-50 text-[#007AFF] border border-blue-200/50">
+              {thongTinVt.nhan}
+            </span>
+          </div>
+        </div>
+
+        {/* TẦNG TRỌNG TÂM: AVATAR & HỌ TÊN 2 DÒNG & PHÒNG BAN */}
+        <div className="flex items-start gap-3 my-1">
+          {ns.url_anh_dai_dien ? (
+            <DaiDien
+              ten={ns.ho_va_ten}
+              anh={ns.url_anh_dai_dien}
+              kich_thuoc="md"
+              className="size-11 rounded-[15px] shadow-2xs shrink-0 mt-0.5"
+            />
+          ) : (
+            <div className="size-11 rounded-[15px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0 border border-[#007AFF]/15 shadow-2xs mt-0.5">
+              <User className="size-5 text-[#007AFF]" strokeWidth={2.2} />
+            </div>
+          )}
+
+          <div className="space-y-1 min-w-0 flex-1">
+            <h3
+              className="font-bold text-[15.5px] sm:text-[16.5px] text-slate-900 leading-[1.38] tracking-tight line-clamp-2 group-hover:text-[#007AFF] transition-colors"
+              title={ns.ho_va_ten}
+            >
+              {ns.ho_va_ten}
+            </h3>
+
+            <div className="flex items-center gap-1.5 text-[12.5px] sm:text-[13px] text-slate-500 font-normal truncate">
+              <Building2 className="size-3.5 text-slate-400 shrink-0" />
+              <span className="truncate font-medium">
+                {tenPhongBan || 'Chưa phân PB'}
+                {tenChiNhanh ? ` • ${tenChiNhanh}` : ''}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* TẦNG CHÂN: SĐT, EMAIL & ACTION BUTTONS */}
+      <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-100 text-[11.5px] sm:text-[12px] text-slate-500">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+          {/* Số điện thoại */}
+          <span className="inline-flex items-center gap-1 text-slate-600">
+            <Phone className="size-3.5 text-slate-400 shrink-0" />
+            <span>{ns.so_dien_thoai || '--'}</span>
+          </span>
+
+          {/* Email */}
+          {ns.email && (
+            <>
+              <span className="text-slate-300">│</span>
+              <span className="inline-flex items-center gap-1 text-slate-600 truncate max-w-[130px] sm:max-w-[160px]">
+                <Mail className="size-3 text-slate-400 shrink-0" />
+                <span className="truncate">{ns.email}</span>
+              </span>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {duocQuanLyNhanSu && (
+            <button
+              type="button"
+              title="Đổi mật khẩu"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDoiMatKhau?.(ns);
+              }}
+              className="size-7 rounded-full bg-slate-100/90 hover:bg-blue-50 text-slate-400 hover:text-[#007AFF] flex items-center justify-center transition shrink-0"
+            >
+              <KeyRound className="size-3.5" />
+            </button>
+          )}
+
+          {/* Nút hành động tròn Apple */}
+          <div className="size-7 rounded-full bg-slate-100/90 group-hover:bg-[#007AFF] text-slate-400 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-2xs group-hover:translate-x-0.5 shrink-0">
+            <ChevronRight className="size-3.5" strokeWidth={2.5} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+

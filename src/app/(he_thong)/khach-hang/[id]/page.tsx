@@ -373,8 +373,8 @@ export default function TrangChiTietKhachHang() {
     <div className="w-full space-y-6 pb-12">
       {/* 1. Header Bar */}
       <div className="space-y-3 pb-3 border-b border-border">
-        {/* Breadcrumb & Navigation */}
-        <div className="flex items-center gap-1.5 text-xs sm:text-[13px] font-medium text-slate-500">
+        {/* Breadcrumb & Navigation (ẩn trên mobile để tránh trùng Topbar) */}
+        <div className="hidden sm:flex items-center gap-1.5 text-xs sm:text-[13px] font-medium text-slate-500">
           <Link href="/khach-hang" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors font-semibold active:scale-95">
             <ArrowLeft className="size-3.5 text-slate-500" />
             Khách hàng
