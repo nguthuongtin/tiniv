@@ -20,6 +20,7 @@ export default function BoCucGoc({
       <html lang="vi-VN" className="antialiased">
       <head>
         <title>Đăng nhập - Tini PMS</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -44,6 +45,7 @@ export default function BoCucGoc({
     <html lang="vi-VN" className="antialiased light" style={{ colorScheme: 'light' }}>
       <head>
         <title>Tini PMS - Hệ thống Quản trị Dự án</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
