@@ -1608,7 +1608,7 @@ export default function TrangChu() {
       </div>
 
       <footer className="pt-2 text-center text-[11px] text-slate-400">
-        © {new Date().getFullYear()} Tini PMS — Hệ thống Quản trị Doanh nghiệp & Dự án
+        © {new Date().getFullYear()} TiniPMS — Hệ thống Quản trị Doanh nghiệp & Dự án
       </footer>
     </div>
   );

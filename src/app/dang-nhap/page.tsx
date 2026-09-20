@@ -125,11 +125,12 @@ const TrangDangNhap: React.FC = () => {
       <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-slate-200/60 relative z-10 space-y-6">
         {/* Logo & Tên phần mềm */}
         <div className="text-center space-y-2">
-          <div className="size-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white mx-auto flex items-center justify-center shadow-lg shadow-blue-500/25">
-            <FolderKanban className="size-7" />
+          <div className="size-16 rounded-2xl overflow-hidden shadow-lg shadow-blue-500/25 mx-auto border border-white/20">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon-192x192.png" alt="TiniPMS" className="size-full object-cover" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Tini PMS
+            TiniPMS
           </h1>
           <p className="text-xs text-slate-500 font-medium">
             Hệ thống Quản trị Dự án &amp; Báo cáo Công việc

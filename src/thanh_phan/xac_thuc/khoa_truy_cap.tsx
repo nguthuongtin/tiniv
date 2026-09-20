@@ -114,7 +114,7 @@ export const KhoaTruyCap: React.FC<KhoaTruyCapProps> = ({
         </div>
         <div className="flex flex-col items-center gap-2">
           <p className="text-slate-800 text-sm font-semibold text-center">
-            {dangTaiHoSo ? 'Đang nạp thông tin tài khoản...' : 'Đang khởi động hệ thống Tini PMS...'}
+            {dangTaiHoSo ? 'Đang nạp thông tin tài khoản...' : 'Đang khởi động hệ thống TiniPMS...'}
           </p>
           <p className="text-slate-600 text-[13px] font-medium tracking-wide">
             Đã chờ:{' '}

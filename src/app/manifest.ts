@@ -1,15 +1,15 @@
-﻿import type { MetadataRoute } from 'next';
+import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Tini PMS - Hệ thống Quản trị Dự án',
-    short_name: 'Tini PMS',
-    description: 'Hệ thống quản trị dự án và hồ sơ dự án chuyên nghiệp',
+    name: 'TiniPMS',
+    short_name: 'TiniPMS',
+    description: 'Hệ thống Quản lý Dự án & Tiến độ Công việc TiniPMS',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#F2F2F7',
-    theme_color: '#007AFF',
+    background_color: '#071630',
+    theme_color: '#0055d4',
     categories: ['business', 'productivity'],
     icons: [
       {
@@ -22,7 +22,19 @@ export default function manifest(): MetadataRoute.Manifest {
         src: '/icon-512x512.png',
         sizes: '512x512',
         type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icon-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
         purpose: 'maskable',
+      },
+      {
+        src: '/apple-touch-icon.png',
+        sizes: '180x180',
+        type: 'image/png',
+        purpose: 'any',
       },
     ],
   };

@@ -19,13 +19,16 @@ export default function BoCucGoc({
     return (
       <html lang="vi-VN" className="antialiased">
       <head>
-        <title>Đăng nhập - Tini PMS</title>
+        <title>Đăng nhập - TiniPMS</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-        <meta name="theme-color" content="#007AFF" />
+        <meta name="theme-color" content="#0055d4" />
+        <meta name="application-name" content="TiniPMS" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Tini PMS" />
+        <meta name="apple-mobile-web-app-title" content="TiniPMS" />
+        <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
+        <link rel="icon" href="/icon-192x192.png" sizes="192x192" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <script
           dangerouslySetInnerHTML={{
@@ -67,13 +70,16 @@ export default function BoCucGoc({
   return (
     <html lang="vi-VN" className="antialiased light" style={{ colorScheme: 'light' }}>
       <head>
-        <title>Tini PMS - Hệ thống Quản trị Dự án</title>
+        <title>TiniPMS - Quản trị Dự án</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-        <meta name="theme-color" content="#007AFF" />
+        <meta name="theme-color" content="#0055d4" />
+        <meta name="application-name" content="TiniPMS" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Tini PMS" />
+        <meta name="apple-mobile-web-app-title" content="TiniPMS" />
+        <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
+        <link rel="icon" href="/icon-192x192.png" sizes="192x192" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <script
           dangerouslySetInnerHTML={{

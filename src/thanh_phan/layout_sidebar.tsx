@@ -114,7 +114,7 @@ const useSidebarShared = () => {
     if (pathname.startsWith('/ho-so-du-an')) return 'Hồ sơ dự án';
     if (pathname.startsWith('/nhan-su')) return 'Nhân sự';
     if (pathname.startsWith('/quan-tri')) return 'Quản trị hệ thống';
-    return 'Tini PMS';
+    return 'TiniPMS';
   })();
 
   const laQuyenQuanTri =
@@ -229,7 +229,7 @@ const renderCuoiSidebar = (
   dangXuLy: boolean,
   xuLyDangXuat: () => Promise<void>
 ) => {
-  const tenNguoiDung = hoTenCoDau(nguoiDungHienTai?.ho_va_ten) || 'Nhân viên Tini PMS';
+  const tenNguoiDung = hoTenCoDau(nguoiDungHienTai?.ho_va_ten) || 'Nhân viên TiniPMS';
   const vaiTro = hienThiTenVaiTro(nguoiDungHienTai?.vai_tro);
 
   return (
@@ -266,13 +266,14 @@ const renderCuoiSidebar = (
 const renderHeaderSidebar = (nhomHienTai: string) => (
   <div className="h-16 px-4 border-b border-slate-200/80 flex items-center justify-between gap-3 shrink-0 bg-white">
     <div className="flex items-center gap-2.5 min-w-0">
-      <div className="size-9 rounded-[13px] bg-gradient-to-br from-[#007AFF] to-[#0055D4] text-white flex items-center justify-center shadow-sm shadow-blue-500/25 shrink-0 font-black text-sm">
-        <Shield className="size-4.5" strokeWidth={2.2} />
+      <div className="size-9 rounded-[12px] overflow-hidden shadow-sm shadow-blue-500/20 shrink-0 border border-slate-200/60">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon-192x192.png" alt="TiniPMS" className="size-full object-cover" />
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="font-extrabold tracking-tight text-slate-900 text-[15.5px] leading-none">
-            Tini PMS
+            TiniPMS
           </span>
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 leading-none">
             PMS
