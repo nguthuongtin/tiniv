@@ -28,7 +28,10 @@ import {
   ShieldAlert,
   Briefcase,
   FolderKanban,
-  ShieldCheck
+  ShieldCheck,
+  ChevronRight,
+  ChevronDown,
+  User
 } from 'lucide-react';
 import { cn } from '../../../thu_vien/utils/cn';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
@@ -117,6 +120,20 @@ export default function TrangNhanSu() {
 
   const duocQuanLyNhanSu = coQuyen(nguoiDungHienTai, 'nhan_su.quan_ly', dsVaiTroNS);
   const duocXemNhanSu = coQuyen(nguoiDungHienTai, 'nhan_su.xem', dsVaiTroNS) || duocQuanLyNhanSu;
+
+  const [kieuSapXep, setKieuSapXep] = useState<'moi_nhat' | 'cu_nhat' | 'ten_az'>('moi_nhat');
+
+  const danhSachDaSapXep = useMemo(() => {
+    const ds = [...danhSach];
+    if (kieuSapXep === 'moi_nhat') {
+      ds.sort((a, b) => (b.ngay_tao ?? '').localeCompare(a.ngay_tao ?? ''));
+    } else if (kieuSapXep === 'cu_nhat') {
+      ds.sort((a, b) => (a.ngay_tao ?? '').localeCompare(b.ngay_tao ?? ''));
+    } else if (kieuSapXep === 'ten_az') {
+      ds.sort((a, b) => (a.ho_va_ten || '').localeCompare(b.ho_va_ten || ''));
+    }
+    return ds;
+  }, [danhSach, kieuSapXep]);
 
   const themToast = useCallback((dang: ThongBaoToast['dang'], noi_dung: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
@@ -419,7 +436,47 @@ export default function TrangNhanSu() {
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3.5 sm:space-y-6">
-      <div className="grid grid-cols-2 gap-2 sm:gap-3.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mb-2">
+      {/* Summary 2 dòng tinh gọn trên Mobile */}
+      <div className="sm:hidden bg-white rounded-[18px] p-3.5 border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)] space-y-2">
+        {/* Dòng 1 — quy mô nhân sự */}
+        <div className="flex items-center justify-between text-[13px] border-b border-slate-100 pb-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 font-medium">Tổng số NV</span>
+            <span className="font-extrabold text-slate-900 text-[15px] tabular-nums">{danhSach.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 font-medium">Đang hoạt động</span>
+            <span className="font-extrabold text-[#34C759] text-[15px] tabular-nums">
+              {danhSach.filter((x) => x.trang_thai).length}
+            </span>
+          </div>
+        </div>
+
+        {/* Dòng 2 — tình trạng / phân bổ */}
+        <div className="flex items-center justify-between text-[12px] pt-0.5">
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500">Đã khóa</span>
+            <span className="font-bold text-[#FF3B30] text-[13px] tabular-nums">
+              {danhSach.filter((x) => !x.trang_thai).length}
+            </span>
+          </div>
+          <span className="text-slate-200">│</span>
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500">Phòng ban</span>
+            <span className="font-bold text-[#007AFF] text-[13px] tabular-nums">{dsPhongBan.length}</span>
+          </div>
+          <span className="text-slate-200">│</span>
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500">Chưa phân PB</span>
+            <span className="font-bold text-[#FF9500] text-[13px] tabular-nums">
+              {danhSach.filter((x) => !x.phong_ban_id).length}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Cards đầy đủ trên Desktop */}
+      <div className="hidden sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3.5 mb-2">
         {CARD_THONG_KE_PB.map((c) => {
           const Icon = c.icon;
           const dangChon =
@@ -484,7 +541,7 @@ export default function TrangNhanSu() {
           <Loader2 className="size-5 animate-spin" strokeWidth={2.25} />
           <span className="font-semibold">Đang tải danh sách nhân sự...</span>
         </div>
-      ) : danhSach.length === 0 ? (
+      ) : danhSachDaSapXep.length === 0 ? (
         <Rong
           icon_tuy_chinh={UserRound}
           nhan_tuy_chinh="Không tìm thấy nhân sự"
@@ -498,93 +555,125 @@ export default function TrangNhanSu() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {danhSach.map((ns) => {
-            const thongTinVt = chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS);
-            const biKhoa = !ns.trang_thai;
-            return (
-              <div
-                key={ns.id}
-                onClick={() => router.push(`/nhan-su/${ns.id}`)}
-                className={cn(
-                  'rounded-[20px] border border-slate-200/90 bg-white p-4 flex flex-col justify-between transition-all duration-200 hover:border-slate-300 hover:shadow-md shadow-[0_2px_10px_rgba(0,0,0,0.03)] cursor-pointer group min-h-[135px] active:scale-[0.98]',
-                  biKhoa && 'opacity-70'
-                )}
+        <div className="space-y-3">
+          {/* Header danh sách chuẩn ảnh */}
+          <div className="flex items-center justify-between px-1 pt-1">
+            <h2 className="text-[17px] sm:text-[19px] font-bold text-slate-900 tracking-tight">
+              Danh sách nhân sự
+            </h2>
+
+            <div className="relative">
+              <select
+                value={kieuSapXep}
+                onChange={(e) => setKieuSapXep(e.target.value as any)}
+                aria-label="Sắp xếp danh sách nhân sự"
+                className="appearance-none text-xs sm:text-[13px] font-semibold text-[#007AFF] bg-white border border-slate-200 hover:border-blue-300 rounded-xl px-3 py-1.5 pr-7 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
-                <div>
-                  {/* Top row: Vai trò badge & Trạng thái badge */}
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 truncate max-w-[100px]">
-                      {thongTinVt.nhan}
-                    </span>
+                <option value="moi_nhat">Mới nhất</option>
+                <option value="cu_nhat">Cũ nhất</option>
+                <option value="ten_az">Tên A-Z</option>
+              </select>
+              <ChevronDown className="size-3.5 text-[#007AFF] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {danhSachDaSapXep.map((ns) => {
+              const thongTinVt = chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS);
+              const biKhoa = !ns.trang_thai;
+              return (
+                <div
+                  key={ns.id}
+                  onClick={() => router.push(`/nhan-su/${ns.id}`)}
+                  className={cn(
+                    'relative rounded-[20px] border border-slate-200/80 bg-white p-3.5 sm:p-4.5 flex items-center justify-between gap-3 sm:gap-4 transition-all duration-200 hover:border-blue-300 hover:shadow-md shadow-[0_2px_8px_rgba(0,0,0,0.02)] cursor-pointer group active:scale-[0.99]',
+                    biKhoa && 'opacity-60 grayscale-[50%]'
+                  )}
+                >
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                    {/* Squircle Avatar or Blue User Icon */}
+                    {ns.url_anh_dai_dien ? (
+                      <DaiDien
+                        ten={ns.ho_va_ten}
+                        anh={ns.url_anh_dai_dien}
+                        kich_thuoc="md"
+                        className="size-11 sm:size-12 rounded-[16px] shadow-2xs shrink-0"
+                      />
+                    ) : (
+                      <div className="size-11 sm:size-12 rounded-[16px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0 border border-[#007AFF]/15 shadow-2xs">
+                        <User className="size-5 sm:size-5.5 text-[#007AFF]" strokeWidth={2.2} />
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="min-w-0 flex-1">
+                      <h3
+                        className="font-bold text-[15px] sm:text-[16.5px] text-slate-900 group-hover:text-[#007AFF] transition-colors truncate tracking-tight"
+                        title={ns.ho_va_ten}
+                      >
+                        {ns.ho_va_ten}
+                      </h3>
+
+                      <div className="text-[12.5px] sm:text-[13px] text-slate-500 font-normal truncate mt-0.5">
+                        {thongTinVt.nhan} • {tenPhongBan(ns.phong_ban_id) || 'Chưa phân PB'}
+                      </div>
+
+                      <div className="flex items-center gap-2 sm:gap-2.5 text-[11.5px] sm:text-[12.5px] text-slate-500 mt-1.5 flex-wrap">
+                        <span className="inline-flex items-center gap-1 text-slate-600 truncate max-w-[200px]">
+                          <Mail className="size-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{ns.email}</span>
+                        </span>
+                        <span className="text-slate-200">│</span>
+                        <span className="inline-flex items-center gap-1 text-slate-600">
+                          <Phone className="size-3.5 text-slate-400 shrink-0" />
+                          <span>{ns.so_dien_thoai || '--'}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Badge, KeyRound & Chevron */}
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <span
                       className={cn(
-                        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold shrink-0',
+                        'inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide shrink-0',
                         biKhoa
-                          ? 'bg-slate-100 text-slate-500'
-                          : 'bg-emerald-500/10 text-emerald-600'
+                          ? 'bg-[#FF3B30]/10 text-[#FF3B30]'
+                          : 'bg-[#34C759]/10 text-[#34C759]'
                       )}
                     >
                       <span
                         className={cn(
                           'size-1.5 rounded-full',
-                          biKhoa ? 'bg-slate-400' : 'bg-emerald-500'
+                          biKhoa ? 'bg-[#FF3B30]' : 'bg-[#34C759]'
                         )}
                       />
-                      {biKhoa ? 'Đã khóa' : 'Hoạt động'}
+                      <span>{biKhoa ? 'Đã khóa' : 'Hoạt động'}</span>
                     </span>
-                  </div>
 
-                  {/* Avatar + Tên & Chức vụ */}
-                  <div className="flex items-start gap-2.5 mt-2.5">
-                    <DaiDien
-                      ten={ns.ho_va_ten}
-                      anh={ns.url_anh_dai_dien || undefined}
-                      kich_thuoc="sm"
-                      className="shadow-xs shrink-0 rounded-lg mt-0.5"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <h3
-                        className="font-bold text-[14px] text-foreground group-hover:text-primary transition-colors truncate block tracking-tight"
-                        title={ns.ho_va_ten}
+                    {duocQuanLyNhanSu && (
+                      <button
+                        type="button"
+                        title="Đổi mật khẩu"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLoiMk(null);
+                          setMkMoiModal('');
+                          setNhapLaiMkModal('');
+                          setMoModalDoiMk(ns);
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-[#007AFF] hover:bg-blue-50 transition shrink-0"
                       >
-                        {ns.ho_va_ten}
-                      </h3>
-                      {ns.chuc_vu && (
-                        <span className="text-xs text-muted-foreground truncate block mt-0.5" title={ns.chuc_vu}>
-                          {ns.chuc_vu}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                        <KeyRound className="size-4" />
+                      </button>
+                    )}
 
-                {/* Phòng ban & Nút Đổi mật khẩu */}
-                <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-1.5 text-xs text-muted-foreground mt-2.5">
-                  <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
-                    <Layers className="size-3.5 shrink-0 text-muted-foreground/70" />
-                    <span className="truncate">{ns.phong_ban_id ? tenPhongBan(ns.phong_ban_id) : 'Chưa gán PB'}</span>
+                    <ChevronRight className="size-4.5 sm:size-5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
                   </div>
-                  {duocQuanLyNhanSu && (
-                    <button
-                      type="button"
-                      title="Đổi mật khẩu"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLoiMk(null);
-                        setMkMoiModal('');
-                        setNhapLaiMkModal('');
-                        setMoModalDoiMk(ns);
-                      }}
-                      className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition shrink-0"
-                    >
-                      <KeyRound className="size-3.5" />
-                    </button>
-                  )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 

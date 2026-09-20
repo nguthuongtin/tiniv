@@ -17,7 +17,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   Eye,
-  UserRound
+  UserRound,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -246,6 +248,20 @@ export default function TrangKhachHang() {
     }
   };
 
+  const [kieuSapXep, setKieuSapXep] = useState<'moi_nhat' | 'cu_nhat' | 'ten_az'>('moi_nhat');
+
+  const danhSachDaSapXep = useMemo(() => {
+    const ds = [...danh_sach];
+    if (kieuSapXep === 'moi_nhat') {
+      ds.sort((a, b) => (b.ngay_tao ?? '').localeCompare(a.ngay_tao ?? ''));
+    } else if (kieuSapXep === 'cu_nhat') {
+      ds.sort((a, b) => (a.ngay_tao ?? '').localeCompare(b.ngay_tao ?? ''));
+    } else if (kieuSapXep === 'ten_az') {
+      ds.sort((a, b) => (a.ten_khach_hang || '').localeCompare(b.ten_khach_hang || ''));
+    }
+    return ds;
+  }, [danh_sach, kieuSapXep]);
+
   const so_luong_theo_trang_thai = useMemo(() => {
     const r = { hoat_dong: 0, tam_dung: 0, da_xoa: 0, tong: 0 };
     for (const k of danh_sach) {
@@ -259,7 +275,36 @@ export default function TrangKhachHang() {
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+      {/* Summary 2 dòng tinh gọn trên Mobile */}
+      <div className="sm:hidden bg-white rounded-[18px] p-3.5 border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)] space-y-2">
+        {/* Dòng 1 — quy mô khách hàng */}
+        <div className="flex items-center justify-between text-[13px] border-b border-slate-100 pb-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 font-medium">Tổng khách hàng</span>
+            <span className="font-extrabold text-slate-900 text-[15px] tabular-nums">{so_luong_theo_trang_thai.tong}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 font-medium">Đang hợp tác</span>
+            <span className="font-extrabold text-[#34C759] text-[15px] tabular-nums">{so_luong_theo_trang_thai.hoat_dong}</span>
+          </div>
+        </div>
+
+        {/* Dòng 2 — tình trạng */}
+        <div className="flex items-center justify-between text-[12px] pt-0.5">
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500">Tạm dừng</span>
+            <span className="font-bold text-[#FF9500] text-[13px] tabular-nums">{so_luong_theo_trang_thai.tam_dung}</span>
+          </div>
+          <span className="text-slate-200">│</span>
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500">Đã xóa</span>
+            <span className="font-bold text-slate-400 text-[13px] tabular-nums">{so_luong_theo_trang_thai.da_xoa}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Cards đầy đủ trên Desktop */}
+      <div className="hidden sm:grid sm:grid-cols-4 gap-2.5 sm:gap-3">
         <CardThongKe label="Tổng khách hàng" gia_tri={so_luong_theo_trang_thai.tong} icon={Building2} mau="primary" />
         <CardThongKe label="Đang hợp tác" gia_tri={so_luong_theo_trang_thai.hoat_dong} icon={CheckCircle2} mau="success" />
         <CardThongKe label="Tạm dừng" gia_tri={so_luong_theo_trang_thai.tam_dung} icon={AlertTriangle} mau="warning" />
@@ -278,23 +323,46 @@ export default function TrangKhachHang() {
           <Loader2 className="size-7 animate-spin text-primary" strokeWidth={2.25} />
           <span className="text-[14.5px] font-semibold leading-body">Đang tải danh sách khách hàng...</span>
         </div>
-      ) : danh_sach.length === 0 ? (
+      ) : danhSachDaSapXep.length === 0 ? (
         <KhongCoDuLieu onThemMoi={mo_them_moi} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {danh_sach.map((kh) => (
-            <TheKhachHang
-              key={kh.id}
-              kh={kh}
-              chiNhanh={dsChiNhanh.find((c) => c.id === kh.chi_nhanh_id) ?? null}
-              nguoiPhuTrach={dsNhanSu.find((n) => n.id === kh.nguoi_phu_trach_id) ?? null}
-              onSua={() => mo_chinh_sua(kh)}
-              onDoiTrangThai={() => xu_ly_doi_trang_thai(kh)}
-              onXoaMem={() => xu_ly_xoa_mem(kh)}
-              dangXuLyDoiTT={Boolean(dang_xu_ly_khac[`doi_tt_${kh.id}`])}
-              dangXuLyXoa={Boolean(dang_xu_ly_khac[`xoa_${kh.id}`])}
-            />
-          ))}
+        <div className="space-y-3">
+          {/* Header danh sách chuẩn ảnh */}
+          <div className="flex items-center justify-between px-1 pt-1">
+            <h2 className="text-[17px] sm:text-[19px] font-bold text-slate-900 tracking-tight">
+              Danh sách khách hàng
+            </h2>
+
+            <div className="relative">
+              <select
+                value={kieuSapXep}
+                onChange={(e) => setKieuSapXep(e.target.value as any)}
+                aria-label="Sắp xếp danh sách khách hàng"
+                className="appearance-none text-xs sm:text-[13px] font-semibold text-[#007AFF] bg-white border border-slate-200 hover:border-blue-300 rounded-xl px-3 py-1.5 pr-7 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+              >
+                <option value="moi_nhat">Mới nhất</option>
+                <option value="cu_nhat">Cũ nhất</option>
+                <option value="ten_az">Tên A-Z</option>
+              </select>
+              <ChevronDown className="size-3.5 text-[#007AFF] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {danhSachDaSapXep.map((kh) => (
+              <TheKhachHang
+                key={kh.id}
+                kh={kh}
+                chiNhanh={dsChiNhanh.find((c) => c.id === kh.chi_nhanh_id) ?? null}
+                nguoiPhuTrach={dsNhanSu.find((n) => n.id === kh.nguoi_phu_trach_id) ?? null}
+                onSua={() => mo_chinh_sua(kh)}
+                onDoiTrangThai={() => xu_ly_doi_trang_thai(kh)}
+                onXoaMem={() => xu_ly_xoa_mem(kh)}
+                dangXuLyDoiTT={Boolean(dang_xu_ly_khac[`doi_tt_${kh.id}`])}
+                dangXuLyXoa={Boolean(dang_xu_ly_khac[`xoa_${kh.id}`])}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -419,25 +487,67 @@ const TheKhachHang = ({
   dangXuLyXoa?: boolean;
 }) => {
   const router = useRouter();
+
+  const badgeStyle = kh.trang_thai === 'hoat_dong'
+    ? { text: 'Hợp tác', bg: 'bg-[#34C759]/10 text-[#34C759]', dot: 'bg-[#34C759]' }
+    : kh.trang_thai === 'tam_dung'
+    ? { text: 'Tạm dừng', bg: 'bg-[#FF9500]/10 text-[#FF9500]', dot: 'bg-[#FF9500]' }
+    : { text: 'Đã xóa', bg: 'bg-slate-100 text-slate-500', dot: 'bg-slate-400' };
+
   return (
     <div
       onClick={() => router.push(`/khach-hang/${kh.id}`)}
       className={cn(
-        'rounded-[20px] border border-slate-200/90 bg-white p-4 flex items-center gap-3.5 transition-all duration-200 hover:border-slate-300 hover:shadow-md shadow-[0_2px_10px_rgba(0,0,0,0.03)] cursor-pointer group min-h-[84px] active:scale-[0.98]',
-        kh.trang_thai === 'da_xoa' && 'opacity-60'
+        'relative rounded-[20px] border border-slate-200/80 bg-white p-3.5 sm:p-4.5 flex items-center justify-between gap-3 sm:gap-4 transition-all duration-200 hover:border-blue-300 hover:shadow-md shadow-[0_2px_8px_rgba(0,0,0,0.02)] cursor-pointer group active:scale-[0.99]',
+        kh.trang_thai === 'da_xoa' && 'opacity-60 grayscale-[50%]'
       )}
     >
-      <DaiDien ten={kh.ten_khach_hang} kich_thuoc="md" className="shadow-xs shrink-0 rounded-2xl" />
-      <div className="min-w-0 flex-1">
-        <h3
-          className="font-bold text-[14.5px] text-slate-900 group-hover:text-[#007AFF] transition-colors leading-snug line-clamp-2 tracking-tight"
-          title={kh.ten_khach_hang}
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+        {/* Blue Squircle Building Icon */}
+        <div className="size-11 sm:size-12 rounded-[16px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0 border border-[#007AFF]/15 shadow-2xs">
+          <Building2 className="size-5 sm:size-5.5 text-[#007AFF]" strokeWidth={2.2} />
+        </div>
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <h3
+            className="font-bold text-[15px] sm:text-[16.5px] text-slate-900 group-hover:text-[#007AFF] transition-colors truncate tracking-tight"
+            title={kh.ten_khach_hang}
+          >
+            {kh.ten_khach_hang}
+          </h3>
+
+          <div className="text-[12.5px] sm:text-[13px] text-slate-500 font-normal truncate mt-0.5">
+            {kh.ma_so_thue ? `MST: ${kh.ma_so_thue}` : (kh.dia_chi || 'Khách hàng')}
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-2.5 text-[11.5px] sm:text-[12.5px] text-slate-500 mt-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 text-slate-600">
+              <Phone className="size-3.5 text-slate-400 shrink-0" />
+              <span>{kh.so_dien_thoai || '--'}</span>
+            </span>
+            <span className="text-slate-200">│</span>
+            <span className="inline-flex items-center gap-1 text-slate-600 truncate max-w-[200px]">
+              <Mail className="size-3.5 text-slate-400 shrink-0" />
+              <span className="truncate">{kh.email || 'Chưa có email'}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right: Badge & Chevron */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <span
+          className={cn(
+            'inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide shrink-0',
+            badgeStyle.bg
+          )}
         >
-          {kh.ten_khach_hang}
-        </h3>
-        {kh.ma_so_thue && (
-          <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">MST: {kh.ma_so_thue}</p>
-        )}
+          <span className={cn('size-1.5 rounded-full', badgeStyle.dot)} />
+          <span className="truncate max-w-[90px] sm:max-w-[130px]">{badgeStyle.text}</span>
+        </span>
+
+        <ChevronRight className="size-4.5 sm:size-5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
       </div>
     </div>
   );

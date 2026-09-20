@@ -717,13 +717,13 @@ export default function TrangChiTietHoSoDuAn() {
       {/* 1. Header Bar chuẩn Enterprise SaaS */}
       <div className="space-y-3 pb-2 border-b border-border">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <Link href="/ho-so-du-an" className="hover:text-foreground transition inline-flex items-center gap-1">
-            <ArrowLeft className="size-3.5" />
+        <div className="flex items-center gap-1.5 text-xs sm:text-[13px] font-medium text-slate-500">
+          <Link href="/ho-so-du-an" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 transition-colors font-semibold active:scale-95">
+            <ArrowLeft className="size-3.5 text-slate-500" />
             Danh sách hồ sơ dự án
           </Link>
-          <ChevronRight className="size-3 text-muted-foreground/60" />
-          <span className="text-foreground font-semibold truncate max-w-[320px]">
+          <ChevronRight className="size-3 text-slate-300 shrink-0" />
+          <span className="text-slate-900 font-bold truncate max-w-[280px] sm:max-w-[420px] px-1.5">
             {hda?.ten_du_an ?? 'Đang tải...'}
           </span>
         </div>
