@@ -101,46 +101,61 @@ export default function BoLocHoSoDuAn({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[240px]">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 min-w-0">
           <Search className="size-4 pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={tuKhoa}
             onChange={(e) => datGiaTri('tuKhoa', e.target.value)}
             placeholder="Tìm kiếm mã hồ sơ, tên dự án..."
-            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
+            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
           />
+          {tuKhoa && (
+            <button
+              type="button"
+              onClick={() => datGiaTri('tuKhoa', '')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
         </div>
+
+        {/* Nút biểu tượng Phễu lọc tinh gọn bên cạnh ô tìm kiếm */}
         <button
           type="button"
           onClick={() => setMoRong((m) => !m)}
+          title={moRong ? 'Đóng bộ lọc' : 'Mở bộ lọc'}
           className={cn(
-            'inline-flex items-center gap-2 rounded-xl border h-11 px-4 text-sm font-semibold transition active:scale-[0.98]',
+            'relative size-11 rounded-xl border flex items-center justify-center transition active:scale-[0.96] shrink-0',
             moRong || soLuongDieuKienKhacMacDinh > 0
-              ? 'bg-[#007AFF]/10 border-[#007AFF]/30 text-[#007AFF]'
-              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
+              ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-xs shadow-blue-500/20'
+              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
           )}
         >
-          <Filter className="size-4" />
-          Bộ lọc
+          <Filter className="size-[18px]" />
           {soLuongDieuKienKhacMacDinh > 0 && (
-            <span className="rounded-full bg-[#007AFF] text-white text-[11px] px-2 py-0.5 font-bold -mr-1">
+            <span className={cn(
+              "absolute -top-1 -right-1 size-5 rounded-full text-[10px] font-extrabold flex items-center justify-center border-2 border-white",
+              moRong ? "bg-amber-400 text-slate-900" : "bg-[#007AFF] text-white"
+            )}>
               {soLuongDieuKienKhacMacDinh}
             </span>
           )}
-          <ChevronDown className={cn('size-4 transition-transform duration-200', moRong && 'rotate-180')} />
         </button>
-        {soLuongDieuKienKhacMacDinh > 0 || tuKhoa ? (
+
+        {/* Nút reset nhanh nếu đang có điều kiện lọc */}
+        {soLuongDieuKienKhacMacDinh > 0 && (
           <button
             type="button"
             onClick={xoaTatCa}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200/80 bg-rose-50/60 h-11 px-3.5 text-sm font-semibold text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.98]"
+            title="Xóa tất cả điều kiện lọc"
+            className="size-11 rounded-xl border border-rose-200/80 bg-rose-50/60 flex items-center justify-center text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.96] shrink-0"
           >
-            <XCircle className="size-4" />
-            Xóa bộ lọc
+            <XCircle className="size-5" />
           </button>
-        ) : null}
+        )}
       </div>
       <div
         className={cn(

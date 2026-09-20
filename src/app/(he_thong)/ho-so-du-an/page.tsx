@@ -73,7 +73,7 @@ const BO_LOC_MAC_DINH: DieuKienLocHoSoDuAn = {
   nguoi_phu_trach_id: null,
   chi_nhanh_id: null,
   phong_ban_id: null,
-  trang_thai: 'hoat_dong'
+  trang_thai: 'tat_ca'
 };
 
 const GIOI_HAN_MAC_DINH = 100;

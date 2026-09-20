@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -211,6 +211,19 @@ export default function TrangChiTietHoSoDuAn() {
   const [dsTDKemCanhBao, setDsTDKemCanhBao] = useState<
     (TienDoDuAn & { canh_bao: 'sap_den' | 'qua_han' | null })[]
   >([]);
+
+  const stepperContainerRef = useRef<HTMLDivElement>(null);
+
+  // Tự động cuộn ngang slider đến đúng vị trí giai đoạn hiện tại trên thiết bị di động
+  useEffect(() => {
+    if (!hda?.giai_doan || !stepperContainerRef.current) return;
+    const container = stepperContainerRef.current;
+    const activeEl = container.querySelector(`[data-stage-key="${hda.giai_doan}"]`) as HTMLElement | null;
+    if (activeEl) {
+      const scrollOffset = activeEl.offsetLeft - (container.clientWidth / 2) + (activeEl.clientWidth / 2);
+      container.scrollTo({ left: Math.max(0, scrollOffset), behavior: 'smooth' });
+    }
+  }, [hda?.giai_doan]);
 
   const xuLyThemCapNhatTongHop = async (params: {
     noi_dung: string;
@@ -728,16 +741,19 @@ export default function TrangChiTietHoSoDuAn() {
                 </h1>
                 {hda && (
                   <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Luôn hiển thị giai đoạn hiện tại */}
+                    <BadgeGiaiDoan value={hda.giai_doan} />
+
+                    {/* Các stick phụ ẩn trên điện thoại để tinh gọn giao diện */}
                     {hda.ma_ho_so && (
-                      <span className="px-2.5 py-0.5 rounded-md bg-muted text-foreground font-mono text-[11px] font-semibold border border-border">
+                      <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-md bg-muted text-foreground font-mono text-[11px] font-semibold border border-border">
                         {hda.ma_ho_so}
                       </span>
                     )}
-                    <BadgeGiaiDoan value={hda.giai_doan} />
                     {kh && (
                       <Link
                         href={`/khach-hang/${kh.id}`}
-                        className="inline-flex items-center hover:opacity-85 transition"
+                        className="hidden sm:inline-flex items-center hover:opacity-85 transition"
                         title="Xem chi tiết khách hàng"
                       >
                         <Hieu kieu="primary" kich_thuoc="sm" icon_trai={Users}>
@@ -747,9 +763,11 @@ export default function TrangChiTietHoSoDuAn() {
                       </Link>
                     )}
                     {hda.muc_do_tiem_nang && (
-                      <Hieu kieu="warning" kich_thuoc="sm">
-                        TN: {TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? hda.muc_do_tiem_nang}
-                      </Hieu>
+                      <span className="hidden sm:inline-flex">
+                        <Hieu kieu="warning" kich_thuoc="sm">
+                          TN: {TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? hda.muc_do_tiem_nang}
+                        </Hieu>
+                      </span>
                     )}
                     {hda.trang_thai === 'da_xoa' && (
                       <Hieu kieu="danger" kich_thuoc="sm">
@@ -869,69 +887,13 @@ export default function TrangChiTietHoSoDuAn() {
         </div>
       )}
 
-      {/* 2. Thanh tiến trình vòng đời dự án (Pipeline Stage Stepper) */}
-      <div className="rounded-[22px] border border-slate-200/90 bg-white p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground">
-              Vòng đời dự án
-            </span>
-            <span className="text-xs text-muted-foreground/40">·</span>
-            <span className="text-xs font-bold text-foreground">
-              Hiện tại: <span className="text-primary font-extrabold">{TEN_GIAI_DOAN_DA[String(hda?.giai_doan)] ?? 'Đang cập nhật'}</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {giaiDoanTiepTheo && hda?.giai_doan !== 'hoan_thanh' && hda?.giai_doan !== 'huy' && (
-              <Nut
-                kieu="primary"
-                kich_thuoc="sm"
-                icon_trai={ArrowRightLeft}
-                onClick={xuLyChuyenGiaiDoan}
-                disabled={dangXuLyKhac['cgd_detail'] || hda?.trang_thai === 'da_xoa'}
-                className="font-bold shadow-sm"
-              >
-                Chuyển tiếp: {TEN_GIAI_DOAN_DA[giaiDoanTiepTheo] ?? giaiDoanTiepTheo}
-              </Nut>
-            )}
-
-            <div className="flex items-center gap-1">
-              <select
-                value={tamGiaiDoan}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setTamGiaiDoan(val);
-                  if (val === 'huy') {
-                    setMoModalHuy(true);
-                  }
-                }}
-                disabled={dangTai || !!dangXuLyKhac['cgd_manual'] || hda?.trang_thai === 'da_xoa'}
-                className="rounded-[var(--radius-input)] border border-border bg-muted/50 px-2.5 py-1.5 text-xs font-bold text-foreground hover:bg-muted transition cursor-pointer"
-              >
-                {CAC_GIAI_DOAN_OPT.map((o) => (
-                  <option key={o.value} value={o.value}>{o.nhan}</option>
-                ))}
-              </select>
-
-              {tamGiaiDoan !== String(hda?.giai_doan ?? '') && tamGiaiDoan !== 'huy' && (
-                <Nut
-                  kieu="outline"
-                  kich_thuoc="sm"
-                  onClick={xuLyDoiGiaiDoanThuCong}
-                  disabled={dangTai || !!dangXuLyKhac['cgd_manual']}
-                  className="font-bold"
-                >
-                  Lưu
-                </Nut>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Horizontal Pipeline Steps */}
-        <div className="overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex items-center min-w-[800px] justify-between">
+      {/* 2. Thanh trượt chuyển tiếp giai đoạn dự án (Slide Stepper tinh gọn) */}
+      <div className="rounded-[22px] border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
+        <div
+          ref={stepperContainerRef}
+          className="overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+        >
+          <div className="flex items-center min-w-[760px] justify-between px-1">
             {[
               { key: 'moi_tao', stt: 1, label: 'Mới tạo' },
               { key: 'tiep_can', stt: 2, label: 'Tiếp cận' },
@@ -949,12 +911,16 @@ export default function TrangChiTietHoSoDuAn() {
               const isCurrent = hda?.giai_doan === step.key;
 
               return (
-                <div key={step.key} className="flex-1 flex items-center min-w-0 first:flex-none">
+                <div
+                  key={step.key}
+                  data-stage-key={step.key}
+                  className="flex-1 flex items-center min-w-0 first:flex-none"
+                >
                   {idx > 0 && (
                     <div
                       className={cn(
-                        'h-0.5 flex-1 transition-colors mx-1',
-                        isPast || isCurrent ? 'bg-primary' : 'bg-border'
+                        'h-0.5 flex-1 transition-colors mx-1.5',
+                        isPast || isCurrent ? 'bg-[#007AFF]' : 'bg-slate-200'
                       )}
                     />
                   )}
@@ -966,28 +932,28 @@ export default function TrangChiTietHoSoDuAn() {
                       void doiGiaiDoanHoSoDuAn(hda!.id, step.key as any, nguoiDungHienTai ?? null).then(taiLai);
                     }}
                     title={`Chuyển sang ${step.label}`}
-                    className="flex flex-col items-center gap-1.5 px-1 py-1 group shrink-0"
+                    className="flex flex-col items-center gap-1.5 px-1 py-1 group shrink-0 active:scale-95 transition"
                   >
                     <div
                       className={cn(
-                        'size-7 rounded-full flex items-center justify-center text-xs font-bold transition-all',
-                        isPast
-                          ? 'bg-primary/10 text-primary border border-primary/20'
-                          : isCurrent
-                          ? 'bg-primary text-primary-foreground ring-4 ring-primary/15 shadow-sm'
-                          : 'bg-muted text-muted-foreground group-hover:bg-muted/80'
+                        'size-7 sm:size-8 rounded-full flex items-center justify-center text-xs font-bold transition-all',
+                        isCurrent
+                          ? 'bg-[#007AFF] text-white ring-4 ring-[#007AFF]/20 shadow-xs'
+                          : isPast
+                          ? 'bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/30'
+                          : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600'
                       )}
                     >
-                      {isPast ? <CheckCircle2 className="size-4 text-primary" /> : step.stt}
+                      {isPast ? <CheckCircle2 className="size-4 text-[#007AFF]" /> : step.stt}
                     </div>
                     <span
                       className={cn(
-                        'text-[11px] font-semibold whitespace-nowrap transition-colors',
+                        'text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors',
                         isCurrent
-                          ? 'text-primary font-extrabold'
+                          ? 'text-[#007AFF] font-extrabold'
                           : isPast
-                          ? 'text-foreground font-semibold'
-                          : 'text-muted-foreground group-hover:text-foreground'
+                          ? 'text-slate-800 font-semibold'
+                          : 'text-slate-400 group-hover:text-slate-700'
                       )}
                     >
                       {step.label}
@@ -2361,15 +2327,12 @@ function BanNhatKyVaTienDo(props: {
   return (
     <div className="space-y-5">
       {/* 1. Header Bar & Nút Thao tác */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
         <div>
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Activity className="size-4 text-primary" />
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Activity className="size-4 text-[#007AFF]" />
             Nhật ký tiến độ dự án
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Ghi nhận diễn biến công việc, tiến trình triển khai và trao đổi thực tế
-          </p>
         </div>
         <Nut
           kieu={moForm ? 'outline' : 'primary'}
@@ -2567,7 +2530,7 @@ function BanNhatKyVaTienDo(props: {
                     i === 0 ? 'border-[#007AFF]/40 ring-1 ring-[#007AFF]/15' : 'border-slate-200/90'
                   )}
                 >
-                  {/* Header Tiến độ */}
+                  {/* Header Tiến độ: Ngày giờ & Nhân sự nổi bật */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
                       <DaiDien
@@ -2576,21 +2539,24 @@ function BanNhatKyVaTienDo(props: {
                         kich_thuoc="sm"
                       />
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-foreground truncate">
+                        <div className="text-xs sm:text-sm font-bold text-foreground truncate">
                           {nguoiTao?.ho_va_ten ?? 'Nhân sự'}
                         </div>
-                        <div className="text-[11px] text-muted-foreground tabular-nums flex items-center gap-1">
-                          <Clock className="size-3" />
-                          {formatNgay(td.ngay_tao, 'DD/MM/YYYY HH:mm')}
+                        {/* Ngày tháng & Giờ nổi bật với badge iOS rõ ràng */}
+                        <div className="inline-flex items-center gap-1.5 mt-0.5 px-2 py-0.5 rounded-md bg-slate-100/90 border border-slate-200 text-[#007AFF] font-bold text-[11px] sm:text-xs tabular-nums">
+                          <Clock className="size-3.5 text-[#007AFF]" />
+                          <span>{formatNgay(td.ngay_tao, 'DD/MM/YYYY')}</span>
+                          <span className="text-slate-400 font-normal">|</span>
+                          <span className="text-slate-700">{formatNgay(td.ngay_tao, 'HH:mm')}</span>
                         </div>
                       </div>
 
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#5E5CE6]/10 text-[#5E5CE6] border border-[#5E5CE6]/20 text-[10.5px] font-bold">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#5E5CE6]/10 text-[#5E5CE6] border border-[#5E5CE6]/20 text-[11px] font-bold">
                         <Activity className="size-3" /> Tiến độ
                       </span>
 
                       {i === 0 && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/20 font-bold text-[10px]">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/20 font-bold text-[10.5px]">
                           <Sparkles className="size-3" /> Mới nhất
                         </span>
                       )}
@@ -2721,15 +2687,12 @@ function BanKhoTaiLieu(props: {
   return (
     <div className="space-y-5">
       {/* 1. Header Bar & Nút Thêm mới */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
         <div>
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Paperclip className="size-4 text-primary" />
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Paperclip className="size-4 text-[#007AFF]" />
             Kho tài liệu dự án ({dsTL.length})
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Quản lý, tìm kiếm và truy cập nhanh các tệp liên kết, Google Drive, YouTube và tài liệu đã đính kèm
-          </p>
         </div>
         <Nut
           kieu={moForm ? 'outline' : 'primary'}
