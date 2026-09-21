@@ -26,8 +26,10 @@ import {
   Folder,
   Coins,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
-  RotateCcw
+  RotateCcw,
+  XCircle
 } from 'lucide-react';
 import { cn } from '../../../thu_vien/utils/cn';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
@@ -47,6 +49,7 @@ import type {
 } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import {
   danhSachHoSoDuAn,
+  langNgheThayDoiDanhSachHoSoDuAn,
   xoaMemHoSoDuAn as xoaMem,
   taoHoSoDuAnMoi as themMoi,
   capNhatHoSoDuAn as capNhat,
@@ -413,6 +416,11 @@ function TrangHoSoDuAn() {
   const [tenGiaiDoan, setTenGiaiDoan] = useState(TEN_GIAI_DOAN_MAC_DINH);
   const [kieuSapXep, setKieuSapXep] = useState<'moi_nhat' | 'cu_nhat' | 'gia_tri_cao' | 'ten_az'>('moi_nhat');
 
+  // Phân trang danh sách
+  const [trangHienTai, setTrangHienTai] = useState(1);
+  const SO_BAN_GHI_MOI_TRANG = 12;
+  const [duAnXacNhanXoa, setDuAnXacNhanXoa] = useState<HoSoDuAn | null>(null);
+
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
   const coQuyenXoa = coQuyen(nguoiDungHienTai, 'du_an.xoa');
   const coQuyenKhoiPhuc = coQuyen(nguoiDungHienTai, 'du_an.khoi_phuc');
@@ -433,6 +441,20 @@ function TrangHoSoDuAn() {
     }
     return ds;
   }, [danhSach, kieuSapXep]);
+
+  // Reset trang về 1 khi lọc hoặc đổi sắp xếp
+  useEffect(() => {
+    setTrangHienTai(1);
+  }, [dieukien, kieuSapXep]);
+
+  const tongSoTrang = useMemo(() => {
+    return Math.max(1, Math.ceil(danhSachDaSapXep.length / SO_BAN_GHI_MOI_TRANG));
+  }, [danhSachDaSapXep.length]);
+
+  const danhSachTrangHienTai = useMemo(() => {
+    const batDau = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG;
+    return danhSachDaSapXep.slice(batDau, batDau + SO_BAN_GHI_MOI_TRANG);
+  }, [danhSachDaSapXep, trangHienTai]);
 
   const groupTienDoMoiNhatTheoDuAn = useMemo(() => {
     const map = new Map<string, TienDoDuAn>();
@@ -458,17 +480,17 @@ function TrangHoSoDuAn() {
     const soHoanThanh = danhSach.filter(
       (h) => h.trang_thai !== 'da_xoa' && String(h.giai_doan) === 'hoan_thanh'
     ).length;
+    const soTamDung = danhSach.filter(
+      (h) => h.trang_thai !== 'da_xoa' && String(h.giai_doan) === 'tam_dung'
+    ).length;
     const soDaHuy = danhSach.filter(
-      (h) =>
-        h.trang_thai === 'da_xoa' ||
-        String(h.giai_doan) === 'huy' ||
-        String(h.giai_doan) === 'tam_dung'
+      (h) => h.trang_thai === 'da_xoa' || String(h.giai_doan) === 'huy'
     ).length;
     const tongGiaTri = danhSach.reduce(
       (sum, h) => sum + (Number(h.gia_tri_du_kien) || 0),
       0
     );
-    return { tongSo, soDangThucHien, soHoanThanh, soDaHuy, tongGiaTri };
+    return { tongSo, soDangThucHien, soHoanThanh, soTamDung, soDaHuy, tongGiaTri };
   }, [danhSach]);
 
   const themToast = useCallback(
@@ -482,20 +504,25 @@ function TrangHoSoDuAn() {
     []
   );
 
-  const taiLaiDuLieu = useCallback(async () => {
+  // Lắng nghe dữ liệu Realtime qua onSnapshot
+  useEffect(() => {
     setDangTai(true);
+    const huyLangNghe = langNgheThayDoiDanhSachHoSoDuAn((mang) => {
+      const dsLoc = mang.filter((hda) => duocXemHoSoDuAn(nguoiDungHienTai, hda));
+      setDanhSach(dsLoc);
+      setDangTai(false);
+    }, dieukien);
+
+    return () => huyLangNghe();
+  }, [dieukien, nguoiDungHienTai]);
+
+  const taiLaiDuLieu = useCallback(async () => {
     try {
       const kq = await danhSachHoSoDuAn(dieukien);
-      const dsGoc = kq.mang ?? [];
-      const dsLoc = dsGoc.filter((hda) => duocXemHoSoDuAn(nguoiDungHienTai, hda));
+      const dsLoc = (kq.mang ?? []).filter((hda) => duocXemHoSoDuAn(nguoiDungHienTai, hda));
       setDanhSach(dsLoc);
-    } catch (e) {
-      console.error(e);
-      themToast('loi', 'Lỗi tải danh sách hồ sơ dự án');
-    } finally {
-      setDangTai(false);
-    }
-  }, [dieukien, nguoiDungHienTai, themToast]);
+    } catch {}
+  }, [dieukien, nguoiDungHienTai]);
 
   useEffect(() => {
     void (async () => {
@@ -513,10 +540,6 @@ function TrangHoSoDuAn() {
       }
     })();
   }, []);
-
-  useEffect(() => {
-    void taiLaiDuLieu();
-  }, [taiLaiDuLieu]);
 
   useEffect(() => {
     const huyLangNghe = langNgheCauHinhGiaiDoanDuAn((c) => {
@@ -591,13 +614,14 @@ function TrangHoSoDuAn() {
     [dangSua, nguoiDungHienTai, taiLaiDuLieu, themToast]
   );
 
-  const xuLyXoa = useCallback(
+  const xuLyXoa = useCallback((hda: HoSoDuAn) => {
+    setDuAnXacNhanXoa(hda);
+  }, []);
+
+  const thucHienXoa = useCallback(
     async (hda: HoSoDuAn) => {
-      if (!confirm(`Xác nhận xóa hồ sơ dự án "${hda.ten_du_an}"?`)) return;
       setDangXuLyKhac(hda.id);
       try {
-        const credential =
-          (useStoreXacThuc.getState() as any)?._layCredentialTam?.() ?? null;
         const nguoiTH =
           nguoiDungHienTai?.id
             ? {
@@ -607,8 +631,8 @@ function TrangHoSoDuAn() {
               }
             : null;
         await xoaMem(hda.id, nguoiTH);
-        themToast('thanh_cong', 'Đã xóa hồ sơ dự án');
-        await taiLaiDuLieu();
+        themToast('thanh_cong', 'Đã chuyển hồ sơ dự án vào thùng rác');
+        setDuAnXacNhanXoa(null);
       } catch (e) {
         const msg = (e as Error)?.message ?? 'Lỗi xóa';
         themToast('loi', msg);
@@ -616,7 +640,7 @@ function TrangHoSoDuAn() {
         setDangXuLyKhac(null);
       }
     },
-    [nguoiDungHienTai, taiLaiDuLieu, themToast]
+    [nguoiDungHienTai, themToast]
   );
 
   const xuLyDoiTrangThai = useCallback(
@@ -696,7 +720,7 @@ function TrangHoSoDuAn() {
         </div>
 
         {/* Dòng 2 — tình trạng */}
-        <div className="flex items-center justify-between text-[12px] pt-0.5">
+        <div className="flex items-center justify-between text-[11px] sm:text-[12px] pt-0.5">
           <div className="flex items-center gap-1">
             <span className="text-slate-500">Đang chạy</span>
             <span className="font-bold text-[#34C759] text-[13px] tabular-nums">{thongKe.soDangThucHien}</span>
@@ -708,14 +732,19 @@ function TrangHoSoDuAn() {
           </div>
           <span className="text-slate-200">│</span>
           <div className="flex items-center gap-1">
-            <span className="text-slate-500">Tạm dừng/Hủy</span>
-            <span className="font-bold text-[#FF9500] text-[13px] tabular-nums">{thongKe.soDaHuy}</span>
+            <span className="text-slate-500">Tạm dừng</span>
+            <span className="font-bold text-[#FF9500] text-[13px] tabular-nums">{thongKe.soTamDung}</span>
+          </div>
+          <span className="text-slate-200">│</span>
+          <div className="flex items-center gap-1">
+            <span className="text-slate-500">Đã hủy</span>
+            <span className="font-bold text-rose-600 text-[13px] tabular-nums">{thongKe.soDaHuy}</span>
           </div>
         </div>
       </div>
 
-      {/* Bảng số liệu điều hành tinh gọn chuẩn Apple trên Desktop */}
-      <div className="hidden sm:grid sm:grid-cols-5 bg-white rounded-[20px] border border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)] divide-x divide-slate-100/90 overflow-hidden">
+      {/* Bảng số liệu điều hành tinh gọn chuẩn Apple trên Desktop (6 ô) */}
+      <div className="hidden sm:grid sm:grid-cols-6 bg-white rounded-[20px] border border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)] divide-x divide-slate-100/90 overflow-hidden">
         {/* 1. Tổng dự án */}
         <div className="p-3.5 xl:p-4 flex items-center gap-3">
           <div className="size-10 rounded-[14px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0 border border-[#007AFF]/15">
@@ -768,13 +797,26 @@ function TrangHoSoDuAn() {
           </div>
         </div>
 
-        {/* 5. Tạm dừng / Hủy */}
+        {/* 5. Tạm dừng */}
         <div className="p-3.5 xl:p-4 flex items-center gap-3">
-          <div className="size-10 rounded-[14px] bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0 border border-rose-500/15">
-            <AlertTriangle className="size-5" strokeWidth={2.2} />
+          <div className="size-10 rounded-[14px] bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 border border-amber-500/15">
+            <Clock className="size-5" strokeWidth={2.2} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Tạm dừng / Hủy</div>
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Tạm dừng</div>
+            <div className="text-[18px] xl:text-[20px] font-extrabold text-amber-600 tabular-nums tracking-tight leading-none mt-1">
+              {thongKe.soTamDung}
+            </div>
+          </div>
+        </div>
+
+        {/* 6. Đã hủy */}
+        <div className="p-3.5 xl:p-4 flex items-center gap-3">
+          <div className="size-10 rounded-[14px] bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0 border border-rose-500/15">
+            <XCircle className="size-5" strokeWidth={2.2} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Đã hủy</div>
             <div className="text-[18px] xl:text-[20px] font-extrabold text-rose-600 tabular-nums tracking-tight leading-none mt-1">
               {thongKe.soDaHuy}
             </div>
@@ -797,12 +839,17 @@ function TrangHoSoDuAn() {
       ) : danhSachDaSapXep.length === 0 ? (
         <EmptyState onThemMoi={moThemMoi} />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* Header danh sách */}
           <div className="flex items-center justify-between px-1 pt-1">
-            <h2 className="text-[17px] sm:text-[19px] font-bold text-slate-900 tracking-tight">
-              Danh sách dự án
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-[17px] sm:text-[19px] font-bold text-slate-900 tracking-tight">
+                Danh sách dự án
+              </h2>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                {danhSachDaSapXep.length}
+              </span>
+            </div>
 
             <div className="relative">
               <select
@@ -822,7 +869,7 @@ function TrangHoSoDuAn() {
 
           {/* Lưới danh sách thẻ dự án chuẩn Apple (1 cột Mobile, 2-3 cột PC) */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
-            {danhSachDaSapXep.map((hda) => (
+            {danhSachTrangHienTai.map((hda) => (
               <TheHoSoDuAn
                 key={hda.id}
                 hda={hda}
@@ -842,6 +889,71 @@ function TrangHoSoDuAn() {
               />
             ))}
           </div>
+
+          {/* Thanh phân trang Pagination */}
+          {tongSoTrang > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-200/80">
+              <div className="text-xs sm:text-[13px] text-slate-500 font-medium">
+                Hiển thị <span className="font-bold text-slate-800">{(trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + 1}</span> -{' '}
+                <span className="font-bold text-slate-800">
+                  {Math.min(trangHienTai * SO_BAN_GHI_MOI_TRANG, danhSachDaSapXep.length)}
+                </span>{' '}
+                trên tổng số <span className="font-bold text-slate-800">{danhSachDaSapXep.length}</span> dự án
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={trangHienTai <= 1}
+                  onClick={() => setTrangHienTai((t) => Math.max(1, t - 1))}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs sm:text-[13px] font-semibold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <ChevronLeft className="size-3.5" /> Trước
+                </button>
+
+                <div className="flex items-center gap-1 px-1">
+                  {Array.from({ length: tongSoTrang }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === tongSoTrang || Math.abs(p - trangHienTai) <= 1)
+                    .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && typeof arr[idx - 1] === 'number' && (p as number) - (arr[idx - 1] as number) > 1) {
+                        acc.push('...');
+                      }
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((item, idx) =>
+                      item === '...' ? (
+                        <span key={`dots-${idx}`} className="px-1.5 text-xs text-slate-400 font-bold">
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={`page-${item}`}
+                          type="button"
+                          onClick={() => setTrangHienTai(item as number)}
+                          className={cn(
+                            'size-7 sm:size-8 rounded-xl text-xs sm:text-[13px] font-bold transition shadow-2xs cursor-pointer',
+                            trangHienTai === item
+                              ? 'bg-[#007AFF] text-white shadow-blue-500/20 shadow-xs'
+                              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                          )}
+                        >
+                          {item}
+                        </button>
+                      )
+                    )}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={trangHienTai >= tongSoTrang}
+                  onClick={() => setTrangHienTai((t) => Math.min(tongSoTrang, t + 1))}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs sm:text-[13px] font-semibold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                >
+                  Sau <ChevronRight className="size-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -889,6 +1001,46 @@ function TrangHoSoDuAn() {
           </div>
         ))}
       </div>
+
+      {/* Modal xác nhận xóa dự án */}
+      {duAnXacNhanXoa && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="size-10 rounded-full bg-rose-50 flex items-center justify-center">
+                <Trash2 className="size-5 text-rose-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa hồ sơ dự án</h3>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Bạn có chắc chắn muốn chuyển hồ sơ dự án{' '}
+              <span className="font-semibold text-slate-900">"{duAnXacNhanXoa.ten_du_an}"</span> vào thùng rác không?
+              Dự án sẽ bị ẩn khỏi danh sách chính và chỉ tài khoản có quyền mới có thể khôi phục.
+            </p>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={dangXuLyKhac === duAnXacNhanXoa.id}
+                onClick={() => setDuAnXacNhanXoa(null)}
+                className="px-4 py-2 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={dangXuLyKhac === duAnXacNhanXoa.id}
+                onClick={async () => {
+                  await thucHienXoa(duAnXacNhanXoa);
+                }}
+                className="px-4 py-2 text-sm font-semibold rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              >
+                {dangXuLyKhac === duAnXacNhanXoa.id && <Loader2 className="size-4 animate-spin" />}
+                Xác nhận xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Bo_Cuc_Trang>
   );
 }

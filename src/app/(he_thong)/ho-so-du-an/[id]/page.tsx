@@ -48,7 +48,6 @@ import {
 } from 'lucide-react';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import type { HoSoDuAn, TienDoDuAn, GiaiDoanDuAn } from '../../../../thu_vien/types/du_an';
-import type { BaoCaoCongViec } from '../../../../thu_vien/types/bao_cao_cong_viec';
 import type { KhachHang, NguoiLienHe } from '../../../../thu_vien/types/khach_hang';
 import type { NhanSu, ChiNhanh, PhongBan } from '../../../../thu_vien/types/nhan_su';
 import type { SanPhamDichVu } from '../../../../thu_vien/types/san_pham_dich_vu';
@@ -70,7 +69,6 @@ import {
   capNhatTienDoDuAn,
   xoaMemTienDoDuAn
 } from '../../../../dich_vu/ho_so_du_an/dich_vu_tien_do_du_an';
-import { danhSachBaoCaoCongViec } from '../../../../dich_vu/bao_cao_cong_viec/dich_vu_bao_cao_cong_viec';
 import { danhSachKhachHang } from '../../../../dich_vu/khach_hang/dich_vu_khach_hang';
 import { danhSachNguoiLienHe } from '../../../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import { danhSachNhanSu } from '../../../../dich_vu/nhan_su/dich_vu_nhan_su';
@@ -199,7 +197,6 @@ export default function TrangChiTietHoSoDuAn() {
 
   const [hda, setHda] = useState<HoSoDuAn | null>(null);
   const [dsTD, setDsTD] = useState<TienDoDuAn[]>([]);
-  const [dsBCCV, setDsBCCV] = useState<BaoCaoCongViec[]>([]);
   const [dsKH, setDsKH] = useState<KhachHang[]>([]);
   const [dsNLH, setDsNLH] = useState<NguoiLienHe[]>([]);
   const [dsNS, setDsNS] = useState<NhanSu[]>([]);
@@ -212,6 +209,21 @@ export default function TrangChiTietHoSoDuAn() {
   const [errTai, setErrTai] = useState<string | null>(null);
   const [tabHienTai, setTabHienTai] = useState<TenTab>('tien_do');
   const [moFormTienDo, setMoFormTienDo] = useState(false);
+
+  // State cho Modal xác nhận chuyển giai đoạn & Modal xóa
+  const [giaiDoanMuonChuyen, setGiaiDoanMuonChuyen] = useState<{ key: string; label: string } | null>(null);
+  const [moModalXoa, setMoModalXoa] = useState(false);
+  const [dangXuLyChuyenGiaiDoan, setDangXuLyChuyenGiaiDoan] = useState(false);
+
+  // Toast notifications
+  const [dsToast, setDsToast] = useState<{ id: number; dang: 'thanh_cong' | 'loi'; noi_dung: string }[]>([]);
+  const themToast = useCallback((dang: 'thanh_cong' | 'loi', noi_dung: string) => {
+    const idToast = Date.now() + Math.random();
+    setDsToast((m) => [...m, { id: idToast, dang, noi_dung }]);
+    setTimeout(() => {
+      setDsToast((m) => m.filter((t) => t.id !== idToast));
+    }, 3500);
+  }, []);
 
   const [dsTDKemCanhBao, setDsTDKemCanhBao] = useState<
     (TienDoDuAn & { canh_bao: 'sap_den' | 'qua_han' | null })[]
@@ -290,7 +302,6 @@ export default function TrangChiTietHoSoDuAn() {
     try {
       const results = await Promise.allSettled([
         layChiTietHoSoDuAn(id),
-        danhSachBaoCaoCongViec({ du_an_id: id, trang_thai_du_lieu: 'hoat_dong' }),
         danhSachKhachHang({ trang_thai: 'hoat_dong' }),
         danhSachNguoiLienHe({}),
         danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong' } as any),
@@ -302,40 +313,26 @@ export default function TrangChiTietHoSoDuAn() {
         danhSachSanPhamDichVu({ trang_thai_du_lieu: 'hoat_dong' })
       ]);
       const kq1Raw = results[0].status === 'fulfilled' ? results[0].value : null;
-      const kq3 = results[1].status === 'fulfilled' ? results[1].value : { mang: [] };
-      const kq4 = results[2].status === 'fulfilled' ? results[2].value : { mang: [] };
-      const kq5 = results[3].status === 'fulfilled' ? results[3].value : { mang: [] };
-      const kq6 = results[4].status === 'fulfilled' ? results[4].value : { mang: [] };
-      const kqTD = results[5].status === 'fulfilled' ? results[5].value : { mang: [] };
-      const kq7a = results[6].status === 'fulfilled' ? results[6].value : { mang: [] };
-      const kq7b = results[7].status === 'fulfilled' ? results[7].value : { mang: [] };
-      const kqCN = results[8].status === 'fulfilled' ? results[8].value : { mang: [] };
-      const kqPB = results[9].status === 'fulfilled' ? results[9].value : { mang: [] };
-      const kqSP = results[10].status === 'fulfilled' ? results[10].value : { mang: [] };
-      let kq1 = kq1Raw;
-      if (!kq1) {
-        try {
-          const fallback = await danhSachHoSoDuAn({ trang_thai: 'tat_ca' });
-          kq1 = fallback.mang.find((x) => x.id === id) ?? null;
-        } catch {}
-      }
-      if (!kq1) {
-        try {
-          const fallbackAll = await danhSachHoSoDuAn({});
-          kq1 = fallbackAll.mang.find((x) => x.id === id) ?? null;
-        } catch {}
-      }
-      if (!kq1) {
+      const kqKH = results[1].status === 'fulfilled' ? results[1].value : { mang: [] };
+      const kqNLH = results[2].status === 'fulfilled' ? results[2].value : { mang: [] };
+      const kqNS = results[3].status === 'fulfilled' ? results[3].value : { mang: [] };
+      const kqTD = results[4].status === 'fulfilled' ? results[4].value : { mang: [] };
+      const kqTL = results[5].status === 'fulfilled' ? results[5].value : { mang: [] };
+      const kqNK = results[6].status === 'fulfilled' ? results[6].value : { mang: [] };
+      const kqCN = results[7].status === 'fulfilled' ? results[7].value : { mang: [] };
+      const kqPB = results[8].status === 'fulfilled' ? results[8].value : { mang: [] };
+      const kqSP = results[9].status === 'fulfilled' ? results[9].value : { mang: [] };
+
+      if (!kq1Raw) {
         setHda(null);
         return;
       }
-      setHda(kq1);
-      setDsBCCV(kq3.mang);
-      setDsKH(kq4.mang);
-      setDsNLH(kq5.mang);
-      setDsNS(kq6.mang);
-      setDsTL(kq7a.mang);
-      setDsNK(kq7b.mang);
+      setHda(kq1Raw);
+      setDsKH(kqKH.mang);
+      setDsNLH(kqNLH.mang);
+      setDsNS(kqNS.mang);
+      setDsTL(kqTL.mang);
+      setDsNK(kqNK.mang);
       setDsTD(kqTD.mang);
       setDsChiNhanh(kqCN.mang ?? []);
       setDsPhongBan(kqPB.mang ?? []);
@@ -504,24 +501,30 @@ export default function TrangChiTietHoSoDuAn() {
     setDangXuLyKhac((o) => ({ ...o, [key]: true }));
     try {
       await doiTrangThaiHoSoDuAn(hda.id, 'hoat_dong', nguoiDungHienTai ?? null);
+      themToast('thanh_cong', 'Đã khôi phục hồ sơ dự án thành công');
       await taiLai();
     } catch (e) {
-      alert((e as Error)?.message ?? 'Lỗi khôi phục dự án');
+      themToast('loi', (e as Error)?.message ?? 'Lỗi khôi phục dự án');
     } finally {
       setDangXuLyKhac((o) => ({ ...o, [key]: false }));
     }
   };
 
-  const xuLyXoaMem = async () => {
+  const xuLyXoaMem = () => {
     if (!hda) return;
-    if (!confirm(`Xác nhận xóa dự án "${hda.ten_du_an}"? Dự án sẽ được chuyển vào thùng rác.`)) return;
+    setMoModalXoa(true);
+  };
+
+  const thucHienXoaMem = async () => {
+    if (!hda) return;
     const key = 'xoa_detail';
     setDangXuLyKhac((o) => ({ ...o, [key]: true }));
     try {
       await doiTrangThaiHoSoDuAn(hda.id, 'da_xoa', nguoiDungHienTai ?? null);
+      themToast('thanh_cong', 'Đã chuyển hồ sơ dự án vào thùng rác');
       router.push('/ho-so-du-an');
     } catch (e) {
-      alert((e as Error)?.message ?? 'Lỗi xóa dự án');
+      themToast('loi', (e as Error)?.message ?? 'Lỗi xóa dự án');
     } finally {
       setDangXuLyKhac((o) => ({ ...o, [key]: false }));
     }
@@ -929,7 +932,7 @@ export default function TrangChiTietHoSoDuAn() {
       {dangChinhSua && (
         <div className="p-3.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <span className="flex items-center gap-2">
-            <Pencil className="size-4 shrink-0" /> Chế độ chỉnh sửa thông tin dự án đang mở tại tab "Giải pháp & Yêu cầu". Hãy điều chỉnh các thông tin và nhấn "Lưu thay đổi".
+            <Pencil className="size-4 shrink-0" /> Chế độ chỉnh sửa thông tin dự án đang mở tại tab "Thông tin dự án". Hãy điều chỉnh các thông tin và nhấn "Lưu thay đổi".
           </span>
           <div className="flex items-center gap-2 shrink-0">
             <button
@@ -1012,13 +1015,27 @@ export default function TrangChiTietHoSoDuAn() {
                   )}
                   <button
                     type="button"
+                    disabled={!coQuyenTaoSua || hda?.trang_thai === 'da_xoa'}
                     onClick={() => {
-                      if (hda?.trang_thai === 'da_xoa') return;
-                      setTamGiaiDoan(step.key);
-                      void doiGiaiDoanHoSoDuAn(hda!.id, step.key as any, nguoiDungHienTai ?? null).then(taiLai);
+                      if (!coQuyenTaoSua || hda?.trang_thai === 'da_xoa') return;
+                      if (step.key === hda?.giai_doan) return;
+                      setGiaiDoanMuonChuyen({ key: step.key, label: step.label });
                     }}
-                    title={`Chuyển sang ${step.label}`}
-                    className="flex flex-col items-center gap-1.5 px-1 py-1 group shrink-0 active:scale-95 transition"
+                    title={
+                      !coQuyenTaoSua
+                        ? 'Bạn không có quyền chuyển giai đoạn dự án'
+                        : hda?.trang_thai === 'da_xoa'
+                        ? 'Dự án đã bị xóa, hãy khôi phục trước khi đổi giai đoạn'
+                        : isCurrent
+                        ? `Giai đoạn hiện tại: ${step.label}`
+                        : `Chuyển sang: ${step.label}`
+                    }
+                    className={cn(
+                      'flex flex-col items-center gap-1.5 px-1 py-1 group shrink-0 transition',
+                      !coQuyenTaoSua || hda?.trang_thai === 'da_xoa'
+                        ? 'cursor-not-allowed opacity-60'
+                        : 'active:scale-95 cursor-pointer'
+                    )}
                   >
                     <div
                       className={cn(
@@ -1319,6 +1336,134 @@ export default function TrangChiTietHoSoDuAn() {
         onXacNhan={xuLyXacNhanHuy}
         dangXuLy={!!dangXuLyKhac['cgd_manual']}
       />
+
+      {/* Modal xác nhận chuyển giai đoạn từ Stepper */}
+      {giaiDoanMuonChuyen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100">
+            <div className="flex items-center gap-3 text-[#007AFF]">
+              <div className="size-10 rounded-full bg-blue-50 flex items-center justify-center">
+                <ArrowRightLeft className="size-5 text-[#007AFF]" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Xác nhận chuyển giai đoạn</h3>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Bạn có chắc chắn muốn chuyển giai đoạn dự án sang{' '}
+              <span className="font-bold text-[#007AFF]">"{giaiDoanMuonChuyen.label}"</span> không?
+            </p>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={dangXuLyChuyenGiaiDoan}
+                onClick={() => setGiaiDoanMuonChuyen(null)}
+                className="px-4 py-2 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={dangXuLyChuyenGiaiDoan}
+                onClick={async () => {
+                  if (!hda) return;
+                  const targetKey = giaiDoanMuonChuyen.key;
+                  setDangXuLyChuyenGiaiDoan(true);
+                  try {
+                    setTamGiaiDoan(targetKey);
+                    await doiGiaiDoanHoSoDuAn(hda.id, targetKey as any, nguoiDungHienTai ?? null);
+                    themToast('thanh_cong', `Đã chuyển sang giai đoạn "${giaiDoanMuonChuyen.label}"`);
+                    setGiaiDoanMuonChuyen(null);
+                    await taiLai();
+                  } catch (e: any) {
+                    themToast('loi', e?.message ?? 'Lỗi khi chuyển giai đoạn');
+                  } finally {
+                    setDangXuLyChuyenGiaiDoan(false);
+                  }
+                }}
+                className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#007AFF] hover:bg-blue-600 text-white transition shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              >
+                {dangXuLyChuyenGiaiDoan && <Loader2 className="size-4 animate-spin" />}
+                Xác nhận chuyển
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal xác nhận xóa mềm dự án */}
+      {moModalXoa && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="size-10 rounded-full bg-rose-50 flex items-center justify-center">
+                <Trash2 className="size-5 text-rose-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa dự án</h3>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Bạn có chắc chắn muốn chuyển hồ sơ dự án{' '}
+              <span className="font-semibold text-slate-900">"{hda?.ten_du_an}"</span> vào thùng rác không?
+              Dự án sẽ bị ẩn khỏi danh sách chính và chỉ tài khoản có quyền mới có thể khôi phục.
+            </p>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={dangXuLyKhac['xoa_detail']}
+                onClick={() => setMoModalXoa(false)}
+                className="px-4 py-2 text-sm font-semibold rounded-xl text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={dangXuLyKhac['xoa_detail']}
+                onClick={async () => {
+                  setMoModalXoa(false);
+                  await thucHienXoaMem();
+                }}
+                className="px-4 py-2 text-sm font-semibold rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              >
+                {dangXuLyKhac['xoa_detail'] && <Loader2 className="size-4 animate-spin" />}
+                Xác nhận xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast notifications */}
+      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2.5 w-[340px] max-w-[calc(100vw-2rem)] pointer-events-none">
+        {dsToast.map((t) => (
+          <div
+            key={t.id}
+            className={cn(
+              'pointer-events-auto rounded-[var(--radius-card)] border px-4 py-3.5 shadow-[0_10px_40px_-10px_rgb(0,0,0,0.2)] flex items-start gap-3 animate-in fade-in slide-in-from-right-4 duration-200',
+              t.dang === 'thanh_cong'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                : 'bg-rose-50 border-rose-200 text-rose-900'
+            )}
+          >
+            <div
+              className={cn(
+                'size-8 shrink-0 rounded-lg inline-flex items-center justify-center mt-0.5',
+                t.dang === 'thanh_cong'
+                  ? 'bg-emerald-100 text-emerald-600'
+                  : 'bg-rose-100 text-rose-600'
+              )}
+            >
+              {t.dang === 'thanh_cong' ? (
+                <CheckCircle2 className="size-4" />
+              ) : (
+                <XCircle className="size-4" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm font-semibold break-words">
+                {t.noi_dung}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
 
 
     </div>
@@ -2215,115 +2360,7 @@ function InfoDong({ bieuTuong: B, label, value, dangTai, mono }: any) {
 }
 
 
-function layDanhSachChiTietBCCV(b: BaoCaoCongViec): { du_an_id?: string | null; noi_dung: string }[] {
-  if (b.danh_sach_chi_tiet && Array.isArray(b.danh_sach_chi_tiet) && b.danh_sach_chi_tiet.length > 0) {
-    return b.danh_sach_chi_tiet.filter((ct) => ct && ct.noi_dung && ct.noi_dung.trim().length > 0);
-  }
-  if (b.noi_dung_thuc_hien && b.noi_dung_thuc_hien.trim().length > 0) {
-    return [{ du_an_id: b.du_an_id ?? null, noi_dung: b.noi_dung_thuc_hien }];
-  }
-  return [];
-}
 
-function BanBCCV({
-  ds,
-  dangTai,
-  err,
-  dsDuAn
-}: {
-  ds: BaoCaoCongViec[];
-  dangTai: boolean;
-  err: string | null;
-  dsDuAn?: HoSoDuAn[];
-}) {
-  if (dangTai) return <SkeletonList so={2} />;
-  if (err)
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm p-4 font-semibold">
-        Lỗi tải: {err}
-      </div>
-    );
-  if (ds.length === 0)
-    return (
-      <Rong
-        kieu="mac_dinh"
-        icon_tuy_chinh={FileCheck2}
-        nhan_tuy_chinh="Chưa có báo cáo công việc"
-        nhan_phu_tuy_chinh="Nhân sự chưa gửi báo cáo nào cho dự án này. Sẽ hiện ngay khi có báo cáo."
-      />
-    );
-  return (
-    <div className="divide-y divide-slate-200 border border-slate-200 rounded-2xl overflow-hidden bg-white">
-      {ds.map((b: BaoCaoCongViec) => {
-        const dsChiTiet = layDanhSachChiTietBCCV(b);
-        return (
-          <div key={b.id} className="p-4 sm:p-5 bg-white hover:bg-slate-50/50 transition">
-            <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-              <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Calendar className="size-4 text-indigo-500" />
-                Ngày báo cáo: {b.ngay_bao_cao ? formatNgay(b.ngay_bao_cao) : '(chưa ghi)'}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Hieu kieu="primary" kich_thuoc="sm">
-                  <span className="flex items-center gap-1">
-                    <FileText className="size-3" /> {dsChiTiet.length} dòng
-                  </span>
-                </Hieu>
-                {b.kho_khan && (
-                  <Hieu kieu="warning" kich_thuoc="sm">
-                    Có khó khăn
-                  </Hieu>
-                )}
-              </div>
-            </div>
-            <div className="space-y-2.5">
-              {dsChiTiet.map((ct, idx) => {
-                const tenDuAn = ct.du_an_id && dsDuAn
-                  ? dsDuAn.find((da) => da.id === ct.du_an_id)?.ten_du_an
-                  : null;
-                return (
-                  <div key={idx} className="rounded-xl bg-slate-50/70 border border-slate-100 p-3.5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="inline-flex items-center justify-center size-5 rounded-md bg-indigo-100 text-[10px] font-bold text-indigo-700 shrink-0">
-                        {idx + 1}
-                      </span>
-                      {tenDuAn && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
-                          <FolderKanban className="size-3" /> {tenDuAn}
-                        </span>
-                      )}
-                      {!ct.du_an_id && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
-                          Việc nội bộ / Hành chính
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed pl-7">
-                      {ct.noi_dung}
-                    </p>
-                  </div>
-                );
-              })}
-              {dsChiTiet.length === 0 && (
-                <p className="text-sm text-slate-400 italic">(chưa có nội dung)</p>
-              )}
-            </div>
-            {b.kho_khan && (
-              <div className="mt-3.5 rounded-xl bg-rose-50/60 border border-rose-100 p-3.5">
-                <div className="text-[11px] uppercase tracking-wider font-bold text-rose-700 mb-1.5 flex items-center gap-1.5">
-                  <AlertTriangle className="size-3.5" /> Khó khăn / Đề xuất
-                </div>
-                <p className="text-sm text-rose-900 whitespace-pre-wrap leading-relaxed">
-                  {b.kho_khan}
-                </p>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function kichThuocFileReadable(byt: number | null | undefined): string {
   const n = Number(byt) || 0;
