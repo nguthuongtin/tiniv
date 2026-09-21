@@ -619,9 +619,16 @@ export const doiMatKhauNhanSu = async (
     })
   });
 
-  const kq = await res.json();
-  if (!res.ok || !kq.thanh_cong) {
-    throw new Error(kq.thong_diep || 'Đổi mật khẩu thất bại.');
+  const text = await res.text();
+  let kq;
+  try {
+    kq = JSON.parse(text);
+  } catch (err) {
+    throw new Error(`Lỗi Server: Phản hồi không phải JSON. Nội dung: ${text.substring(0, 300)}...`);
+  }
+
+  if (!res.ok || !kq?.thanh_cong) {
+    throw new Error(kq?.thong_diep || 'Đổi mật khẩu thất bại.');
   }
 };
 
