@@ -26,7 +26,7 @@ import {
 } from '../../thu_vien/firebase/client_firebase';
 
 const TEN_COLLECTION = 'ho_so_du_an' as const;
-const GIOI_HAN_MAC_DINH = 50;
+const GIOI_HAN_MAC_DINH = 200;
 
 export interface DieuKienLocHoSoDuAn {
   tuKhoa?: string | null;
@@ -67,7 +67,7 @@ const chuyenDoiDocThanhDoiTuong = (
     nguoi_quan_ly_id: (r.nguoi_quan_ly_id as string | null) ?? null,
     nguoi_phu_trach_id: (r.nguoi_phu_trach_id as string | null) ?? null,
     danh_sach_nguoi_ho_tro_ids: Array.isArray(r.danh_sach_nguoi_ho_tro_ids)
-      ? (r.danh_sach_nguoi_ho_tro_ids as string[])
+      ? r.danh_sach_nguoi_ho_tro_ids
       : [],
     san_pham_dich_vu_id: (r.san_pham_dich_vu_id as string | null) ?? null,
     san_pham_khac_mo_ta: (r.san_pham_khac_mo_ta as string | null) ?? null,
@@ -87,6 +87,13 @@ const chuyenDoiDocThanhDoiTuong = (
 const sapXepVaLocThem = (mang: HoSoDuAn[], loc?: DieuKienLocHoSoDuAn): HoSoDuAn[] => {
   const tuKhoaLower = loc?.tuKhoa?.trim().toLowerCase() ?? '';
   return mang.filter((hda) => {
+    // Lọc theo trạng thái xóa mềm / hoạt động
+    if (loc?.trang_thai === 'da_xoa') {
+      if (hda.trang_thai !== 'da_xoa') return false;
+    } else if (loc?.trang_thai === 'hoat_dong' || !loc?.trang_thai) {
+      if (hda.trang_thai === 'da_xoa') return false;
+    }
+
     if (loc?.chi_nhanh_id && hda.chi_nhanh_id !== loc.chi_nhanh_id) return false;
     if (loc?.phong_ban_id && hda.phong_ban_id !== loc.phong_ban_id) return false;
     if (tuKhoaLower) {
@@ -329,6 +336,35 @@ export const doiTrangThaiHoSoDuAn = async (
       await Promise.allSettled([...capNhatCongViec, ...capNhatTienDo]);
     } catch (loiCascade) {
       console.error('Lỗi khi cascade soft-delete dữ liệu con của dự án:', loiCascade);
+    }
+  } else if (trang_thai_moi === 'hoat_dong') {
+    try {
+      // 1. Cascade restore cong_viec đã bị xóa theo dự án
+      const qCongViec = query(
+        thamChieuCollection('cong_viec'),
+        where('du_an_id', '==', id),
+        where('trang_thai_du_lieu', '==', 'da_xoa')
+      );
+      const snapCongViec = await getDocs(qCongViec);
+      const now = new Date().toISOString();
+      const capNhatCongViec = snapCongViec.docs.map((docSnap) =>
+        setDoc(docSnap.ref, { trang_thai_du_lieu: 'hoat_dong', ngay_cap_nhat: now }, { merge: true })
+      );
+
+      // 2. Cascade restore tien_do_du_an
+      const qTienDo = query(
+        thamChieuCollection('tien_do_du_an'),
+        where('du_an_id', '==', id),
+        where('trang_thai_du_lieu', '==', 'da_xoa')
+      );
+      const snapTienDo = await getDocs(qTienDo);
+      const capNhatTienDo = snapTienDo.docs.map((docSnap) =>
+        setDoc(docSnap.ref, { trang_thai_du_lieu: 'hoat_dong' }, { merge: true })
+      );
+
+      await Promise.allSettled([...capNhatCongViec, ...capNhatTienDo]);
+    } catch (loiCascade) {
+      console.error('Lỗi khi cascade restore dữ liệu con của dự án:', loiCascade);
     }
   }
 

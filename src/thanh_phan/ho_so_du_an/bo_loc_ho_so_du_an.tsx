@@ -40,9 +40,9 @@ const CAC_MUC_TIEM_NANG: Array<{
 ];
 
 const CAC_TRANG_THAI: Array<{ gia_tri: DieuKienLocHoSoDuAn['trang_thai']; nhan: string }> = [
-  { gia_tri: 'tat_ca', nhan: 'Tất cả trạng thái' },
-  { gia_tri: 'hoat_dong', nhan: 'Hoạt động' },
-  { gia_tri: 'da_xoa', nhan: 'Đã xóa' }
+  { gia_tri: 'hoat_dong', nhan: 'Đang hoạt động (Mặc định)' },
+  { gia_tri: 'da_xoa', nhan: 'Đã xóa (Thùng rác)' },
+  { gia_tri: 'tat_ca', nhan: 'Tất cả trạng thái' }
 ];
 
 interface BoLocHoSoDuAnProps {
@@ -65,7 +65,7 @@ export default function BoLocHoSoDuAn({
     if (tuKhoa && tuKhoa.trim().length > 0) dem++;
     if (gia_tri_hien_tai.giai_doan && gia_tri_hien_tai.giai_doan !== 'tat_ca') dem++;
     if (gia_tri_hien_tai.muc_do_tiem_nang && gia_tri_hien_tai.muc_do_tiem_nang !== 'tat_ca') dem++;
-    if (gia_tri_hien_tai.trang_thai && gia_tri_hien_tai.trang_thai !== 'tat_ca') dem++;
+    if (gia_tri_hien_tai.trang_thai && gia_tri_hien_tai.trang_thai !== 'hoat_dong') dem++;
     if (gia_tri_hien_tai.khach_hang_id) dem++;
     if (gia_tri_hien_tai.nguoi_quan_ly_id) dem++;
     if (gia_tri_hien_tai.nguoi_phu_trach_id) dem++;
@@ -91,7 +91,7 @@ export default function BoLocHoSoDuAn({
       muc_do_tiem_nang: 'tat_ca',
       nguoi_quan_ly_id: null,
       nguoi_phu_trach_id: null,
-      trang_thai: 'tat_ca',
+      trang_thai: 'hoat_dong',
       ngay_tao_tu_ngay: null,
       ngay_tao_den_ngay: null,
       thoi_han_hoan_thanh_tu_ngay: null,
@@ -244,7 +244,7 @@ export default function BoLocHoSoDuAn({
           </BoLocMuc>
           <BoLocMuc label="Trạng thái hồ sơ">
             <select
-              value={(gia_tri_hien_tai.trang_thai as string) ?? 'tat_ca'}
+              value={(gia_tri_hien_tai.trang_thai as string) ?? 'hoat_dong'}
               onChange={(e) =>
                 datGiaTri('trang_thai', e.target.value as DieuKienLocHoSoDuAn['trang_thai'])
               }

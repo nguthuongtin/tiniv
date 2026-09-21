@@ -136,6 +136,7 @@ export const DANH_SACH_QUYEN_HAN_HE_THONG: ItemQuyenHan[] = [
   { ma_quyen: 'du_an.xem', ten_quyen: 'Xem danh sách dự án', nhom: 'du_an' },
   { ma_quyen: 'du_an.tao_sua', ten_quyen: 'Tạo & Sửa hồ sơ dự án', nhom: 'du_an' },
   { ma_quyen: 'du_an.xoa', ten_quyen: 'Xóa hồ sơ dự án', nhom: 'du_an' },
+  { ma_quyen: 'du_an.khoi_phuc', ten_quyen: 'Khôi phục hồ sơ dự án đã xóa', nhom: 'du_an' },
   // Kế hoạch
   { ma_quyen: 'ke_hoach.xem', ten_quyen: 'Xem kế hoạch tác chiến', nhom: 'ke_hoach' },
   { ma_quyen: 'ke_hoach.tao_sua', ten_quyen: 'Lập & Cập nhật kế hoạch', nhom: 'ke_hoach' },

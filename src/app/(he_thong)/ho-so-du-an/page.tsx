@@ -26,12 +26,13 @@ import {
   Folder,
   Coins,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  RotateCcw
 } from 'lucide-react';
 import { cn } from '../../../thu_vien/utils/cn';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
 import { useStoreXacThuc } from '../../../thu_vien/zustand/store_xac_thuc';
-import { duocXemHoSoDuAn } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { duocXemHoSoDuAn, coQuyen } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import type {
   GiaiDoanDuAn,
   HoSoDuAn,
@@ -76,7 +77,7 @@ const BO_LOC_MAC_DINH: DieuKienLocHoSoDuAn = {
   nguoi_phu_trach_id: null,
   chi_nhanh_id: null,
   phong_ban_id: null,
-  trang_thai: 'tat_ca'
+  trang_thai: 'hoat_dong'
 };
 
 const GIOI_HAN_MAC_DINH = 100;
@@ -198,7 +199,13 @@ const TheHoSoDuAn = ({
   ds_khach_hang,
   tien_do_cuoi_cung,
   tenGiaiDoan,
-  anGiaTri
+  anGiaTri,
+  onSua,
+  onXoa,
+  onKhoiPhuc,
+  coQuyenKhoiPhuc = false,
+  dangXuLyXoa = false,
+  dangXuLyKhoiPhuc = false
 }: {
   hda: HoSoDuAn;
   ds_nhan_su?: NhanSu[];
@@ -208,7 +215,10 @@ const TheHoSoDuAn = ({
   anGiaTri?: boolean;
   onSua?: (hda: HoSoDuAn) => void;
   onXoa?: (hda: HoSoDuAn) => void;
+  onKhoiPhuc?: (hda: HoSoDuAn) => void;
+  coQuyenKhoiPhuc?: boolean;
   dangXuLyXoa?: boolean;
+  dangXuLyKhoiPhuc?: boolean;
 }) => {
   const router = useRouter();
   const gd = tenGiaiDoan[hda.giai_doan] ?? {
@@ -262,13 +272,13 @@ const TheHoSoDuAn = ({
         'group relative bg-white rounded-[22px] border border-slate-200/80 p-4 sm:p-5 pt-5 sm:pt-6 transition-all duration-200 ease-out flex flex-col justify-between overflow-hidden',
         'hover:border-blue-300 hover:shadow-[0_8px_30px_rgba(0,122,255,0.08),0_2px_8px_rgba(0,0,0,0.04)]',
         'active:scale-[0.985] active:bg-slate-50/60 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.03),0_6px_16px_rgba(0,0,0,0.02)]',
-        hda.trang_thai === 'da_xoa' && 'opacity-60 grayscale-[40%]'
+        hda.trang_thai === 'da_xoa' && 'opacity-70 bg-slate-50/70 border-rose-200/80'
       )}
     >
       {/* 1. THANH TIẾN ĐỘ MÉP TRÊN THẺ (Apple Top-Edge Progress Bar) */}
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-100/90 overflow-hidden">
         <div
-          className={cn('h-full transition-all duration-500 ease-out', thongTinTienDo.mau)}
+          className={cn('h-full transition-all duration-500 ease-out', hda.trang_thai === 'da_xoa' ? 'bg-rose-400' : thongTinTienDo.mau)}
           style={{ width: `${thongTinTienDo.phanTram}%` }}
         />
       </div>
@@ -278,15 +288,22 @@ const TheHoSoDuAn = ({
         <div className="flex items-center justify-between gap-3 pb-2.5">
           <div className="flex items-center gap-2 min-w-0">
             {/* Apple Status Capsule */}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide border shrink-0',
-                thongTinTienDo.capsule
-              )}
-            >
-              <span className={cn('size-1.5 rounded-full shrink-0', thongTinTienDo.dot)} />
-              <span className="truncate max-w-[140px]">{thongTinTienDo.nhan}</span>
-            </span>
+            {hda.trang_thai === 'da_xoa' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] sm:text-[12px] font-bold tracking-wide border shrink-0 bg-rose-50 text-rose-700 border-rose-200">
+                <span className="size-1.5 rounded-full shrink-0 bg-rose-500" />
+                <span>Đã xóa</span>
+              </span>
+            ) : (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide border shrink-0',
+                  thongTinTienDo.capsule
+                )}
+              >
+                <span className={cn('size-1.5 rounded-full shrink-0', thongTinTienDo.dot)} />
+                <span className="truncate max-w-[140px]">{thongTinTienDo.nhan}</span>
+              </span>
+            )}
 
             {hda.ma_ho_so && (
               <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-slate-100/90 text-slate-500 font-mono text-[11px] font-medium border border-slate-200/60">
@@ -319,7 +336,7 @@ const TheHoSoDuAn = ({
         </div>
       </div>
 
-      {/* TẦNG CHÂN: THỜI GIAN, NGƯỜI PHỤ TRÁCH LIỀN SAU & CHEVRON ACTION */}
+      {/* TẦNG CHÂN: THỜI GIAN, NGƯỜI PHỤ TRÁCH LIỀN SAU & ACTION */}
       <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-100 text-[11.5px] sm:text-[12px] text-slate-500">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           {/* Thời gian */}
@@ -350,10 +367,30 @@ const TheHoSoDuAn = ({
           )}
         </div>
 
-        {/* Nút hành động tròn Apple */}
-        <div className="size-7 rounded-full bg-slate-100/90 group-hover:bg-[#007AFF] text-slate-400 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-2xs group-hover:translate-x-0.5 shrink-0">
-          <ChevronRight className="size-3.5" strokeWidth={2.5} />
-        </div>
+        {/* Nút hành động tròn Apple hoặc Nút Khôi phục */}
+        {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc ? (
+          <button
+            type="button"
+            disabled={dangXuLyKhoiPhuc}
+            onClick={(e) => {
+              e.stopPropagation();
+              onKhoiPhuc?.(hda);
+            }}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-95 transition-all shrink-0 cursor-pointer"
+            title="Khôi phục hồ sơ dự án"
+          >
+            {dangXuLyKhoiPhuc ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <RotateCcw className="size-3" strokeWidth={2.5} />
+            )}
+            <span>Khôi phục</span>
+          </button>
+        ) : (
+          <div className="size-7 rounded-full bg-slate-100/90 group-hover:bg-[#007AFF] text-slate-400 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-2xs group-hover:translate-x-0.5 shrink-0">
+            <ChevronRight className="size-3.5" strokeWidth={2.5} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -377,6 +414,8 @@ function TrangHoSoDuAn() {
   const [kieuSapXep, setKieuSapXep] = useState<'moi_nhat' | 'cu_nhat' | 'gia_tri_cao' | 'ten_az'>('moi_nhat');
 
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
+  const coQuyenXoa = coQuyen(nguoiDungHienTai, 'du_an.xoa');
+  const coQuyenKhoiPhuc = coQuyen(nguoiDungHienTai, 'du_an.khoi_phuc');
   const laBackOffice = ['hanh_chinh_van_phong'].includes(
     nguoiDungHienTai?.vai_tro ?? ''
   );
@@ -607,6 +646,13 @@ function TrangHoSoDuAn() {
     [nguoiDungHienTai, taiLaiDuLieu, themToast]
   );
 
+  const xuLyKhoiPhuc = useCallback(
+    async (hda: HoSoDuAn) => {
+      await xuLyDoiTrangThai(hda, 'hoat_dong');
+    },
+    [xuLyDoiTrangThai]
+  );
+
   const xuLyDoiGiaiDoan = useCallback(
     async (hda: HoSoDuAn, giaiDoanMoi: GiaiDoanDuAn) => {
       setDangXuLyKhac(hda.id);
@@ -789,7 +835,10 @@ function TrangHoSoDuAn() {
                 anGiaTri={laBackOffice}
                 onSua={moSua}
                 onXoa={xuLyXoa}
+                onKhoiPhuc={xuLyKhoiPhuc}
+                coQuyenKhoiPhuc={coQuyenKhoiPhuc}
                 dangXuLyXoa={dangXuLyKhac === hda.id}
+                dangXuLyKhoiPhuc={dangXuLyKhac === hda.id}
               />
             ))}
           </div>

@@ -43,7 +43,8 @@ import {
   Layers,
   X,
   Plus,
-  Search
+  Search,
+  RotateCcw
 } from 'lucide-react';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import type { HoSoDuAn, TienDoDuAn, GiaiDoanDuAn } from '../../../../thu_vien/types/du_an';
@@ -89,7 +90,7 @@ import {
   TEN_HANH_DONG_NHAT_KY
 } from '../../../../dich_vu/nhat_ky_hoat_dong/dich_vu_nhat_ky_hoat_dong';
 import { layDanhSachGiaiDoan } from '../../../../thu_vien/cau_hinh/giai_doan_du_an';
-import { duocXemHoSoDuAn } from '../../../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { duocXemHoSoDuAn, coQuyen } from '../../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import useStoreXacThuc from '../../../../thu_vien/zustand/store_xac_thuc';
 import { ModalLyDoHuyDuAn } from '../../../../thanh_phan/ho_so_du_an/modal_ly_do_huy_du_an';
 import { formatNgay } from '../../../../thu_vien/utils/format_ngay';
@@ -191,6 +192,9 @@ export default function TrangChiTietHoSoDuAn() {
   const router = useRouter();
   const id = typeof params?.id === 'string' ? params.id : null;
   const { nguoiDungHienTai } = useStoreXacThuc();
+  const coQuyenXoa = coQuyen(nguoiDungHienTai, 'du_an.xoa');
+  const coQuyenKhoiPhuc = coQuyen(nguoiDungHienTai, 'du_an.khoi_phuc');
+  const coQuyenTaoSua = coQuyen(nguoiDungHienTai, 'du_an.tao_sua');
   const laBackOffice = ['hanh_chinh_van_phong'].includes(nguoiDungHienTai?.vai_tro ?? '');
 
   const [hda, setHda] = useState<HoSoDuAn | null>(null);
@@ -494,13 +498,30 @@ export default function TrangChiTietHoSoDuAn() {
     }
   };
 
+  const xuLyKhoiPhuc = async () => {
+    if (!hda) return;
+    const key = 'khoi_phuc_detail';
+    setDangXuLyKhac((o) => ({ ...o, [key]: true }));
+    try {
+      await doiTrangThaiHoSoDuAn(hda.id, 'hoat_dong', nguoiDungHienTai ?? null);
+      await taiLai();
+    } catch (e) {
+      alert((e as Error)?.message ?? 'Lỗi khôi phục dự án');
+    } finally {
+      setDangXuLyKhac((o) => ({ ...o, [key]: false }));
+    }
+  };
+
   const xuLyXoaMem = async () => {
     if (!hda) return;
+    if (!confirm(`Xác nhận xóa dự án "${hda.ten_du_an}"? Dự án sẽ được chuyển vào thùng rác.`)) return;
     const key = 'xoa_detail';
     setDangXuLyKhac((o) => ({ ...o, [key]: true }));
     try {
       await doiTrangThaiHoSoDuAn(hda.id, 'da_xoa', nguoiDungHienTai ?? null);
       router.push('/ho-so-du-an');
+    } catch (e) {
+      alert((e as Error)?.message ?? 'Lỗi xóa dự án');
     } finally {
       setDangXuLyKhac((o) => ({ ...o, [key]: false }));
     }
@@ -829,31 +850,74 @@ export default function TrangChiTietHoSoDuAn() {
                   >
                     + Tiến độ
                   </Nut>
-                  <Nut
-                    kieu="outline"
-                    kich_thuoc="sm"
-                    icon_trai={Pencil}
-                    onClick={batDauChinhSua}
-                    className="font-medium shadow-2xs whitespace-nowrap"
-                  >
-                    Chỉnh sửa
-                  </Nut>
-                  <Nut
-                    kieu="danger"
-                    kich_thuoc="sm"
-                    icon_trai={dangXuLyKhac['xoa_detail'] ? Loader2 : Trash2}
-                    onClick={xuLyXoaMem}
-                    disabled={dangXuLyKhac['xoa_detail'] || hda.trang_thai === 'da_xoa'}
-                    className="font-semibold whitespace-nowrap"
-                  >
-                    Xóa
-                  </Nut>
+                  {coQuyenTaoSua && hda.trang_thai !== 'da_xoa' && (
+                    <Nut
+                      kieu="outline"
+                      kich_thuoc="sm"
+                      icon_trai={Pencil}
+                      onClick={batDauChinhSua}
+                      className="font-medium shadow-2xs whitespace-nowrap"
+                    >
+                      Chỉnh sửa
+                    </Nut>
+                  )}
+                  {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc && (
+                    <Nut
+                      kieu="primary"
+                      kich_thuoc="sm"
+                      icon_trai={dangXuLyKhac['khoi_phuc_detail'] ? Loader2 : RotateCcw}
+                      onClick={xuLyKhoiPhuc}
+                      disabled={dangXuLyKhac['khoi_phuc_detail']}
+                      className="font-bold shadow-sm whitespace-nowrap bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+                    >
+                      Khôi phục dự án
+                    </Nut>
+                  )}
+                  {hda.trang_thai !== 'da_xoa' && coQuyenXoa && (
+                    <Nut
+                      kieu="danger"
+                      kich_thuoc="sm"
+                      icon_trai={dangXuLyKhac['xoa_detail'] ? Loader2 : Trash2}
+                      onClick={xuLyXoaMem}
+                      disabled={dangXuLyKhac['xoa_detail']}
+                      className="font-semibold whitespace-nowrap"
+                    >
+                      Xóa
+                    </Nut>
+                  )}
                 </>
               )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Banner thông báo dự án đã xóa */}
+      {hda?.trang_thai === 'da_xoa' && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <Trash2 className="size-5 text-rose-600 shrink-0" />
+            <div className="text-sm">
+              <span className="font-bold">Dự án này đang ở trạng thái Đã xóa (Thùng rác).</span>
+              <p className="text-xs text-rose-700/80 mt-0.5">
+                Dự án bị ẩn khỏi danh sách chính. Chỉ tài khoản có quyền khôi phục mới có thể đưa dự án trở lại hoạt động.
+              </p>
+            </div>
+          </div>
+          {coQuyenKhoiPhuc && (
+            <Nut
+              kieu="primary"
+              kich_thuoc="sm"
+              icon_trai={dangXuLyKhac['khoi_phuc_detail'] ? Loader2 : RotateCcw}
+              onClick={xuLyKhoiPhuc}
+              disabled={dangXuLyKhac['khoi_phuc_detail']}
+              className="font-bold shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+            >
+              Khôi phục ngay
+            </Nut>
+          )}
+        </div>
+      )}
 
       {/* Thông báo lỗi lưu hoặc Banner chế độ chỉnh sửa dự án */}
       {loiLuuDA && (
