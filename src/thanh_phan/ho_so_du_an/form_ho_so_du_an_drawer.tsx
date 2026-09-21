@@ -160,7 +160,10 @@ export default function FormHoSoDuAnDrawer({
 
   const khachHangDangChon = watch('khach_hang_id');
   const chiNhanhDangChon = watch('chi_nhanh_id');
-  const dsHoTroDangChon = watch('danh_sach_nguoi_ho_tro_ids') ?? [];
+  const nguoiQuanLyId = watch('nguoi_quan_ly_id');
+  const nguoiPhuTrachId = watch('nguoi_phu_trach_id');
+  const rawHoTro = watch('danh_sach_nguoi_ho_tro_ids');
+  const dsHoTroDangChon = useMemo(() => (Array.isArray(rawHoTro) ? rawHoTro : []), [rawHoTro]);
   const spdvDangChon = watch('san_pham_dich_vu_id');
   const laChonKhac = spdvDangChon === '__KHAC__';
 
@@ -271,7 +274,8 @@ export default function FormHoSoDuAnDrawer({
   }, [dsNLH, khachHangDangChon]);
 
   const toggleNguoiHoTro = (nsId: string) => {
-    const hienTai = new Set<string>(dsHoTroDangChon);
+    const arr = Array.isArray(dsHoTroDangChon) ? dsHoTroDangChon : [];
+    const hienTai = new Set<string>(arr);
     if (hienTai.has(nsId)) {
       hienTai.delete(nsId);
     } else {
@@ -764,7 +768,7 @@ export default function FormHoSoDuAnDrawer({
                           <optgroup key={pb.id} label={`🏢 ${pb.ten_phong_ban}`}>
                             {nsThuocPb.map((ns) => (
                               <option key={ns.id} value={ns.id}>
-                                {ns.ho_va_ten} {ns.vai_tro ? `— ${ns.vai_tro.replace(/_/g, ' ')}` : ''}
+                                {ns.ho_va_ten} {ns.vai_tro ? `— ${String(ns.vai_tro).replace(/_/g, ' ')}` : ''}
                               </option>
                             ))}
                           </optgroup>
@@ -776,7 +780,7 @@ export default function FormHoSoDuAnDrawer({
                             .filter((ns) => !ns.phong_ban_id || !dsPhongBan.some((p) => p.id === ns.phong_ban_id))
                             .map((ns) => (
                               <option key={ns.id} value={ns.id}>
-                                {ns.ho_va_ten} {ns.vai_tro ? `— ${ns.vai_tro.replace(/_/g, ' ')}` : ''}
+                                {ns.ho_va_ten} {ns.vai_tro ? `— ${String(ns.vai_tro).replace(/_/g, ' ')}` : ''}
                               </option>
                             ))}
                         </optgroup>
@@ -805,7 +809,7 @@ export default function FormHoSoDuAnDrawer({
                     type="button"
                     onClick={() => {
                       const tatCaId = dsNS
-                        .filter((ns) => ns.id !== watch('nguoi_phu_trach_id') && ns.id !== watch('nguoi_quan_ly_id'))
+                        .filter((ns) => ns.id !== nguoiPhuTrachId && ns.id !== nguoiQuanLyId)
                         .map((ns) => ns.id);
                       const tatCaDaChon = tatCaId.every((id) => dsHoTroDangChon.includes(id)) && tatCaId.length > 0;
                       setValue(
@@ -817,7 +821,7 @@ export default function FormHoSoDuAnDrawer({
                     className="text-[11.5px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline shrink-0"
                   >
                     {dsHoTroDangChon.filter(Boolean).length ===
-                    dsNS.filter((ns) => ns.id !== watch('nguoi_phu_trach_id') && ns.id !== watch('nguoi_quan_ly_id')).length
+                    dsNS.filter((ns) => ns.id !== nguoiPhuTrachId && ns.id !== nguoiQuanLyId).length
                       ? 'Bỏ chọn tất cả'
                       : 'Chọn tất cả (trừ NQL/NPT)'}
                   </button>
@@ -853,27 +857,23 @@ export default function FormHoSoDuAnDrawer({
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
                           {nsThuocPb.map((ns) => {
-                            const laNQL = ns.id === watch('nguoi_quan_ly_id');
-                            const laNPT = ns.id === watch('nguoi_phu_trach_id');
+                            const laNQL = ns.id === nguoiQuanLyId;
+                            const laNPT = ns.id === nguoiPhuTrachId;
                             const daChon = dsHoTroDangChon.includes(ns.id);
                             return (
-                              <label
+                              <button
                                 key={ns.id}
+                                type="button"
+                                disabled={laNQL || laNPT}
+                                onClick={() => toggleNguoiHoTro(ns.id)}
                                 className={cn(
-                                  'group flex items-center gap-2.5 rounded-xl border px-3 py-2 cursor-pointer transition select-none',
+                                  'group flex items-center gap-2.5 rounded-xl border px-3 py-2 cursor-pointer transition select-none text-left w-full',
                                   daChon
                                     ? 'bg-indigo-50/80 border-indigo-200 shadow-2xs'
                                     : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300',
-                                  (laNQL || laNPT) && 'opacity-70 bg-slate-50/60'
+                                  (laNQL || laNPT) && 'opacity-70 bg-slate-50/60 cursor-not-allowed'
                                 )}
                               >
-                                <input
-                                  type="checkbox"
-                                  className="sr-only"
-                                  checked={daChon}
-                                  disabled={laNQL || laNPT}
-                                  onChange={() => toggleNguoiHoTro(ns.id)}
-                                />
                                 <div
                                   className={cn(
                                     'size-4.5 shrink-0 rounded-[5px] border flex items-center justify-center transition',
@@ -890,10 +890,10 @@ export default function FormHoSoDuAnDrawer({
                                   <div className="text-[10.5px] text-slate-500 truncate">
                                     {laNQL && <span className="font-bold text-amber-700 mr-1">[QL]</span>}
                                     {laNPT && <span className="font-bold text-indigo-700 mr-1">[PIC]</span>}
-                                    {ns.chuc_vu ? ns.chuc_vu : (ns.vai_tro ?? 'Nhân viên').replace(/_/g, ' ')}
+                                    {ns.chuc_vu ? ns.chuc_vu : String(ns.vai_tro || 'Nhân viên').replace(/_/g, ' ')}
                                   </div>
                                 </div>
-                              </label>
+                              </button>
                             );
                           })}
                         </div>
@@ -914,27 +914,23 @@ export default function FormHoSoDuAnDrawer({
                         {dsNS
                           .filter((ns) => !ns.phong_ban_id || !dsPhongBan.some((p) => p.id === ns.phong_ban_id))
                           .map((ns) => {
-                            const laNQL = ns.id === watch('nguoi_quan_ly_id');
-                            const laNPT = ns.id === watch('nguoi_phu_trach_id');
+                            const laNQL = ns.id === nguoiQuanLyId;
+                            const laNPT = ns.id === nguoiPhuTrachId;
                             const daChon = dsHoTroDangChon.includes(ns.id);
                             return (
-                              <label
+                              <button
                                 key={ns.id}
+                                type="button"
+                                disabled={laNQL || laNPT}
+                                onClick={() => toggleNguoiHoTro(ns.id)}
                                 className={cn(
-                                  'group flex items-center gap-2.5 rounded-xl border px-3 py-2 cursor-pointer transition select-none',
+                                  'group flex items-center gap-2.5 rounded-xl border px-3 py-2 cursor-pointer transition select-none text-left w-full',
                                   daChon
                                     ? 'bg-indigo-50/80 border-indigo-200 shadow-2xs'
                                     : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300',
-                                  (laNQL || laNPT) && 'opacity-70 bg-slate-50/60'
+                                  (laNQL || laNPT) && 'opacity-70 bg-slate-50/60 cursor-not-allowed'
                                 )}
                               >
-                                <input
-                                  type="checkbox"
-                                  className="sr-only"
-                                  checked={daChon}
-                                  disabled={laNQL || laNPT}
-                                  onChange={() => toggleNguoiHoTro(ns.id)}
-                                />
                                 <div
                                   className={cn(
                                     'size-4.5 shrink-0 rounded-[5px] border flex items-center justify-center transition',
@@ -951,10 +947,10 @@ export default function FormHoSoDuAnDrawer({
                                   <div className="text-[10.5px] text-slate-500 truncate">
                                     {laNQL && <span className="font-bold text-amber-700 mr-1">[QL]</span>}
                                     {laNPT && <span className="font-bold text-indigo-700 mr-1">[PIC]</span>}
-                                    {ns.chuc_vu ? ns.chuc_vu : (ns.vai_tro ?? 'Nhân viên').replace(/_/g, ' ')}
+                                    {ns.chuc_vu ? ns.chuc_vu : String(ns.vai_tro || 'Nhân viên').replace(/_/g, ' ')}
                                   </div>
                                 </div>
-                              </label>
+                              </button>
                             );
                           })}
                       </div>

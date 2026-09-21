@@ -28,7 +28,7 @@ const KT_DD = {
 };
 
 export const layKieuDaiDienTuTen = (ten: string | null | undefined): KieuDaiDien => {
-  if (!ten) return 'slate';
+  if (!ten || typeof ten !== 'string') return 'slate';
   const b = ten.trim().toLowerCase().charCodeAt(0);
   if (isNaN(b)) return 'slate';
   const keys = Object.keys(MAP_KIEU_DAI_DIEN) as KieuDaiDien[];
@@ -38,7 +38,8 @@ export const layKieuDaiDienTuTen = (ten: string | null | undefined): KieuDaiDien
 export const DaiDien = React.forwardRef<HTMLDivElement, DaiDienProps>(
   ({ className, kich_thuoc = 'md', kieu, ten, anh, khong_anh_gradient, ...props }, ref) => {
     const [loiAnh, setLoiAnh] = React.useState(false);
-    const chu_cai_dau = ten?.trim()?.charAt?.(0)?.toUpperCase?.() ?? '';
+    const tenChuan = typeof ten === 'string' ? ten : '';
+    const chu_cai_dau = tenChuan.trim()?.charAt?.(0)?.toUpperCase?.() ?? '';
     const kieu_dung = kieu ?? layKieuDaiDienTuTen(ten);
 
     const anhHopLe = typeof anh === 'string' && anh.trim().length > 0 && anh !== 'null' && anh !== 'undefined' ? anh.trim() : null;

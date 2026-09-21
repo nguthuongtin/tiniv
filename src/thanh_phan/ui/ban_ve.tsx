@@ -54,18 +54,14 @@ export const Ban_Ve: React.FC<BanVeProps> = ({
         className="absolute inset-0 bg-slate-900/55 backdrop-blur-sm animate-in fade-in duration-[var(--animate-duration-200)]"
       />
 
-      {/* Mobile Drawer bottom (slide-in */}
       <div
-        className="relative z-10 w-full md:hidden absolute left-0 right-0 bottom-0 max-h-[92vh] bg-background rounded-t-[var(--radius-pop)] shadow-[var(--shadow-pop)] animate-in slide-in-from-bottom-6 duration-[var(--animate-duration-250)] flex flex-col overflow-hidden border border-border"
+        className={cn(
+          'relative z-10 w-full bg-background flex flex-col overflow-hidden border border-border shadow-[var(--shadow-pop)]',
+          'max-h-[92vh] rounded-t-[var(--radius-pop)] animate-in slide-in-from-bottom-6 duration-[var(--animate-duration-250)]',
+          'md:max-w-[640px] md:mx-auto md:max-h-[88vh] md:rounded-[var(--radius-pop)] md:animate-in md:fade-in md:zoom-in-[0.97] md:duration-[var(--animate-duration-200)]'
+        )}
       >
-        <div className="mx-auto mt-2 size-1 h-1.5 w-16 shrink-0 rounded-full bg-muted-foreground/20" />
-        {renderBody(tieu_de, phu_de, cuoi, children, className, onDong)}
-      </div>
-
-      {/* Desktop Modal center (640px */}
-      <div
-        className="relative z-10 hidden md:flex md:w-full md:max-w-[640px] md:mx-auto md:max-h-[88vh] bg-background rounded-[var(--radius-pop)] shadow-[var(--shadow-pop)] animate-in fade-in zoom-in-[0.97] duration-[var(--animate-duration-200)] flex-col overflow-hidden border border-border"
-      >
+        <div className="mx-auto mt-2 size-1 h-1.5 w-16 shrink-0 rounded-full bg-muted-foreground/20 md:hidden" />
         {renderBody(tieu_de, phu_de, cuoi, children, className, onDong)}
       </div>
     </div>
