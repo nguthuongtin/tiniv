@@ -10,6 +10,7 @@ export interface ONhapProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
   icon_phai?: LucideIcon;
   phan_hoi?: string | null;
   wrapperClassName?: string;
+  rows?: number;
 }
 
 const O_Nhap = React.forwardRef<HTMLInputElement, ONhapProps>(

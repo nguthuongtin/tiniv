@@ -50,7 +50,6 @@ import { notFound, useRouter, useParams } from 'next/navigation';
 import type { HoSoDuAn, TienDoDuAn, GiaiDoanDuAn } from '../../../../thu_vien/types/du_an';
 import type { KhachHang, NguoiLienHe } from '../../../../thu_vien/types/khach_hang';
 import type { NhanSu, ChiNhanh, PhongBan } from '../../../../thu_vien/types/nhan_su';
-import type { SanPhamDichVu } from '../../../../thu_vien/types/san_pham_dich_vu';
 import type {
   CapNhatHoSoDuAnDTO,
   DieuKienLocHoSoDuAn,
@@ -74,7 +73,6 @@ import { danhSachNguoiLienHe } from '../../../../dich_vu/nguoi_lien_he/dich_vu_n
 import { danhSachNhanSu } from '../../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachChiNhanh } from '../../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
 import { danhSachPhongBan } from '../../../../dich_vu/co_cau_to_chuc/dich_vu_phong_ban';
-import { danhSachSanPhamDichVu } from '../../../../dich_vu/san_pham_dich_vu/dich_vu_san_pham_dich_vu';
 import {
   danhSachTaiLieuDuAn,
   themTaiLieuDuAn,
@@ -204,7 +202,6 @@ export default function TrangChiTietHoSoDuAn() {
   const [dsNK, setDsNK] = useState<NhatKyHoatDong[]>([]);
   const [dsChiNhanh, setDsChiNhanh] = useState<ChiNhanh[]>([]);
   const [dsPhongBan, setDsPhongBan] = useState<PhongBan[]>([]);
-  const [dsSanPham, setDsSanPham] = useState<SanPhamDichVu[]>([]);
   const [dangTai, setDangTai] = useState(true);
   const [errTai, setErrTai] = useState<string | null>(null);
   const [tabHienTai, setTabHienTai] = useState<TenTab>('tien_do');
@@ -309,8 +306,7 @@ export default function TrangChiTietHoSoDuAn() {
         danhSachTaiLieuDuAn({ du_an_id: id }),
         danhSachNhatKyHoatDong({ ban_ghi_id: id, module: 'ho_so_du_an' }),
         danhSachChiNhanh(),
-        danhSachPhongBan(),
-        danhSachSanPhamDichVu({ trang_thai_du_lieu: 'hoat_dong' })
+        danhSachPhongBan()
       ]);
       const kq1Raw = results[0].status === 'fulfilled' ? results[0].value : null;
       const kqKH = results[1].status === 'fulfilled' ? results[1].value : { mang: [] };
@@ -321,7 +317,6 @@ export default function TrangChiTietHoSoDuAn() {
       const kqNK = results[6].status === 'fulfilled' ? results[6].value : { mang: [] };
       const kqCN = results[7].status === 'fulfilled' ? results[7].value : { mang: [] };
       const kqPB = results[8].status === 'fulfilled' ? results[8].value : { mang: [] };
-      const kqSP = results[9].status === 'fulfilled' ? results[9].value : { mang: [] };
 
       if (!kq1Raw) {
         setHda(null);
@@ -336,7 +331,6 @@ export default function TrangChiTietHoSoDuAn() {
       setDsTD(kqTD.mang);
       setDsChiNhanh(kqCN.mang ?? []);
       setDsPhongBan(kqPB.mang ?? []);
-      setDsSanPham(kqSP.mang ?? []);
     } catch (e: any) {
       setErrTai(e?.message ?? 'Tải thất bại');
     } finally {
@@ -352,8 +346,6 @@ export default function TrangChiTietHoSoDuAn() {
     ten_du_an: string;
     ma_ho_so: string;
     muc_do_tiem_nang: string;
-    san_pham_dich_vu_id: string;
-    san_pham_khac_mo_ta: string;
     chi_nhanh_id: string;
     phong_ban_id: string;
     khach_hang_id: string;
@@ -371,8 +363,6 @@ export default function TrangChiTietHoSoDuAn() {
     ten_du_an: '',
     ma_ho_so: '',
     muc_do_tiem_nang: 'trung_binh',
-    san_pham_dich_vu_id: '',
-    san_pham_khac_mo_ta: '',
     chi_nhanh_id: '',
     phong_ban_id: '',
     khach_hang_id: '',
@@ -394,8 +384,6 @@ export default function TrangChiTietHoSoDuAn() {
       ten_du_an: hda.ten_du_an || '',
       ma_ho_so: hda.ma_ho_so || '',
       muc_do_tiem_nang: hda.muc_do_tiem_nang || 'trung_binh',
-      san_pham_dich_vu_id: hda.san_pham_dich_vu_id || '',
-      san_pham_khac_mo_ta: hda.san_pham_khac_mo_ta || '',
       chi_nhanh_id: hda.chi_nhanh_id || '',
       phong_ban_id: hda.phong_ban_id || '',
       khach_hang_id: hda.khach_hang_id || '',
@@ -436,8 +424,8 @@ export default function TrangChiTietHoSoDuAn() {
           ten_du_an: ten,
           ma_ho_so: formSuaDA.ma_ho_so.trim() || '',
           muc_do_tiem_nang: formSuaDA.muc_do_tiem_nang as any,
-          san_pham_dich_vu_id: formSuaDA.san_pham_dich_vu_id || null,
-          san_pham_khac_mo_ta: formSuaDA.san_pham_khac_mo_ta.trim() || null,
+          san_pham_dich_vu_id: null,
+          san_pham_khac_mo_ta: null,
           chi_nhanh_id: formSuaDA.chi_nhanh_id || null,
           phong_ban_id: formSuaDA.phong_ban_id || null,
           khach_hang_id: formSuaDA.khach_hang_id || null,
@@ -1143,7 +1131,6 @@ export default function TrangChiTietHoSoDuAn() {
                     dsNHT={dsNHT}
                     dsChiNhanh={dsChiNhanh}
                     dsPhongBan={dsPhongBan}
-                    dsSanPham={dsSanPham}
                     router={router}
                     anGiaTri={laBackOffice}
                     dangChinhSua={dangChinhSua}
@@ -1649,7 +1636,6 @@ function BanThongTinHDA({
   dsNHT,
   dsChiNhanh,
   dsPhongBan,
-  dsSanPham,
   router,
   anGiaTri = false,
   dangChinhSua = false,
@@ -1668,7 +1654,6 @@ function BanThongTinHDA({
   dsNHT: NhanSu[];
   dsChiNhanh: ChiNhanh[];
   dsPhongBan: PhongBan[];
-  dsSanPham: SanPhamDichVu[];
   router: ReturnType<typeof useRouter>;
   anGiaTri?: boolean;
   dangChinhSua?: boolean;
@@ -1736,30 +1721,6 @@ function BanThongTinHDA({
                     <option value="rat_thap">Rất thấp</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-foreground mb-1 block">Sản phẩm / Dịch vụ</label>
-                <select
-                  value={formSuaDA.san_pham_dich_vu_id}
-                  onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, san_pham_dich_vu_id: e.target.value }))}
-                  className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 mb-2"
-                >
-                  <option value="">-- Chọn sản phẩm / dịch vụ --</option>
-                  {dsSanPham.map((sp) => (
-                    <option key={sp.id} value={sp.id}>
-                      {sp.ten_san_pham} {sp.ma_san_pham ? `(${sp.ma_san_pham})` : ''}
-                    </option>
-                  ))}
-                  <option value="__KHAC__">Khác (nhập chi tiết)</option>
-                </select>
-                <input
-                  type="text"
-                  value={formSuaDA.san_pham_khac_mo_ta}
-                  onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, san_pham_khac_mo_ta: e.target.value }))}
-                  className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60"
-                  placeholder="Mô tả cụ thể gói/phiên bản sản phẩm (nếu có)"
-                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -2049,7 +2010,6 @@ function BanThongTinHDA({
 
   const chiNhanh = hda?.chi_nhanh_id ? dsChiNhanh.find((c) => c.id === hda.chi_nhanh_id) ?? null : null;
   const phongBan = hda?.phong_ban_id ? dsPhongBan.find((p) => p.id === hda.phong_ban_id) ?? null : null;
-  const sanPham = hda?.san_pham_dich_vu_id ? dsSanPham.find((s) => s.id === hda.san_pham_dich_vu_id) ?? null : null;
 
   return (
     <div className="grid lg:grid-cols-2 gap-6">
@@ -2077,16 +2037,6 @@ function BanThongTinHDA({
               hda?.muc_do_tiem_nang
                 ? TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? hda.muc_do_tiem_nang
                 : '(Chưa đánh giá)'
-            }
-            dangTai={dangTai}
-          />
-          <InfoDong
-            bieuTuong={Sparkles}
-            label="Sản phẩm / Dịch vụ"
-            value={
-              sanPham
-                ? (hda?.san_pham_khac_mo_ta ? `${sanPham.ten_san_pham} (${hda.san_pham_khac_mo_ta})` : sanPham.ten_san_pham)
-                : (hda?.san_pham_khac_mo_ta ?? '(Chưa chọn)')
             }
             dangTai={dangTai}
           />

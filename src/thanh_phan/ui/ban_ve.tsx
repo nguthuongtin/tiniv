@@ -14,7 +14,17 @@ export interface BanVeProps {
   children?: React.ReactNode;
   className?: string;
   khoa_khi_dong_khi_click_ngoai?: boolean;
+  kich_thuoc?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
 }
+
+const MAP_KICH_THUOC: Record<'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full', string> = {
+  sm: 'md:max-w-md',
+  md: 'md:max-w-[640px]',
+  lg: 'md:max-w-3xl',
+  xl: 'md:max-w-4xl lg:max-w-5xl',
+  '2xl': 'md:max-w-6xl',
+  full: 'md:max-w-[95vw]'
+};
 
 export const Ban_Ve: React.FC<BanVeProps> = ({
   mo,
@@ -24,7 +34,8 @@ export const Ban_Ve: React.FC<BanVeProps> = ({
   cuoi,
   children,
   className,
-  khoa_khi_dong_khi_click_ngoai = true
+  khoa_khi_dong_khi_click_ngoai = true,
+  kich_thuoc = 'md'
 }) => {
   useEffect(() => {
     if (!mo) return;
@@ -58,7 +69,8 @@ export const Ban_Ve: React.FC<BanVeProps> = ({
         className={cn(
           'relative z-10 w-full bg-background flex flex-col overflow-hidden border border-border shadow-[var(--shadow-pop)]',
           'max-h-[92vh] rounded-t-[var(--radius-pop)] animate-in slide-in-from-bottom-6 duration-[var(--animate-duration-250)]',
-          'md:max-w-[640px] md:mx-auto md:max-h-[88vh] md:rounded-[var(--radius-pop)] md:animate-in md:fade-in md:zoom-in-[0.97] md:duration-[var(--animate-duration-200)]'
+          MAP_KICH_THUOC[kich_thuoc],
+          'md:mx-auto md:max-h-[88vh] md:rounded-[var(--radius-pop)] md:animate-in md:fade-in md:zoom-in-[0.97] md:duration-[var(--animate-duration-200)]'
         )}
       >
         <div className="mx-auto mt-2 size-1 h-1.5 w-16 shrink-0 rounded-full bg-muted-foreground/20 md:hidden" />
