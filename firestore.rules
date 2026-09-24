@@ -237,5 +237,17 @@ service cloud.firestore {
       allow read: if daXacThucVaHoatDong();
       allow write: if daXacThucVaHoatDong();
     }
+
+    // ========== 19. Collection: bao_cao_ke_hoach_tuan ==========
+    match /bao_cao_ke_hoach_tuan/{id} {
+      allow read: if daXacThucVaHoatDong();
+      allow write: if daXacThucVaHoatDong();
+    }
+
+    // ========== 20. Collection: bao_cao_ke_hoach_thang ==========
+    match /bao_cao_ke_hoach_thang/{id} {
+      allow read: if daXacThucVaHoatDong();
+      allow write: if daXacThucVaHoatDong();
+    }
   }
 }

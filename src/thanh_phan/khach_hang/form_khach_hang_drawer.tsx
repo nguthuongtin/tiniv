@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { X, Save, UserPlus, Edit3, AlertCircle, AlertTriangle } from 'lucide-react';
@@ -11,8 +11,13 @@ import {
   type CapNhatKhachHangDTO,
   type TaoMoiKhachHangDTO
 } from '../../dich_vu/khach_hang/dich_vu_khach_hang';
+import {
+  layDanhSachDiaGioiHanhChinh,
+  DANH_SACH_TINH_MIEN_TAY
+} from '../../dich_vu/dia_gioi_hanh_chinh/dich_vu_dia_gioi_hanh_chinh';
 import type { KhachHang, LoaiKhachHang } from '../../thu_vien/types/khach_hang';
 import type { ChiNhanh, NhanSu } from '../../thu_vien/types/nhan_su';
+import type { DiaGioiHanhChinh } from '../../thu_vien/types/dia_gioi_hanh_chinh';
 
 const SCHEMA_KHACH_HANG = z.object({
   ten_khach_hang: z
@@ -34,6 +39,8 @@ const SCHEMA_KHACH_HANG = z.object({
     .optional()
     .or(z.literal('')),
   dia_chi: z.string().max(300, 'Địa chỉ quá dài (tối đa 300)').trim().nullable().optional(),
+  tinh_thanh: z.string().max(100).trim().nullable().optional(),
+  xa_phuong: z.string().max(100).trim().nullable().optional(),
   website: z.string().max(200, 'Website quá dài (tối đa 200)').trim().nullable().optional(),
   chi_nhanh_id: z.string().trim().nullable().optional(),
   nguoi_phu_trach_id: z.string().trim().nullable().optional(),
@@ -50,6 +57,8 @@ const GIA_TRI_MAC_DINH: GiaTriForm = {
   so_dien_thoai: null,
   email: null,
   dia_chi: null,
+  tinh_thanh: null,
+  xa_phuong: null,
   website: null,
   chi_nhanh_id: null,
   nguoi_phu_trach_id: null,
@@ -79,12 +88,39 @@ export default function FormKhachHangDrawer({
   dsNhanSu = []
 }: FormKhachHangDrawerProps) {
   const [canhBaoTrung, setCanhBaoTrung] = useState<{ mst?: string; sdt?: string }>({});
+  const [dsDiaGioi, setDsDiaGioi] = useState<DiaGioiHanhChinh[]>([]);
+  const [nhapTayXa, setNhapTayXa] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const list = await layDanhSachDiaGioiHanhChinh();
+      setDsDiaGioi(list);
+    })();
+  }, []);
 
   const form = useForm<GiaTriForm>({
     resolver: zodResolver(SCHEMA_KHACH_HANG),
     defaultValues: GIA_TRI_MAC_DINH,
     mode: 'onTouched'
   });
+
+  const tinhThanhDangChon = form.watch('tinh_thanh');
+  const xaPhuongDangChon = form.watch('xa_phuong');
+
+  const danhSachTinh = useMemo(() => {
+    const set = new Set<string>(DANH_SACH_TINH_MIEN_TAY);
+    dsDiaGioi.forEach((x) => {
+      if (x.tinh_thanh) set.add(x.tinh_thanh);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [dsDiaGioi]);
+
+  const dsXaPhuongTheoTinh = useMemo(() => {
+    if (!tinhThanhDangChon) return [];
+    return dsDiaGioi.filter(
+      (x) => x.tinh_thanh.trim().toLowerCase() === tinhThanhDangChon.trim().toLowerCase()
+    );
+  }, [dsDiaGioi, tinhThanhDangChon]);
 
   const xuLyKiemTraMst = async (mst: string) => {
     if (!mst || !mst.trim()) {
@@ -133,6 +169,8 @@ export default function FormKhachHangDrawer({
         so_dien_thoai: dang_sua.so_dien_thoai ?? null,
         email: dang_sua.email ?? null,
         dia_chi: dang_sua.dia_chi ?? null,
+        tinh_thanh: dang_sua.tinh_thanh ?? null,
+        xa_phuong: dang_sua.xa_phuong ?? null,
         website: dang_sua.website ?? null,
         chi_nhanh_id: dang_sua.chi_nhanh_id ?? null,
         nguoi_phu_trach_id: dang_sua.nguoi_phu_trach_id ?? null,
@@ -154,6 +192,8 @@ export default function FormKhachHangDrawer({
         ma_so_thue: (values.ma_so_thue ?? null) || null,
         so_dien_thoai: (values.so_dien_thoai ?? null) || null,
         dia_chi: (values.dia_chi ?? null) || null,
+        tinh_thanh: (values.tinh_thanh ?? null) || null,
+        xa_phuong: (values.xa_phuong ?? null) || null,
         website: (values.website ?? null) || null,
         chi_nhanh_id: (values.chi_nhanh_id ?? null) || null,
         nguoi_phu_trach_id: (values.nguoi_phu_trach_id ?? null) || null,
@@ -167,6 +207,8 @@ export default function FormKhachHangDrawer({
         ma_so_thue: (values.ma_so_thue ?? null) || null,
         so_dien_thoai: (values.so_dien_thoai ?? null) || null,
         dia_chi: (values.dia_chi ?? null) || null,
+        tinh_thanh: (values.tinh_thanh ?? null) || null,
+        xa_phuong: (values.xa_phuong ?? null) || null,
         website: (values.website ?? null) || null,
         chi_nhanh_id: (values.chi_nhanh_id ?? null) || null,
         nguoi_phu_trach_id: (values.nguoi_phu_trach_id ?? null) || null,
@@ -322,11 +364,88 @@ export default function FormKhachHangDrawer({
               </TruongForm>
             </div>
 
-            <TruongForm label="Địa chỉ văn phòng" loi={form.formState.errors.dia_chi?.message}>
+            <div className="grid gap-5 md:grid-cols-2">
+              <TruongForm label="Tỉnh / Thành phố" loi={form.formState.errors.tinh_thanh?.message}>
+                <select
+                  {...form.register('tinh_thanh')}
+                  onChange={(e) => {
+                    form.setValue('tinh_thanh', e.target.value);
+                    form.setValue('xa_phuong', '');
+                  }}
+                  className={cn(inputStyleCls, Boolean(form.formState.errors.tinh_thanh) && inputLoiCls)}
+                >
+                  <option value="">-- Chọn Tỉnh / Thành phố ({danhSachTinh.length}) --</option>
+                  {danhSachTinh.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                  {tinhThanhDangChon && !danhSachTinh.includes(tinhThanhDangChon) && (
+                    <option value={tinhThanhDangChon}>{tinhThanhDangChon}</option>
+                  )}
+                </select>
+              </TruongForm>
+
+              <TruongForm label="Xã / Phường / Đặc khu" loi={form.formState.errors.xa_phuong?.message}>
+                {nhapTayXa ? (
+                  <div className="flex gap-1.5">
+                    <input
+                      {...form.register('xa_phuong')}
+                      type="text"
+                      placeholder="Nhập tên xã / phường..."
+                      className={cn(inputStyleCls, Boolean(form.formState.errors.xa_phuong) && inputLoiCls)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNhapTayXa(false)}
+                      className="px-2.5 py-1 text-xs border rounded-lg bg-muted text-muted-foreground hover:text-foreground shrink-0 font-medium"
+                      title="Chọn từ danh sách"
+                    >
+                      Danh sách
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-1.5">
+                    <select
+                      {...form.register('xa_phuong')}
+                      disabled={!tinhThanhDangChon}
+                      className={cn(inputStyleCls, Boolean(form.formState.errors.xa_phuong) && inputLoiCls)}
+                    >
+                      <option value="">
+                        {!tinhThanhDangChon
+                          ? '-- Vui lòng chọn Tỉnh trước --'
+                          : dsXaPhuongTheoTinh.length > 0
+                          ? `-- Chọn Xã / Phường (${dsXaPhuongTheoTinh.length}) --`
+                          : '-- Không có xã/phường có sẵn --'}
+                      </option>
+                      {dsXaPhuongTheoTinh.map((item) => (
+                        <option key={item.id} value={item.xa_phuong}>
+                          {item.xa_phuong}
+                        </option>
+                      ))}
+                      {xaPhuongDangChon &&
+                        !dsXaPhuongTheoTinh.some((x) => x.xa_phuong === xaPhuongDangChon) && (
+                          <option value={xaPhuongDangChon}>{xaPhuongDangChon}</option>
+                        )}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setNhapTayXa(true)}
+                      className="px-2.5 py-1 text-xs border rounded-lg bg-muted text-muted-foreground hover:text-foreground shrink-0 font-medium"
+                      title="Nhập tên khác nếu chưa có trong danh mục"
+                    >
+                      Nhập tay
+                    </button>
+                  </div>
+                )}
+              </TruongForm>
+            </div>
+
+            <TruongForm label="Địa chỉ văn phòng / Số nhà" loi={form.formState.errors.dia_chi?.message}>
               <input
                 {...form.register('dia_chi')}
                 type="text"
-                placeholder="Số nhà, đường, phường/xã, quận/huyện, thành phố/tỉnh"
+                placeholder="Số nhà, đường, khu phố..."
                 className={cn(inputStyleCls, Boolean(form.formState.errors.dia_chi) && inputLoiCls)}
               />
             </TruongForm>

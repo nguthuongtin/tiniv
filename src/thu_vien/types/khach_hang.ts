@@ -12,6 +12,8 @@ export interface KhachHang {
   email: string | null;
   dia_chi: string | null;
   website: string | null;
+  tinh_thanh?: string | null;
+  xa_phuong?: string | null;
   chi_nhanh_id: string | null;
   nguoi_phu_trach_id: string | null;
   ghi_chu: string | null;

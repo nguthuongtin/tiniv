@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   X,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  MapPin
 } from 'lucide-react';
 import { cn } from '../../../thu_vien/utils/cn';
 import { useStoreXacThuc } from '../../../thu_vien/zustand/store_xac_thuc';
@@ -21,6 +22,7 @@ import { coQuyen } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import type { ChiNhanh, PhongBan, NhanSu, VaiTro, ChucVu } from '../../../thu_vien/types/nhan_su';
 import type { SanPhamDichVu, NhomSanPhamDichVu } from '../../../thu_vien/types/san_pham_dich_vu';
 import type { CauHinhMotGiaiDoan } from '../../../thu_vien/cau_hinh/giai_doan_du_an';
+import type { DiaGioiHanhChinh } from '../../../thu_vien/types/dia_gioi_hanh_chinh';
 import {
   danhSachChiNhanh,
   taoChiNhanhMoi,
@@ -66,6 +68,13 @@ import {
   xoaMemNhomSanPhamDichVu,
   khoiPhucNhomSanPhamDichVu
 } from '../../../dich_vu/san_pham_dich_vu/dich_vu_nhom_san_pham_dich_vu';
+import {
+  layDanhSachDiaGioiHanhChinh,
+  taoDiaGioiHanhChinh,
+  capNhatDiaGioiHanhChinh,
+  xoaDiaGioiHanhChinh,
+  napDuLieuMauMienTay
+} from '../../../dich_vu/dia_gioi_hanh_chinh/dich_vu_dia_gioi_hanh_chinh';
 
 import BangChiNhanh from '../../../thanh_phan/quan_tri/bang_chi_nhanh';
 import BangPhongBan from '../../../thanh_phan/quan_tri/bang_phong_ban';
@@ -74,8 +83,9 @@ import BangVaiTro from '../../../thanh_phan/quan_tri/bang_vai_tro';
 import BangMaTranPhanQuyen from '../../../thanh_phan/quan_tri/bang_ma_tran_phan_quyen';
 import BangGiaiDoanPipeline from '../../../thanh_phan/quan_tri/bang_giai_doan_pipeline';
 import BangSanPhamDichVu from '../../../thanh_phan/quan_tri/bang_san_pham_dich_vu';
+import BangDiaGioiHanhChinh from '../../../thanh_phan/quan_tri/bang_dia_gioi_hanh_chinh';
 
-type TabQuanTri = 'chi_nhanh' | 'phong_ban' | 'chuc_vu' | 'vai_tro' | 'ma_tran_quyen' | 'giai_doan' | 'san_pham';
+type TabQuanTri = 'chi_nhanh' | 'phong_ban' | 'chuc_vu' | 'vai_tro' | 'ma_tran_quyen' | 'giai_doan' | 'san_pham' | 'dia_gioi';
 
 interface ToastItem {
   id: number;
@@ -103,7 +113,8 @@ const NHOM_DIEU_HUONG = [
     nhom: 'Quy trình & Nghiệp vụ',
     cacTab: [
       { key: 'giai_doan' as TabQuanTri, nhan: 'Giai đoạn Pipeline', icon: Settings },
-      { key: 'san_pham' as TabQuanTri, nhan: 'Sản phẩm & Dịch vụ', icon: Package2 }
+      { key: 'san_pham' as TabQuanTri, nhan: 'Sản phẩm & Dịch vụ', icon: Package2 },
+      { key: 'dia_gioi' as TabQuanTri, nhan: 'Địa giới hành chính', icon: MapPin }
     ]
   }
 ];
@@ -121,6 +132,7 @@ export default function TrangQuanTri() {
   const [dsGiaiDoan, setDsGiaiDoan] = useState<CauHinhMotGiaiDoan[]>([]);
   const [dsSanPham, setDsSanPham] = useState<SanPhamDichVu[]>([]);
   const [dsNhom, setDsNhom] = useState<NhomSanPhamDichVu[]>([]);
+  const [dsDiaGioi, setDsDiaGioi] = useState<DiaGioiHanhChinh[]>([]);
 
   const [dsToast, setDsToast] = useState<ToastItem[]>([]);
 
@@ -147,7 +159,8 @@ export default function TrangQuanTri() {
         resNS,
         resGD,
         resSP,
-        resNhom
+        resNhom,
+        resDG
       ] = await Promise.allSettled([
         danhSachChiNhanh({ trang_thai_du_lieu: 'tat_ca' }),
         danhSachPhongBan({ trang_thai_du_lieu: 'tat_ca' }),
@@ -156,7 +169,8 @@ export default function TrangQuanTri() {
         danhSachNhanSu({ trang_thai_du_lieu: 'tat_ca' } as any),
         layCauHinhGiaiDoanDuAn(),
         danhSachSanPhamDichVu({ trang_thai_du_lieu: 'tat_ca' }),
-        danhSachNhomSanPhamDichVu({ trang_thai_du_lieu: 'tat_ca' })
+        danhSachNhomSanPhamDichVu({ trang_thai_du_lieu: 'tat_ca' }),
+        layDanhSachDiaGioiHanhChinh()
       ]);
 
       if (resCN.status === 'fulfilled') setDsChiNhanh(resCN.value.mang);
@@ -167,6 +181,7 @@ export default function TrangQuanTri() {
       if (resGD.status === 'fulfilled') setDsGiaiDoan(resGD.value.danh_sach);
       if (resSP.status === 'fulfilled') setDsSanPham(resSP.value.mang);
       if (resNhom.status === 'fulfilled') setDsNhom(resNhom.value.mang);
+      if (resDG.status === 'fulfilled') setDsDiaGioi(resDG.value);
     } catch (e: any) {
       themToast('loi', 'Không thể tải toàn bộ dữ liệu quản trị: ' + e?.message);
     } finally {
@@ -445,6 +460,32 @@ export default function TrangQuanTri() {
               onLuuNhom={handleLuuNhom}
               onXoaNhom={handleXoaNhom}
               onKhoiPhucNhom={handleKhoiPhucNhom}
+            />
+          )}
+
+          {tabHienTai === 'dia_gioi' && (
+            <BangDiaGioiHanhChinh
+              danhSach={dsDiaGioi}
+              onThemMoi={async (item) => {
+                await taoDiaGioiHanhChinh(item);
+                themToast('thanh_cong', 'Đã thêm địa giới hành chính');
+                await taiDuLieu();
+              }}
+              onCapNhat={async (id, patch) => {
+                await capNhatDiaGioiHanhChinh(id, patch);
+                themToast('thanh_cong', 'Đã cập nhật địa giới hành chính');
+                await taiDuLieu();
+              }}
+              onXoa={async (id) => {
+                await xoaDiaGioiHanhChinh(id);
+                themToast('thanh_cong', 'Đã xóa địa giới hành chính');
+                await taiDuLieu();
+              }}
+              onNapDuLieuMau={async () => {
+                const soLuong = await napDuLieuMauMienTay();
+                themToast('thanh_cong', `Đã nạp thêm ${soLuong} xã/phường/thị trấn mẫu 13 tỉnh Miền Tây`);
+                await taiDuLieu();
+              }}
             />
           )}
         </div>

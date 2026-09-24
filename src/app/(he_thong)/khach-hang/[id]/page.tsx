@@ -48,6 +48,11 @@ import {
 } from '../../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import { danhSachChiNhanh } from '../../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
 import { danhSachNhanSu } from '../../../../dich_vu/nhan_su/dich_vu_nhan_su';
+import {
+  layDanhSachDiaGioiHanhChinh,
+  DANH_SACH_TINH_MIEN_TAY
+} from '../../../../dich_vu/dia_gioi_hanh_chinh/dich_vu_dia_gioi_hanh_chinh';
+import type { DiaGioiHanhChinh } from '../../../../thu_vien/types/dia_gioi_hanh_chinh';
 import { ModalNguoiLienHe } from '../../../../thanh_phan/khach_hang/modal_nguoi_lien_he';
 import FormHoSoDuAnDrawer from '../../../../thanh_phan/ho_so_du_an/form_ho_so_du_an_drawer';
 import { formatNgay } from '../../../../thu_vien/utils/format_ngay';
@@ -102,6 +107,24 @@ export default function TrangChiTietKhachHang() {
   const [errTai, setErrTai] = useState<string | null>(null);
   const [tabHienTai, setTabHienTai] = useState<TenTab>('ho_so_du_an');
 
+  // Administrative units state
+  const [dsDiaGioi, setDsDiaGioi] = useState<DiaGioiHanhChinh[]>([]);
+
+  useEffect(() => {
+    void (async () => {
+      const dg = await layDanhSachDiaGioiHanhChinh();
+      setDsDiaGioi(dg);
+    })();
+  }, []);
+
+  const danhSachTinh = useMemo(() => {
+    const set = new Set<string>(DANH_SACH_TINH_MIEN_TAY);
+    dsDiaGioi.forEach((x) => {
+      if (x.tinh_thanh) set.add(x.tinh_thanh);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [dsDiaGioi]);
+
   // Inline edit state
   const [dangChinhSua, setDangChinhSua] = useState(false);
   const [dangXuLyLuuKh, setDangXuLyLuuKh] = useState(false);
@@ -113,6 +136,8 @@ export default function TrangChiTietKhachHang() {
     so_dien_thoai: string;
     email: string;
     dia_chi: string;
+    tinh_thanh: string;
+    xa_phuong: string;
     website: string;
     chi_nhanh_id: string;
     nguoi_phu_trach_id: string;
@@ -124,6 +149,8 @@ export default function TrangChiTietKhachHang() {
     so_dien_thoai: '',
     email: '',
     dia_chi: '',
+    tinh_thanh: '',
+    xa_phuong: '',
     website: '',
     chi_nhanh_id: '',
     nguoi_phu_trach_id: '',
@@ -139,6 +166,8 @@ export default function TrangChiTietKhachHang() {
       so_dien_thoai: kh.so_dien_thoai || '',
       email: kh.email || '',
       dia_chi: kh.dia_chi || '',
+      tinh_thanh: kh.tinh_thanh || '',
+      xa_phuong: kh.xa_phuong || '',
       website: kh.website || '',
       chi_nhanh_id: kh.chi_nhanh_id || '',
       nguoi_phu_trach_id: kh.nguoi_phu_trach_id || '',
@@ -239,6 +268,8 @@ export default function TrangChiTietKhachHang() {
           so_dien_thoai: formSuaKh.so_dien_thoai.trim() || null,
           email: formSuaKh.email.trim() || null,
           dia_chi: formSuaKh.dia_chi.trim() || null,
+          tinh_thanh: formSuaKh.tinh_thanh.trim() || null,
+          xa_phuong: formSuaKh.xa_phuong.trim() || null,
           website: formSuaKh.website.trim() || null,
           chi_nhanh_id: formSuaKh.chi_nhanh_id || null,
           nguoi_phu_trach_id: formSuaKh.nguoi_phu_trach_id || null,
@@ -410,6 +441,12 @@ export default function TrangChiTietKhachHang() {
                         MST: {kh.ma_so_thue}
                       </span>
                     )}
+                    {(kh.xa_phuong || kh.tinh_thanh) && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                        <MapPin className="size-3" />
+                        {[kh.xa_phuong, kh.tinh_thanh].filter(Boolean).join(' • ')}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -554,6 +591,40 @@ export default function TrangChiTietKhachHang() {
                     className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground font-mono focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
                     placeholder="Mã số thuế (nếu có)"
                   />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Tỉnh / Thành phố</label>
+                  <input
+                    type="text"
+                    list="ds-tinh-inline-edit"
+                    value={formSuaKh.tinh_thanh}
+                    onChange={(e) => setFormSuaKh((f) => ({ ...f, tinh_thanh: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                    placeholder="VD: An Giang, Cần Thơ..."
+                  />
+                  <datalist id="ds-tinh-inline-edit">
+                    {danhSachTinh.map((t) => (
+                      <option key={t} value={t} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Xã / Phường / Đặc khu</label>
+                  <input
+                    type="text"
+                    list="ds-xa-inline-edit"
+                    value={formSuaKh.xa_phuong}
+                    onChange={(e) => setFormSuaKh((f) => ({ ...f, xa_phuong: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                    placeholder="VD: Xã Phú Hòa, Phường Mỹ Phước..."
+                  />
+                  <datalist id="ds-xa-inline-edit">
+                    {dsDiaGioi
+                      .filter((x) => !formSuaKh.tinh_thanh || x.tinh_thanh.toLowerCase() === formSuaKh.tinh_thanh.toLowerCase())
+                      .map((x) => (
+                        <option key={x.id} value={x.xa_phuong} />
+                      ))}
+                  </datalist>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="text-xs font-semibold text-foreground mb-1 block">Ghi chú khách hàng</label>
@@ -784,18 +855,55 @@ export default function TrangChiTietKhachHang() {
                 </div>
               </div>
 
+              {/* Tỉnh / Thành & Xã / Phường */}
               <div className="flex items-start gap-3">
-                <div className="size-8 rounded-lg bg-muted text-muted-foreground flex items-center justify-center shrink-0 mt-0.5">
+                <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
                   <MapPin className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs text-muted-foreground mb-1">Địa chỉ</div>
+                  <div className="text-xs text-muted-foreground mb-1">Tỉnh / Thành & Xã / Phường</div>
+                  {dangChinhSua ? (
+                    <div className="space-y-1.5">
+                      <input
+                        type="text"
+                        list="ds-tinh-inline-edit"
+                        value={formSuaKh.tinh_thanh}
+                        onChange={(e) => setFormSuaKh((f) => ({ ...f, tinh_thanh: e.target.value }))}
+                        placeholder="Tỉnh / Thành phố..."
+                        className="w-full rounded-[var(--radius-input)] border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary/60"
+                      />
+                      <input
+                        type="text"
+                        list="ds-xa-inline-edit"
+                        value={formSuaKh.xa_phuong}
+                        onChange={(e) => setFormSuaKh((f) => ({ ...f, xa_phuong: e.target.value }))}
+                        placeholder="Xã / Phường / Đặc khu..."
+                        className="w-full rounded-[var(--radius-input)] border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary/60"
+                      />
+                    </div>
+                  ) : (kh?.xa_phuong || kh?.tinh_thanh) ? (
+                    <div className="font-semibold text-foreground text-sm">
+                      {[kh.xa_phuong, kh.tinh_thanh].filter(Boolean).join(' • ')}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground italic text-xs">Chưa cập nhật</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Địa chỉ chi tiết */}
+              <div className="flex items-start gap-3">
+                <div className="size-8 rounded-lg bg-muted text-muted-foreground flex items-center justify-center shrink-0 mt-0.5">
+                  <Building2 className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs text-muted-foreground mb-1">Địa chỉ chi tiết / Trụ sở</div>
                   {dangChinhSua ? (
                     <textarea
                       rows={2}
                       value={formSuaKh.dia_chi}
                       onChange={(e) => setFormSuaKh((f) => ({ ...f, dia_chi: e.target.value }))}
-                      placeholder="Địa chỉ trụ sở / văn phòng..."
+                      placeholder="Số nhà, đường phố..."
                       className="w-full rounded-[var(--radius-input)] border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary/60 resize-y"
                     />
                   ) : kh?.dia_chi ? (

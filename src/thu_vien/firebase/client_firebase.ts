@@ -104,6 +104,9 @@ type TenCollection =
   | 'nhom_san_pham_dich_vu'
   | 'ke_hoach_thang'
   | 'ke_hoach_tuan'
+  | 'bao_cao_ke_hoach_tuan'
+  | 'bao_cao_ke_hoach_thang'
+  | 'dia_gioi_hanh_chinh'
   | 'cau_hinh_he_thong';
 
 export const thamChieuCollection = (ten: TenCollection): CollectionReference => {

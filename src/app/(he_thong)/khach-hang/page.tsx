@@ -581,7 +581,7 @@ const TheKhachHang = ({
           </div>
         </div>
 
-        {/* TẦNG TRỌNG TÂM: TÊN KHÁCH HÀNG 2 DÒNG & ĐỊA CHỈ */}
+        {/* TẦNG TRỌNG TÂM: TÊN KHÁCH HÀNG 2 DÒNG & ĐỊA BÀN / ĐỊA CHỈ */}
         <div className="space-y-1.5 my-1">
           <h3
             className="font-bold text-[15.5px] sm:text-[16.5px] text-slate-900 leading-[1.38] tracking-tight line-clamp-2 group-hover:text-[#007AFF] transition-colors"
@@ -590,9 +590,19 @@ const TheKhachHang = ({
             {kh.ten_khach_hang}
           </h3>
 
-          <div className="flex items-center gap-1.5 text-[12.5px] sm:text-[13px] text-slate-500 font-normal truncate">
-            <MapPin className="size-3.5 text-slate-400 shrink-0" />
-            <span className="truncate font-medium">{kh.dia_chi || 'Chưa cập nhật địa chỉ'}</span>
+          {/* Hiển thị rõ ràng Xã/Phường, Tỉnh/Thành */}
+          {(kh.xa_phuong || kh.tinh_thanh) ? (
+            <div className="flex items-center gap-1.5 text-[12px] font-semibold text-primary truncate">
+              <MapPin className="size-3.5 text-primary shrink-0" />
+              <span className="truncate">
+                {[kh.xa_phuong, kh.tinh_thanh].filter(Boolean).join(' • ')}
+              </span>
+            </div>
+          ) : null}
+
+          <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-normal truncate">
+            {!(kh.xa_phuong || kh.tinh_thanh) && <MapPin className="size-3.5 text-slate-400 shrink-0" />}
+            <span className="truncate">{kh.dia_chi || 'Chưa cập nhật địa chỉ'}</span>
           </div>
         </div>
       </div>

@@ -54,6 +54,8 @@ const chuyenDoiDocThanhDoiTuong = (
     email: (r.email as string | null) ?? null,
     dia_chi: (r.dia_chi as string | null) ?? null,
     website: (r.website as string | null) ?? null,
+    tinh_thanh: (r.tinh_thanh as string | null) ?? null,
+    xa_phuong: (r.xa_phuong as string | null) ?? null,
     chi_nhanh_id: (r.chi_nhanh_id as string | null) ?? null,
     nguoi_phu_trach_id: (r.nguoi_phu_trach_id as string | null) ?? null,
     ghi_chu: (r.ghi_chu as string | null) ?? null,
@@ -174,6 +176,8 @@ export interface TaoMoiKhachHangDTO {
   email?: string | null;
   dia_chi?: string | null;
   website?: string | null;
+  tinh_thanh?: string | null;
+  xa_phuong?: string | null;
   chi_nhanh_id?: string | null;
   nguoi_phu_trach_id?: string | null;
   ghi_chu?: string | null;
@@ -212,6 +216,8 @@ export const taoKhachHangMoi = async (
     email: dto.email?.trim() || null,
     dia_chi: dto.dia_chi?.trim() || null,
     website: dto.website?.trim() || null,
+    tinh_thanh: dto.tinh_thanh?.trim() || null,
+    xa_phuong: dto.xa_phuong?.trim() || null,
     chi_nhanh_id: dto.chi_nhanh_id ?? (nguoiThucHien as any)?.chi_nhanh_id ?? null,
     nguoi_phu_trach_id:
       dto.nguoi_phu_trach_id ?? (nguoiThucHien?.id ? nguoiThucHien.id : null),

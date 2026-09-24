@@ -68,8 +68,9 @@ export const layKeHoachThang = async (
 ): Promise<KeHoachThang | null> => {
   const cacheKey = `ebms_ke_hoach_thang_${nhanVienId}_${thang}`;
   let itemRemote: KeHoachThang | null = null;
+  let remoteFound = false;
+
   try {
-    // DUNG SINGLE WHERE CLAUSE DE KHONG YEU CAU COMPOSITE INDEXES FLAGGED BY FIRESTORE
     const q = query(
       thamChieuCollection(COLLECTION_THANG),
       where('nhan_vien_id', '==', nhanVienId),
@@ -85,29 +86,29 @@ export const layKeHoachThang = async (
     });
 
     if (foundDoc) {
+      remoteFound = true;
       itemRemote = { id: foundDoc.id, ...(foundDoc.data() as Omit<KeHoachThang, 'id'>) };
     }
   } catch (err) {
     console.warn('[dich_vu_ke_hoach] layKeHoachThang Firestore catch:', err);
   }
 
-  const itemLocal = layCacheLocal<KeHoachThang>(cacheKey);
-
-  if (itemRemote && itemRemote.danh_sach_dia_ban && itemRemote.danh_sach_dia_ban.length > 0) {
+  if (remoteFound && itemRemote) {
     luuCacheLocal(cacheKey, itemRemote);
     return itemRemote;
   }
 
-  if (itemLocal && itemLocal.danh_sach_dia_ban && itemLocal.danh_sach_dia_ban.length > 0) {
-    // Neu co local cache thi tra ve local
-    return itemLocal;
-  }
-
+  const itemLocal = layCacheLocal<KeHoachThang>(cacheKey);
   return itemRemote || itemLocal;
 };
 
 export const luuKeHoachThang = async (
-  kh: Omit<KeHoachThang, 'id' | 'ngay_tao' | 'ngay_cap_nhat' | 'trang_thai_du_lieu'> & { id?: string },
+  kh: Omit<KeHoachThang, 'id' | 'ngay_tao' | 'ngay_cap_nhat' | 'trang_thai_du_lieu'> & {
+    id?: string;
+    ngay_tao?: string;
+    ngay_cap_nhat?: string;
+    trang_thai_du_lieu?: 'hoat_dong' | 'da_xoa';
+  },
   nguoiThucHien?: Pick<NhanSu, 'id'> | null
 ): Promise<KeHoachThang> => {
   const now = new Date().toISOString();
@@ -128,7 +129,13 @@ export const luuKeHoachThang = async (
         ngay_cap_nhat: now
       };
       await setDoc(thamChieuBanGhi(COLLECTION_THANG, docId), patch, { merge: true });
-      ketQua = { id: docId, ngay_tao: now, ngay_cap_nhat: now, trang_thai_du_lieu: 'hoat_dong', ...kh };
+      ketQua = {
+        ...kh,
+        id: docId,
+        ngay_tao: kh.ngay_tao || now,
+        ngay_cap_nhat: now,
+        trang_thai_du_lieu: kh.trang_thai_du_lieu || 'hoat_dong'
+      };
     } else {
       const raw = {
         ...dataClean,
@@ -142,11 +149,11 @@ export const luuKeHoachThang = async (
   } catch (err) {
     console.warn('[dich_vu_ke_hoach] luuKeHoachThang Firestore error fallback:', err);
     ketQua = {
+      ...kh,
       id: docId || `local_thang_${Date.now()}`,
-      ngay_tao: now,
+      ngay_tao: kh.ngay_tao || now,
       ngay_cap_nhat: now,
-      trang_thai_du_lieu: 'hoat_dong',
-      ...kh
+      trang_thai_du_lieu: kh.trang_thai_du_lieu || 'hoat_dong'
     };
   }
 
@@ -159,7 +166,7 @@ export const danhSachKeHoachThangTheoFilter = async (
   chiNhanhId?: string | null
 ): Promise<KeHoachThang[]> => {
   try {
-    const q = query(thamChieuCollection(COLLECTION_THANG), where('thang', '==', thang), limit(100));
+    const q = query(thamChieuCollection(COLLECTION_THANG), where('thang', '==', thang), limit(200));
     const snap = await getDocs(q);
     const res = snap.docs
       .map((d) => ({ id: d.id, ...(d.data() as Omit<KeHoachThang, 'id'>) }))
@@ -183,8 +190,9 @@ export const layKeHoachTuan = async (
 ): Promise<KeHoachTuan | null> => {
   const cacheKey = `ebms_ke_hoach_tuan_${nhanVienId}_${tuan}`;
   let itemRemote: KeHoachTuan | null = null;
+  let remoteFound = false;
+
   try {
-    // DUNG SINGLE WHERE CLAUSE DE KHONG YEU CAU COMPOSITE INDEXES FLAGGED BY FIRESTORE
     const q = query(
       thamChieuCollection(COLLECTION_TUAN),
       where('nhan_vien_id', '==', nhanVienId),
@@ -200,28 +208,29 @@ export const layKeHoachTuan = async (
     });
 
     if (foundDoc) {
+      remoteFound = true;
       itemRemote = { id: foundDoc.id, ...(foundDoc.data() as Omit<KeHoachTuan, 'id'>) };
     }
   } catch (err) {
     console.warn('[dich_vu_ke_hoach] layKeHoachTuan Firestore catch:', err);
   }
 
-  const itemLocal = layCacheLocal<KeHoachTuan>(cacheKey);
-
-  if (itemRemote && itemRemote.danh_sach_tac_chien && itemRemote.danh_sach_tac_chien.length > 0) {
+  if (remoteFound && itemRemote) {
     luuCacheLocal(cacheKey, itemRemote);
     return itemRemote;
   }
 
-  if (itemLocal && itemLocal.danh_sach_tac_chien && itemLocal.danh_sach_tac_chien.length > 0) {
-    return itemLocal;
-  }
-
+  const itemLocal = layCacheLocal<KeHoachTuan>(cacheKey);
   return itemRemote || itemLocal;
 };
 
 export const luuKeHoachTuan = async (
-  kh: Omit<KeHoachTuan, 'id' | 'ngay_tao' | 'ngay_cap_nhat' | 'trang_thai_du_lieu'> & { id?: string },
+  kh: Omit<KeHoachTuan, 'id' | 'ngay_tao' | 'ngay_cap_nhat' | 'trang_thai_du_lieu'> & {
+    id?: string;
+    ngay_tao?: string;
+    ngay_cap_nhat?: string;
+    trang_thai_du_lieu?: 'hoat_dong' | 'da_xoa';
+  },
   nguoiThucHien?: Pick<NhanSu, 'id'> | null
 ): Promise<KeHoachTuan> => {
   const now = new Date().toISOString();
@@ -242,7 +251,13 @@ export const luuKeHoachTuan = async (
         ngay_cap_nhat: now
       };
       await setDoc(thamChieuBanGhi(COLLECTION_TUAN, docId), patch, { merge: true });
-      ketQua = { id: docId, ngay_tao: now, ngay_cap_nhat: now, trang_thai_du_lieu: 'hoat_dong', ...kh };
+      ketQua = {
+        ...kh,
+        id: docId,
+        ngay_tao: kh.ngay_tao || now,
+        ngay_cap_nhat: now,
+        trang_thai_du_lieu: kh.trang_thai_du_lieu || 'hoat_dong'
+      };
     } else {
       const raw = {
         ...dataClean,
@@ -256,11 +271,11 @@ export const luuKeHoachTuan = async (
   } catch (err) {
     console.warn('[dich_vu_ke_hoach] luuKeHoachTuan Firestore error fallback:', err);
     ketQua = {
+      ...kh,
       id: docId || `local_tuan_${Date.now()}`,
-      ngay_tao: now,
+      ngay_tao: kh.ngay_tao || now,
       ngay_cap_nhat: now,
-      trang_thai_du_lieu: 'hoat_dong',
-      ...kh
+      trang_thai_du_lieu: kh.trang_thai_du_lieu || 'hoat_dong'
     };
   }
 
@@ -274,7 +289,7 @@ export const danhSachKeHoachTuanTheoFilter = async (
 ): Promise<KeHoachTuan[]> => {
   let res: KeHoachTuan[] = [];
   try {
-    const q = query(thamChieuCollection(COLLECTION_TUAN), where('tuan', '==', tuan), limit(100));
+    const q = query(thamChieuCollection(COLLECTION_TUAN), where('tuan', '==', tuan), limit(200));
     const snap = await getDocs(q);
     res = snap.docs
       .map((d) => ({ id: d.id, ...(d.data() as Omit<KeHoachTuan, 'id'>) }))
