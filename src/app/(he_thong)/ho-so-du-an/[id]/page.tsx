@@ -79,6 +79,7 @@ import { danhSachPhongBan } from '../../../../dich_vu/co_cau_to_chuc/dich_vu_pho
 import {
   danhSachTaiLieuDuAn,
   themTaiLieuDuAn,
+  capNhatTaiLieuDuAn,
   xoaTaiLieuDuAn,
   type TaiLieuDuAn
 } from '../../../../dich_vu/tai_lieu_du_an/dich_vu_tai_lieu_du_an';
@@ -292,7 +293,31 @@ export default function TrangChiTietHoSoDuAn() {
     try {
       await xoaTaiLieuDuAn(tl.id, nguoiDungHienTai ?? null);
       await taiLai();
+      themToast('thanh_cong', 'Đã xóa tài liệu khỏi dự án.');
     } catch {}
+  };
+
+  const xuLySuaTaiLieu = async (
+    tlId: string,
+    file: { ten_file: string; url_file: string; loai_file: string; ghi_chu?: string }
+  ) => {
+    if (!id) return;
+    try {
+      await capNhatTaiLieuDuAn(
+        {
+          id: tlId,
+          ten_file: file.ten_file.trim(),
+          url_file: file.url_file.trim(),
+          loai_file: file.loai_file || 'link_khac',
+          ghi_chu: file.ghi_chu?.trim() || null
+        },
+        nguoiDungHienTai ?? null
+      );
+      await taiLai();
+      themToast('thanh_cong', 'Đã cập nhật thông tin tài liệu thành công!');
+    } catch (err: any) {
+      themToast('loi', err?.message || 'Có lỗi khi cập nhật tài liệu');
+    }
   };
 
   const taiLai = useCallback(async () => {
@@ -1198,6 +1223,7 @@ export default function TrangChiTietHoSoDuAn() {
                       );
                       await taiLai();
                     }}
+                    onSuaTL={xuLySuaTaiLieu}
                     onXoaTL={xuLyXoaTaiLieu}
                   />
                 </NoiDungTab>
@@ -3068,9 +3094,68 @@ function BanKhoTaiLieu(props: {
   err: string | null;
   dsNS: NhanSu[];
   onThemTL: (file: { ten_file: string; url_file: string; loai_file: string; ghi_chu?: string }) => Promise<void>;
+  onSuaTL?: (tlId: string, file: { ten_file: string; url_file: string; loai_file: string; ghi_chu?: string }) => Promise<void>;
   onXoaTL: (tl: TaiLieuDuAn) => void;
 }) {
-  const { dsTL, dangTai, err, dsNS, onThemTL, onXoaTL } = props;
+  const { dsTL, dangTai, err, dsNS, onThemTL, onSuaTL, onXoaTL } = props;
+
+  // State chỉnh sửa tài liệu (Edit mode)
+  const [dangSuaTLId, setDangSuaTLId] = useState<string | null>(null);
+  const [tenFileSua, setTenFileSua] = useState('');
+  const [urlFileSua, setUrlFileSua] = useState('');
+  const [loaiFileSua, setLoaiFileSua] = useState<'google_drive' | 'youtube' | 'link_khac'>('google_drive');
+  const [ghiChuFileSua, setGhiChuFileSua] = useState('');
+  const [dangLuuSuaTL, setDangLuuSuaTL] = useState(false);
+  const [loiSuaTL, setLoiSuaTL] = useState<string | null>(null);
+
+  const xuLyBatDauSuaTL = (tl: TaiLieuDuAn) => {
+    setDangSuaTLId(tl.id);
+    setTenFileSua(tl.ten_file || '');
+    setUrlFileSua(tl.url_file || '');
+    setLoaiFileSua((tl.loai_file as any) || 'link_khac');
+    setGhiChuFileSua(tl.ghi_chu || '');
+    setLoiSuaTL(null);
+  };
+
+  const xuLyLuuSuaTL = async (tlId: string) => {
+    setLoiSuaTL(null);
+    const tf = tenFileSua.trim();
+    const uf = urlFileSua.trim();
+
+    if (!tf || !uf) {
+      setLoiSuaTL('Vui lòng điền đủ Tên tài liệu và Đường dẫn URL.');
+      return;
+    }
+
+    try {
+      new URL(uf);
+    } catch {
+      setLoiSuaTL('Đường dẫn URL không hợp lệ (phải bắt đầu bằng https:// hoặc http://)');
+      return;
+    }
+
+    setDangLuuSuaTL(true);
+    try {
+      if (onSuaTL) {
+        await onSuaTL(tlId, {
+          ten_file: tf,
+          url_file: uf,
+          loai_file: loaiFileSua,
+          ghi_chu: ghiChuFileSua.trim() || undefined
+        });
+      }
+      setDangSuaTLId(null);
+    } catch (e: any) {
+      setLoiSuaTL(e?.message || 'Có lỗi khi cập nhật tài liệu');
+    } finally {
+      setDangLuuSuaTL(false);
+    }
+  };
+
+  const xuLyHuySuaTL = () => {
+    setDangSuaTLId(null);
+    setLoiSuaTL(null);
+  };
 
   const [tuKhoa, setTuKhoa] = useState('');
   const [loaiLoc, setLoaiLoc] = useState<'tat_ca' | 'google_drive' | 'youtube' | 'link_khac'>('tat_ca');
@@ -3396,77 +3481,185 @@ function BanKhoTaiLieu(props: {
               return (
                 <div
                   key={tl.id}
-                  className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:border-slate-300 transition flex flex-col justify-between gap-3 group"
+                  className={cn(
+                    'rounded-2xl border bg-white p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition flex flex-col justify-between gap-3 group',
+                    dangSuaTLId === tl.id ? 'border-blue-400 ring-2 ring-[#007AFF]/15 bg-blue-50/20' : 'border-slate-200/90 hover:border-slate-300'
+                  )}
                 >
-                  <div className="space-y-2.5">
-                    {/* Hàng 1: Icon loại, Loại badge, nút Xóa */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className={cn(
-                          'size-8 rounded-lg flex items-center justify-center shrink-0',
-                          loaiKey === 'google_drive' ? 'bg-[#34C759]/10 text-[#34C759]' :
-                          loaiKey === 'youtube' ? 'bg-[#FF3B30]/10 text-[#FF3B30]' :
-                          'bg-[#007AFF]/10 text-[#007AFF]'
-                        )}>
-                          <IconType className="size-4" />
+                  {dangSuaTLId === tl.id ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between border-b border-blue-200 pb-2">
+                        <span className="text-xs font-bold text-[#007AFF] flex items-center gap-1.5">
+                          <Pencil className="size-3.5" /> Chỉnh sửa tài liệu
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={dangLuuSuaTL}
+                            onClick={() => xuLyLuuSuaTL(tl.id)}
+                            className="h-7 px-3 rounded-lg bg-[#007AFF] text-white hover:bg-blue-600 text-xs font-bold inline-flex items-center gap-1 shadow-xs transition cursor-pointer"
+                          >
+                            {dangLuuSuaTL ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                            <span>Lưu</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={dangLuuSuaTL}
+                            onClick={xuLyHuySuaTL}
+                            className="h-7 px-2.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer"
+                          >
+                            <X className="size-3" /> Hủy
+                          </button>
                         </div>
-                        <Hieu kieu={loai.mau} kich_thuoc="sm">
-                          {loai.nhan}
-                        </Hieu>
                       </div>
 
-                      <Nut
-                        kieu="ghost"
-                        kich_thuoc="xs"
-                        icon_trai={Trash2}
-                        onClick={() => onXoaTL(tl)}
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      >
-                        Xóa
-                      </Nut>
-                    </div>
+                      <div className="space-y-2.5">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                            Tên tài liệu / Tiêu đề <span className="text-destructive">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={tenFileSua}
+                            onChange={(e) => setTenFileSua(e.target.value)}
+                            placeholder="Tên tài liệu..."
+                            className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 font-medium"
+                          />
+                        </div>
 
-                    {/* Hàng 2: Tên file & Ghi chú */}
-                    <div>
-                      <div className="text-xs sm:text-sm font-bold text-foreground break-words group-hover:text-primary transition-colors">
-                        {tl.ten_file}
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                            Đường dẫn URL <span className="text-destructive">*</span>
+                          </label>
+                          <input
+                            type="url"
+                            value={urlFileSua}
+                            onChange={(e) => setUrlFileSua(e.target.value)}
+                            placeholder="https://..."
+                            className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                              Loại liên kết
+                            </label>
+                            <select
+                              value={loaiFileSua}
+                              onChange={(e) => setLoaiFileSua(e.target.value as any)}
+                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                            >
+                              <option value="google_drive">Google Drive</option>
+                              <option value="youtube">YouTube</option>
+                              <option value="link_khac">Liên kết ngoài</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                              Ghi chú (tùy chọn)
+                            </label>
+                            <input
+                              type="text"
+                              value={ghiChuFileSua}
+                              onChange={(e) => setGhiChuFileSua(e.target.value)}
+                              placeholder="Ghi chú thêm..."
+                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                            />
+                          </div>
+                        </div>
+
+                        {loiSuaTL && (
+                          <div className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
+                            <AlertTriangle className="size-3.5" /> {loiSuaTL}
+                          </div>
+                        )}
                       </div>
-                      {tl.ghi_chu && (
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">
-                          {tl.ghi_chu}
-                        </p>
-                      )}
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2.5">
+                        {/* Hàng 1: Icon loại, Loại badge, nút Sửa & Xóa */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className={cn(
+                              'size-8 rounded-lg flex items-center justify-center shrink-0',
+                              loaiKey === 'google_drive' ? 'bg-[#34C759]/10 text-[#34C759]' :
+                              loaiKey === 'youtube' ? 'bg-[#FF3B30]/10 text-[#FF3B30]' :
+                              'bg-[#007AFF]/10 text-[#007AFF]'
+                            )}>
+                              <IconType className="size-4" />
+                            </div>
+                            <Hieu kieu={loai.mau} kich_thuoc="sm">
+                              {loai.nhan}
+                            </Hieu>
+                          </div>
 
-                  {/* Hàng 3: Người tải, thời gian & Nút mở liên kết */}
-                  <div className="pt-2.5 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap text-[11px] text-muted-foreground">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <DaiDien
-                        ten={nguoiTai?.ho_va_ten ?? 'Nhân sự'}
-                        anh={nguoiTai?.url_anh_dai_dien}
-                        kich_thuoc="xs"
-                      />
-                      <span className="truncate max-w-[120px] font-medium text-foreground">
-                        {nguoiTai?.ho_va_ten ?? 'Nhân sự'}
-                      </span>
-                      <span>·</span>
-                      <span className="tabular-nums">
-                        {formatNgay(tl.ngay_tai_len, 'DD/MM/YYYY')}
-                      </span>
-                    </div>
+                          <div className="flex items-center gap-1">
+                            <Nut
+                              kieu="ghost"
+                              kich_thuoc="xs"
+                              icon_trai={Pencil}
+                              onClick={() => xuLyBatDauSuaTL(tl)}
+                              className="text-muted-foreground hover:text-[#007AFF] hover:bg-blue-50"
+                            >
+                              Sửa
+                            </Nut>
+                            <Nut
+                              kieu="ghost"
+                              kich_thuoc="xs"
+                              icon_trai={Trash2}
+                              onClick={() => onXoaTL(tl)}
+                              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            >
+                              Xóa
+                            </Nut>
+                          </div>
+                        </div>
 
-                    {tl.url_file && (
-                      <a
-                        href={tl.url_file}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-xs transition shrink-0 ml-auto"
-                      >
-                        <ExternalLink className="size-3" /> Mở liên kết
-                      </a>
-                    )}
-                  </div>
+                        {/* Hàng 2: Tên file & Ghi chú */}
+                        <div>
+                          <div className="text-xs sm:text-sm font-bold text-foreground break-words group-hover:text-primary transition-colors">
+                            {tl.ten_file}
+                          </div>
+                          {tl.ghi_chu && (
+                            <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">
+                              {tl.ghi_chu}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Hàng 3: Người tải, thời gian & Nút mở liên kết */}
+                      <div className="pt-2.5 border-t border-border/60 flex items-center justify-between gap-2 flex-wrap text-[11px] text-muted-foreground">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <DaiDien
+                            ten={nguoiTai?.ho_va_ten ?? 'Nhân sự'}
+                            anh={nguoiTai?.url_anh_dai_dien}
+                            kich_thuoc="xs"
+                          />
+                          <span className="truncate max-w-[120px] font-medium text-foreground">
+                            {nguoiTai?.ho_va_ten ?? 'Nhân sự'}
+                          </span>
+                          <span>·</span>
+                          <span className="tabular-nums">
+                            {formatNgay(tl.ngay_tai_len, 'DD/MM/YYYY')}
+                          </span>
+                        </div>
+
+                        {tl.url_file && (
+                          <a
+                            href={tl.url_file}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold shadow-xs transition shrink-0 ml-auto"
+                          >
+                            <ExternalLink className="size-3" /> Mở liên kết
+                          </a>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })}
