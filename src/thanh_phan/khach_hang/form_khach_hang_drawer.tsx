@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { X, Save, UserPlus, Edit3, AlertCircle, AlertTriangle, Lightbulb, Sparkles } from 'lucide-react';
+import { X, Save, UserPlus, Edit3, AlertCircle, AlertTriangle, Lightbulb } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
 import { ModalHuongDanDatTen } from '../chung/modal_huong_dan_dat_ten';
 import {
@@ -186,10 +186,12 @@ export default function FormKhachHangDrawer({
   }, [mo, dang_sua?.id]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    const tenChuan = values.ten_khach_hang.trim().toUpperCase();
     if (dang_sua) {
       const patchDto: CapNhatKhachHangDTO = {
         id: dang_sua.id,
         ...values,
+        ten_khach_hang: tenChuan,
         email: (values.email ?? null) || null,
         ma_so_thue: (values.ma_so_thue ?? null) || null,
         so_dien_thoai: (values.so_dien_thoai ?? null) || null,
@@ -205,6 +207,7 @@ export default function FormKhachHangDrawer({
     } else {
       const taoDto: TaoMoiKhachHangDTO = {
         ...values,
+        ten_khach_hang: tenChuan,
         email: (values.email ?? null) || null,
         ma_so_thue: (values.ma_so_thue ?? null) || null,
         so_dien_thoai: (values.so_dien_thoai ?? null) || null,
@@ -295,37 +298,21 @@ export default function FormKhachHangDrawer({
                 loi={form.formState.errors.ten_khach_hang?.message}
               >
                 <input
-                  {...form.register('ten_khach_hang')}
+                  {...form.register('ten_khach_hang', {
+                    onChange: (e) => {
+                      const upper = e.target.value.toUpperCase();
+                      e.target.value = upper;
+                      form.setValue('ten_khach_hang', upper);
+                    }
+                  })}
                   type="text"
-                  placeholder="Ví dụ: UBND Xã Đắk R'Moan - TP. Gia Nghĩa hoặc Công ty..."
-                  className={cn(inputStyleCls, Boolean(form.formState.errors.ten_khach_hang) && inputLoiCls)}
+                  placeholder="VÍ DỤ: UBND XÃ ĐẮK R'MOAN - TP. GIA NGHĨA HOẶC CÔNG TY..."
+                  className={cn(
+                    inputStyleCls,
+                    'uppercase font-semibold',
+                    Boolean(form.formState.errors.ten_khach_hang) && inputLoiCls
+                  )}
                 />
-                <div className="flex items-center gap-1.5 flex-wrap pt-1.5">
-                  <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1 shrink-0">
-                    <Sparkles className="size-3 text-indigo-500" />
-                    Mẫu gợi ý:
-                  </span>
-                  {[
-                    { nhan: 'UBND Xã', mau: 'UBND Xã  - ' },
-                    { nhan: 'Công an', mau: 'Công an Huyện  - ' },
-                    { nhan: 'Phòng GD&ĐT', mau: 'Phòng GD&ĐT Huyện ' },
-                    { nhan: 'Cty TNHH', mau: 'Công ty TNHH ' },
-                    { nhan: 'Cty CP', mau: 'Công ty CP ' },
-                    { nhan: 'Hộ KD', mau: 'HKD  - ' }
-                  ].map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        form.setValue('ten_khach_hang', item.mau, { shouldValidate: true, shouldDirty: true });
-                      }}
-                      className="px-2 py-0.5 rounded text-[11px] bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 border border-slate-200 hover:border-indigo-200 transition font-medium"
-                      title={`Chèn mẫu: ${item.mau}`}
-                    >
-                      {item.nhan}
-                    </button>
-                  ))}
-                </div>
               </TruongForm>
               <TruongForm label="Loại khách hàng *" loi={form.formState.errors.loai_khach_hang?.message}>
                 <select
@@ -566,7 +553,7 @@ export default function FormKhachHangDrawer({
         onDong={() => setMoModalQuyChuan(false)}
         loaiMacDinh="khach_hang"
         onChonMau={(mau) => {
-          form.setValue('ten_khach_hang', mau, { shouldValidate: true, shouldDirty: true });
+          form.setValue('ten_khach_hang', mau.toUpperCase(), { shouldValidate: true, shouldDirty: true });
         }}
       />
     </div>

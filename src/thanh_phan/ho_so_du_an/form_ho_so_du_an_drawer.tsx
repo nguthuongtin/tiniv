@@ -27,7 +27,6 @@ import {
   Lightbulb
 } from 'lucide-react';
 import { ModalHuongDanDatTen } from '../chung/modal_huong_dan_dat_ten';
-import { GIAI_PHAP_DU_AN_PHO_BIEN, sinhTenDuAnGoiY } from '../../thu_vien/quy_chuan_dat_ten';
 import type {
   CapNhatHoSoDuAnDTO,
   TaoMoiHoSoDuAnDTO
@@ -365,6 +364,7 @@ export default function FormHoSoDuAnDrawer({
 
     const duLieuChuan = {
       ...values,
+      ten_du_an: values.ten_du_an.trim().toUpperCase(),
       ma_ho_so: (values.ma_ho_so ?? null) || null,
       khach_hang_id: (values.khach_hang_id ?? null) || null,
       nguoi_lien_he_id: (values.nguoi_lien_he_id ?? null) || null,
@@ -522,35 +522,19 @@ export default function FormHoSoDuAnDrawer({
                       </button>
                     </div>
                     <O
-                      {...register('ten_du_an')}
+                      {...register('ten_du_an', {
+                        onChange: (e) => {
+                          const upper = e.target.value.toUpperCase();
+                          e.target.value = upper;
+                          setValue('ten_du_an', upper);
+                        }
+                      })}
                       id="f-hda-ten"
                       type="text"
-                      placeholder="Ví dụ: Hệ thống Truyền thanh thông minh - UBND Xã... - 2026"
-                      className="text-base font-semibold text-slate-900"
+                      placeholder="VÍ DỤ: HỆ THỐNG TRUYỀN THANH THÔNG MINH - UBND XÃ... - 2026"
+                      className="text-base font-semibold text-slate-900 uppercase"
                       phan_hoi={errors.ten_du_an?.message ?? null}
                     />
-                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                      <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1 shrink-0">
-                        <Sparkles className="size-3 text-indigo-500" />
-                        Gợi ý:
-                      </span>
-                      {GIAI_PHAP_DU_AN_PHO_BIEN.slice(0, 5).map((gp, idx) => {
-                        const mau = sinhTenDuAnGoiY(gp, tenKhachHangDangChon);
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => {
-                              setValue('ten_du_an', mau, { shouldValidate: true, shouldDirty: true });
-                            }}
-                            className="px-2 py-0.5 rounded text-[11px] bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 border border-slate-200 hover:border-indigo-200 transition font-medium truncate max-w-[210px]"
-                            title={`Chèn mẫu: ${mau}`}
-                          >
-                            {gp}
-                          </button>
-                        );
-                      })}
-                    </div>
                   </div>
                   <div className="space-y-1.5 md:col-span-1">
                     <Nhan htmlFor="f-hda-ma">Mã hồ sơ dự án</Nhan>
@@ -1165,7 +1149,7 @@ export default function FormHoSoDuAnDrawer({
         loaiMacDinh="du_an"
         tenKhachHangHienTai={tenKhachHangDangChon}
         onChonMau={(mau) => {
-          setValue('ten_du_an', mau, { shouldValidate: true, shouldDirty: true });
+          setValue('ten_du_an', mau.toUpperCase(), { shouldValidate: true, shouldDirty: true });
         }}
       />
     </>
