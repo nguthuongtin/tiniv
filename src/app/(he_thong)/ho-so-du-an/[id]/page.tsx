@@ -754,19 +754,29 @@ export default function TrangChiTietHoSoDuAn() {
     if (!id) return;
     try {
       const chiDaoText = noiDungChiDao.trim();
+      const vaiTro = nguoiDungHienTai?.vai_tro;
+      const chucVuMacDinh =
+        vaiTro === 'giam_doc'
+          ? 'Giám đốc'
+          : vaiTro === 'truong_phong'
+          ? 'Trưởng phòng'
+          : vaiTro === 'nhan_vien_ky_thuat'
+          ? 'Kỹ thuật'
+          : vaiTro === 'nhan_vien_kinh_doanh'
+          ? 'Kinh doanh'
+          : vaiTro === 'hanh_chinh_van_phong'
+          ? 'Hành chính'
+          : vaiTro === 'quan_tri_he_thong'
+          ? 'Quản trị hệ thống'
+          : 'Thành viên';
+
       await capNhatTienDoDuAn(
         tdId,
         {
           y_kien_chi_dao: chiDaoText || null,
           nguoi_chi_dao_id: chiDaoText ? (nguoiDungHienTai?.id ?? null) : null,
-          ten_nguoi_chi_dao: chiDaoText ? (nguoiDungHienTai?.ho_va_ten ?? 'Cấp trên') : null,
-          chuc_vu_nguoi_chi_dao: chiDaoText
-            ? (nguoiDungHienTai?.vai_tro === 'giam_doc'
-                ? 'Giám đốc'
-                : nguoiDungHienTai?.vai_tro === 'truong_phong'
-                ? 'Trưởng phòng'
-                : 'Quản lý')
-            : null,
+          ten_nguoi_chi_dao: chiDaoText ? (nguoiDungHienTai?.ho_va_ten ?? 'Nhân sự') : null,
+          chuc_vu_nguoi_chi_dao: chiDaoText ? chucVuMacDinh : null,
           ngay_chi_dao: chiDaoText ? new Date().toISOString().split('T')[0] : null
         },
         {
@@ -776,9 +786,9 @@ export default function TrangChiTietHoSoDuAn() {
         }
       );
       await taiLai();
-      themToast('thanh_cong', chiDaoText ? 'Đã ghi nhận ý kiến chỉ đạo của Cấp trên!' : 'Đã xóa ý kiến chỉ đạo.');
+      themToast('thanh_cong', chiDaoText ? 'Đã ghi nhận ý kiến phản hồi!' : 'Đã xóa ý kiến phản hồi.');
     } catch (err: any) {
-      themToast('loi', err?.message || 'Có lỗi khi cập nhật ý kiến chỉ đạo');
+      themToast('loi', err?.message || 'Có lỗi khi cập nhật ý kiến phản hồi');
     }
   };
 
@@ -2466,6 +2476,7 @@ function BanNhatKyVaTienDo(props: {
     onXoaTD,
     onSuaTD,
     onChiDaoTD,
+    nguoiDungHienTai,
     laQuanLyHoacGiamDoc
   } = props;
 
@@ -2984,18 +2995,18 @@ function BanNhatKyVaTienDo(props: {
                         </div>
                       )}
 
-                      {/* Ý kiến chỉ đạo của Cấp trên */}
+                      {/* Ý kiến phản hồi / trao đổi / chỉ đạo */}
                       {td.y_kien_chi_dao && (
                         <div className="mt-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1">
                           <div className="flex items-center justify-between">
                             <div className="font-bold text-amber-900 flex items-center gap-1.5 text-[11.5px]">
                               <MessageSquareQuote className="size-3.5 text-amber-600 shrink-0" />
                               <span>
-                                Ý kiến chỉ đạo từ {td.ten_nguoi_chi_dao || 'Cấp trên'}
+                                Ý kiến phản hồi từ {td.ten_nguoi_chi_dao || 'Nhân sự'}
                                 {td.chuc_vu_nguoi_chi_dao ? ` (${td.chuc_vu_nguoi_chi_dao})` : ''}:
                               </span>
                             </div>
-                            {laQuanLyHoacGiamDoc && (
+                            {(laQuanLyHoacGiamDoc || (!!td.nguoi_chi_dao_id && td.nguoi_chi_dao_id === nguoiDungHienTai?.id)) && (
                               <div className="flex items-center gap-1.5">
                                 <button
                                   type="button"
@@ -3020,19 +3031,19 @@ function BanNhatKyVaTienDo(props: {
                           </div>
                           {td.ngay_chi_dao && (
                             <div className="text-[10px] text-slate-400 pl-5 font-mono">
-                              Ngày chỉ đạo: {formatNgay(td.ngay_chi_dao, 'DD/MM/YYYY')}
+                              Ngày phản hồi: {formatNgay(td.ngay_chi_dao, 'DD/MM/YYYY')}
                             </div>
                           )}
                         </div>
                       )}
 
-                      {/* Form nhập/sửa chỉ đạo cấp trên */}
+                      {/* Form nhập/sửa ý kiến phản hồi */}
                       {dangChiDaoTDId === td.id ? (
                         <div className="mt-2.5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2.5 animate-in fade-in duration-150">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-amber-900 text-xs flex items-center gap-1.5">
-                              <Shield className="size-3.5 text-amber-600" />
-                              Ý kiến chỉ đạo của Cấp trên
+                              <MessageSquareQuote className="size-3.5 text-amber-600" />
+                              Ý kiến phản hồi & Phối hợp
                             </span>
                             <div className="flex items-center gap-1.5">
                               <button
@@ -3042,7 +3053,7 @@ function BanNhatKyVaTienDo(props: {
                                 className="h-6.5 px-2.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold inline-flex items-center gap-1 transition cursor-pointer"
                               >
                                 {dangLuuChiDao ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
-                                <span>Lưu chỉ đạo</span>
+                                <span>Lưu ý kiến</span>
                               </button>
                               <button
                                 type="button"
@@ -3058,20 +3069,20 @@ function BanNhatKyVaTienDo(props: {
                             rows={2}
                             value={noiDungChiDao}
                             onChange={(e) => setNoiDungChiDao(e.target.value)}
-                            placeholder="Nhập ý kiến chỉ đạo, nhận xét hoặc phân công hỗ trợ cho nhân sự..."
+                            placeholder="Nhập ý kiến phản hồi, nhận xét, chỉ đạo hoặc lưu ý phối hợp cho mốc tiến độ này..."
                             className="w-full rounded-lg border border-amber-500/40 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                           />
                         </div>
                       ) : (
-                        /* Nút thêm chỉ đạo */
-                        laQuanLyHoacGiamDoc && !td.y_kien_chi_dao && (
+                        /* Nút thêm ý kiến phản hồi (cho phép mọi nhân sự có quyền xem dự án) */
+                        !td.y_kien_chi_dao && (
                           <div className="pt-1">
                             <button
                               type="button"
                               onClick={() => xuLyBatDauChiDao(td)}
                               className="text-[11.5px] text-amber-700 hover:text-amber-800 font-semibold inline-flex items-center gap-1 transition cursor-pointer"
                             >
-                              <MessageSquareQuote className="size-3" /> + Thêm ý kiến chỉ đạo của Cấp trên
+                              <MessageSquareQuote className="size-3" /> + Thêm ý kiến phản hồi / trao đổi
                             </button>
                           </div>
                         )
