@@ -23,8 +23,11 @@ import {
   Sparkles,
   ShieldAlert,
   Loader2,
-  Briefcase
+  Briefcase,
+  Lightbulb
 } from 'lucide-react';
+import { ModalHuongDanDatTen } from '../chung/modal_huong_dan_dat_ten';
+import { GIAI_PHAP_DU_AN_PHO_BIEN, sinhTenDuAnGoiY } from '../../thu_vien/quy_chuan_dat_ten';
 import type {
   CapNhatHoSoDuAnDTO,
   TaoMoiHoSoDuAnDTO
@@ -190,6 +193,13 @@ export default function FormHoSoDuAnDrawer({
   const nguoiPhuTrachId = watch('nguoi_phu_trach_id');
   const rawHoTro = watch('danh_sach_nguoi_ho_tro_ids');
   const dsHoTroDangChon = useMemo(() => (Array.isArray(rawHoTro) ? rawHoTro : []), [rawHoTro]);
+  const [moModalQuyChuan, setMoModalQuyChuan] = useState(false);
+
+  const tenKhachHangDangChon = useMemo(() => {
+    if (!khachHangDangChon) return null;
+    const kh = dsKH.find((x) => x.id === khachHangDangChon);
+    return kh?.ten_khach_hang || null;
+  }, [dsKH, khachHangDangChon]);
 
   // Load danh mục nền tảng khi mở form (bỏ sản phẩm/dịch vụ để tối ưu tốc độ)
   useEffect(() => {
@@ -385,8 +395,9 @@ export default function FormHoSoDuAnDrawer({
   });
 
   return (
-    <Ban_Ve
-      mo={mo}
+    <>
+      <Ban_Ve
+        mo={mo}
       onDong={khi_dong}
       kich_thuoc="xl"
       tieu_de={
@@ -496,17 +507,50 @@ export default function FormHoSoDuAnDrawer({
               <The_Chuc_Nang_Noi_Dung className="p-4 md:p-5 space-y-4">
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-1.5 md:col-span-2">
-                    <Nhan bat_buoc htmlFor="f-hda-ten">
-                      Tên dự án
-                    </Nhan>
+                    <div className="flex items-center justify-between">
+                      <Nhan bat_buoc htmlFor="f-hda-ten">
+                        Tên dự án
+                      </Nhan>
+                      <button
+                        type="button"
+                        onClick={() => setMoModalQuyChuan(true)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-0.5 rounded-full transition border border-indigo-200/60"
+                        title="Xem quy chuẩn & hướng dẫn đặt tên dự án"
+                      >
+                        <Lightbulb className="size-3 text-amber-500 fill-amber-400" />
+                        <span>Quy chuẩn đặt tên</span>
+                      </button>
+                    </div>
                     <O
                       {...register('ten_du_an')}
                       id="f-hda-ten"
                       type="text"
-                      placeholder="Ví dụ: Triển khai phần mềm quản trị doanh nghiệp ABC..."
+                      placeholder="Ví dụ: Hệ thống Truyền thanh thông minh - UBND Xã... - 2026"
                       className="text-base font-semibold text-slate-900"
                       phan_hoi={errors.ten_du_an?.message ?? null}
                     />
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                      <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1 shrink-0">
+                        <Sparkles className="size-3 text-indigo-500" />
+                        Gợi ý:
+                      </span>
+                      {GIAI_PHAP_DU_AN_PHO_BIEN.slice(0, 5).map((gp, idx) => {
+                        const mau = sinhTenDuAnGoiY(gp, tenKhachHangDangChon);
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setValue('ten_du_an', mau, { shouldValidate: true, shouldDirty: true });
+                            }}
+                            className="px-2 py-0.5 rounded text-[11px] bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 border border-slate-200 hover:border-indigo-200 transition font-medium truncate max-w-[210px]"
+                            title={`Chèn mẫu: ${mau}`}
+                          >
+                            {gp}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="space-y-1.5 md:col-span-1">
                     <Nhan htmlFor="f-hda-ma">Mã hồ sơ dự án</Nhan>
@@ -1113,6 +1157,17 @@ export default function FormHoSoDuAnDrawer({
           </section>
         </form>
       )}
-    </Ban_Ve>
+      </Ban_Ve>
+
+      <ModalHuongDanDatTen
+        mo={moModalQuyChuan}
+        onDong={() => setMoModalQuyChuan(false)}
+        loaiMacDinh="du_an"
+        tenKhachHangHienTai={tenKhachHangDangChon}
+        onChonMau={(mau) => {
+          setValue('ten_du_an', mau, { shouldValidate: true, shouldDirty: true });
+        }}
+      />
+    </>
   );
 }

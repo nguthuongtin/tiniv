@@ -4,8 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { X, Save, UserPlus, Edit3, AlertCircle, AlertTriangle } from 'lucide-react';
+import { X, Save, UserPlus, Edit3, AlertCircle, AlertTriangle, Lightbulb, Sparkles } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
+import { ModalHuongDanDatTen } from '../chung/modal_huong_dan_dat_ten';
 import {
   kiemTraTrungKhachHang,
   type CapNhatKhachHangDTO,
@@ -90,6 +91,7 @@ export default function FormKhachHangDrawer({
   const [canhBaoTrung, setCanhBaoTrung] = useState<{ mst?: string; sdt?: string }>({});
   const [dsDiaGioi, setDsDiaGioi] = useState<DiaGioiHanhChinh[]>([]);
   const [nhapTayXa, setNhapTayXa] = useState(false);
+  const [moModalQuyChuan, setMoModalQuyChuan] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -275,13 +277,55 @@ export default function FormKhachHangDrawer({
             ) : null}
 
             <div className="grid gap-5 md:grid-cols-2">
-              <TruongForm label="Tên khách hàng *" loi={form.formState.errors.ten_khach_hang?.message}>
+              <TruongForm
+                label={
+                  <div className="flex items-center justify-between">
+                    <span>Tên khách hàng *</span>
+                    <button
+                      type="button"
+                      onClick={() => setMoModalQuyChuan(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-full transition border border-indigo-200/60"
+                      title="Xem quy chuẩn & hướng dẫn đặt tên khách hàng"
+                    >
+                      <Lightbulb className="size-3 text-amber-500 fill-amber-400" />
+                      <span>Quy chuẩn đặt tên</span>
+                    </button>
+                  </div>
+                }
+                loi={form.formState.errors.ten_khach_hang?.message}
+              >
                 <input
                   {...form.register('ten_khach_hang')}
                   type="text"
-                  placeholder="Ví dụ: Công ty TNHH Giải Pháp Công Nghệ ABC"
+                  placeholder="Ví dụ: UBND Xã Đắk R'Moan - TP. Gia Nghĩa hoặc Công ty..."
                   className={cn(inputStyleCls, Boolean(form.formState.errors.ten_khach_hang) && inputLoiCls)}
                 />
+                <div className="flex items-center gap-1.5 flex-wrap pt-1.5">
+                  <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1 shrink-0">
+                    <Sparkles className="size-3 text-indigo-500" />
+                    Mẫu gợi ý:
+                  </span>
+                  {[
+                    { nhan: 'UBND Xã', mau: 'UBND Xã  - ' },
+                    { nhan: 'Công an', mau: 'Công an Huyện  - ' },
+                    { nhan: 'Phòng GD&ĐT', mau: 'Phòng GD&ĐT Huyện ' },
+                    { nhan: 'Cty TNHH', mau: 'Công ty TNHH ' },
+                    { nhan: 'Cty CP', mau: 'Công ty CP ' },
+                    { nhan: 'Hộ KD', mau: 'HKD  - ' }
+                  ].map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        form.setValue('ten_khach_hang', item.mau, { shouldValidate: true, shouldDirty: true });
+                      }}
+                      className="px-2 py-0.5 rounded text-[11px] bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 border border-slate-200 hover:border-indigo-200 transition font-medium"
+                      title={`Chèn mẫu: ${item.mau}`}
+                    >
+                      {item.nhan}
+                    </button>
+                  ))}
+                </div>
               </TruongForm>
               <TruongForm label="Loại khách hàng *" loi={form.formState.errors.loai_khach_hang?.message}>
                 <select
@@ -516,6 +560,15 @@ export default function FormKhachHangDrawer({
           </footer>
         </form>
       </aside>
+
+      <ModalHuongDanDatTen
+        mo={moModalQuyChuan}
+        onDong={() => setMoModalQuyChuan(false)}
+        loaiMacDinh="khach_hang"
+        onChonMau={(mau) => {
+          form.setValue('ten_khach_hang', mau, { shouldValidate: true, shouldDirty: true });
+        }}
+      />
     </div>
   );
 }
@@ -529,12 +582,12 @@ const TruongForm = ({
   loi,
   children
 }: {
-  label: string;
+  label: React.ReactNode;
   loi?: string;
   children: React.ReactNode;
 }) => (
-  <label className="block">
-    <span className="block text-xs font-semibold text-slate-700 mb-2">{label}</span>
+  <div className="block">
+    <div className="text-xs font-semibold text-slate-700 mb-2">{label}</div>
     {children}
     {loi ? (
       <span className="block text-[11px] mt-1.5 text-rose-600 font-medium flex items-start gap-1.5">
@@ -542,5 +595,5 @@ const TruongForm = ({
         {loi}
       </span>
     ) : null}
-  </label>
+  </div>
 );
