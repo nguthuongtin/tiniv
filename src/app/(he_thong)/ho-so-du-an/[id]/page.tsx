@@ -44,7 +44,10 @@ import {
   X,
   Plus,
   Search,
-  RotateCcw
+  RotateCcw,
+  Check,
+  MessageSquareQuote,
+  Shield
 } from 'lucide-react';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import type { HoSoDuAn, TienDoDuAn, GiaiDoanDuAn } from '../../../../thu_vien/types/du_an';
@@ -680,6 +683,80 @@ export default function TrangChiTietHoSoDuAn() {
     } catch {}
   };
 
+  const laQuanLyHoacGiamDoc = useMemo(() => {
+    return (
+      ['quan_tri_he_thong', 'giam_doc', 'truong_phong'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
+      coQuyen(nguoiDungHienTai, 'du_an.duyet') ||
+      (!!hda?.nguoi_quan_ly_id && hda.nguoi_quan_ly_id === nguoiDungHienTai?.id)
+    );
+  }, [nguoiDungHienTai, hda?.nguoi_quan_ly_id]);
+
+  const xuLySuaTienDo = async (
+    tdId: string,
+    params: {
+      tinh_hinh_hien_tai: string;
+      link_tai_lieu?: string | null;
+      ten_tai_lieu?: string | null;
+    }
+  ) => {
+    if (!id) return;
+    try {
+      await capNhatTienDoDuAn(
+        tdId,
+        {
+          tinh_hinh_hien_tai: params.tinh_hinh_hien_tai.trim(),
+          link_tai_lieu: params.link_tai_lieu?.trim() || null,
+          ten_tai_lieu: params.ten_tai_lieu?.trim() || null,
+          ngay_chinh_sua_gan_nhat: new Date().toISOString()
+        },
+        {
+          nguoi_thuc_hien_id: nguoiDungHienTai?.id ?? null,
+          du_an_id: hda?.id ?? null,
+          ten_du_an: hda?.ten_du_an ?? null
+        }
+      );
+      await taiLai();
+      themToast('thanh_cong', 'Đã cập nhật lại nội dung tiến độ dự án!');
+    } catch (err: any) {
+      themToast('loi', err?.message || 'Có lỗi khi cập nhật tiến độ');
+    }
+  };
+
+  const xuLyChiDaoTienDo = async (
+    tdId: string,
+    noiDungChiDao: string
+  ) => {
+    if (!id) return;
+    try {
+      const chiDaoText = noiDungChiDao.trim();
+      await capNhatTienDoDuAn(
+        tdId,
+        {
+          y_kien_chi_dao: chiDaoText || null,
+          nguoi_chi_dao_id: chiDaoText ? (nguoiDungHienTai?.id ?? null) : null,
+          ten_nguoi_chi_dao: chiDaoText ? (nguoiDungHienTai?.ho_va_ten ?? 'Cấp trên') : null,
+          chuc_vu_nguoi_chi_dao: chiDaoText
+            ? (nguoiDungHienTai?.vai_tro === 'giam_doc'
+                ? 'Giám đốc'
+                : nguoiDungHienTai?.vai_tro === 'truong_phong'
+                ? 'Trưởng phòng'
+                : 'Quản lý')
+            : null,
+          ngay_chi_dao: chiDaoText ? new Date().toISOString().split('T')[0] : null
+        },
+        {
+          nguoi_thuc_hien_id: nguoiDungHienTai?.id ?? null,
+          du_an_id: hda?.id ?? null,
+          ten_du_an: hda?.ten_du_an ?? null
+        }
+      );
+      await taiLai();
+      themToast('thanh_cong', chiDaoText ? 'Đã ghi nhận ý kiến chỉ đạo của Cấp trên!' : 'Đã xóa ý kiến chỉ đạo.');
+    } catch (err: any) {
+      themToast('loi', err?.message || 'Có lỗi khi cập nhật ý kiến chỉ đạo');
+    }
+  };
+
   const duocQuyenXem = useMemo(() => {
     if (!hda || !nguoiDungHienTai) return false;
     return duocXemHoSoDuAn(nguoiDungHienTai, hda);
@@ -1092,6 +1169,10 @@ export default function TrangChiTietHoSoDuAn() {
                     dsNS={dsNS}
                     onTao={xuLyThemCapNhatTongHop}
                     onXoaTD={xuLyXoaTienDo}
+                    onSuaTD={xuLySuaTienDo}
+                    onChiDaoTD={xuLyChiDaoTienDo}
+                    nguoiDungHienTai={nguoiDungHienTai}
+                    laQuanLyHoacGiamDoc={laQuanLyHoacGiamDoc}
                     moForm={moFormTienDo}
                     onToggleForm={setMoFormTienDo}
                   />
@@ -2336,10 +2417,31 @@ function BanNhatKyVaTienDo(props: {
     file?: { ten_file: string; url_file: string; loai_file: string; ghi_chu?: string } | null;
   }) => Promise<void>;
   onXoaTD: (td: TienDoDuAn) => void;
+  onSuaTD?: (
+    tdId: string,
+    params: {
+      tinh_hinh_hien_tai: string;
+      link_tai_lieu?: string | null;
+      ten_tai_lieu?: string | null;
+    }
+  ) => Promise<void>;
+  onChiDaoTD?: (tdId: string, noiDungChiDao: string) => Promise<void>;
+  nguoiDungHienTai?: any;
+  laQuanLyHoacGiamDoc?: boolean;
   moForm?: boolean;
   onToggleForm?: (mo: boolean) => void;
 }) {
-  const { dsTD, dangTai, err, dsNS, onTao, onXoaTD } = props;
+  const {
+    dsTD,
+    dangTai,
+    err,
+    dsNS,
+    onTao,
+    onXoaTD,
+    onSuaTD,
+    onChiDaoTD,
+    laQuanLyHoacGiamDoc
+  } = props;
 
   const isControlled = props.moForm !== undefined;
   const [moFormInternal, setMoFormInternal] = useState(false);
@@ -2349,6 +2451,94 @@ function BanNhatKyVaTienDo(props: {
       props.onToggleForm(val);
     }
     setMoFormInternal(val);
+  };
+
+  // State chỉnh sửa tiến độ (Edit mode)
+  const [dangSuaTDId, setDangSuaTDId] = useState<string | null>(null);
+  const [tinhHinhSua, setTinhHinhSua] = useState('');
+  const [linkTaiLieuSua, setLinkTaiLieuSua] = useState('');
+  const [tenTaiLieuSua, setTenTaiLieuSua] = useState('');
+  const [dangLuuSua, setDangLuuSua] = useState(false);
+  const [loiSua, setLoiSua] = useState<string | null>(null);
+
+  // State ý kiến chỉ đạo của cấp trên
+  const [dangChiDaoTDId, setDangChiDaoTDId] = useState<string | null>(null);
+  const [noiDungChiDao, setNoiDungChiDao] = useState('');
+  const [dangLuuChiDao, setDangLuuChiDao] = useState(false);
+
+  const xuLyBatDauSua = (td: TienDoDuAn) => {
+    setDangSuaTDId(td.id);
+    setTinhHinhSua(td.tinh_hinh_hien_tai || '');
+    setLinkTaiLieuSua(td.link_tai_lieu || '');
+    setTenTaiLieuSua(td.ten_tai_lieu || '');
+    setLoiSua(null);
+  };
+
+  const xuLyLuuSua = async (tdId: string) => {
+    setLoiSua(null);
+    const th = tinhHinhSua.trim();
+    const lk = linkTaiLieuSua.trim();
+    const ttl = tenTaiLieuSua.trim();
+
+    if (!th && !lk) {
+      setLoiSua('Vui lòng nhập nội dung tiến độ hoặc link tài liệu.');
+      return;
+    }
+
+    if (lk) {
+      try {
+        new URL(lk);
+      } catch {
+        setLoiSua('Đường dẫn link tài liệu không hợp lệ (phải bắt đầu bằng https:// hoặc http://)');
+        return;
+      }
+    }
+
+    setDangLuuSua(true);
+    try {
+      if (onSuaTD) {
+        await onSuaTD(tdId, {
+          tinh_hinh_hien_tai: th,
+          link_tai_lieu: lk || null,
+          ten_tai_lieu: ttl || null
+        });
+      }
+      setDangSuaTDId(null);
+    } catch (e: any) {
+      setLoiSua(e?.message || 'Có lỗi khi cập nhật tiến độ');
+    } finally {
+      setDangLuuSua(false);
+    }
+  };
+
+  const xuLyHuySua = () => {
+    setDangSuaTDId(null);
+    setLoiSua(null);
+  };
+
+  const xuLyBatDauChiDao = (td: TienDoDuAn) => {
+    setDangChiDaoTDId(td.id);
+    setNoiDungChiDao(td.y_kien_chi_dao || '');
+  };
+
+  const xuLyLuuChiDao = async (tdId: string) => {
+    setDangLuuChiDao(true);
+    try {
+      if (onChiDaoTD) {
+        await onChiDaoTD(tdId, noiDungChiDao.trim());
+      }
+      setDangChiDaoTDId(null);
+    } catch {} finally {
+      setDangLuuChiDao(false);
+    }
+  };
+
+  const xuLyXoaChiDao = async (tdId: string) => {
+    if (confirm('Bạn có chắc muốn xóa ý kiến chỉ đạo này?')) {
+      if (onChiDaoTD) {
+        await onChiDaoTD(tdId, '');
+      }
+    }
   };
 
   const [noiDung, setNoiDung] = useState('');
@@ -2644,37 +2834,224 @@ function BanNhatKyVaTienDo(props: {
                       </div>
                     </div>
 
-                    {/* Nút Xóa tinh gọn - icon ghost */}
-                    <button
-                      type="button"
-                      title="Xóa ghi nhận này"
-                      onClick={() => onXoaTD(td)}
-                      className="size-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition opacity-60 group-hover:opacity-100 shrink-0"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
+                    {/* Nút Sửa & Xóa */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        title="Chỉnh sửa nội dung hoặc link tài liệu"
+                        onClick={() => xuLyBatDauSua(td)}
+                        className="size-7 rounded-lg text-slate-400 hover:text-[#007AFF] hover:bg-blue-50 flex items-center justify-center transition opacity-70 group-hover:opacity-100 cursor-pointer"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Xóa ghi nhận này"
+                        onClick={() => onXoaTD(td)}
+                        className="size-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition opacity-70 group-hover:opacity-100 shrink-0 cursor-pointer"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Nội dung Tiến độ hiển thị tự nhiên, không lồng hộp xám */}
-                  <div className="pl-10 sm:pl-11 pr-1">
-                    <p className="text-[13.5px] sm:text-[14px] text-slate-800 leading-relaxed whitespace-pre-wrap font-normal">
-                      {td.tinh_hinh_hien_tai}
-                    </p>
+                  {/* Khi đang ở chế độ chỉnh sửa inline */}
+                  {dangSuaTDId === td.id ? (
+                    <div className="pl-10 sm:pl-11 pr-1 space-y-3 pt-1">
+                      <div className="p-3.5 rounded-xl border border-blue-300 bg-blue-50/50 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#007AFF] flex items-center gap-1.5">
+                            <Pencil className="size-3.5" /> Chỉnh sửa tiến độ & tài liệu
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={dangLuuSua}
+                              onClick={() => xuLyLuuSua(td.id)}
+                              className="h-7 px-3 rounded-lg bg-[#007AFF] text-white hover:bg-blue-600 text-xs font-bold inline-flex items-center gap-1 shadow-xs transition cursor-pointer"
+                            >
+                              {dangLuuSua ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                              <span>Lưu</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={dangLuuSua}
+                              onClick={xuLyHuySua}
+                              className="h-7 px-2.5 rounded-lg bg-slate-200/80 hover:bg-slate-300 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer"
+                            >
+                              <X className="size-3" /> Hủy
+                            </button>
+                          </div>
+                        </div>
 
-                    {td.link_tai_lieu && (
-                      <div className="mt-2.5">
-                        <a
-                          href={td.link_tai_lieu}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/90 hover:bg-blue-50 text-slate-700 hover:text-[#007AFF] text-xs font-semibold border border-slate-200/70 transition shadow-2xs group/link"
-                        >
-                          <ExternalLink className="size-3 text-slate-400 group-hover/link:text-[#007AFF] transition-colors" />
-                          <span>Mở tài liệu đính kèm</span>
-                        </a>
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                            Nội dung tiến độ / công việc <span className="text-destructive">*</span>
+                          </label>
+                          <textarea
+                            value={tinhHinhSua}
+                            onChange={(e) => setTinhHinhSua(e.target.value)}
+                            rows={3}
+                            placeholder="Nhập nội dung tiến độ..."
+                            className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                          />
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                              Đường dẫn link tài liệu (URL)
+                            </label>
+                            <input
+                              type="url"
+                              value={linkTaiLieuSua}
+                              onChange={(e) => setLinkTaiLieuSua(e.target.value)}
+                              placeholder="https://drive.google.com/..."
+                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                              Tên tài liệu hiển thị
+                            </label>
+                            <input
+                              type="text"
+                              value={tenTaiLieuSua}
+                              onChange={(e) => setTenTaiLieuSua(e.target.value)}
+                              placeholder="VD: Báo giá đã duyệt, Bản vẽ CAD..."
+                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                            />
+                          </div>
+                        </div>
+
+                        {loiSua && (
+                          <div className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
+                            <AlertTriangle className="size-3.5" /> {loiSua}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    /* Nội dung Tiến độ hiển thị tự nhiên */
+                    <div className="pl-10 sm:pl-11 pr-1 space-y-2">
+                      <p className="text-[13.5px] sm:text-[14px] text-slate-800 leading-relaxed whitespace-pre-wrap font-normal">
+                        {td.tinh_hinh_hien_tai}
+                      </p>
+
+                      {td.ngay_chinh_sua_gan_nhat && (
+                        <span className="text-[11px] text-slate-400 italic font-normal block">
+                          (Đã chỉnh sửa lúc {formatNgay(td.ngay_chinh_sua_gan_nhat, 'DD/MM/YYYY HH:mm')})
+                        </span>
+                      )}
+
+                      {td.link_tai_lieu && (
+                        <div className="pt-0.5">
+                          <a
+                            href={td.link_tai_lieu}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/90 hover:bg-blue-50 text-slate-700 hover:text-[#007AFF] text-xs font-semibold border border-slate-200/70 transition shadow-2xs group/link"
+                          >
+                            <ExternalLink className="size-3 text-slate-400 group-hover/link:text-[#007AFF] transition-colors" />
+                            <span>{td.ten_tai_lieu || 'Mở tài liệu đính kèm'}</span>
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Ý kiến chỉ đạo của Cấp trên */}
+                      {td.y_kien_chi_dao && (
+                        <div className="mt-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div className="font-bold text-amber-900 flex items-center gap-1.5 text-[11.5px]">
+                              <MessageSquareQuote className="size-3.5 text-amber-600 shrink-0" />
+                              <span>
+                                Ý kiến chỉ đạo từ {td.ten_nguoi_chi_dao || 'Cấp trên'}
+                                {td.chuc_vu_nguoi_chi_dao ? ` (${td.chuc_vu_nguoi_chi_dao})` : ''}:
+                              </span>
+                            </div>
+                            {laQuanLyHoacGiamDoc && (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => xuLyBatDauChiDao(td)}
+                                  className="text-[10.5px] font-bold text-amber-800 hover:underline cursor-pointer"
+                                >
+                                  Sửa
+                                </button>
+                                <span className="text-amber-300">·</span>
+                                <button
+                                  type="button"
+                                  onClick={() => xuLyXoaChiDao(td.id)}
+                                  className="text-[10.5px] font-bold text-rose-600 hover:underline cursor-pointer"
+                                >
+                                  Xóa
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-slate-800 font-medium pl-5 text-[12px] leading-relaxed">
+                            {td.y_kien_chi_dao}
+                          </div>
+                          {td.ngay_chi_dao && (
+                            <div className="text-[10px] text-slate-400 pl-5 font-mono">
+                              Ngày chỉ đạo: {formatNgay(td.ngay_chi_dao, 'DD/MM/YYYY')}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Form nhập/sửa chỉ đạo cấp trên */}
+                      {dangChiDaoTDId === td.id ? (
+                        <div className="mt-2.5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2.5 animate-in fade-in duration-150">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-amber-900 text-xs flex items-center gap-1.5">
+                              <Shield className="size-3.5 text-amber-600" />
+                              Ý kiến chỉ đạo của Cấp trên
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={dangLuuChiDao}
+                                onClick={() => xuLyLuuChiDao(td.id)}
+                                className="h-6.5 px-2.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold inline-flex items-center gap-1 transition cursor-pointer"
+                              >
+                                {dangLuuChiDao ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+                                <span>Lưu chỉ đạo</span>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={dangLuuChiDao}
+                                onClick={() => setDangChiDaoTDId(null)}
+                                className="h-6.5 px-2 rounded-md bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
+                              >
+                                <X className="size-3" /> Hủy
+                              </button>
+                            </div>
+                          </div>
+                          <textarea
+                            rows={2}
+                            value={noiDungChiDao}
+                            onChange={(e) => setNoiDungChiDao(e.target.value)}
+                            placeholder="Nhập ý kiến chỉ đạo, nhận xét hoặc phân công hỗ trợ cho nhân sự..."
+                            className="w-full rounded-lg border border-amber-500/40 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                          />
+                        </div>
+                      ) : (
+                        /* Nút thêm chỉ đạo */
+                        laQuanLyHoacGiamDoc && !td.y_kien_chi_dao && (
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() => xuLyBatDauChiDao(td)}
+                              className="text-[11.5px] text-amber-700 hover:text-amber-800 font-semibold inline-flex items-center gap-1 transition cursor-pointer"
+                            >
+                              <MessageSquareQuote className="size-3" /> + Thêm ý kiến chỉ đạo của Cấp trên
+                            </button>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

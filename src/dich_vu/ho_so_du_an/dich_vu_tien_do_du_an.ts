@@ -40,6 +40,7 @@ export interface TaoMoiTienDoDuAnDTO {
   hanh_dong_tiep_theo?: string | null;
   deadline_hanh_dong?: string | null;
   link_tai_lieu?: string | null;
+  ten_tai_lieu?: string | null;
   trang_thai_hanh_dong?: TienDoDuAn['trang_thai_hanh_dong'];
   nguoi_tao_id?: string | null;
 }
@@ -49,11 +50,18 @@ export interface CapNhatTienDoDuAnDTO {
   hanh_dong_tiep_theo?: string | null;
   deadline_hanh_dong?: string | null;
   link_tai_lieu?: string | null;
+  ten_tai_lieu?: string | null;
   ket_qua_thuc_hien?: string | null;
   trang_thai_hanh_dong?: TienDoDuAn['trang_thai_hanh_dong'];
   nguoi_hoan_thanh_id?: string | null;
   ngay_hoan_thanh?: string | null;
   trang_thai_du_lieu?: 'hoat_dong' | 'da_xoa';
+  y_kien_chi_dao?: string | null;
+  nguoi_chi_dao_id?: string | null;
+  ten_nguoi_chi_dao?: string | null;
+  chuc_vu_nguoi_chi_dao?: string | null;
+  ngay_chi_dao?: string | null;
+  ngay_chinh_sua_gan_nhat?: string | null;
 }
 
 type RawBanGhiTDDA = Omit<TienDoDuAn, 'id'>;
@@ -71,6 +79,7 @@ const chuyenDoiDocThanhDoiTuong = (
     hanh_dong_tiep_theo: (r.hanh_dong_tiep_theo as string | null) ?? null,
     deadline_hanh_dong: (r.deadline_hanh_dong as string | null) ?? null,
     link_tai_lieu: (r.link_tai_lieu as string | null) ?? null,
+    ten_tai_lieu: (r.ten_tai_lieu as string | null) ?? null,
     ket_qua_thuc_hien: (r.ket_qua_thuc_hien as string | null) ?? null,
     trang_thai_hanh_dong:
       (r.trang_thai_hanh_dong as TienDoDuAn['trang_thai_hanh_dong']) ?? 'dang_cho',
@@ -79,7 +88,13 @@ const chuyenDoiDocThanhDoiTuong = (
     ngay_tao: (r.ngay_tao as string) ?? today,
     ngay_cap_nhat: (r.ngay_cap_nhat as string) ?? today,
     ngay_hoan_thanh: (r.ngay_hoan_thanh as string | null) ?? null,
-    trang_thai_du_lieu: (r.trang_thai_du_lieu as TienDoDuAn['trang_thai_du_lieu']) ?? 'hoat_dong'
+    trang_thai_du_lieu: (r.trang_thai_du_lieu as TienDoDuAn['trang_thai_du_lieu']) ?? 'hoat_dong',
+    y_kien_chi_dao: (r.y_kien_chi_dao as string | null) ?? null,
+    nguoi_chi_dao_id: (r.nguoi_chi_dao_id as string | null) ?? null,
+    ten_nguoi_chi_dao: (r.ten_nguoi_chi_dao as string | null) ?? null,
+    chuc_vu_nguoi_chi_dao: (r.chuc_vu_nguoi_chi_dao as string | null) ?? null,
+    ngay_chi_dao: (r.ngay_chi_dao as string | null) ?? null,
+    ngay_chinh_sua_gan_nhat: (r.ngay_chinh_sua_gan_nhat as string | null) ?? null
   };
 };
 
@@ -146,6 +161,7 @@ export const taoTienDoDuAnMoi = async (
     hanh_dong_tiep_theo: dto.hanh_dong_tiep_theo ? dto.hanh_dong_tiep_theo.trim() : null,
     deadline_hanh_dong: dto.deadline_hanh_dong ?? null,
     link_tai_lieu: linkGoc || null,
+    ten_tai_lieu: dto.ten_tai_lieu ? dto.ten_tai_lieu.trim() : null,
     ket_qua_thuc_hien: null,
     trang_thai_hanh_dong: dto.trang_thai_hanh_dong ?? 'dang_thuc_hien',
     nguoi_tao_id: dto.nguoi_tao_id ?? null,
@@ -153,7 +169,13 @@ export const taoTienDoDuAnMoi = async (
     ngay_tao: today,
     ngay_cap_nhat: today,
     ngay_hoan_thanh: null,
-    trang_thai_du_lieu: 'hoat_dong'
+    trang_thai_du_lieu: 'hoat_dong',
+    y_kien_chi_dao: null,
+    nguoi_chi_dao_id: null,
+    ten_nguoi_chi_dao: null,
+    chuc_vu_nguoi_chi_dao: null,
+    ngay_chi_dao: null,
+    ngay_chinh_sua_gan_nhat: null
   };
   const snap = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieu as any);
   const ketQua = chuyenDoiDocThanhDoiTuong(snap.id, duLieu);
@@ -200,12 +222,19 @@ export const capNhatTienDoDuAn = async (
     duLieuCapNhat.link_tai_lieu = dto.link_tai_lieu.trim() || null;
   }
   if (dto.link_tai_lieu === null) duLieuCapNhat.link_tai_lieu = null;
+  if (dto.ten_tai_lieu !== undefined) duLieuCapNhat.ten_tai_lieu = dto.ten_tai_lieu;
   if (dto.ket_qua_thuc_hien !== undefined) duLieuCapNhat.ket_qua_thuc_hien = dto.ket_qua_thuc_hien;
   if (dto.trang_thai_hanh_dong) duLieuCapNhat.trang_thai_hanh_dong = dto.trang_thai_hanh_dong;
   if (dto.nguoi_hoan_thanh_id !== undefined)
     duLieuCapNhat.nguoi_hoan_thanh_id = dto.nguoi_hoan_thanh_id;
   if (dto.ngay_hoan_thanh !== undefined) duLieuCapNhat.ngay_hoan_thanh = dto.ngay_hoan_thanh;
   if (dto.trang_thai_du_lieu) duLieuCapNhat.trang_thai_du_lieu = dto.trang_thai_du_lieu;
+  if (dto.y_kien_chi_dao !== undefined) duLieuCapNhat.y_kien_chi_dao = dto.y_kien_chi_dao;
+  if (dto.nguoi_chi_dao_id !== undefined) duLieuCapNhat.nguoi_chi_dao_id = dto.nguoi_chi_dao_id;
+  if (dto.ten_nguoi_chi_dao !== undefined) duLieuCapNhat.ten_nguoi_chi_dao = dto.ten_nguoi_chi_dao;
+  if (dto.chuc_vu_nguoi_chi_dao !== undefined) duLieuCapNhat.chuc_vu_nguoi_chi_dao = dto.chuc_vu_nguoi_chi_dao;
+  if (dto.ngay_chi_dao !== undefined) duLieuCapNhat.ngay_chi_dao = dto.ngay_chi_dao;
+  if (dto.ngay_chinh_sua_gan_nhat !== undefined) duLieuCapNhat.ngay_chinh_sua_gan_nhat = dto.ngay_chinh_sua_gan_nhat;
 
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, id), duLieuCapNhat as any, { merge: true });
   const ketQua = await layChiTietTienDoDuAn(id);

@@ -40,6 +40,7 @@ export interface TienDoDuAn {
   hanh_dong_tiep_theo: string | null;
   deadline_hanh_dong: string | null;
   link_tai_lieu: string | null;
+  ten_tai_lieu?: string | null;
   ket_qua_thuc_hien: string | null;
   trang_thai_hanh_dong: 'dang_cho' | 'dang_thuc_hien' | 'da_hoan_thanh' | 'qua_han';
   nguoi_tao_id: string | null;
@@ -48,4 +49,14 @@ export interface TienDoDuAn {
   ngay_cap_nhat: string;
   ngay_hoan_thanh: string | null;
   trang_thai_du_lieu: 'hoat_dong' | 'da_xoa';
+
+  // Ý kiến chỉ đạo của cấp trên
+  y_kien_chi_dao?: string | null;
+  nguoi_chi_dao_id?: string | null;
+  ten_nguoi_chi_dao?: string | null;
+  chuc_vu_nguoi_chi_dao?: string | null;
+  ngay_chi_dao?: string | null;
+
+  // Thời gian chỉnh sửa gần nhất
+  ngay_chinh_sua_gan_nhat?: string | null;
 }
