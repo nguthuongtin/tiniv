@@ -15,7 +15,10 @@ import {
   DollarSign,
   Users,
   Target,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Link2,
+  ExternalLink,
+  MessageSquareQuote
 } from 'lucide-react';
 import type { KeHoachTuan, ItemKeHoachTuan, ItemKeHoachThang, LoaiMucTieuThang } from '../../thu_vien/types/ke_hoach';
 import type { BaoCaoKeHoachTuan } from '../../thu_vien/types/bao_cao_ke_hoach';
@@ -342,13 +345,35 @@ export default function BangKeHoachTuan({
                           </div>
                         )}
                         {dsKetQua.length > 0 && (
-                          <div className="mt-1 space-y-0.5 border-t border-border/50 pt-1">
-                            {dsKetQua.slice(0, 2).map((kq, kIdx) => (
-                              <div key={kq.id || kIdx} className="text-[11px] text-foreground flex items-start gap-1">
-                                <span className="font-mono text-[9px] text-muted-foreground bg-muted px-1 rounded shrink-0">
-                                  {kq.ngay_ghi_nhan ? new Date(kq.ngay_ghi_nhan).toLocaleDateString('vi-VN') : ''}
-                                </span>
-                                <span className="line-clamp-1">{kq.noi_dung}</span>
+                          <div className="mt-1.5 space-y-1 border-t border-border/50 pt-1.5">
+                            {dsKetQua.slice(0, 3).map((kq, kIdx) => (
+                              <div key={kq.id || kIdx} className="text-[11px] text-foreground space-y-0.5">
+                                <div className="flex items-start gap-1">
+                                  <span className="font-mono text-[9px] text-muted-foreground bg-muted px-1 rounded shrink-0 mt-0.5">
+                                    {kq.ngay_ghi_nhan ? new Date(kq.ngay_ghi_nhan).toLocaleDateString('vi-VN') : ''}
+                                  </span>
+                                  <span className="line-clamp-2 leading-tight">{kq.noi_dung}</span>
+                                  {kq.link_dinh_kem && (
+                                    <a
+                                      href={kq.link_dinh_kem}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="inline-flex items-center gap-0.5 text-[10px] text-primary hover:underline shrink-0 font-semibold"
+                                      title={kq.ten_tai_lieu || kq.link_dinh_kem}
+                                    >
+                                      <Link2 className="size-2.5" /> Link
+                                    </a>
+                                  )}
+                                </div>
+                                {kq.chi_dao && (
+                                  <div className="text-[10px] text-amber-800 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 flex items-center gap-1 font-medium">
+                                    <MessageSquareQuote className="size-2.5 text-amber-600 shrink-0" />
+                                    <span className="line-clamp-1">
+                                      <span className="font-bold">{kq.chi_dao.ten_nguoi_chi_dao || 'Sếp'}:</span> {kq.chi_dao.noi_dung}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>

@@ -48,12 +48,33 @@ export interface KeHoachThang {
   trang_thai_du_lieu: 'hoat_dong' | 'da_xoa';
 }
 
+// Ý kiến chỉ đạo của cấp trên cho từng mốc tiến độ
+export interface ChiDaoTienDo {
+  id?: string;
+  noi_dung: string; // Nội dung ý kiến chỉ đạo, nhận xét, hướng dẫn từ cấp trên
+  nguoi_chi_dao_id?: string | null;
+  ten_nguoi_chi_dao?: string | null;
+  chuc_vu_nguoi_chi_dao?: string | null;
+  ngay_chi_dao?: string | null; // YYYY-MM-DD
+}
+
 // Mỗi kết quả ghi nhận theo ngày / thời điểm
 export interface NhatKyKetQuaTuan {
   id: string;
   ngay_ghi_nhan: string; // YYYY-MM-DD
   noi_dung: string; // Nội dung kết quả đạt được
   nguoi_ghi_id?: string | null;
+  ten_nguoi_ghi?: string | null;
+
+  // Tài liệu / Link đính kèm
+  link_dinh_kem?: string | null; // Link Google Drive, Dropbox, báo giá, tài liệu online...
+  ten_tai_lieu?: string | null; // Tên gợi nhớ của tài liệu / link (VD: Báo giá v2, Hợp đồng scan)
+
+  // Ý kiến chỉ đạo / phản hồi của cấp trên
+  chi_dao?: ChiDaoTienDo | null;
+
+  // Thời gian chỉnh sửa gần nhất
+  ngay_chinh_sua_gan_nhat?: string | null;
 }
 
 export interface ItemKeHoachTuan {

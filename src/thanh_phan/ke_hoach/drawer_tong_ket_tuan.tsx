@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Send, Printer, Calendar, DollarSign, MapPin, Users, Target, FileSpreadsheet } from 'lucide-react';
+import { Save, Send, Printer, Calendar, DollarSign, MapPin, Users, Target, FileSpreadsheet, ExternalLink, FileText, MessageSquareQuote } from 'lucide-react';
 import type { KeHoachTuan, LoaiMucTieuThang } from '../../thu_vien/types/ke_hoach';
 import type { BaoCaoKeHoachTuan } from '../../thu_vien/types/bao_cao_ke_hoach';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
@@ -222,13 +222,41 @@ export default function DrawerTongKetTuan({
                       <div className="bg-muted/40 p-2.5 rounded-lg border border-border/40 space-y-1.5">
                         <span className="font-semibold text-primary text-[11px] block">Kết quả thực tế đã đạt:</span>
                         {dsKq.length > 0 ? (
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             {dsKq.map((kq, kIdx) => (
-                              <div key={kq.id || kIdx} className="text-[11px] flex items-start gap-1.5">
-                                <span className="font-mono text-[10px] bg-background px-1 rounded border border-border/60 text-muted-foreground shrink-0 mt-0.5">
-                                  {kq.ngay_ghi_nhan ? new Date(kq.ngay_ghi_nhan).toLocaleDateString('vi-VN') : ''}
-                                </span>
-                                <span className="text-foreground font-medium">{kq.noi_dung}</span>
+                              <div key={kq.id || kIdx} className="text-[11px] space-y-1 bg-background p-2 rounded-md border border-border/60">
+                                <div className="flex items-start gap-1.5">
+                                  <span className="font-mono text-[10px] bg-muted px-1 rounded text-muted-foreground shrink-0 mt-0.5">
+                                    {kq.ngay_ghi_nhan ? new Date(kq.ngay_ghi_nhan).toLocaleDateString('vi-VN') : ''}
+                                  </span>
+                                  <span className="text-foreground font-medium flex-1">{kq.noi_dung}</span>
+                                </div>
+                                {kq.link_dinh_kem && (
+                                  <div className="pl-5">
+                                    <a
+                                      href={kq.link_dinh_kem}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline font-semibold bg-primary/10 px-2 py-0.5 rounded"
+                                    >
+                                      <FileText className="size-3" />
+                                      <span>{kq.ten_tai_lieu || 'Xem tài liệu đính kèm'}</span>
+                                      <ExternalLink className="size-2.5 opacity-70" />
+                                    </a>
+                                  </div>
+                                )}
+                                {kq.chi_dao && (
+                                  <div className="text-[10px] text-amber-800 bg-amber-500/10 p-1.5 rounded border border-amber-500/20 space-y-0.5">
+                                    <div className="font-bold flex items-center gap-1">
+                                      <MessageSquareQuote className="size-3 text-amber-600" />
+                                      <span>
+                                        Chỉ đạo từ {kq.chi_dao.ten_nguoi_chi_dao || 'Cấp trên'}
+                                        {kq.chi_dao.chuc_vu_nguoi_chi_dao ? ` (${kq.chi_dao.chuc_vu_nguoi_chi_dao})` : ''}:
+                                      </span>
+                                    </div>
+                                    <div className="pl-4 font-medium text-foreground">{kq.chi_dao.noi_dung}</div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>

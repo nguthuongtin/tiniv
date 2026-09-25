@@ -172,7 +172,16 @@ export const xuatExcelKeHoachTuan = async (
         (a.ngay_ghi_nhan || '').localeCompare(b.ngay_ghi_nhan || '')
       );
       ketQuaThucTeDayDu = dsSorted
-        .map((k) => (k.ngay_ghi_nhan ? `• [${formatNgayVN(k.ngay_ghi_nhan)}] ${k.noi_dung}` : `• ${k.noi_dung}`))
+        .map((k) => {
+          let line = k.ngay_ghi_nhan ? `• [${formatNgayVN(k.ngay_ghi_nhan)}] ${k.noi_dung}` : `• ${k.noi_dung}`;
+          if (k.link_dinh_kem) {
+            line += ` (Link: ${k.ten_tai_lieu ? k.ten_tai_lieu + ' - ' : ''}${k.link_dinh_kem})`;
+          }
+          if (k.chi_dao?.noi_dung) {
+            line += `\n  ↳ [Chỉ đạo của ${k.chi_dao.ten_nguoi_chi_dao || 'Cấp trên'}]: ${k.chi_dao.noi_dung}`;
+          }
+          return line;
+        })
         .join('\n');
     }
 
