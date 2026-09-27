@@ -683,7 +683,7 @@ export default function TrangBaoCaoCongViec() {
                 kich_thuoc="sm"
                 onClick={xuatWordTongHopNgay}
                 disabled={dangXuatDoc}
-                className="font-semibold text-xs border-blue-500/40 text-blue-600 hover:bg-blue-50 cursor-pointer"
+                className="font-semibold text-xs border-emerald-600/40 text-emerald-700 hover:bg-emerald-50 cursor-pointer"
               >
                 {dangXuatDoc ? 'Đang xuất Word...' : 'Xuất Word Báo Cáo Ngày'}
               </Nut>
@@ -799,7 +799,7 @@ export default function TrangBaoCaoCongViec() {
                   type="button"
                   disabled={dangXuatDoc}
                   onClick={xuatWordTongHopNgay}
-                  className="md:hidden inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600 shrink-0"
+                  className="md:hidden inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-emerald-600/30 bg-emerald-600/10 text-emerald-700 shrink-0"
                   title="Xuất file Word (.doc)"
                 >
                   <span>Xuất Word</span>
@@ -824,7 +824,7 @@ export default function TrangBaoCaoCongViec() {
               type="button"
               disabled={dangXuatDoc}
               onClick={xuatWordTongHopNgay}
-              className="inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600"
+              className="inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-emerald-600/30 bg-emerald-600/10 text-emerald-700"
               title="Xuất file Word (.doc)"
             >
               <span>Xuất Word</span>
@@ -938,7 +938,7 @@ export default function TrangBaoCaoCongViec() {
                         type="button"
                         disabled={dangXuatDoc}
                         onClick={xuatWordTongHopNgay}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition cursor-pointer self-start sm:self-auto disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-emerald-600/30 bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20 transition cursor-pointer self-start sm:self-auto disabled:opacity-50"
                         title="Xuất báo cáo tổng hợp ngày của tất cả mọi người ra file Word (.doc)"
                       >
                         {dangXuatDoc && <Loader2 className="size-3.5 animate-spin" />}

@@ -463,7 +463,7 @@ export default function TrangNhanSu() {
           <span className="text-slate-200">│</span>
           <div className="flex items-center gap-1">
             <span className="text-slate-500">Phòng ban</span>
-            <span className="font-bold text-[#007AFF] text-[13px] tabular-nums">{dsPhongBan.length}</span>
+            <span className="font-bold text-[#107555] text-[13px] tabular-nums">{dsPhongBan.length}</span>
           </div>
           <span className="text-slate-200">│</span>
           <div className="flex items-center gap-1">
@@ -504,14 +504,14 @@ export default function TrangNhanSu() {
               className={cn(
                 'text-left rounded-[20px] border bg-white p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-all duration-200 cursor-pointer active:scale-[0.98]',
                 dangChon
-                  ? 'border-[#007AFF] ring-2 ring-[#007AFF]/20 bg-[#007AFF]/5'
+                  ? 'border-[#107555] ring-2 ring-emerald-500/20 bg-emerald-50/20'
                   : 'border-slate-200/90 hover:border-slate-300 hover:shadow-md'
               )}
             >
               <div
                 className={cn(
                   'size-8 rounded-[11px] flex items-center justify-center shrink-0',
-                  dangChon ? 'bg-[#007AFF] text-white' : c.mau_icon
+                  dangChon ? 'bg-[#107555] text-white' : c.mau_icon
                 )}
               >
                 <Icon className="size-4" strokeWidth={2.2} />
@@ -555,46 +555,321 @@ export default function TrangNhanSu() {
           }
         />
       ) : (
-        <div className="space-y-3">
-          {/* Header danh sách chuẩn ảnh */}
-          <div className="flex items-center justify-between px-1 pt-1">
-            <h2 className="text-[17px] sm:text-[19px] font-bold text-slate-900 tracking-tight">
-              Danh sách nhân sự
-            </h2>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          {/* Header danh sách chuẩn bảng mẫu */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-slate-200/80 bg-white">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                Danh sách nhân sự
+              </h2>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                {danhSachDaSapXep.length}
+              </span>
+            </div>
 
-            <div className="relative">
-              <select
-                value={kieuSapXep}
-                onChange={(e) => setKieuSapXep(e.target.value as any)}
-                aria-label="Sắp xếp danh sách nhân sự"
-                className="appearance-none text-xs sm:text-[13px] font-semibold text-[#007AFF] bg-white border border-slate-200 hover:border-blue-300 rounded-xl px-3 py-1.5 pr-7 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-              >
-                <option value="moi_nhat">Mới nhất</option>
-                <option value="cu_nhat">Cũ nhất</option>
-                <option value="ten_az">Tên A-Z</option>
-              </select>
-              <ChevronDown className="size-3.5 text-[#007AFF] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="flex items-center gap-2.5">
+              <div className="relative">
+                <select
+                  value={kieuSapXep}
+                  onChange={(e) => setKieuSapXep(e.target.value as any)}
+                  aria-label="Sắp xếp danh sách nhân sự"
+                  className="appearance-none text-xs sm:text-[13px] font-semibold text-emerald-800 bg-white border border-slate-200 hover:border-emerald-300 rounded-xl px-3 py-2 pr-7 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
+                >
+                  <option value="moi_nhat">Mới nhất</option>
+                  <option value="cu_nhat">Cũ nhất</option>
+                  <option value="ten_az">Tên A-Z</option>
+                </select>
+                <ChevronDown className="size-3.5 text-emerald-700 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {duocQuanLyNhanSu && (
+                <button
+                  type="button"
+                  onClick={moTaoMoi}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+                >
+                  <Plus className="size-4" />
+                  <span>Thêm nhân viên</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Lưới danh sách thẻ nhân sự chuẩn Apple (1 cột Mobile, 2-3 cột PC) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
-            {danhSachDaSapXep.map((ns) => (
-              <TheNhanSu
-                key={ns.id}
-                ns={ns}
-                thongTinVt={chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS)}
-                tenPhongBan={tenPhongBan(ns.phong_ban_id)}
-                tenChiNhanh={tenChiNhanh(ns.chi_nhanh_id)}
-                duocQuanLyNhanSu={duocQuanLyNhanSu}
-                onDoiMatKhau={(nsTarget) => {
-                  setLoiMk(null);
-                  setMkMoiModal('');
-                  setNhapLaiMkModal('');
-                  setMoModalDoiMk(nsTarget);
-                }}
-              />
-            ))}
+          {/* Bảng dữ liệu chuẩn mẫu (Desktop) */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4 min-w-[240px]">HỌ VÀ TÊN & TÀI KHOẢN</th>
+                  <th className="py-3 px-4 min-w-[180px]">PHÒNG BAN & CHI NHÁNH</th>
+                  <th className="py-3 px-4 min-w-[130px]">VAI TRÒ</th>
+                  <th className="py-3 px-4 w-[120px]">TRẠNG THÁI</th>
+                  <th className="py-3 px-4 w-[120px] text-right">THAO TÁC</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {danhSachDaSapXep.map((ns) => {
+                  const thongTinVt = chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS);
+                  const biKhoa = !ns.trang_thai;
+                  const pb = tenPhongBan(ns.phong_ban_id);
+                  const cnStr = tenChiNhanh(ns.chi_nhanh_id);
+
+                  return (
+                    <tr
+                      key={ns.id}
+                      className={cn(
+                        'hover:bg-slate-50/70 transition-colors',
+                        biKhoa && 'opacity-60 bg-slate-50/30'
+                      )}
+                    >
+                      {/* 1. HỌ VÀ TÊN & TÀI KHOẢN */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <DaiDien
+                            anh={ns.url_anh_dai_dien ?? undefined}
+                            ten={ns.ho_va_ten}
+                            kich_thuoc="sm"
+                            className="size-8 rounded-lg shrink-0 border border-slate-200"
+                          />
+                          <div className="min-w-0">
+                            <Link
+                              href={`/nhan-su/${ns.id}`}
+                              className="font-bold text-slate-900 text-sm hover:text-emerald-700 transition-colors line-clamp-1"
+                            >
+                              {ns.ho_va_ten}
+                            </Link>
+                            <div className="flex items-center gap-2.5 text-xs text-slate-400 font-normal mt-0.5 flex-wrap">
+                              <span className="inline-flex items-center gap-1 text-slate-500">
+                                <Mail className="size-3 text-slate-400" />
+                                {ns.email}
+                              </span>
+                              {ns.so_dien_thoai && (
+                                <span className="inline-flex items-center gap-1 text-slate-500">
+                                  <Phone className="size-3 text-slate-400" />
+                                  {ns.so_dien_thoai}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 2. PHÒNG BAN & CHI NHÁNH */}
+                      <td className="py-3.5 px-4">
+                        <div className="text-xs font-semibold text-slate-700">
+                          {[pb, cnStr].filter(Boolean).join(' • ') || 'Chưa phân'}
+                        </div>
+                        {ns.chuc_vu && (
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            {ns.chuc_vu}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* 3. VAI TRÒ */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                          {thongTinVt.nhan}
+                        </span>
+                      </td>
+
+                      {/* 4. TRẠNG THÁI */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border',
+                            biKhoa
+                              ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'size-1.5 rounded-full shrink-0',
+                              biKhoa ? 'bg-rose-500' : 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+                            )}
+                          />
+                          {biKhoa ? 'Đã khóa' : 'Hoạt động'}
+                        </span>
+                      </td>
+
+                      {/* 5. THAO TÁC */}
+                      <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                        <div className="inline-flex items-center gap-1 justify-end">
+                          <Link
+                            href={`/nhan-su/${ns.id}`}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                            title="Xem chi tiết"
+                          >
+                            <Eye className="size-4" />
+                          </Link>
+                          {duocQuanLyNhanSu && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDangSua(ns);
+                                  setLoiForm(null);
+                                  setMoDrawer(true);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                                title="Chỉnh sửa"
+                              >
+                                <Pencil className="size-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLoiMk(null);
+                                  setMkMoiModal('');
+                                  setNhapLaiMkModal('');
+                                  setMoModalDoiMk(ns);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition cursor-pointer"
+                                title="Đổi mật khẩu"
+                              >
+                                <KeyRound className="size-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 2. GIAO DIỆN DANH SÁCH DỄ ĐỌC TRÊN MOBILE (chỉ hiện trên màn hình nhỏ) */}
+          <div className="sm:hidden divide-y divide-slate-100">
+            {danhSachDaSapXep.map((ns) => {
+              const thongTinVt = chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS);
+              const biKhoa = !ns.trang_thai;
+              const pb = tenPhongBan(ns.phong_ban_id);
+              const cnStr = tenChiNhanh(ns.chi_nhanh_id);
+
+              return (
+                <div
+                  key={ns.id}
+                  className={cn(
+                    'p-3.5 space-y-2.5',
+                    biKhoa && 'opacity-60 bg-slate-50/40'
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <DaiDien
+                        anh={ns.url_anh_dai_dien ?? undefined}
+                        ten={ns.ho_va_ten}
+                        kich_thuoc="sm"
+                        className="size-9 rounded-lg shrink-0 border border-slate-200"
+                      />
+                      <div className="min-w-0">
+                        <Link
+                          href={`/nhan-su/${ns.id}`}
+                          className="font-bold text-slate-900 text-[14.5px] leading-snug hover:text-emerald-700 transition line-clamp-1"
+                        >
+                          {ns.ho_va_ten}
+                        </Link>
+                        {ns.chuc_vu && (
+                          <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                            {ns.chuc_vu}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border shrink-0',
+                        biKhoa
+                          ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'size-1.5 rounded-full shrink-0',
+                          biKhoa ? 'bg-rose-500' : 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+                        )}
+                      />
+                      {biKhoa ? 'Đã khóa' : 'Hoạt động'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap text-xs text-slate-600">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                      {thongTinVt.nhan}
+                    </span>
+                    {[pb, cnStr].filter(Boolean).length > 0 && (
+                      <span className="text-slate-500 text-xs truncate max-w-[220px]">
+                        {[pb, cnStr].filter(Boolean).join(' • ')}
+                      </span>
+                    )}
+                  </div>
+
+                  {(ns.email || ns.so_dien_thoai) && (
+                    <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap pt-0.5">
+                      {ns.email && (
+                        <span className="inline-flex items-center gap-1 text-slate-600 truncate max-w-[180px]">
+                          <Mail className="size-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{ns.email}</span>
+                        </span>
+                      )}
+                      {ns.so_dien_thoai && (
+                        <span className="inline-flex items-center gap-1 text-slate-600">
+                          <Phone className="size-3 text-slate-400 shrink-0" />
+                          <span>{ns.so_dien_thoai}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Nút hành động nhanh trên mobile */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <Link
+                      href={`/nhan-su/${ns.id}`}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 py-1"
+                    >
+                      <Eye className="size-3.5" />
+                      <span>Chi tiết</span>
+                    </Link>
+                    <div className="flex items-center gap-1">
+                      {duocQuanLyNhanSu && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDangSua(ns);
+                              setLoiForm(null);
+                              setMoDrawer(true);
+                            }}
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs transition cursor-pointer"
+                            title="Chỉnh sửa"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLoiMk(null);
+                              setMkMoiModal('');
+                              setNhapLaiMkModal('');
+                              setMoModalDoiMk(ns);
+                            }}
+                            className="p-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs transition cursor-pointer"
+                            title="Đổi mật khẩu"
+                          >
+                            <KeyRound className="size-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -752,158 +1027,4 @@ export default function TrangNhanSu() {
   );
 }
 
-const TheNhanSu = ({
-  ns,
-  thongTinVt,
-  tenPhongBan,
-  tenChiNhanh,
-  duocQuanLyNhanSu,
-  onDoiMatKhau
-}: {
-  ns: NhanSu;
-  thongTinVt: { nhan: string };
-  tenPhongBan: string;
-  tenChiNhanh: string;
-  duocQuanLyNhanSu?: boolean;
-  onDoiMatKhau?: (ns: NhanSu) => void;
-}) => {
-  const router = useRouter();
-  const biKhoa = !ns.trang_thai;
-
-  return (
-    <div
-      onClick={() => router.push(`/nhan-su/${ns.id}`)}
-      className={cn(
-        'group relative bg-white rounded-[22px] border border-slate-200/80 p-4 sm:p-5 pt-5 sm:pt-6 transition-all duration-200 ease-out flex flex-col justify-between overflow-hidden',
-        'hover:border-blue-300 hover:shadow-[0_8px_30px_rgba(0,122,255,0.08),0_2px_8px_rgba(0,0,0,0.04)]',
-        'active:scale-[0.985] active:bg-slate-50/60 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.03),0_6px_16px_rgba(0,0,0,0.02)]',
-        biKhoa && 'opacity-60 grayscale-[40%]'
-      )}
-    >
-      {/* 1. THANH TRẠNG THÁI MÉP TRÊN THẺ (Apple Top-Edge Bar) */}
-      <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-100/90 overflow-hidden">
-        <div
-          className={cn(
-            'h-full w-full transition-all duration-500 ease-out',
-            biKhoa ? 'bg-rose-500' : 'bg-emerald-500'
-          )}
-        />
-      </div>
-
-      <div>
-        {/* TẦNG ĐỈNH: STATUS CAPSULE & MÃ NHÂN VIÊN & VAI TRÒ */}
-        <div className="flex items-center justify-between gap-3 pb-2.5">
-          <div className="flex items-center gap-2 min-w-0">
-            {/* Apple Status Capsule */}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide border shrink-0',
-                biKhoa
-                  ? 'bg-rose-50 text-rose-700 border-rose-200/80'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-              )}
-            >
-              <span
-                className={cn(
-                  'size-1.5 rounded-full shrink-0',
-                  biKhoa ? 'bg-rose-500' : 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
-                )}
-              />
-              <span className="truncate max-w-[120px]">{biKhoa ? 'Đã khóa' : 'Hoạt động'}</span>
-            </span>
-
-            {ns.ma_nhan_vien && (
-              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-slate-100/90 text-slate-500 font-mono text-[11px] font-medium border border-slate-200/60 truncate max-w-[110px]">
-                {ns.ma_nhan_vien}
-              </span>
-            )}
-          </div>
-
-          {/* Vai trò Pill */}
-          <div className="text-right shrink-0">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11.5px] font-semibold bg-blue-50 text-[#007AFF] border border-blue-200/50">
-              {thongTinVt.nhan}
-            </span>
-          </div>
-        </div>
-
-        {/* TẦNG TRỌNG TÂM: AVATAR & HỌ TÊN 2 DÒNG & PHÒNG BAN */}
-        <div className="flex items-start gap-3 my-1">
-          {ns.url_anh_dai_dien ? (
-            <DaiDien
-              ten={ns.ho_va_ten}
-              anh={ns.url_anh_dai_dien}
-              kich_thuoc="md"
-              className="size-11 rounded-[15px] shadow-2xs shrink-0 mt-0.5"
-            />
-          ) : (
-            <div className="size-11 rounded-[15px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0 border border-[#007AFF]/15 shadow-2xs mt-0.5">
-              <User className="size-5 text-[#007AFF]" strokeWidth={2.2} />
-            </div>
-          )}
-
-          <div className="space-y-1 min-w-0 flex-1">
-            <h3
-              className="font-bold text-[15.5px] sm:text-[16.5px] text-slate-900 leading-[1.38] tracking-tight line-clamp-2 group-hover:text-[#007AFF] transition-colors"
-              title={ns.ho_va_ten}
-            >
-              {ns.ho_va_ten}
-            </h3>
-
-            <div className="flex items-center gap-1.5 text-[12.5px] sm:text-[13px] text-slate-500 font-normal truncate">
-              <Building2 className="size-3.5 text-slate-400 shrink-0" />
-              <span className="truncate font-medium">
-                {tenPhongBan || 'Chưa phân PB'}
-                {tenChiNhanh ? ` • ${tenChiNhanh}` : ''}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* TẦNG CHÂN: SĐT, EMAIL & ACTION BUTTONS */}
-      <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-100 text-[11.5px] sm:text-[12px] text-slate-500">
-        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          {/* Số điện thoại */}
-          <span className="inline-flex items-center gap-1 text-slate-600">
-            <Phone className="size-3.5 text-slate-400 shrink-0" />
-            <span>{ns.so_dien_thoai || '--'}</span>
-          </span>
-
-          {/* Email */}
-          {ns.email && (
-            <>
-              <span className="text-slate-300">│</span>
-              <span className="inline-flex items-center gap-1 text-slate-600 truncate max-w-[130px] sm:max-w-[160px]">
-                <Mail className="size-3 text-slate-400 shrink-0" />
-                <span className="truncate">{ns.email}</span>
-              </span>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          {duocQuanLyNhanSu && (
-            <button
-              type="button"
-              title="Đổi mật khẩu"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDoiMatKhau?.(ns);
-              }}
-              className="size-7 rounded-full bg-slate-100/90 hover:bg-blue-50 text-slate-400 hover:text-[#007AFF] flex items-center justify-center transition shrink-0"
-            >
-              <KeyRound className="size-3.5" />
-            </button>
-          )}
-
-          {/* Nút hành động tròn Apple */}
-          <div className="size-7 rounded-full bg-slate-100/90 group-hover:bg-[#007AFF] text-slate-400 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-2xs group-hover:translate-x-0.5 shrink-0">
-            <ChevronRight className="size-3.5" strokeWidth={2.5} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 

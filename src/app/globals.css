@@ -7,10 +7,10 @@
   --foreground: #0a0f1c;
   --muted: #f6f7f9;
   --muted-foreground: #6b7280;
-  --border: #eaecf0;
-  --mau-chu-dao: #0f6bff;
+  --border: #e2e8f0;
+  --mau-chu-dao: #107555;
   --mau-thanh-cong: #10b981;
-  --mau-canh-bao: #f97316;
+  --mau-canh-bao: #f59e0b;
   --mau-loi: #ef4444;
   --mau-chu-dao-pha-12: color-mix(in srgb, var(--mau-chu-dao) 12%, transparent);
   --mau-chu-dao-pha-18: color-mix(in srgb, var(--mau-chu-dao) 18%, transparent);
@@ -89,7 +89,7 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
-  background: linear-gradient(180deg, #f8faff 0%, #ffffff 320px);
+  background-color: #f8fafc;
   color: var(--foreground);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

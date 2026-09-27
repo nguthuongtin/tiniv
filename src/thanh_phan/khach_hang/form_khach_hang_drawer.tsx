@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { X, Save, UserPlus, Edit3, AlertCircle, AlertTriangle, Lightbulb } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
@@ -225,328 +225,381 @@ export default function FormKhachHangDrawer({
 
   const laSua = Boolean(dang_sua);
 
+  if (!mo) return null;
+
   return (
     <div
       className={cn(
-        'fixed inset-0 z-[70] transition duration-200',
-        mo ? 'pointer-events-auto' : 'pointer-events-none'
+        'fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 transition duration-200',
+        mo ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
       )}
       aria-hidden={!mo}
     >
       <div
         onClick={khi_dong}
-        className={cn(
-          'absolute inset-0 bg-slate-900/40 transition-opacity',
-          mo ? 'opacity-100' : 'opacity-0'
-        )}
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200"
       />
-      <aside
+      <div
         className={cn(
-          'absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-200',
-          mo ? 'translate-x-0' : 'translate-x-full'
+          'relative z-10 w-full max-w-3xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden transition-all duration-200',
+          mo ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         )}
       >
-        <header className="flex items-center gap-3 h-16 px-5 border-b border-slate-200 shrink-0">
-          <div className="size-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-            {laSua ? <Edit3 className="size-5" /> : <UserPlus className="size-5" />}
+        <header className="flex items-center gap-3 h-16 px-6 border-b border-slate-200/80 shrink-0 bg-white">
+          <div className="size-9 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center shrink-0">
+            {laSua ? <Edit3 className="size-4.5" /> : <UserPlus className="size-4.5" />}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-bold text-slate-900">
+            <h2 className="font-bold text-slate-900 text-base">
               {laSua ? 'Chỉnh sửa thông tin khách hàng' : 'Thêm khách hàng mới'}
-            </div>
+            </h2>
             {laSua && dang_sua ? (
-              <div className="text-xs text-slate-500 truncate mt-0.5">
-                ID: {dang_sua.id} · Cập nhật lần cuối: {dang_sua.ngay_cap_nhat.slice(0, 10)}
+              <div className="text-[11px] text-slate-400 truncate mt-0.5 font-medium">
+                Mã: {dang_sua.id.slice(0, 8)} · Cập nhật: {dang_sua.ngay_cap_nhat.slice(0, 10)}
               </div>
-            ) : null}
+            ) : (
+              <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                Nhập đầy đủ thông tin để lưu vào cơ sở dữ liệu khách hàng
+              </div>
+            )}
           </div>
           <button
             type="button"
             onClick={khi_dong}
-            aria-label="Dong form"
-            className="size-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 inline-flex items-center justify-center"
+            aria-label="Đóng form"
+            className="size-8.5 rounded-lg border border-slate-200/80 text-slate-400 hover:text-slate-700 hover:bg-slate-100/80 inline-flex items-center justify-center transition cursor-pointer"
           >
             <X className="size-4" />
           </button>
         </header>
 
         <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-y-auto p-8 space-y-5">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5">
             {loi_thong_bao ? (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 flex items-start gap-3">
+              <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-700 flex items-start gap-3">
                 <AlertCircle className="size-4 shrink-0 mt-0.5" />
                 <span>{loi_thong_bao}</span>
               </div>
             ) : null}
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <TruongForm
-                label={
-                  <div className="flex items-center justify-between">
-                    <span>Tên khách hàng *</span>
-                    <button
-                      type="button"
-                      onClick={() => setMoModalQuyChuan(true)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-full transition border border-indigo-200/60"
-                      title="Xem quy chuẩn & hướng dẫn đặt tên khách hàng"
-                    >
-                      <Lightbulb className="size-3 text-amber-500 fill-amber-400" />
-                      <span>Quy chuẩn đặt tên</span>
-                    </button>
-                  </div>
-                }
-                loi={form.formState.errors.ten_khach_hang?.message}
-              >
-                <input
-                  {...form.register('ten_khach_hang', {
-                    onChange: (e) => {
-                      const upper = e.target.value.toUpperCase();
-                      e.target.value = upper;
-                      form.setValue('ten_khach_hang', upper);
-                    }
-                  })}
-                  type="text"
-                  placeholder="VÍ DỤ: UBND XÃ ĐẮK R'MOAN - TP. GIA NGHĨA HOẶC CÔNG TY..."
-                  className={cn(
-                    inputStyleCls,
-                    'uppercase font-semibold',
-                    Boolean(form.formState.errors.ten_khach_hang) && inputLoiCls
-                  )}
-                />
-              </TruongForm>
-              <TruongForm label="Loại khách hàng *" loi={form.formState.errors.loai_khach_hang?.message}>
-                <select
-                  {...form.register('loai_khach_hang')}
-                  className={cn(inputStyleCls, Boolean(form.formState.errors.loai_khach_hang) && inputLoiCls)}
+            {/* PHẦN 1: THÔNG TIN DOANH NGHIỆP / KHÁCH HÀNG */}
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-3 py-1">
+                <div className="h-px bg-slate-200 flex-1" />
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  1. Thông tin doanh nghiệp / Khách hàng
+                </span>
+                <div className="h-px bg-slate-200 flex-1" />
+              </div>
+
+              <div className="space-y-3.5">
+                <TruongForm
+                  label={
+                    <div className="flex items-center justify-between w-full">
+                      <span>Tên khách hàng <span className="text-rose-500 font-bold ml-0.5">*</span></span>
+                      <button
+                        type="button"
+                        onClick={() => setMoModalQuyChuan(true)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-full transition border border-emerald-200/60 cursor-pointer"
+                        title="Xem quy chuẩn & hướng dẫn đặt tên khách hàng"
+                      >
+                        <Lightbulb className="size-3 text-amber-500 fill-amber-400" />
+                        <span>Quy chuẩn đặt tên</span>
+                      </button>
+                    </div>
+                  }
+                  loi={form.formState.errors.ten_khach_hang?.message}
                 >
-                  <option value="doanh_nghiep">Doanh nghiệp</option>
-                  <option value="ca_nhan">Cá nhân</option>
-                  <option value="to_chuc">Tổ chức / Chính quyền</option>
-                  <option value="khac">Loại khác</option>
-                </select>
-              </TruongForm>
-            </div>
+                  <input
+                    {...form.register('ten_khach_hang', {
+                      onChange: (e) => {
+                        const upper = e.target.value.toUpperCase();
+                        e.target.value = upper;
+                        form.setValue('ten_khach_hang', upper);
+                      }
+                    })}
+                    type="text"
+                    placeholder="NHẬP TÊN DOANH NGHIỆP, CÁ NHÂN HOẶC TỔ CHỨC..."
+                    className={cn(
+                      inputStyleCls,
+                      'uppercase font-semibold',
+                      Boolean(form.formState.errors.ten_khach_hang) && inputLoiCls
+                    )}
+                  />
+                </TruongForm>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <TruongForm label="Mã số thuế (MST)" loi={form.formState.errors.ma_so_thue?.message}>
-                <input
-                  {...form.register('ma_so_thue')}
-                  onBlur={(e) => {
-                    form.register('ma_so_thue').onBlur(e);
-                    void xuLyKiemTraMst(e.target.value);
-                  }}
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="010xxxxx"
-                  className={cn(
-                    inputStyleCls,
-                    Boolean(form.formState.errors.ma_so_thue) && inputLoiCls,
-                    canhBaoTrung.mst && '!border-amber-400 !bg-amber-50/60'
-                  )}
-                />
-                {canhBaoTrung.mst ? (
-                  <span className="block text-[11px] mt-1.5 text-amber-700 font-bold flex items-center gap-1.5">
-                    <AlertTriangle className="size-3.5 shrink-0 text-amber-600" />
-                    {canhBaoTrung.mst}
-                  </span>
-                ) : null}
-              </TruongForm>
-              <TruongForm label="Số điện thoại liên hệ" loi={form.formState.errors.so_dien_thoai?.message}>
-                <input
-                  {...form.register('so_dien_thoai')}
-                  onBlur={(e) => {
-                    form.register('so_dien_thoai').onBlur(e);
-                    void xuLyKiemTraSdt(e.target.value);
-                  }}
-                  type="tel"
-                  inputMode="tel"
-                  placeholder="09xx xxx xxx"
-                  className={cn(
-                    inputStyleCls,
-                    Boolean(form.formState.errors.so_dien_thoai) && inputLoiCls,
-                    canhBaoTrung.sdt && '!border-amber-400 !bg-amber-50/60'
-                  )}
-                />
-                {canhBaoTrung.sdt ? (
-                  <span className="block text-[11px] mt-1.5 text-amber-700 font-bold flex items-center gap-1.5">
-                    <AlertTriangle className="size-3.5 shrink-0 text-amber-600" />
-                    {canhBaoTrung.sdt}
-                  </span>
-                ) : null}
-              </TruongForm>
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <TruongForm label="Email giao dịch" loi={form.formState.errors.email?.message}>
-                <input
-                  {...form.register('email')}
-                  type="email"
-                  placeholder="lienhe@khachhang.vn"
-                  className={cn(inputStyleCls, Boolean(form.formState.errors.email) && inputLoiCls)}
-                />
-              </TruongForm>
-              <TruongForm label="Website (nếu có)" loi={form.formState.errors.website?.message}>
-                <input
-                  {...form.register('website')}
-                  type="url"
-                  placeholder="https://khachhang.vn"
-                  className={cn(inputStyleCls, Boolean(form.formState.errors.website) && inputLoiCls)}
-                />
-              </TruongForm>
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <TruongForm label="Tỉnh / Thành phố" loi={form.formState.errors.tinh_thanh?.message}>
-                <select
-                  {...form.register('tinh_thanh')}
-                  onChange={(e) => {
-                    form.setValue('tinh_thanh', e.target.value);
-                    form.setValue('xa_phuong', '');
-                  }}
-                  className={cn(inputStyleCls, Boolean(form.formState.errors.tinh_thanh) && inputLoiCls)}
-                >
-                  <option value="">-- Chọn Tỉnh / Thành phố ({danhSachTinh.length}) --</option>
-                  {danhSachTinh.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                  {tinhThanhDangChon && !danhSachTinh.includes(tinhThanhDangChon) && (
-                    <option value={tinhThanhDangChon}>{tinhThanhDangChon}</option>
-                  )}
-                </select>
-              </TruongForm>
-
-              <TruongForm label="Xã / Phường / Đặc khu" loi={form.formState.errors.xa_phuong?.message}>
-                {nhapTayXa ? (
-                  <div className="flex gap-1.5">
-                    <input
-                      {...form.register('xa_phuong')}
-                      type="text"
-                      placeholder="Nhập tên xã / phường..."
-                      className={cn(inputStyleCls, Boolean(form.formState.errors.xa_phuong) && inputLoiCls)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setNhapTayXa(false)}
-                      className="px-2.5 py-1 text-xs border rounded-lg bg-muted text-muted-foreground hover:text-foreground shrink-0 font-medium"
-                      title="Chọn từ danh sách"
-                    >
-                      Danh sách
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex gap-1.5">
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  <TruongForm label={<>Loại khách hàng <span className="text-rose-500 font-bold ml-0.5">*</span></>} loi={form.formState.errors.loai_khach_hang?.message}>
                     <select
-                      {...form.register('xa_phuong')}
-                      disabled={!tinhThanhDangChon}
-                      className={cn(inputStyleCls, Boolean(form.formState.errors.xa_phuong) && inputLoiCls)}
+                      {...form.register('loai_khach_hang')}
+                      className={cn(inputStyleCls, Boolean(form.formState.errors.loai_khach_hang) && inputLoiCls)}
                     >
-                      <option value="">
-                        {!tinhThanhDangChon
-                          ? '-- Vui lòng chọn Tỉnh trước --'
-                          : dsXaPhuongTheoTinh.length > 0
-                          ? `-- Chọn Xã / Phường (${dsXaPhuongTheoTinh.length}) --`
-                          : '-- Không có xã/phường có sẵn --'}
-                      </option>
-                      {dsXaPhuongTheoTinh.map((item) => (
-                        <option key={item.id} value={item.xa_phuong}>
-                          {item.xa_phuong}
+                      <option value="doanh_nghiep">Doanh nghiệp</option>
+                      <option value="ca_nhan">Cá nhân</option>
+                      <option value="to_chuc">Tổ chức / Chính quyền</option>
+                      <option value="khac">Loại khác</option>
+                    </select>
+                  </TruongForm>
+
+                  <TruongForm label="Mã số thuế (MST)" loi={form.formState.errors.ma_so_thue?.message}>
+                    <input
+                      {...form.register('ma_so_thue')}
+                      onBlur={(e) => {
+                        form.register('ma_so_thue').onBlur(e);
+                        void xuLyKiemTraMst(e.target.value);
+                      }}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Ví dụ: 0101234567"
+                      className={cn(
+                        inputStyleCls,
+                        Boolean(form.formState.errors.ma_so_thue) && inputLoiCls,
+                        canhBaoTrung.mst && '!border-amber-400 !bg-amber-50/60'
+                      )}
+                    />
+                    {canhBaoTrung.mst ? (
+                      <span className="block text-[11px] mt-1.5 text-amber-700 font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="size-3.5 shrink-0 text-amber-600" />
+                        {canhBaoTrung.mst}
+                      </span>
+                    ) : null}
+                  </TruongForm>
+                </div>
+
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  <TruongForm label="Số điện thoại liên hệ" loi={form.formState.errors.so_dien_thoai?.message}>
+                    <input
+                      {...form.register('so_dien_thoai')}
+                      onBlur={(e) => {
+                        form.register('so_dien_thoai').onBlur(e);
+                        void xuLyKiemTraSdt(e.target.value);
+                      }}
+                      type="tel"
+                      inputMode="tel"
+                      placeholder="Ví dụ: 0912 345 678"
+                      className={cn(
+                        inputStyleCls,
+                        Boolean(form.formState.errors.so_dien_thoai) && inputLoiCls,
+                        canhBaoTrung.sdt && '!border-amber-400 !bg-amber-50/60'
+                      )}
+                    />
+                    {canhBaoTrung.sdt ? (
+                      <span className="block text-[11px] mt-1.5 text-amber-700 font-bold flex items-center gap-1.5">
+                        <AlertTriangle className="size-3.5 shrink-0 text-amber-600" />
+                        {canhBaoTrung.sdt}
+                      </span>
+                    ) : null}
+                  </TruongForm>
+
+                  <TruongForm label="Email giao dịch" loi={form.formState.errors.email?.message}>
+                    <input
+                      {...form.register('email')}
+                      type="email"
+                      placeholder="lienhe@doanhnghiep.vn"
+                      className={cn(inputStyleCls, Boolean(form.formState.errors.email) && inputLoiCls)}
+                    />
+                  </TruongForm>
+                </div>
+
+                <TruongForm label="Website doanh nghiệp" loi={form.formState.errors.website?.message}>
+                  <input
+                    {...form.register('website')}
+                    type="url"
+                    placeholder="https://example.com"
+                    className={cn(inputStyleCls, Boolean(form.formState.errors.website) && inputLoiCls)}
+                  />
+                </TruongForm>
+              </div>
+            </div>
+
+            {/* PHẦN 2: THÔNG TIN ĐỊA CHỈ & ĐỊA BÀN */}
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-3 py-1">
+                <div className="h-px bg-slate-200 flex-1" />
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  2. Địa chỉ & Địa bàn hoạt động
+                </span>
+                <div className="h-px bg-slate-200 flex-1" />
+              </div>
+
+              <div className="space-y-3.5">
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  <TruongForm label="Tỉnh / Thành phố" loi={form.formState.errors.tinh_thanh?.message}>
+                    <select
+                      {...form.register('tinh_thanh')}
+                      onChange={(e) => {
+                        form.setValue('tinh_thanh', e.target.value);
+                        form.setValue('xa_phuong', '');
+                      }}
+                      className={cn(inputStyleCls, Boolean(form.formState.errors.tinh_thanh) && inputLoiCls)}
+                    >
+                      <option value="">-- Chọn Tỉnh / Thành phố ({danhSachTinh.length}) --</option>
+                      {danhSachTinh.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
                         </option>
                       ))}
-                      {xaPhuongDangChon &&
-                        !dsXaPhuongTheoTinh.some((x) => x.xa_phuong === xaPhuongDangChon) && (
-                          <option value={xaPhuongDangChon}>{xaPhuongDangChon}</option>
-                        )}
+                      {tinhThanhDangChon && !danhSachTinh.includes(tinhThanhDangChon) && (
+                        <option value={tinhThanhDangChon}>{tinhThanhDangChon}</option>
+                      )}
                     </select>
-                    <button
-                      type="button"
-                      onClick={() => setNhapTayXa(true)}
-                      className="px-2.5 py-1 text-xs border rounded-lg bg-muted text-muted-foreground hover:text-foreground shrink-0 font-medium"
-                      title="Nhập tên khác nếu chưa có trong danh mục"
-                    >
-                      Nhập tay
-                    </button>
-                  </div>
-                )}
-              </TruongForm>
+                  </TruongForm>
+
+                  <TruongForm label="Xã / Phường / Đặc khu" loi={form.formState.errors.xa_phuong?.message}>
+                    {nhapTayXa ? (
+                      <div className="flex gap-1.5">
+                        <input
+                          {...form.register('xa_phuong')}
+                          type="text"
+                          placeholder="Nhập tên xã / phường..."
+                          className={cn(inputStyleCls, Boolean(form.formState.errors.xa_phuong) && inputLoiCls)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setNhapTayXa(false)}
+                          className="px-2.5 py-1 text-xs border rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 shrink-0 font-medium cursor-pointer"
+                          title="Chọn từ danh sách"
+                        >
+                          Danh sách
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1.5">
+                        <select
+                          {...form.register('xa_phuong')}
+                          disabled={!tinhThanhDangChon}
+                          className={cn(inputStyleCls, Boolean(form.formState.errors.xa_phuong) && inputLoiCls)}
+                        >
+                          <option value="">
+                            {!tinhThanhDangChon
+                              ? '-- Vui lòng chọn Tỉnh trước --'
+                              : dsXaPhuongTheoTinh.length > 0
+                              ? `-- Chọn Xã / Phường (${dsXaPhuongTheoTinh.length}) --`
+                              : '-- Không có xã/phường có sẵn --'}
+                          </option>
+                          {dsXaPhuongTheoTinh.map((item) => (
+                            <option key={item.id} value={item.xa_phuong}>
+                              {item.xa_phuong}
+                            </option>
+                          ))}
+                          {xaPhuongDangChon &&
+                            !dsXaPhuongTheoTinh.some((x) => x.xa_phuong === xaPhuongDangChon) && (
+                              <option value={xaPhuongDangChon}>{xaPhuongDangChon}</option>
+                            )}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setNhapTayXa(true)}
+                          className="px-2.5 py-1 text-xs border rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 shrink-0 font-medium cursor-pointer"
+                          title="Nhập tên khác nếu chưa có trong danh mục"
+                        >
+                          Nhập tay
+                        </button>
+                      </div>
+                    )}
+                  </TruongForm>
+                </div>
+
+                <TruongForm label="Địa chỉ chi tiết / Số nhà" loi={form.formState.errors.dia_chi?.message}>
+                  <input
+                    {...form.register('dia_chi')}
+                    type="text"
+                    placeholder="Số nhà, đường, khu phố / ấp..."
+                    className={cn(inputStyleCls, Boolean(form.formState.errors.dia_chi) && inputLoiCls)}
+                  />
+                </TruongForm>
+              </div>
             </div>
 
-            <TruongForm label="Địa chỉ văn phòng / Số nhà" loi={form.formState.errors.dia_chi?.message}>
-              <input
-                {...form.register('dia_chi')}
-                type="text"
-                placeholder="Số nhà, đường, khu phố..."
-                className={cn(inputStyleCls, Boolean(form.formState.errors.dia_chi) && inputLoiCls)}
-              />
-            </TruongForm>
+            {/* PHẦN 3: PHÂN CÔNG & QUẢN LÝ NỘI BỘ */}
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-3 py-1">
+                <div className="h-px bg-slate-200 flex-1" />
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  3. Phân công & Quản lý nội bộ
+                </span>
+                <div className="h-px bg-slate-200 flex-1" />
+              </div>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <TruongForm label="Chi nhánh quản lý">
-                <select {...form.register('chi_nhanh_id')} className={inputStyleCls}>
-                  <option value="">-- Chưa gắn chi nhánh --</option>
-                  {dsChiNhanh.map((cn) => (
-                    <option key={cn.id} value={cn.id}>
-                      {cn.ten_chi_nhanh}
-                    </option>
-                  ))}
-                </select>
-              </TruongForm>
-              <TruongForm label="Người phụ trách (Sales / CSKH)">
-                <select {...form.register('nguoi_phu_trach_id')} className={inputStyleCls}>
-                  <option value="">-- Chưa phân công --</option>
-                  {dsNhanSu.map((ns) => (
-                    <option key={ns.id} value={ns.id}>
-                      {ns.ho_va_ten} ({ns.ma_nhan_vien})
-                    </option>
-                  ))}
-                </select>
-              </TruongForm>
+              <div className="space-y-3.5">
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  <TruongForm label="Chi nhánh quản lý">
+                    <select {...form.register('chi_nhanh_id')} className={inputStyleCls}>
+                      <option value="">-- Chưa gắn chi nhánh --</option>
+                      {dsChiNhanh.map((cn) => (
+                        <option key={cn.id} value={cn.id}>
+                          {cn.ten_chi_nhanh}
+                        </option>
+                      ))}
+                    </select>
+                  </TruongForm>
+                  <TruongForm label="Người phụ trách">
+                    <select {...form.register('nguoi_phu_trach_id')} className={inputStyleCls}>
+                      <option value="">-- Chưa phân công --</option>
+                      {dsNhanSu.map((ns) => (
+                        <option key={ns.id} value={ns.id}>
+                          {ns.ho_va_ten} ({ns.ma_nhan_vien})
+                        </option>
+                      ))}
+                    </select>
+                  </TruongForm>
+                </div>
+
+                {laSua ? (
+                  <TruongForm label="Trạng thái khách hàng">
+                    <select {...form.register('trang_thai')} className={inputStyleCls}>
+                      <option value="hoat_dong">Hoạt động — Đang hợp tác</option>
+                      <option value="tam_dung">Tạm dừng — Tạm ngừng</option>
+                      <option value="da_xoa">Đã xóa (Ẩn khỏi danh sách)</option>
+                    </select>
+                  </TruongForm>
+                ) : null}
+
+                <TruongForm
+                  label={
+                    <div className="flex items-center justify-between w-full">
+                      <span>Ghi chú nội bộ</span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {(form.watch('ghi_chu') || '').length} / 1000
+                      </span>
+                    </div>
+                  }
+                  loi={form.formState.errors.ghi_chu?.message}
+                >
+                  <textarea
+                    {...form.register('ghi_chu')}
+                    rows={3}
+                    placeholder="Ghi chú thêm về khách hàng..."
+                    className={cn(
+                      inputStyleCls,
+                      'h-auto min-h-[85px] resize-y py-2.5',
+                      Boolean(form.formState.errors.ghi_chu) && inputLoiCls
+                    )}
+                  />
+                </TruongForm>
+              </div>
             </div>
-
-            {laSua ? (
-              <TruongForm label="Trạng thái tài khoản khách">
-                <select {...form.register('trang_thai')} className={inputStyleCls}>
-                  <option value="hoat_dong">Hoạt động — đang hợp tác</option>
-                  <option value="tam_dung">Tạm dừng — tạm ngừng</option>
-                  <option value="da_xoa">Đã xóa (ẩn khỏi danh sách mặc định)</option>
-                </select>
-              </TruongForm>
-            ) : null}
-
-            <TruongForm label="Ghi chú nội bộ" loi={form.formState.errors.ghi_chu?.message}>
-              <textarea
-                {...form.register('ghi_chu')}
-                rows={4}
-                placeholder="Thông tin thêm về khách hàng, quy tắc liên hệ, phòng ban… (không hiển thị với khách)"
-                className={cn(
-                  inputStyleCls,
-                  'min-h-[100px] resize-y py-2',
-                  Boolean(form.formState.errors.ghi_chu) && inputLoiCls
-                )}
-              />
-            </TruongForm>
           </div>
 
-          <footer className="flex items-center gap-3 border-t border-slate-200 p-5 bg-slate-50 shrink-0 justify-end">
+          <footer className="flex items-center gap-3 border-t border-slate-200/80 px-6 py-4 bg-slate-50/70 shrink-0 justify-end">
             <button
               type="button"
               onClick={khi_dong}
-              className="inline-flex items-center justify-center h-11 px-5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-sm font-medium transition"
+              className="inline-flex items-center justify-center h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-sm font-semibold transition cursor-pointer"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={dang_xu_ly || !form.formState.isDirty || form.formState.isSubmitting}
-              className="inline-flex items-center justify-center gap-2.5 h-11 px-5 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold transition disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+              className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-xs cursor-pointer"
             >
-              <Save className="size-[18px]" />
+              <Save className="size-4" />
               {dang_xu_ly ? 'Đang lưu…' : laSua ? 'Lưu thay đổi' : 'Thêm khách hàng'}
             </button>
           </footer>
         </form>
-      </aside>
+      </div>
 
       <ModalHuongDanDatTen
         mo={moModalQuyChuan}
@@ -561,8 +614,8 @@ export default function FormKhachHangDrawer({
 }
 
 const inputStyleCls =
-  'w-full h-11 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition';
-const inputLoiCls = '!border-rose-400 !bg-rose-50 !text-rose-900 focus:!ring-rose-500/30';
+  'w-full h-10 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs';
+const inputLoiCls = '!border-rose-400 !bg-rose-50/50 !text-rose-900 focus:!ring-rose-500/20 focus:!border-rose-500';
 
 const TruongForm = ({
   label,
@@ -574,11 +627,11 @@ const TruongForm = ({
   children: React.ReactNode;
 }) => (
   <div className="block">
-    <div className="text-xs font-semibold text-slate-700 mb-2">{label}</div>
+    <div className="text-xs font-bold text-slate-800 mb-1.5">{label}</div>
     {children}
     {loi ? (
-      <span className="block text-[11px] mt-1.5 text-rose-600 font-medium flex items-start gap-1.5">
-        <AlertCircle className="size-3.5 mt-[1px] shrink-0" />
+      <span className="block text-[11px] mt-1 text-rose-600 font-medium flex items-start gap-1">
+        <AlertCircle className="size-3.5 mt-0.5 shrink-0" />
         {loi}
       </span>
     ) : null}

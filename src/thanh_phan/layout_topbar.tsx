@@ -215,13 +215,13 @@ export default function ThanhPhanTopbar() {
                   <ChevronRight className="size-3.5 text-slate-300 shrink-0" strokeWidth={2} />
 
                   <span className="inline-flex items-center gap-1.5 font-bold text-slate-900 px-2 py-1 rounded-lg bg-slate-100/80 border border-slate-200/50 truncate max-w-[260px] tracking-tight">
-                    <PageIcon className="size-3.5 text-[#007AFF] shrink-0" strokeWidth={2.2} />
+                    <PageIcon className="size-3.5 text-[#107555] shrink-0" strokeWidth={2.2} />
                     <span className="truncate">{tieuDeChiTiet ?? thongTin.nhan}</span>
                   </span>
                 </>
               ) : (
                 <span className="inline-flex items-center gap-1.5 font-bold text-slate-900 px-2 py-1 rounded-lg bg-slate-100/80 border border-slate-200/50 truncate tracking-tight">
-                  <PageIcon className="size-3.5 text-[#007AFF] shrink-0" strokeWidth={2.2} />
+                  <PageIcon className="size-3.5 text-[#107555] shrink-0" strokeWidth={2.2} />
                   <span className="truncate">{thongTin.nhan}</span>
                 </span>
               )}
@@ -232,7 +232,7 @@ export default function ThanhPhanTopbar() {
         {/* Tiêu đề thanh Topbar trên Mobile (chuẩn Mobile App tinh gọn) */}
         <div className="sm:hidden flex items-center gap-1.5 min-w-0">
           <span className="inline-flex items-center gap-1.5 font-bold text-slate-900 text-sm truncate tracking-tight">
-            <PageIcon className="size-4 text-[#007AFF] shrink-0" strokeWidth={2.2} />
+            <PageIcon className="size-4 text-[#107555] shrink-0" strokeWidth={2.2} />
             <span className="truncate">{tieuDeChiTiet ?? thongTin.nhan}</span>
           </span>
         </div>
@@ -252,7 +252,7 @@ export default function ThanhPhanTopbar() {
             type="button"
             onClick={nhanNutThem}
             title={thongTin.nut_them}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#007AFF] to-[#0055D4] hover:opacity-95 text-white text-xs sm:text-sm font-semibold size-8.5 sm:w-auto sm:h-9.5 sm:px-3.5 shadow-sm shadow-blue-500/20 transition-all shrink-0 active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold size-8.5 sm:w-auto sm:h-9.5 sm:px-3.5 shadow-sm shadow-emerald-900/10 transition-all shrink-0 active:scale-95"
           >
             <Plus className="size-4" strokeWidth={2.5} />
             <span className="hidden sm:inline">{thongTin.nut_them}</span>

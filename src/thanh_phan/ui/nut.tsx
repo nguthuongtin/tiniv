@@ -9,7 +9,7 @@ type KichThuocNut = 'xs' | 'sm' | 'md' | 'lg' | 'icon';
 
 const KIEU_NUT: Record<KieuNut, string> = {
   primary:
-    'bg-gradient-to-r from-[#007AFF] to-[#0055D4] text-white shadow-sm shadow-blue-500/20 hover:opacity-95 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 transition-all',
+    'bg-[#107555] hover:bg-[#0d6146] text-white shadow-sm shadow-emerald-700/20 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all',
   secondary:
     'bg-slate-100 text-slate-800 hover:bg-slate-200/80 active:scale-[0.97] border border-slate-200/60 transition-all',
   ghost:

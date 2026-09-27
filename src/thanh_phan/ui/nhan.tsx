@@ -10,11 +10,11 @@ export const Nhan = React.forwardRef<HTMLLabelElement, NhanProps>(
   ({ className, children, bat_buoc, ...props }, ref) => (
     <label
       ref={ref}
-      className={cn('text-sm font-medium text-foreground leading-none', className)}
+      className={cn('text-xs font-bold text-slate-800 block leading-tight', className)}
       {...props}
     >
       {children}
-      {bat_buoc ? <span className="ml-1 text-danger font-semibold">*</span> : null}
+      {bat_buoc ? <span className="ml-0.5 text-rose-500 font-bold">*</span> : null}
     </label>
   )
 );

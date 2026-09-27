@@ -284,7 +284,7 @@ export default function TrangTaiKhoanCaNhan() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="absolute -bottom-1 -right-1 size-7.5 rounded-full bg-[#007AFF] hover:bg-[#0055D4] text-white flex items-center justify-center shadow-sm transition active:scale-95"
+              className="absolute -bottom-1 -right-1 size-7.5 rounded-full bg-[#107555] hover:bg-[#0d6146] text-white flex items-center justify-center shadow-sm transition active:scale-95"
               title="Đổi ảnh đại diện"
             >
               <Camera className="size-3.5" />
@@ -296,7 +296,7 @@ export default function TrangTaiKhoanCaNhan() {
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 {nguoiDungHienTai?.ho_va_ten || 'Tài khoản cá nhân'}
               </h1>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-[#107555] border border-emerald-200/60">
                 <BadgeCheck className="size-3.5" /> {tenVaiTro}
               </span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -394,7 +394,7 @@ export default function TrangTaiKhoanCaNhan() {
                         onClick={() => fileInputRef.current?.click()}
                         className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200/90 text-xs font-bold text-slate-800 shadow-2xs transition active:scale-95 inline-flex items-center gap-1.5"
                       >
-                        <Camera className="size-3.5 text-[#007AFF]" />
+                        <Camera className="size-3.5 text-[#107555]" />
                         <span>Chọn ảnh từ máy / điện thoại</span>
                       </button>
 
@@ -416,7 +416,7 @@ export default function TrangTaiKhoanCaNhan() {
                     <button
                       type="button"
                       onClick={() => setHienNhapLink(!hienNhapLink)}
-                      className="text-[11px] text-[#007AFF] hover:underline font-medium inline-flex items-center gap-1"
+                      className="text-[11px] text-[#107555] hover:underline font-medium inline-flex items-center gap-1"
                     >
                       <LinkIcon className="size-3" />
                       <span>{hienNhapLink ? 'Đóng ô nhập URL' : 'Hoặc dán link ảnh từ web'}</span>
@@ -436,7 +436,7 @@ export default function TrangTaiKhoanCaNhan() {
                           setAvatarPreview(e.target.value.trim());
                         }
                       }}
-                      className="w-full px-3 py-2 text-xs rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                      className="w-full px-3 py-2 text-xs rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                     />
                   </div>
                 )}
@@ -454,7 +454,7 @@ export default function TrangTaiKhoanCaNhan() {
                     placeholder="VD: 0912345678"
                     value={soDienThoai}
                     onChange={(e) => setSoDienThoai(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl bg-slate-50/50 border border-slate-200/90 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 transition"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm rounded-xl bg-slate-50/50 border border-slate-200/90 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition"
                   />
                 </div>
               </div>
@@ -463,7 +463,7 @@ export default function TrangTaiKhoanCaNhan() {
                 <button
                   type="submit"
                   disabled={dangLuuHoSo}
-                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#0055D4] text-white text-xs sm:text-sm font-bold shadow-sm shadow-blue-500/25 transition active:scale-95 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#107555] hover:bg-[#0d6146] text-white text-xs sm:text-sm font-bold shadow-sm shadow-emerald-700/20 transition active:scale-95 disabled:opacity-50 inline-flex items-center justify-center gap-2"
                 >
                   {dangLuuHoSo ? (
                     <>
@@ -511,7 +511,7 @@ export default function TrangTaiKhoanCaNhan() {
 
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
                 <span className="text-[10.5px] text-slate-400 font-medium block">Vai trò</span>
-                <span className="font-bold text-[#007AFF] block truncate">
+                <span className="font-bold text-[#107555] block truncate">
                   {tenVaiTro}
                 </span>
               </div>
@@ -584,7 +584,7 @@ export default function TrangTaiKhoanCaNhan() {
                     placeholder="Tối thiểu 6 ký tự"
                     value={matKhauMoi}
                     onChange={(e) => setMatKhauMoi(e.target.value)}
-                    className="w-full px-3.5 pr-10 py-2.5 text-xs sm:text-sm rounded-xl bg-slate-50/50 border border-slate-200/90 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 transition"
+                    className="w-full px-3.5 pr-10 py-2.5 text-xs sm:text-sm rounded-xl bg-slate-50/50 border border-slate-200/90 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition"
                   />
                   <button
                     type="button"
@@ -607,7 +607,7 @@ export default function TrangTaiKhoanCaNhan() {
                     placeholder="Nhập lại mật khẩu mới"
                     value={xacNhanMatKhau}
                     onChange={(e) => setXacNhanMatKhau(e.target.value)}
-                    className="w-full px-3.5 pr-10 py-2.5 text-xs sm:text-sm rounded-xl bg-slate-50/50 border border-slate-200/90 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 transition"
+                    className="w-full px-3.5 pr-10 py-2.5 text-xs sm:text-sm rounded-xl bg-slate-50/50 border border-slate-200/90 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition"
                   />
                   <button
                     type="button"

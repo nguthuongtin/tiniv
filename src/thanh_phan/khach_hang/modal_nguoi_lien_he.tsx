@@ -105,7 +105,7 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden border border-slate-200">
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-6 py-4">
           <div className="flex items-center gap-3 text-slate-800">
-            <div className="p-2 bg-blue-100 rounded-xl text-blue-600">
+            <div className="p-2 bg-emerald-50 rounded-xl text-emerald-700">
               {dangSua ? <UserCheck className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
             </div>
             <div>
@@ -144,7 +144,7 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
               value={hoVaTen}
               onChange={(e) => setHoVaTen(e.target.value)}
               placeholder="VD: Nguyễn Văn An"
-              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
 
@@ -157,7 +157,7 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
               value={chucVu}
               onChange={(e) => setChucVu(e.target.value)}
               placeholder="VD: Giám đốc, Kế toán trưởng, Trưởng phòng mua hàng..."
-              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
 
@@ -171,7 +171,7 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
                 value={soDienThoai}
                 onChange={(e) => setSoDienThoai(e.target.value)}
                 placeholder="0912345678"
-                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
             </div>
             <div>
@@ -183,7 +183,7 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="contact@congty.com"
-                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
             </div>
           </div>
@@ -197,7 +197,7 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
               value={ghiChu}
               onChange={(e) => setGhiChu(e.target.value)}
               placeholder="Ghi chú thêm về người liên hệ này (vai trò quyết định, thói quen liên hệ...)"
-              className="w-full rounded-xl border border-slate-300 p-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-xl border border-slate-300 p-3 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
 
@@ -213,7 +213,7 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
             <button
               type="submit"
               disabled={dangLuu || !hoVaTen.trim()}
-              className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="rounded-xl bg-[#107555] hover:bg-[#0d6146] px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-700/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {dangLuu ? 'Đang lưu...' : dangSua ? 'Cập nhật' : 'Thêm người liên hệ'}
             </button>

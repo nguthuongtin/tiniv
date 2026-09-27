@@ -41,7 +41,7 @@ export function ToLichNgay({
     : trangThai === 'chua_nop'
     ? 'bg-[#FF3B30]'
     : noiBat
-    ? 'bg-[#007AFF]'
+    ? 'bg-[#107555]'
     : 'bg-[#FF3B30]';
 
   if (kichThuoc === 'sm') {

@@ -3,15 +3,14 @@
  */
 
 export const MAU_DAT_TEN_KHACH_HANG = [
-  { nhan: 'UBND Xã/Phường', mau: "UBND XÃ ĐẮK R'MOAN - TP. GIA NGHĨA" },
-  { nhan: 'UBND Huyện/TX', mau: 'UBND HUYỆN ĐẮK R\'LẤP - TỈNH ĐẮK NÔNG' },
-  { nhan: 'Công an Huyện/Xã', mau: 'CÔNG AN HUYỆN CƯ JÚT - TỈNH ĐẮK NÔNG' },
-  { nhan: 'Phòng chuyên môn', mau: 'PHÒNG GD&ĐT HUYỆN KRÔNG NÔ' },
-  { nhan: 'Trung tâm Y tế', mau: 'TRUNG TÂM Y TẾ HUYỆN ĐẮK MIL' },
-  { nhan: 'Trường học', mau: 'TRƯỜNG THPT CHU VĂN AN - GIA NGHĨA' },
-  { nhan: 'Công ty Cổ phần', mau: 'CÔNG TY CP CÔNG NGHỆ SAO MAI - CN ĐẮK NÔNG' },
+  { nhan: 'UBND Xã/Phường', mau: "UBND XÃ ĐẮK R'MOAN - TỈNH ĐẮK NÔNG" },
+  { nhan: 'Công an Xã/Phường', mau: 'CÔNG AN XÃ CƯ JÚT - TỈNH ĐẮK NÔNG' },
+  { nhan: 'Phòng chuyên môn', mau: 'PHÒNG GD&ĐT - TỈNH ĐẮK NÔNG' },
+  { nhan: 'Trung tâm Y tế', mau: 'TRUNG TÂM Y TẾ - TỈNH ĐẮK NÔNG' },
+  { nhan: 'Trường học', mau: 'TRƯỜNG THPT CHU VĂN AN - ĐẮK NÔNG' },
+  { nhan: 'Công ty Cổ phần', mau: 'CÔNG TY CP CÔNG NGHỆ SAO MAI' },
   { nhan: 'Công ty TNHH', mau: 'CÔNG TY TNHH MTV CÀ PHÊ AN THÁI' },
-  { nhan: 'Hộ kinh doanh', mau: 'HKD NGUYỄN VĂN NAM - TIỆM VÀNG KIM PHÁT' }
+  { nhan: 'Hộ kinh doanh', mau: 'HKD NGUYỄN VĂN NAM' }
 ];
 
 export const GIAI_PHAP_DU_AN_PHO_BIEN = [

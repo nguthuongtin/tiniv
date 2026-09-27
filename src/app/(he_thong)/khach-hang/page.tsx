@@ -303,56 +303,76 @@ export default function TrangKhachHang() {
         </div>
       </div>
 
-      {/* Bảng số liệu điều hành tinh gọn chuẩn Apple trên Desktop */}
-      <div className="hidden sm:grid sm:grid-cols-4 bg-white rounded-[20px] border border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)] divide-x divide-slate-100/90 overflow-hidden">
+      {/* Bảng số liệu điều hành chuẩn Forest Green Banner trên Desktop (ảnh mẫu) */}
+      <div className="hidden sm:grid sm:grid-cols-4 bg-[#0e3e2d] rounded-2xl p-3.5 gap-3 shadow-sm border border-emerald-950/20">
         {/* 1. Tổng khách hàng */}
-        <div className="p-3.5 xl:p-4 flex items-center gap-3">
-          <div className="size-10 rounded-[14px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0 border border-[#007AFF]/15">
+        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-white/10 text-emerald-200 flex items-center justify-center shrink-0 border border-white/10">
             <Building2 className="size-5" strokeWidth={2.2} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Tổng khách hàng</div>
-            <div className="text-[18px] xl:text-[20px] font-extrabold text-slate-900 tabular-nums tracking-tight leading-none mt-1">
+            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
+              Tổng khách hàng
+            </div>
+            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
               {so_luong_theo_trang_thai.tong}
+            </div>
+            <div className="text-[10.5px] text-emerald-300/70 mt-0.5 truncate">
+              Quy mô hệ thống
             </div>
           </div>
         </div>
 
         {/* 2. Đang hợp tác */}
-        <div className="p-3.5 xl:p-4 flex items-center gap-3">
-          <div className="size-10 rounded-[14px] bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-500/15">
+        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-emerald-400/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/20">
             <CheckCircle2 className="size-5" strokeWidth={2.2} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Đang hợp tác</div>
-            <div className="text-[18px] xl:text-[20px] font-extrabold text-emerald-600 tabular-nums tracking-tight leading-none mt-1">
+            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
+              Đang hợp tác
+            </div>
+            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
               {so_luong_theo_trang_thai.hoat_dong}
+            </div>
+            <div className="text-[10.5px] text-emerald-300/70 mt-0.5 truncate">
+              Chiếm {so_luong_theo_trang_thai.tong ? Math.round((so_luong_theo_trang_thai.hoat_dong / so_luong_theo_trang_thai.tong) * 100) : 0}% tổng số
             </div>
           </div>
         </div>
 
         {/* 3. Tạm dừng */}
-        <div className="p-3.5 xl:p-4 flex items-center gap-3">
-          <div className="size-10 rounded-[14px] bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 border border-amber-500/15">
+        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 border border-amber-400/20">
             <AlertTriangle className="size-5" strokeWidth={2.2} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Tạm dừng</div>
-            <div className="text-[18px] xl:text-[20px] font-extrabold text-amber-600 tabular-nums tracking-tight leading-none mt-1">
+            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
+              Tạm dừng
+            </div>
+            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
               {so_luong_theo_trang_thai.tam_dung}
+            </div>
+            <div className="text-[10.5px] text-emerald-300/70 mt-0.5 truncate">
+              Cần theo dõi lại
             </div>
           </div>
         </div>
 
         {/* 4. Đã xóa */}
-        <div className="p-3.5 xl:p-4 flex items-center gap-3">
-          <div className="size-10 rounded-[14px] bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0 border border-rose-500/15">
+        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-rose-400/20 text-rose-300 flex items-center justify-center shrink-0 border border-rose-400/20">
             <Trash2 className="size-5" strokeWidth={2.2} />
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Đã xóa</div>
-            <div className="text-[18px] xl:text-[20px] font-extrabold text-rose-600 tabular-nums tracking-tight leading-none mt-1">
+            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
+              Đã xóa
+            </div>
+            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
               {so_luong_theo_trang_thai.da_xoa}
+            </div>
+            <div className="text-[10.5px] text-emerald-300/70 mt-0.5 truncate">
+              Lưu trữ thùng rác
             </div>
           </div>
         </div>
@@ -373,43 +393,274 @@ export default function TrangKhachHang() {
       ) : danhSachDaSapXep.length === 0 ? (
         <KhongCoDuLieu onThemMoi={mo_them_moi} />
       ) : (
-        <div className="space-y-3">
-          {/* Header danh sách chuẩn ảnh */}
-          <div className="flex items-center justify-between px-1 pt-1">
-            <h2 className="text-[17px] sm:text-[19px] font-bold text-slate-900 tracking-tight">
-              Danh sách khách hàng
-            </h2>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          {/* Header danh sách chuẩn bảng mẫu */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-slate-200/80 bg-white">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                Danh sách khách hàng
+              </h2>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                {danhSachDaSapXep.length}
+              </span>
+            </div>
 
-            <div className="relative">
-              <select
-                value={kieuSapXep}
-                onChange={(e) => setKieuSapXep(e.target.value as any)}
-                aria-label="Sắp xếp danh sách khách hàng"
-                className="appearance-none text-xs sm:text-[13px] font-semibold text-[#007AFF] bg-white border border-slate-200 hover:border-blue-300 rounded-xl px-3 py-1.5 pr-7 shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+            <div className="flex items-center gap-2.5">
+              <div className="relative">
+                <select
+                  value={kieuSapXep}
+                  onChange={(e) => setKieuSapXep(e.target.value as any)}
+                  aria-label="Sắp xếp danh sách khách hàng"
+                  className="appearance-none text-xs sm:text-[13px] font-semibold text-emerald-800 bg-white border border-slate-200 hover:border-emerald-300 rounded-xl px-3 py-2 pr-7 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
+                >
+                  <option value="moi_nhat">Mới nhất</option>
+                  <option value="cu_nhat">Cũ nhất</option>
+                  <option value="ten_az">Tên A-Z</option>
+                </select>
+                <ChevronDown className="size-3.5 text-emerald-700 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              <button
+                type="button"
+                onClick={mo_them_moi}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
               >
-                <option value="moi_nhat">Mới nhất</option>
-                <option value="cu_nhat">Cũ nhất</option>
-                <option value="ten_az">Tên A-Z</option>
-              </select>
-              <ChevronDown className="size-3.5 text-[#007AFF] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Plus className="size-4" />
+                <span>Thêm khách hàng</span>
+              </button>
             </div>
           </div>
 
-          {/* Lưới danh sách thẻ khách hàng chuẩn Apple (1 cột Mobile, 2-3 cột PC) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
-            {danhSachDaSapXep.map((kh) => (
-              <TheKhachHang
-                key={kh.id}
-                kh={kh}
-                chiNhanh={dsChiNhanh.find((c) => c.id === kh.chi_nhanh_id) ?? null}
-                nguoiPhuTrach={dsNhanSu.find((n) => n.id === kh.nguoi_phu_trach_id) ?? null}
-                onSua={() => mo_chinh_sua(kh)}
-                onDoiTrangThai={() => xu_ly_doi_trang_thai(kh)}
-                onXoaMem={() => xu_ly_xoa_mem(kh)}
-                dangXuLyDoiTT={Boolean(dang_xu_ly_khac[`doi_tt_${kh.id}`])}
-                dangXuLyXoa={Boolean(dang_xu_ly_khac[`xoa_${kh.id}`])}
-              />
-            ))}
+          {/* 1. GIAO DIỆN BẢNG TRÊN DESKTOP / TABLET (ẩn trên mobile) */}
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4 min-w-[260px]">THÔNG TIN KHÁCH HÀNG</th>
+                  <th className="py-3 px-4 min-w-[200px]">ĐỊA BÀN HOẠT ĐỘNG</th>
+                  <th className="py-3 px-4 w-[130px]">PHÂN LOẠI</th>
+                  <th className="py-3 px-4 w-[120px]">TRẠNG THÁI</th>
+                  <th className="py-3 px-4 w-[120px] text-right">THAO TÁC</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {danhSachDaSapXep.map((kh) => {
+                  const loaiKhNhan = TEN_LOAI_KH[kh.loai_khach_hang]?.nhan || 'Khách hàng';
+                  const thongTinTrangThai =
+                    kh.trang_thai === 'hoat_dong'
+                      ? { nhan: 'Hợp tác', capsule: 'bg-emerald-50 text-emerald-700 border-emerald-200/80', dot: 'bg-emerald-500' }
+                      : kh.trang_thai === 'tam_dung'
+                      ? { nhan: 'Tạm dừng', capsule: 'bg-amber-50 text-amber-700 border-amber-200/80', dot: 'bg-amber-500' }
+                      : { nhan: 'Đã xóa', capsule: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
+
+                  return (
+                    <tr
+                      key={kh.id}
+                      className={cn(
+                        'hover:bg-slate-50/70 transition-colors',
+                        kh.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/30'
+                      )}
+                    >
+                      {/* 1. THÔNG TIN KHÁCH HÀNG */}
+                      <td className="py-3.5 px-4">
+                        <Link
+                          href={`/khach-hang/${kh.id}`}
+                          className="font-bold text-slate-900 text-sm hover:text-emerald-700 transition-colors line-clamp-1"
+                        >
+                          {kh.ten_khach_hang}
+                        </Link>
+                        <div className="flex items-center gap-3 text-xs text-slate-400 font-normal mt-0.5 flex-wrap">
+                          {kh.ma_so_thue && (
+                            <span className="font-mono text-slate-500">MST: {kh.ma_so_thue}</span>
+                          )}
+                          {kh.so_dien_thoai && (
+                            <span className="inline-flex items-center gap-1 text-slate-500">
+                              <Phone className="size-3 text-slate-400" />
+                              {kh.so_dien_thoai}
+                            </span>
+                          )}
+                          {kh.email && (
+                            <span className="inline-flex items-center gap-1 text-slate-500">
+                              <Mail className="size-3 text-slate-400" />
+                              {kh.email}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 2. ĐỊA BÀN HOẠT ĐỘNG */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-1 text-xs font-semibold text-slate-700">
+                          <MapPin className="size-3.5 text-emerald-600 shrink-0" />
+                          <span>{[kh.xa_phuong, kh.tinh_thanh].filter(Boolean).join(' • ') || 'Chưa cập nhật'}</span>
+                        </div>
+                        {kh.dia_chi && (
+                          <div className="text-[11px] text-slate-400 truncate max-w-[220px] mt-0.5">
+                            {kh.dia_chi}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* 3. PHÂN LOẠI */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                          {loaiKhNhan}
+                        </span>
+                      </td>
+
+                      {/* 4. TRẠNG THÁI */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border', thongTinTrangThai.capsule)}>
+                          <span className={cn('size-1.5 rounded-full shrink-0', thongTinTrangThai.dot)} />
+                          {thongTinTrangThai.nhan}
+                        </span>
+                      </td>
+
+                      {/* 5. THAO TÁC */}
+                      <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                        <div className="inline-flex items-center gap-1 justify-end">
+                          <Link
+                            href={`/khach-hang/${kh.id}`}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                            title="Xem chi tiết"
+                          >
+                            <Eye className="size-4" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => mo_chinh_sua(kh)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                            title="Chỉnh sửa"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={Boolean(dang_xu_ly_khac[`doi_tt_${kh.id}`])}
+                            onClick={() => xu_ly_doi_trang_thai(kh)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition disabled:opacity-50 cursor-pointer"
+                            title={kh.trang_thai === 'hoat_dong' ? 'Tạm dừng' : 'Kích hoạt'}
+                          >
+                            {kh.trang_thai === 'hoat_dong' ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+                          </button>
+                          {kh.trang_thai !== 'da_xoa' && (
+                            <button
+                              type="button"
+                              disabled={Boolean(dang_xu_ly_khac[`xoa_${kh.id}`])}
+                              onClick={() => xu_ly_xoa_mem(kh)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition disabled:opacity-50 cursor-pointer"
+                              title="Xóa vào thùng rác"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 2. GIAO DIỆN DANH SÁCH DỄ ĐỌC TRÊN MOBILE (chỉ hiện trên màn hình nhỏ) */}
+          <div className="sm:hidden divide-y divide-slate-100">
+            {danhSachDaSapXep.map((kh) => {
+              const loaiKhNhan = TEN_LOAI_KH[kh.loai_khach_hang]?.nhan || 'Khách hàng';
+              const thongTinTrangThai =
+                kh.trang_thai === 'hoat_dong'
+                  ? { nhan: 'Hợp tác', capsule: 'bg-emerald-50 text-emerald-700 border-emerald-200/80', dot: 'bg-emerald-500' }
+                  : kh.trang_thai === 'tam_dung'
+                  ? { nhan: 'Tạm dừng', capsule: 'bg-amber-50 text-amber-700 border-amber-200/80', dot: 'bg-amber-500' }
+                  : { nhan: 'Đã xóa', capsule: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
+
+              return (
+                <div key={kh.id} className="p-3.5 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      href={`/khach-hang/${kh.id}`}
+                      className="font-bold text-slate-900 text-[14.5px] leading-snug hover:text-emerald-700 transition line-clamp-2"
+                    >
+                      {kh.ten_khach_hang}
+                    </Link>
+                    <span className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border shrink-0', thongTinTrangThai.capsule)}>
+                      <span className={cn('size-1.5 rounded-full shrink-0', thongTinTrangThai.dot)} />
+                      {thongTinTrangThai.nhan}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                      {loaiKhNhan}
+                    </span>
+                    {(kh.xa_phuong || kh.tinh_thanh) && (
+                      <span className="inline-flex items-center gap-1 text-slate-600 font-medium truncate max-w-[200px]">
+                        <MapPin className="size-3 text-emerald-600 shrink-0" />
+                        <span className="truncate">{[kh.xa_phuong, kh.tinh_thanh].filter(Boolean).join(' • ')}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {(kh.so_dien_thoai || kh.email || kh.ma_so_thue) && (
+                    <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap pt-0.5">
+                      {kh.so_dien_thoai && (
+                        <span className="inline-flex items-center gap-1 text-slate-600">
+                          <Phone className="size-3 text-slate-400" />
+                          {kh.so_dien_thoai}
+                        </span>
+                      )}
+                      {kh.email && (
+                        <span className="inline-flex items-center gap-1 text-slate-500 truncate max-w-[170px]">
+                          <Mail className="size-3 text-slate-400" />
+                          <span className="truncate">{kh.email}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Nút hành động nhanh trên mobile */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <Link
+                      href={`/khach-hang/${kh.id}`}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 py-1"
+                    >
+                      <Eye className="size-3.5" />
+                      <span>Chi tiết</span>
+                    </Link>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => mo_chinh_sua(kh)}
+                        className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs transition cursor-pointer"
+                        title="Chỉnh sửa"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={Boolean(dang_xu_ly_khac[`doi_tt_${kh.id}`])}
+                        onClick={() => xu_ly_doi_trang_thai(kh)}
+                        className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-amber-50 hover:text-amber-700 text-xs transition disabled:opacity-50 cursor-pointer"
+                        title="Đổi trạng thái"
+                      >
+                        {kh.trang_thai === 'hoat_dong' ? <Lock className="size-3.5" /> : <Unlock className="size-3.5" />}
+                      </button>
+                      {kh.trang_thai !== 'da_xoa' && (
+                        <button
+                          type="button"
+                          disabled={Boolean(dang_xu_ly_khac[`xoa_${kh.id}`])}
+                          onClick={() => xu_ly_xoa_mem(kh)}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-rose-50 hover:text-rose-600 text-xs transition disabled:opacity-50 cursor-pointer"
+                          title="Xóa"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -480,167 +731,4 @@ const TEN_LOAI_KH: Record<string, { nhan: string; kieu: 'primary' | 'muted' | 's
   ca_nhan: { nhan: 'Cá nhân', kieu: 'muted' },
   to_chuc: { nhan: 'Tổ chức', kieu: 'success' },
   khac: { nhan: 'Khác', kieu: 'muted' }
-};
-
-const TRANG_THAI_MAP: Record<KhachHang['trang_thai'], { nhan: string; kieu: 'success' | 'warning' | 'muted'; cham: string }> = {
-  hoat_dong: { nhan: 'Hợp tác', kieu: 'success', cham: 'bg-success' },
-  tam_dung: { nhan: 'Tạm dừng', kieu: 'warning', cham: 'bg-warning' },
-  da_xoa: { nhan: 'Đã xóa', kieu: 'muted', cham: 'bg-muted-foreground' }
-};
-
-const TheKhachHang = ({
-  kh,
-  chiNhanh,
-  nguoiPhuTrach,
-  onSua,
-  onDoiTrangThai,
-  onXoaMem,
-  dangXuLyDoiTT,
-  dangXuLyXoa
-}: {
-  kh: KhachHang;
-  chiNhanh?: ChiNhanh | null;
-  nguoiPhuTrach?: NhanSu | null;
-  onSua?: () => void;
-  onDoiTrangThai?: () => void;
-  onXoaMem?: () => void;
-  dangXuLyDoiTT?: boolean;
-  dangXuLyXoa?: boolean;
-}) => {
-  const router = useRouter();
-
-  const loaiKhNhan = TEN_LOAI_KH[kh.loai_khach_hang]?.nhan || 'Khách hàng';
-
-  const thongTinTrangThai = useMemo(() => {
-    if (kh.trang_thai === 'hoat_dong') {
-      return {
-        nhan: 'Đang hợp tác',
-        mauBar: 'bg-emerald-500',
-        capsule: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
-        dot: 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
-      };
-    }
-    if (kh.trang_thai === 'tam_dung') {
-      return {
-        nhan: 'Tạm dừng',
-        mauBar: 'bg-amber-500',
-        capsule: 'bg-amber-50 text-amber-700 border-amber-200/80',
-        dot: 'bg-amber-500'
-      };
-    }
-    return {
-      nhan: 'Đã xóa',
-      mauBar: 'bg-slate-300',
-      capsule: 'bg-slate-100 text-slate-600 border-slate-200',
-      dot: 'bg-slate-400'
-    };
-  }, [kh.trang_thai]);
-
-  return (
-    <div
-      onClick={() => router.push(`/khach-hang/${kh.id}`)}
-      className={cn(
-        'group relative bg-white rounded-[22px] border border-slate-200/80 p-4 sm:p-5 pt-5 sm:pt-6 transition-all duration-200 ease-out flex flex-col justify-between overflow-hidden',
-        'hover:border-blue-300 hover:shadow-[0_8px_30px_rgba(0,122,255,0.08),0_2px_8px_rgba(0,0,0,0.04)]',
-        'active:scale-[0.985] active:bg-slate-50/60 cursor-pointer shadow-[0_1px_3px_rgba(0,0,0,0.03),0_6px_16px_rgba(0,0,0,0.02)]',
-        kh.trang_thai === 'da_xoa' && 'opacity-60 grayscale-[40%]'
-      )}
-    >
-      {/* 1. THANH TRẠNG THÁI MÉP TRÊN THẺ (Apple Top-Edge Bar) */}
-      <div className="absolute top-0 left-0 right-0 h-1.5 bg-slate-100/90 overflow-hidden">
-        <div className={cn('h-full w-full transition-all duration-500 ease-out', thongTinTrangThai.mauBar)} />
-      </div>
-
-      <div>
-        {/* TẦNG ĐỈNH: STATUS CAPSULE & LOẠI KHÁCH HÀNG */}
-        <div className="flex items-center justify-between gap-3 pb-2.5">
-          <div className="flex items-center gap-2 min-w-0">
-            {/* Apple Status Capsule */}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide border shrink-0',
-                thongTinTrangThai.capsule
-              )}
-            >
-              <span className={cn('size-1.5 rounded-full shrink-0', thongTinTrangThai.dot)} />
-              <span className="truncate max-w-[130px]">{thongTinTrangThai.nhan}</span>
-            </span>
-
-            {kh.ma_so_thue && (
-              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-slate-100/90 text-slate-500 font-mono text-[11px] font-medium border border-slate-200/60 truncate max-w-[120px]">
-                MST: {kh.ma_so_thue}
-              </span>
-            )}
-          </div>
-
-          {/* Loại KH Pill */}
-          <div className="text-right shrink-0">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11.5px] font-semibold bg-blue-50 text-[#007AFF] border border-blue-200/50">
-              {loaiKhNhan}
-            </span>
-          </div>
-        </div>
-
-        {/* TẦNG TRỌNG TÂM: TÊN KHÁCH HÀNG 2 DÒNG & ĐỊA BÀN / ĐỊA CHỈ */}
-        <div className="space-y-1.5 my-1">
-          <h3
-            className="font-bold text-[15.5px] sm:text-[16.5px] text-slate-900 leading-[1.38] tracking-tight line-clamp-2 group-hover:text-[#007AFF] transition-colors"
-            title={kh.ten_khach_hang}
-          >
-            {kh.ten_khach_hang}
-          </h3>
-
-          {/* Hiển thị rõ ràng Xã/Phường, Tỉnh/Thành */}
-          {(kh.xa_phuong || kh.tinh_thanh) ? (
-            <div className="flex items-center gap-1.5 text-[12px] font-semibold text-primary truncate">
-              <MapPin className="size-3.5 text-primary shrink-0" />
-              <span className="truncate">
-                {[kh.xa_phuong, kh.tinh_thanh].filter(Boolean).join(' • ')}
-              </span>
-            </div>
-          ) : null}
-
-          <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-normal truncate">
-            {!(kh.xa_phuong || kh.tinh_thanh) && <MapPin className="size-3.5 text-slate-400 shrink-0" />}
-            <span className="truncate">{kh.dia_chi || 'Chưa cập nhật địa chỉ'}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* TẦNG CHÂN: SĐT, EMAIL / NGƯỜI PHỤ TRÁCH & CHEVRON ACTION */}
-      <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-100 text-[11.5px] sm:text-[12px] text-slate-500">
-        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          {/* Số điện thoại */}
-          <span className="inline-flex items-center gap-1 text-slate-600">
-            <Phone className="size-3.5 text-slate-400 shrink-0" />
-            <span>{kh.so_dien_thoai || '--'}</span>
-          </span>
-
-          {/* Email hoặc PIC */}
-          {kh.email ? (
-            <>
-              <span className="text-slate-300">│</span>
-              <span className="inline-flex items-center gap-1 text-slate-600 truncate max-w-[130px] sm:max-w-[150px]">
-                <Mail className="size-3 text-slate-400 shrink-0" />
-                <span className="truncate">{kh.email}</span>
-              </span>
-            </>
-          ) : nguoiPhuTrach ? (
-            <>
-              <span className="text-slate-300">│</span>
-              <span className="inline-flex items-center gap-1 text-slate-700 font-medium truncate max-w-[130px]">
-                <UserRound className="size-3 text-slate-400 shrink-0" />
-                <span className="truncate">{nguoiPhuTrach.ho_va_ten}</span>
-              </span>
-            </>
-          ) : null}
-        </div>
-
-        {/* Nút hành động tròn Apple */}
-        <div className="size-7 rounded-full bg-slate-100/90 group-hover:bg-[#007AFF] text-slate-400 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-2xs group-hover:translate-x-0.5 shrink-0">
-          <ChevronRight className="size-3.5" strokeWidth={2.5} />
-        </div>
-      </div>
-    </div>
-  );
 };

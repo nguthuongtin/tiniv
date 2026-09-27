@@ -75,7 +75,7 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
             value={tuKhoa}
             onChange={(e) => capNhatMotTruong('tuKhoa', e.target.value || null)}
             placeholder="Tìm kiếm họ tên, mã NV, email, SĐT..."
-            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
+            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
           />
           {tuKhoa && (
             <button
@@ -97,7 +97,7 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
           className={cn(
             'relative size-11 rounded-xl border flex items-center justify-center transition active:scale-[0.96] shrink-0',
             moRong || soDieuKien > 0
-              ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-xs shadow-blue-500/20'
+              ? 'bg-[#107555] border-[#107555] text-white shadow-xs shadow-emerald-700/20'
               : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
           )}
         >
@@ -106,7 +106,7 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
             <span
               className={cn(
                 'absolute -top-1 -right-1 size-5 rounded-full text-[10px] font-extrabold flex items-center justify-center border-2 border-white',
-                moRong ? 'bg-amber-400 text-slate-900' : 'bg-[#007AFF] text-white'
+                moRong ? 'bg-amber-400 text-slate-900' : 'bg-[#107555] text-white'
               )}
             >
               {soDieuKien}
@@ -138,7 +138,7 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
             <select
               value={boLocHienTai.vai_tro ?? 'tat_ca'}
               onChange={(e) => capNhatMotTruong('vai_tro', (e.target.value as any) || 'tat_ca')}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               <option value="tat_ca">Tất cả vai trò</option>
               {danhSachVaiTro.map((v) => (
@@ -151,7 +151,7 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
             <select
               value={boLocHienTai.chi_nhanh_id ?? ''}
               onChange={(e) => capNhatMotTruong('chi_nhanh_id', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               <option value="">Tất cả chi nhánh</option>
               {danhSachChiNhanh.map((cn) => (
@@ -164,7 +164,7 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
             <select
               value={boLocHienTai.phong_ban_id ?? ''}
               onChange={(e) => capNhatMotTruong('phong_ban_id', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               <option value="">Tất cả phòng ban</option>
               {danhSachPhongBan.map((pb) => (
@@ -177,7 +177,7 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
             <select
               value={boLocHienTai.trang_thai_hoat_dong ?? 'tat_ca'}
               onChange={(e) => capNhatMotTruong('trang_thai_hoat_dong', (e.target.value as any) || 'tat_ca')}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               <option value="tat_ca">Hiển thị tất cả</option>
               <option value="hoat_dong">Chỉ hoạt động</option>
@@ -190,7 +190,7 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
               type="date"
               value={boLocHienTai.ngay_tao_tu_ngay ?? ''}
               onChange={(e) => capNhatMotTruong('ngay_tao_tu_ngay', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             />
           </BoLocMuc>
 
@@ -199,7 +199,7 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
               type="date"
               value={boLocHienTai.ngay_tao_den_ngay ?? ''}
               onChange={(e) => capNhatMotTruong('ngay_tao_den_ngay', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             />
           </BoLocMuc>
         </div>

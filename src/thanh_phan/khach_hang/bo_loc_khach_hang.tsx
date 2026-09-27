@@ -75,7 +75,7 @@ export default function BoLocKhachHang({
             value={tuKhoa}
             onChange={(e) => datGiaTri('tuKhoa', e.target.value)}
             placeholder="Tìm kiếm tên, MST, SĐT, email khách hàng..."
-            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
+            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
           />
           {tuKhoa && (
             <button
@@ -97,7 +97,7 @@ export default function BoLocKhachHang({
           className={cn(
             'relative size-11 rounded-xl border flex items-center justify-center transition active:scale-[0.96] shrink-0',
             moRong || soLuongDieuKienKhacMacDinh > 0
-              ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-xs shadow-blue-500/20'
+              ? 'bg-[#107555] border-[#107555] text-white shadow-xs shadow-emerald-700/20'
               : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
           )}
         >
@@ -106,7 +106,7 @@ export default function BoLocKhachHang({
             <span
               className={cn(
                 'absolute -top-1 -right-1 size-5 rounded-full text-[10px] font-extrabold flex items-center justify-center border-2 border-white',
-                moRong ? 'bg-amber-400 text-slate-900' : 'bg-[#007AFF] text-white'
+                moRong ? 'bg-amber-400 text-slate-900' : 'bg-[#107555] text-white'
               )}
             >
               {soLuongDieuKienKhacMacDinh}
@@ -140,7 +140,7 @@ export default function BoLocKhachHang({
               onChange={(e) =>
                 datGiaTri('loai_khach_hang', e.target.value as DieuKienLocKhachHang['loai_khach_hang'])
               }
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               {CAC_LOAI_KH.map((x) => (
                 <option key={x.gia_tri} value={x.gia_tri}>
@@ -156,7 +156,7 @@ export default function BoLocKhachHang({
               onChange={(e) =>
                 datGiaTri('trang_thai', e.target.value as DieuKienLocKhachHang['trang_thai'])
               }
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               {CAC_TRANG_THAI.filter(Boolean).map((x) => (
                 <option key={x!.gia_tri} value={x!.gia_tri as string}>
@@ -172,7 +172,7 @@ export default function BoLocKhachHang({
               onChange={(e) =>
                 datGiaTri('chi_nhanh_id', e.target.value === 'tat_ca' ? null : e.target.value)
               }
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               <option value="tat_ca">Tất cả chi nhánh</option>
               {dsChiNhanh.map((cn) => (
@@ -189,7 +189,7 @@ export default function BoLocKhachHang({
               onChange={(e) =>
                 datGiaTri('nguoi_phu_trach_id', e.target.value === 'tat_ca' ? null : e.target.value)
               }
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               <option value="tat_ca">Tất cả người phụ trách</option>
               {dsNhanSu.map((ns) => (
@@ -205,7 +205,7 @@ export default function BoLocKhachHang({
               type="date"
               value={gia_tri_hien_tai.ngay_tao_tu_ngay ?? ''}
               onChange={(e) => datGiaTri('ngay_tao_tu_ngay', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             />
           </BoLocMuc>
 
@@ -214,7 +214,7 @@ export default function BoLocKhachHang({
               type="date"
               value={gia_tri_hien_tai.ngay_tao_den_ngay ?? ''}
               onChange={(e) => datGiaTri('ngay_tao_den_ngay', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             />
           </BoLocMuc>
         </div>

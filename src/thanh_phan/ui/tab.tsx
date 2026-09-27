@@ -88,7 +88,7 @@ export const NutTab = React.forwardRef<
         <span
           className={cn(
             'h-5 min-w-[20px] px-1.5 rounded-full text-[10px] inline-flex items-center justify-center font-bold',
-            active ? 'bg-[#007AFF]/10 text-[#007AFF]' : 'bg-slate-200 text-slate-600'
+            active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-200 text-slate-600'
           )}
         >
           {so_luong}

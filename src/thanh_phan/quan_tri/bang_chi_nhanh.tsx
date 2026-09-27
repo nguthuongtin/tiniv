@@ -320,7 +320,7 @@ export default function BangChiNhanh({
                 <input
                   value={form.dia_chi ?? ''}
                   onChange={(e) => setForm({ ...form, dia_chi: e.target.value || null })}
-                  placeholder="Số nhà, tên đường, quận/huyện, tỉnh/thành..."
+                  placeholder="Số nhà, tên đường, xã/phường, tỉnh/thành..."
                   className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>

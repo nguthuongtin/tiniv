@@ -402,8 +402,8 @@ export default function FormHoSoDuAnDrawer({
       kich_thuoc="xl"
       tieu_de={
         <div className="flex items-center gap-2.5">
-          <div className="size-9 shrink-0 rounded-xl bg-indigo-50 text-indigo-700 inline-flex items-center justify-center">
-            {laSua ? <Edit3 className="size-[18px]" /> : <FolderPlus className="size-[18px]" />}
+          <div className="size-9 shrink-0 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 inline-flex items-center justify-center">
+            {laSua ? <Edit3 className="size-4.5" /> : <FolderPlus className="size-4.5" />}
           </div>
           <div className="min-w-0">
             <div className="font-black text-slate-900 text-lg md:text-xl">
@@ -411,11 +411,6 @@ export default function FormHoSoDuAnDrawer({
             </div>
           </div>
         </div>
-      }
-      phu_de={
-        laSua && dang_sua
-          ? `Mã: ${dang_sua.ma_ho_so || dang_sua.id.slice(0, 10)} · Cập nhật: ${(dang_sua.ngay_cap_nhat || dang_sua.ngay_tao || '').slice(0, 10)}`
-          : 'Điền thông tin dự án, phân công nhân sự và quản lý ngân sách thuận tiện.'
       }
       cuoi={
         <div className="w-full flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2.5">
@@ -445,17 +440,15 @@ export default function FormHoSoDuAnDrawer({
           </div>
 
           <div className="flex items-center gap-2 justify-end">
-            <Nut
-              kieu="primary"
-              kich_thuoc="md"
-              icon_trai={Save}
+            <button
               type="submit"
               form="form-ho-so-du-an"
               disabled={dang_xu_ly || !isDirty || isSubmitting || dangTaiDanhMuc}
-              className="min-w-[140px]"
+              className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-lg bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-xs min-w-[140px]"
             >
+              <Save className="size-4" />
               {dang_xu_ly ? 'Đang lưu...' : laSua ? 'Lưu thay đổi' : 'Tạo dự án'}
-            </Nut>
+            </button>
           </div>
         </div>
       }
@@ -480,7 +473,7 @@ export default function FormHoSoDuAnDrawer({
               key={item.id}
               type="button"
               onClick={() => cuonDenMuc(item.id)}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/80 transition shrink-0 border border-transparent hover:border-indigo-100"
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 transition shrink-0 border border-transparent hover:border-emerald-100"
             >
               {item.label}
             </button>
@@ -496,119 +489,118 @@ export default function FormHoSoDuAnDrawer({
       ) : (
         <form id="form-ho-so-du-an" onSubmit={onSubmit} className="space-y-6">
           {/* 1. THÔNG TIN CHÍNH (ĐƯA LÊN ĐẦU TIÊN) */}
-          <section id="sec-thong-tin-chinh">
-            <The_Chuc_Nang className="border-indigo-100/80 shadow-xs">
-              <The_Chuc_Nang_Header className="bg-indigo-50/40 pb-3">
-                <The_Chuc_Nang_Tieu_De className="text-base flex items-center gap-2 text-indigo-950 font-bold">
-                  <FileText className="size-5 text-indigo-600" />
-                  1. Thông tin cơ bản dự án
-                </The_Chuc_Nang_Tieu_De>
-              </The_Chuc_Nang_Header>
-              <The_Chuc_Nang_Noi_Dung className="p-4 md:p-5 space-y-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-1.5 md:col-span-2">
-                    <div className="flex items-center justify-between">
-                      <Nhan bat_buoc htmlFor="f-hda-ten">
-                        Tên dự án
-                      </Nhan>
-                      <button
-                        type="button"
-                        onClick={() => setMoModalQuyChuan(true)}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-0.5 rounded-full transition border border-indigo-200/60"
-                        title="Xem quy chuẩn & hướng dẫn đặt tên dự án"
-                      >
-                        <Lightbulb className="size-3 text-amber-500 fill-amber-400" />
-                        <span>Quy chuẩn đặt tên</span>
-                      </button>
-                    </div>
-                    <O
-                      {...register('ten_du_an', {
-                        onChange: (e) => {
-                          const upper = e.target.value.toUpperCase();
-                          e.target.value = upper;
-                          setValue('ten_du_an', upper);
-                        }
-                      })}
-                      id="f-hda-ten"
-                      type="text"
-                      placeholder="VÍ DỤ: HỆ THỐNG TRUYỀN THANH THÔNG MINH - UBND XÃ... - 2026"
-                      className="text-base font-semibold text-slate-900 uppercase"
-                      phan_hoi={errors.ten_du_an?.message ?? null}
-                    />
-                  </div>
-                  <div className="space-y-1.5 md:col-span-1">
-                    <Nhan htmlFor="f-hda-ma">Mã hồ sơ dự án</Nhan>
-                    <O
-                      {...register('ma_ho_so')}
-                      id="f-hda-ma"
-                      type="text"
-                      placeholder="Tự động hoặc DA-2026-001..."
-                      className="font-mono"
-                      phan_hoi={errors.ma_ho_so?.message ?? null}
-                    />
-                  </div>
-                </div>
+          <section id="sec-thong-tin-chinh" className="space-y-4">
+            <div className="flex items-center gap-3 pb-1">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                1. Thông tin cơ bản dự án
+              </span>
+              <div className="h-[1px] bg-slate-200 flex-1" />
+            </div>
 
-                <div className="grid gap-4 md:grid-cols-2 pt-1">
-                  <div className="space-y-1.5">
-                    <Nhan bat_buoc htmlFor="f-hda-gd">
-                      Giai đoạn hiện tại
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-1.5 md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <Nhan bat_buoc htmlFor="f-hda-ten">
+                      Tên dự án
                     </Nhan>
-                    <Controller
-                      name="giai_doan"
-                      control={control}
-                      render={({ field }) => (
-                        <Chon {...field} id="f-hda-gd" phan_hoi={errors.giai_doan?.message ?? null}>
-                          <option value="moi_tao">🌱 Mới tạo</option>
-                          <option value="tiep_can">📞 Tiếp cận</option>
-                          <option value="khao_sat">📋 Khảo sát</option>
-                          <option value="len_giai_phap">💡 Lên giải pháp</option>
-                          <option value="bao_gia">📊 Báo giá</option>
-                          <option value="dam_phan">🤝 Đàm phán</option>
-                          <option value="ky_hop_dong">✍️ Ký hợp đồng</option>
-                          <option value="trien_khai">🚀 Triển khai</option>
-                          <option value="nghiem_thu">✅ Nghiệm thu</option>
-                          <option value="hoan_thanh">🎉 Hoàn thành</option>
-                          <option value="tam_dung">⏸️ Tạm dừng</option>
-                          <option value="huy">❌ Đã hủy</option>
-                        </Chon>
-                      )}
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setMoModalQuyChuan(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-0.5 rounded-full transition border border-emerald-200/60"
+                      title="Xem quy chuẩn & hướng dẫn đặt tên dự án"
+                    >
+                      <Lightbulb className="size-3 text-amber-500 fill-amber-400" />
+                      <span>Quy chuẩn đặt tên</span>
+                    </button>
                   </div>
-                  <div className="space-y-1.5">
-                    <Nhan bat_buoc htmlFor="f-hda-tn">
-                      Mức tiềm năng ký HĐ
-                    </Nhan>
-                    <Controller
-                      name="muc_do_tiem_nang"
-                      control={control}
-                      render={({ field }) => (
-                        <Chon {...field} id="f-hda-tn" phan_hoi={errors.muc_do_tiem_nang?.message ?? null}>
-                          <option value="rat_cao">🔥 Rất cao (&gt; 80% khả thi)</option>
-                          <option value="cao">🟢 Cao (60% - 80%)</option>
-                          <option value="trung_binh">🟡 Trung bình (40% - 60%)</option>
-                          <option value="thap">🟠 Thấp (20% - 40%)</option>
-                          <option value="rat_thap">⚪ Rất thấp (&lt; 20%)</option>
-                        </Chon>
-                      )}
-                    />
-                  </div>
+                  <O
+                    {...register('ten_du_an', {
+                      onChange: (e) => {
+                        const upper = e.target.value.toUpperCase();
+                        e.target.value = upper;
+                        setValue('ten_du_an', upper);
+                      }
+                    })}
+                    id="f-hda-ten"
+                    type="text"
+                    placeholder="VÍ DỤ: HỆ THỐNG TRUYỀN THANH THÔNG MINH - UBND XÃ... - 2026"
+                    className="text-base font-semibold text-slate-900 uppercase focus:border-emerald-600 focus:ring-emerald-500/20"
+                    phan_hoi={errors.ten_du_an?.message ?? null}
+                  />
                 </div>
-              </The_Chuc_Nang_Noi_Dung>
-            </The_Chuc_Nang>
+                <div className="space-y-1.5 md:col-span-1">
+                  <Nhan htmlFor="f-hda-ma">Mã hồ sơ dự án</Nhan>
+                  <O
+                    {...register('ma_ho_so')}
+                    id="f-hda-ma"
+                    type="text"
+                    placeholder="Tự động hoặc DA-2026-001..."
+                    className="font-mono focus:border-emerald-600 focus:ring-emerald-500/20"
+                    phan_hoi={errors.ma_ho_so?.message ?? null}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 pt-1">
+                <div className="space-y-1.5">
+                  <Nhan bat_buoc htmlFor="f-hda-gd">
+                    Giai đoạn hiện tại
+                  </Nhan>
+                  <Controller
+                    name="giai_doan"
+                    control={control}
+                    render={({ field }) => (
+                      <Chon {...field} id="f-hda-gd" phan_hoi={errors.giai_doan?.message ?? null}>
+                        <option value="moi_tao">🌱 Mới tạo</option>
+                        <option value="tiep_can">📞 Tiếp cận</option>
+                        <option value="khao_sat">📋 Khảo sát</option>
+                        <option value="len_giai_phap">💡 Lên giải pháp</option>
+                        <option value="bao_gia">📊 Báo giá</option>
+                        <option value="dam_phan">🤝 Đàm phán</option>
+                        <option value="ky_hop_dong">✍️ Ký hợp đồng</option>
+                        <option value="trien_khai">🚀 Triển khai</option>
+                        <option value="nghiem_thu">✅ Nghiệm thu</option>
+                        <option value="hoan_thanh">🎉 Hoàn thành</option>
+                        <option value="tam_dung">⏸️ Tạm dừng</option>
+                        <option value="huy">❌ Đã hủy</option>
+                      </Chon>
+                    )}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Nhan bat_buoc htmlFor="f-hda-tn">
+                    Mức tiềm năng ký HĐ
+                  </Nhan>
+                  <Controller
+                    name="muc_do_tiem_nang"
+                    control={control}
+                    render={({ field }) => (
+                      <Chon {...field} id="f-hda-tn" phan_hoi={errors.muc_do_tiem_nang?.message ?? null}>
+                        <option value="rat_cao">🔥 Rất cao (&gt; 80% khả thi)</option>
+                        <option value="cao">🟢 Cao (60% - 80%)</option>
+                        <option value="trung_binh">🟡 Trung bình (40% - 60%)</option>
+                        <option value="thap">🟠 Thấp (20% - 40%)</option>
+                        <option value="rat_thap">⚪ Rất thấp (&lt; 20%)</option>
+                      </Chon>
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
           </section>
 
           {/* 2. KHÁCH HÀNG & CƠ CẤU TỔ CHỨC */}
-          <section id="sec-khach-hang-co-cau">
-            <The_Chuc_Nang className="shadow-xs">
-              <The_Chuc_Nang_Header className="pb-3">
-                <The_Chuc_Nang_Tieu_De className="text-base flex items-center gap-2">
-                  <Building2 className="size-5 text-indigo-600" />
-                  2. Khách hàng & Cơ cấu tổ chức
-                </The_Chuc_Nang_Tieu_De>
-              </The_Chuc_Nang_Header>
-              <The_Chuc_Nang_Noi_Dung className="p-4 md:p-5 space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+          <section id="sec-khach-hang-co-cau" className="space-y-4">
+            <div className="flex items-center gap-3 pb-1">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                2. Khách hàng & Cơ cấu tổ chức
+              </span>
+              <div className="h-[1px] bg-slate-200 flex-1" />
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-1.5">
                     <Nhan htmlFor="f-hda-kh">Khách hàng (Doanh nghiệp/Đối tác)</Nhan>
                     <Controller
@@ -747,23 +739,22 @@ export default function FormHoSoDuAnDrawer({
                     />
                   </div>
                 </div>
-              </The_Chuc_Nang_Noi_Dung>
-            </The_Chuc_Nang>
+              </div>
           </section>
 
           {/* 3. PHÂN CÔNG NHÂN SỰ */}
-          <section id="sec-phan-cong-nhan-su">
-            <The_Chuc_Nang className="shadow-xs">
-              <The_Chuc_Nang_Header className="pb-3">
-                <The_Chuc_Nang_Tieu_De className="text-base flex items-center gap-2">
-                  <Users className="size-5 text-indigo-600" />
-                  3. Quản lý & Phân công nhân sự
-                </The_Chuc_Nang_Tieu_De>
-              </The_Chuc_Nang_Header>
-              <The_Chuc_Nang_Noi_Dung className="p-4 md:p-5 space-y-5">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Nhan htmlFor="f-hda-nql">Người quản lý dự án (Giám đốc / Trưởng phòng)</Nhan>
+          <section id="sec-phan-cong-nhan-su" className="space-y-4">
+            <div className="flex items-center gap-3 pb-1">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                3. Quản lý & Phân công nhân sự
+              </span>
+              <div className="h-[1px] bg-slate-200 flex-1" />
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Nhan htmlFor="f-hda-nql">Người quản lý dự án (Giám đốc / Trưởng phòng)</Nhan>
                     <Controller
                       name="nguoi_quan_ly_id"
                       control={control}
@@ -866,9 +857,6 @@ export default function FormHoSoDuAnDrawer({
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Người quản lý và PIC đã tự động phụ trách dự án, chọn thêm các thành viên tham gia phối hợp.
-                      </p>
                     </div>
 
                     {/* Ô tìm kiếm nhân sự nhanh */}
@@ -879,7 +867,7 @@ export default function FormHoSoDuAnDrawer({
                         value={tuKhoaNS}
                         onChange={(e) => setTuKhoaNS(e.target.value)}
                         placeholder="Tìm tên nhân sự..."
-                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-indigo-500"
+                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/20"
                       />
                     </div>
                   </div>
@@ -900,7 +888,7 @@ export default function FormHoSoDuAnDrawer({
                           <div key={pb.id} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2.5 shadow-2xs">
                             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                               <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                                <Building2 className="size-3.5 text-indigo-600 shrink-0" />
+                                <Building2 className="size-3.5 text-emerald-700 shrink-0" />
                                 <span>{pb.ten_phong_ban}</span>
                                 {pb.ma_phong_ban && <span className="text-slate-400 font-mono">({pb.ma_phong_ban})</span>}
                                 <span className="rounded-full bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 font-semibold">
@@ -909,14 +897,14 @@ export default function FormHoSoDuAnDrawer({
                               </div>
                               <div className="flex items-center gap-2.5">
                                 {soChon > 0 && (
-                                  <span className="text-[11px] font-bold text-indigo-600">
+                                  <span className="text-[11px] font-bold text-emerald-700">
                                     Đã chọn {soChon}/{nsThuocPb.length}
                                   </span>
                                 )}
                                 <button
                                   type="button"
                                   onClick={() => chonTatCaTheoPhong(nsThuocPb)}
-                                  className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline"
+                                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline"
                                 >
                                   {tatCaDaChon ? 'Bỏ chọn phòng' : 'Chọn cả phòng'}
                                 </button>
@@ -934,7 +922,7 @@ export default function FormHoSoDuAnDrawer({
                                     className={cn(
                                       'group flex items-center gap-2.5 rounded-xl border px-2.5 py-2 cursor-pointer transition select-none text-left w-full min-h-[44px]',
                                       daChon
-                                        ? 'bg-indigo-50/90 border-indigo-300 shadow-2xs'
+                                        ? 'bg-emerald-50/80 border-emerald-300 shadow-2xs'
                                         : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300'
                                     )}
                                   >
@@ -942,7 +930,7 @@ export default function FormHoSoDuAnDrawer({
                                       className={cn(
                                         'size-4 shrink-0 rounded-[4px] border flex items-center justify-center transition',
                                         daChon
-                                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                                          ? 'bg-emerald-700 border-emerald-700 text-white'
                                           : 'bg-white border-slate-300 text-transparent group-hover:border-slate-400'
                                       )}
                                     >
@@ -982,7 +970,7 @@ export default function FormHoSoDuAnDrawer({
                                     className={cn(
                                       'group flex items-center gap-2.5 rounded-xl border px-2.5 py-2 cursor-pointer transition select-none text-left w-full min-h-[44px]',
                                       daChon
-                                        ? 'bg-indigo-50/90 border-indigo-300 shadow-2xs'
+                                        ? 'bg-emerald-50/80 border-emerald-300 shadow-2xs'
                                         : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300'
                                     )}
                                   >
@@ -990,7 +978,7 @@ export default function FormHoSoDuAnDrawer({
                                       className={cn(
                                         'size-4 shrink-0 rounded-[4px] border flex items-center justify-center transition',
                                         daChon
-                                          ? 'bg-indigo-600 border-indigo-600 text-white'
+                                          ? 'bg-emerald-700 border-emerald-700 text-white'
                                           : 'bg-white border-slate-300 text-transparent group-hover:border-slate-400'
                                       )}
                                     >
@@ -1012,132 +1000,129 @@ export default function FormHoSoDuAnDrawer({
                     </div>
                   )}
                 </div>
-              </The_Chuc_Nang_Noi_Dung>
-            </The_Chuc_Nang>
+              </div>
           </section>
 
           {/* 4. TÀI CHÍNH & THỜI HẠN */}
-          <section id="sec-tai-chinh-thoi-gian">
-            <The_Chuc_Nang className="shadow-xs">
-              <The_Chuc_Nang_Header className="pb-3">
-                <The_Chuc_Nang_Tieu_De className="text-base flex items-center gap-2">
-                  <Target className="size-5 text-amber-600" />
-                  4. Kế hoạch tài chính & Thời hạn
-                </The_Chuc_Nang_Tieu_De>
-              </The_Chuc_Nang_Header>
-              <The_Chuc_Nang_Noi_Dung className="p-4 md:p-5 space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Nhan htmlFor="f-hda-dk">Giá trị dự kiến (VND)</Nhan>
-                    <O
-                      {...register('gia_tri_du_kien')}
-                      id="f-hda-dk"
-                      type="number"
-                      min={0}
-                      step={1000000}
-                      icon_phai={DollarSign}
-                      placeholder={laBackOffice ? '— ẩn theo vai trò —' : '0'}
-                      phan_hoi={errors.gia_tri_du_kien?.message ?? null}
-                      disabled={laBackOffice}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Nhan htmlFor="f-hda-hd">Giá trị hợp đồng (VND)</Nhan>
-                    <O
-                      {...register('gia_tri_hop_dong')}
-                      id="f-hda-hd"
-                      type="number"
-                      min={0}
-                      step={1000000}
-                      icon_phai={DollarSign}
-                      placeholder={laBackOffice ? '— ẩn theo vai trò —' : '0 (nếu chưa ký HĐ)'}
-                      phan_hoi={errors.gia_tri_hop_dong?.message ?? null}
-                      disabled={laBackOffice}
-                    />
-                  </div>
-                </div>
+          <section id="sec-tai-chinh-thoi-gian" className="space-y-4">
+            <div className="flex items-center gap-3 pb-1">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                4. Kế hoạch tài chính & Thời hạn
+              </span>
+              <div className="h-[1px] bg-slate-200 flex-1" />
+            </div>
 
-                {coSoTien && !laBackOffice ? (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
-                      <div className="text-[10.5px] uppercase font-bold text-indigo-700 tracking-wider mb-0.5">
-                        Dự kiến: {DINH_DANG_SO_TIEN(watchDK)} ₫
-                      </div>
-                      <div className="text-xs font-semibold text-indigo-900">
-                        {DOC_TIEN_RUT_GON(watchDK) || 'Chưa nhập số tiền'}
-                      </div>
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Nhan htmlFor="f-hda-dk">Giá trị dự kiến (VND)</Nhan>
+                  <O
+                    {...register('gia_tri_du_kien')}
+                    id="f-hda-dk"
+                    type="number"
+                    min={0}
+                    step={1000000}
+                    icon_phai={DollarSign}
+                    placeholder={laBackOffice ? '— ẩn theo vai trò —' : '0'}
+                    phan_hoi={errors.gia_tri_du_kien?.message ?? null}
+                    disabled={laBackOffice}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Nhan htmlFor="f-hda-hd">Giá trị hợp đồng (VND)</Nhan>
+                  <O
+                    {...register('gia_tri_hop_dong')}
+                    id="f-hda-hd"
+                    type="number"
+                    min={0}
+                    step={1000000}
+                    icon_phai={DollarSign}
+                    placeholder={laBackOffice ? '— ẩn theo vai trò —' : '0 (nếu chưa ký HĐ)'}
+                    phan_hoi={errors.gia_tri_hop_dong?.message ?? null}
+                    disabled={laBackOffice}
+                  />
+                </div>
+              </div>
+
+              {coSoTien && !laBackOffice ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+                    <div className="text-[10.5px] uppercase font-bold text-emerald-800 tracking-wider mb-0.5">
+                      Dự kiến: {DINH_DANG_SO_TIEN(watchDK)} ₫
                     </div>
-                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
-                      <div className="text-[10.5px] uppercase font-bold text-emerald-700 tracking-wider mb-0.5">
-                        Hợp đồng: {DINH_DANG_SO_TIEN(watchHD)} ₫
-                      </div>
-                      <div className="text-xs font-semibold text-emerald-900">
-                        {DOC_TIEN_RUT_GON(watchHD) || 'Chưa ký hợp đồng chính thức'}
-                      </div>
+                    <div className="text-xs font-semibold text-emerald-950">
+                      {DOC_TIEN_RUT_GON(watchDK) || 'Chưa nhập số tiền'}
                     </div>
                   </div>
-                ) : null}
-
-                <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-slate-100">
-                  <div className="space-y-1.5">
-                    <Nhan htmlFor="f-hda-ngay">Ngày tạo hồ sơ</Nhan>
-                    <O
-                      {...register('ngay_tao_ho_so')}
-                      id="f-hda-ngay"
-                      type="date"
-                      icon_trai={CalendarDays}
-                      phan_hoi={errors.ngay_tao_ho_so?.message ?? null}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Nhan htmlFor="f-hda-th">Thời hạn hoàn thành (dự kiến)</Nhan>
-                    <O
-                      {...register('thoi_han_hoan_thanh')}
-                      id="f-hda-th"
-                      type="date"
-                      icon_trai={CalendarDays}
-                      phan_hoi={errors.thoi_han_hoan_thanh?.message ?? null}
-                    />
+                  <div className="rounded-xl border border-teal-100 bg-teal-50/40 p-3">
+                    <div className="text-[10.5px] uppercase font-bold text-teal-800 tracking-wider mb-0.5">
+                      Hợp đồng: {DINH_DANG_SO_TIEN(watchHD)} ₫
+                    </div>
+                    <div className="text-xs font-semibold text-teal-950">
+                      {DOC_TIEN_RUT_GON(watchHD) || 'Chưa ký hợp đồng chính thức'}
+                    </div>
                   </div>
                 </div>
-              </The_Chuc_Nang_Noi_Dung>
-            </The_Chuc_Nang>
+              ) : null}
+
+              <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-slate-100">
+                <div className="space-y-1.5">
+                  <Nhan htmlFor="f-hda-ngay">Ngày tạo hồ sơ</Nhan>
+                  <O
+                    {...register('ngay_tao_ho_so')}
+                    id="f-hda-ngay"
+                    type="date"
+                    icon_trai={CalendarDays}
+                    phan_hoi={errors.ngay_tao_ho_so?.message ?? null}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Nhan htmlFor="f-hda-th">Thời hạn hoàn thành (dự kiến)</Nhan>
+                  <O
+                    {...register('thoi_han_hoan_thanh')}
+                    id="f-hda-th"
+                    type="date"
+                    icon_trai={CalendarDays}
+                    phan_hoi={errors.thoi_han_hoan_thanh?.message ?? null}
+                  />
+                </div>
+              </div>
+            </div>
           </section>
 
           {/* 5. MÔ TẢ & GHI CHÚ */}
-          <section id="sec-mo-ta-ghi-chu">
-            <The_Chuc_Nang className="shadow-xs">
-              <The_Chuc_Nang_Header className="pb-3">
-                <The_Chuc_Nang_Tieu_De className="text-base flex items-center gap-2">
-                  <Edit3 className="size-5 text-slate-600" />
-                  5. Mô tả & Ghi chú nội bộ
-                </The_Chuc_Nang_Tieu_De>
-              </The_Chuc_Nang_Header>
-              <The_Chuc_Nang_Noi_Dung className="p-4 md:p-5 space-y-4">
-                <div className="space-y-1.5">
-                  <Nhan htmlFor="f-hda-mota">Mô tả chi tiết / Phạm vi dự án</Nhan>
-                  <O
-                    {...register('mo_ta')}
-                    id="f-hda-mota"
-                    type="textarea"
-                    placeholder="Tóm tắt mục tiêu, phạm vi công việc, yêu cầu kỹ thuật và kết quả bàn giao..."
-                    rows={3}
-                    phan_hoi={errors.mo_ta?.message ?? null}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Nhan htmlFor="f-hda-ghichu">Ghi chú nội bộ</Nhan>
-                  <O
-                    {...register('ghi_chu')}
-                    id="f-hda-ghichu"
-                    type="textarea"
-                    placeholder="Các lưu ý đặc biệt, thỏa thuận bên lề hoặc lời nhắc cho đội ngũ..."
-                    rows={2}
-                    phan_hoi={errors.ghi_chu?.message ?? null}
-                  />
-                </div>
-              </The_Chuc_Nang_Noi_Dung>
-            </The_Chuc_Nang>
+          <section id="sec-mo-ta-ghi-chu" className="space-y-4">
+            <div className="flex items-center gap-3 pb-1">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                5. Mô tả & Ghi chú nội bộ
+              </span>
+              <div className="h-[1px] bg-slate-200 flex-1" />
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Nhan htmlFor="f-hda-mota">Mô tả chi tiết / Phạm vi dự án</Nhan>
+                <O
+                  {...register('mo_ta')}
+                  id="f-hda-mota"
+                  type="textarea"
+                  placeholder="Tóm tắt mục tiêu, phạm vi công việc, yêu cầu kỹ thuật và kết quả bàn giao..."
+                  rows={3}
+                  phan_hoi={errors.mo_ta?.message ?? null}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Nhan htmlFor="f-hda-ghichu">Ghi chú nội bộ</Nhan>
+                <O
+                  {...register('ghi_chu')}
+                  id="f-hda-ghichu"
+                  type="textarea"
+                  placeholder="Các lưu ý đặc biệt, thỏa thuận bên lề hoặc lời nhắc cho đội ngũ..."
+                  rows={2}
+                  phan_hoi={errors.ghi_chu?.message ?? null}
+                />
+              </div>
+            </div>
           </section>
         </form>
       )}

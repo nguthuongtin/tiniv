@@ -27,7 +27,7 @@ const O_Nhap = React.forwardRef<HTMLInputElement, ONhapProps>(
               ref={ref as any}
               className={cn(
                 'flex min-h-[88px] w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-xs',
-                'focus-visible:outline-none focus-visible:bg-white focus-visible:border-[#007AFF] focus-visible:ring-2 focus-visible:ring-[#007AFF]/20 transition-all',
+                'focus-visible:outline-none focus-visible:bg-white focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-500/20 transition-all',
                 'disabled:cursor-not-allowed disabled:opacity-50 resize-y',
                 className
               )}
@@ -46,7 +46,7 @@ const O_Nhap = React.forwardRef<HTMLInputElement, ONhapProps>(
         <div
           className={cn(
             'flex h-10 w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 pl-3 pr-2 shadow-xs transition-all',
-            'focus-within:bg-white focus-within:border-[#007AFF] focus-within:ring-2 focus-within:ring-[#007AFF]/20',
+            'focus-within:bg-white focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20',
             disabled && 'opacity-50 pointer-events-none cursor-not-allowed'
           )}
         >

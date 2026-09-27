@@ -117,15 +117,15 @@ const TrangDangNhap: React.FC = () => {
   })();
 
   return (
-    <main className="min-h-[100dvh] w-full flex items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-slate-100 via-sky-50 to-slate-100 relative overflow-hidden">
+    <main className="min-h-[100dvh] w-full flex items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-slate-100 via-emerald-50/40 to-slate-100 relative overflow-hidden">
       {/* Hiệu ứng nền trang trí nhẹ nhàng */}
-      <div className="absolute -top-40 -left-40 size-96 rounded-full bg-blue-400/10 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 size-96 rounded-full bg-indigo-400/10 blur-3xl pointer-events-none" />
+      <div className="absolute -top-40 -left-40 size-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-40 -right-40 size-96 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-slate-200/60 relative z-10 space-y-6">
         {/* Logo & Tên phần mềm */}
         <div className="text-center space-y-2">
-          <div className="size-16 rounded-2xl overflow-hidden shadow-lg shadow-blue-500/25 mx-auto border border-white/20">
+          <div className="size-16 rounded-2xl overflow-hidden shadow-lg shadow-emerald-700/20 mx-auto border border-white/20">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icon-192x192.png" alt="TiniPMS" className="size-full object-cover" />
           </div>
@@ -164,7 +164,7 @@ const TrangDangNhap: React.FC = () => {
                 placeholder="name@company.com"
                 className={cn(
                   'w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 text-slate-900 text-xs pl-10 pr-3.5 outline-none transition font-medium',
-                  'placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100',
+                  'placeholder:text-slate-400 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100',
                   errors.email && 'border-rose-500 focus:border-rose-500 focus:ring-rose-100'
                 )}
                 {...register('email')}
@@ -194,7 +194,7 @@ const TrangDangNhap: React.FC = () => {
                 placeholder="••••••••"
                 className={cn(
                   'w-full h-11 rounded-xl border border-slate-200 bg-slate-50/60 text-slate-900 text-xs pl-10 pr-11 outline-none transition font-medium',
-                  'placeholder:text-slate-400 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-100',
+                  'placeholder:text-slate-400 focus:bg-white focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100',
                   errors.mat_khau && 'border-rose-500 focus:border-rose-500 focus:ring-rose-100'
                 )}
                 {...register('mat_khau')}
@@ -221,10 +221,10 @@ const TrangDangNhap: React.FC = () => {
               type="submit"
               disabled={dangXuLy}
               className={cn(
-                'w-full h-11 rounded-xl font-bold text-xs text-white transition-all inline-flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer',
+                'w-full h-11 rounded-xl font-bold text-xs text-white transition-all inline-flex items-center justify-center gap-2 shadow-md shadow-emerald-700/20 cursor-pointer',
                 dangXuLy
-                  ? 'bg-blue-400 cursor-progress'
-                  : 'bg-blue-600 hover:bg-blue-700 active:scale-[0.99]'
+                  ? 'bg-emerald-400 cursor-progress'
+                  : 'bg-[#107555] hover:bg-[#0d6146] active:scale-[0.99]'
               )}
             >
               {dangXuLy ? (

@@ -230,22 +230,22 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex justify-end"
+      className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4"
     >
       <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-200 opacity-100"
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-200 opacity-100"
         onClick={onDong}
       />
       <div
-        className="relative z-10 w-full sm:max-w-[720px] h-full bg-white shadow-2xl flex flex-col transition-transform duration-300 translate-x-0"
+        className="relative z-10 w-full max-w-3xl max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-slate-200/80 flex flex-col overflow-hidden animate-in fade-in zoom-in-[0.98] duration-150"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80 shrink-0 bg-white">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
-              {taoMoi ? <UserPlus className="size-5" /> : <UserRound className="size-5" />}
+            <div className="size-9 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center">
+              {taoMoi ? <UserPlus className="size-4.5" /> : <UserRound className="size-4.5" />}
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-base font-bold text-slate-900">
                 {taoMoi ? 'Thêm nhân viên mới' : 'Chỉnh sửa nhân viên'}
               </h2>
             </div>
@@ -253,9 +253,9 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
           <button
             type="button"
             onClick={onDong}
-            className="size-9 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 flex items-center justify-center transition"
+            className="size-8.5 rounded-lg border border-slate-200/80 text-slate-400 hover:text-slate-700 hover:bg-slate-100/80 inline-flex items-center justify-center transition cursor-pointer"
           >
-            <X className="size-5" />
+            <X className="size-4" />
           </button>
         </div>
 
@@ -267,7 +267,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
           <div className="flex-1 overflow-y-auto p-6 space-y-5">
             <div className="grid gap-5 md:grid-cols-2">
               <div className="md:col-span-1">
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
                   Họ và tên <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -282,7 +282,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
                   Mã nhân viên
                 </label>
                 <input
@@ -300,7 +300,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
 
             <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
                   Email <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -315,7 +315,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Số điện thoại</label>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">Số điện thoại</label>
                 <input
                   type="tel"
                   disabled={dangXuLy}
@@ -331,7 +331,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
 
             {taoMoi && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
                   Mật khẩu tạo lần đầu
                 </label>
                 <input
@@ -349,7 +349,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
 
             <div className="grid gap-5 md:grid-cols-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
                   Vai trò <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -367,7 +367,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Chi nhánh</label>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">Chi nhánh</label>
                 <select
                   disabled={dangXuLy}
                   {...register('chi_nhanh_id')}
@@ -380,7 +380,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Phòng ban</label>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">Phòng ban</label>
                 <select
                   disabled={dangXuLy}
                   {...register('phong_ban_id')}
@@ -407,9 +407,6 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Cho phép nhân sự này (Trưởng phòng/Quản lý) xem & theo dõi báo cáo, công việc của các phòng ban khác được giao.
-                </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {danhSachPhongBan
                     .filter((pb) => pb.id !== phongBanDangChon)
@@ -441,7 +438,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Chức vụ</label>
+              <label className="block text-xs font-bold text-slate-800 mb-1.5">Chức vụ</label>
               <select
                 disabled={dangXuLy}
                 value={chucVuDangChon ?? ''}
@@ -485,9 +482,6 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-500 mt-0.5">
-                      Cấp thêm quyền (+) hoặc chặn quyền (-) riêng cho nhân sự này mà không cần đổi vai trò
-                    </div>
                   </div>
                 </div>
                 {moNgoaiLe ? (
@@ -498,10 +492,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
               </button>
 
               {moNgoaiLe && (
-                <div className="p-4 pt-0 border-t border-amber-200/60 bg-white space-y-4">
-                  <div className="text-xs text-slate-500 py-2 border-b border-slate-100">
-                    <span className="font-semibold text-slate-700">Quy tắc ưu tiên:</span> Quyền ngoại lệ cá nhân sẽ ghi đè quyền của vai trò mặc định. Tích chọn <span className="text-emerald-600 font-semibold">[+ Cấp thêm]</span> để cấp riêng quyền, hoặc <span className="text-rose-600 font-semibold">[- Chặn]</span> để tước quyền.
-                  </div>
+                <div className="p-4 pt-3 border-t border-amber-200/60 bg-white space-y-4">
 
                   <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
                     {Object.entries({
@@ -580,7 +571,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Ảnh đại diện nhân viên</label>
+              <label className="block text-xs font-bold text-slate-800 mb-2">Ảnh đại diện nhân viên</label>
               <TaiLenAnhDaiDien
                 url_anh={watch('url_anh_dai_dien')}
                 ho_ten={watch('ho_va_ten')}

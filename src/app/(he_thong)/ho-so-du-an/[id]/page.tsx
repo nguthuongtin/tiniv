@@ -153,7 +153,7 @@ const MAP_HIEU_GIAI_DOAN: Record<string, string> = {
   bao_gia: 'bg-amber-50 text-amber-700 border-amber-200/80',
   dam_phan: 'bg-orange-50 text-[#FF9500] border-orange-200/80',
   ky_hop_dong: 'bg-teal-50 text-teal-700 border-teal-200/80',
-  trien_khai: 'bg-blue-50 text-[#007AFF] border-blue-200/80',
+  trien_khai: 'bg-emerald-50 text-[#107555] border-emerald-200/80',
   nghiem_thu: 'bg-emerald-50 text-[#34C759] border-emerald-200/80',
   hoan_thanh: 'bg-emerald-100/80 text-emerald-800 border-emerald-300/80',
   tam_dung: 'bg-zinc-100 text-zinc-700 border-zinc-200/80',
@@ -828,7 +828,7 @@ export default function TrangChiTietHoSoDuAn() {
           <p className="text-slate-500 mb-4">Không tìm thấy hồ sơ dự án</p>
           <Link
             href="/ho-so-du-an"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#107555] hover:bg-[#0d6146] text-white text-sm font-semibold transition"
           >
             <ArrowLeft className="size-4" /> Quay lại danh sách
           </Link>
@@ -1109,7 +1109,7 @@ export default function TrangChiTietHoSoDuAn() {
                     <div
                       className={cn(
                         'h-0.5 flex-1 transition-colors mx-1.5',
-                        isPast || isCurrent ? 'bg-[#007AFF]' : 'bg-slate-200'
+                        isPast || isCurrent ? 'bg-[#107555]' : 'bg-slate-200'
                       )}
                     />
                   )}
@@ -1141,19 +1141,19 @@ export default function TrangChiTietHoSoDuAn() {
                       className={cn(
                         'size-7 sm:size-8 rounded-full flex items-center justify-center text-xs font-bold transition-all',
                         isCurrent
-                          ? 'bg-[#007AFF] text-white ring-4 ring-[#007AFF]/20 shadow-xs'
+                          ? 'bg-[#107555] text-white ring-4 ring-emerald-500/20 shadow-xs'
                           : isPast
-                          ? 'bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/30'
+                          ? 'bg-emerald-50 text-[#107555] border border-emerald-200'
                           : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600'
                       )}
                     >
-                      {isPast ? <CheckCircle2 className="size-4 text-[#007AFF]" /> : step.stt}
+                      {isPast ? <CheckCircle2 className="size-4 text-[#107555]" /> : step.stt}
                     </div>
                     <span
                       className={cn(
                         'text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors',
                         isCurrent
-                          ? 'text-[#007AFF] font-extrabold'
+                          ? 'text-[#107555] font-extrabold'
                           : isPast
                           ? 'text-slate-800 font-semibold'
                           : 'text-slate-400 group-hover:text-slate-700'
@@ -1287,11 +1287,11 @@ export default function TrangChiTietHoSoDuAn() {
               <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 p-3.5 flex items-center justify-between">
                 <div>
                   <div className="text-[11px] font-semibold text-muted-foreground uppercase">Giá trị hợp đồng</div>
-                  <div className="text-lg font-black text-[#007AFF] tabular-nums mt-0.5">
+                  <div className="text-lg font-black text-[#107555] tabular-nums mt-0.5">
                     {laBackOffice ? '***' : hda?.gia_tri_hop_dong ? formatTien(hda.gia_tri_hop_dong) : 'Chưa ký HĐ'}
                   </div>
                 </div>
-                <div className="size-9 rounded-[13px] bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center shrink-0">
+                <div className="size-9 rounded-[13px] bg-emerald-50 text-[#107555] flex items-center justify-center shrink-0">
                   <Wallet className="size-4" />
                 </div>
               </div>
@@ -1317,7 +1317,7 @@ export default function TrangChiTietHoSoDuAn() {
               {kh && (
                 <Link
                   href={`/khach-hang/${kh.id}`}
-                  className="text-xs text-[#007AFF] font-semibold hover:underline inline-flex items-center gap-0.5"
+                  className="text-xs text-[#107555] font-semibold hover:underline inline-flex items-center gap-0.5"
                 >
                   Xem hồ sơ <ExternalLink className="size-3" />
                 </Link>
@@ -1342,16 +1342,16 @@ export default function TrangChiTietHoSoDuAn() {
                       <DaiDien ten={nlh.ho_va_ten} kich_thuoc="sm" />
                       <div className="min-w-0">
                         <div className="font-bold text-xs text-foreground truncate">{nlh.ho_va_ten}</div>
-                        {nlh.chuc_vu && <div className="text-[11px] text-[#007AFF]">{nlh.chuc_vu}</div>}
+                        {nlh.chuc_vu && <div className="text-[11px] text-[#107555]">{nlh.chuc_vu}</div>}
                       </div>
                     </div>
                     {nlh.so_dien_thoai && (
-                      <a href={`tel:${nlh.so_dien_thoai}`} className="flex items-center gap-1.5 text-xs text-[#007AFF] font-mono hover:underline">
+                      <a href={`tel:${nlh.so_dien_thoai}`} className="flex items-center gap-1.5 text-xs text-[#107555] font-mono hover:underline">
                         <Phone className="size-3" /> {nlh.so_dien_thoai}
                       </a>
                     )}
                     {nlh.email && (
-                      <a href={`mailto:${nlh.email}`} className="flex items-center gap-1.5 text-xs text-[#007AFF] truncate hover:underline">
+                      <a href={`mailto:${nlh.email}`} className="flex items-center gap-1.5 text-xs text-[#107555] truncate hover:underline">
                         <Mail className="size-3" /> {nlh.email}
                       </a>
                     )}
@@ -1423,7 +1423,7 @@ export default function TrangChiTietHoSoDuAn() {
               {hda?.thoi_han_hoan_thanh && (
                 <div className="p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 flex items-center justify-between">
                   <span className="text-muted-foreground">Hạn hoàn thành:</span>
-                  <span className="font-bold text-[#007AFF]">{formatNgay(hda.thoi_han_hoan_thanh)}</span>
+                  <span className="font-bold text-[#107555]">{formatNgay(hda.thoi_han_hoan_thanh)}</span>
                 </div>
               )}
             </div>
@@ -1445,15 +1445,15 @@ export default function TrangChiTietHoSoDuAn() {
       {giaiDoanMuonChuyen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100">
-            <div className="flex items-center gap-3 text-[#007AFF]">
-              <div className="size-10 rounded-full bg-blue-50 flex items-center justify-center">
-                <ArrowRightLeft className="size-5 text-[#007AFF]" />
+            <div className="flex items-center gap-3 text-[#107555]">
+              <div className="size-10 rounded-full bg-emerald-50 flex items-center justify-center">
+                <ArrowRightLeft className="size-5 text-[#107555]" />
               </div>
               <h3 className="text-lg font-bold text-slate-900">Xác nhận chuyển giai đoạn</h3>
             </div>
             <p className="text-sm text-slate-600 leading-relaxed">
               Bạn có chắc chắn muốn chuyển giai đoạn dự án sang{' '}
-              <span className="font-bold text-[#007AFF]">"{giaiDoanMuonChuyen.label}"</span> không?
+              <span className="font-bold text-[#107555]">"{giaiDoanMuonChuyen.label}"</span> không?
             </p>
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
@@ -1483,7 +1483,7 @@ export default function TrangChiTietHoSoDuAn() {
                     setDangXuLyChuyenGiaiDoan(false);
                   }
                 }}
-                className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#007AFF] hover:bg-blue-600 text-white transition shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                className="px-4 py-2 text-sm font-semibold rounded-xl bg-[#107555] hover:bg-[#0d6146] text-white transition shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
               >
                 {dangXuLyChuyenGiaiDoan && <Loader2 className="size-4 animate-spin" />}
                 Xác nhận chuyển
@@ -2643,7 +2643,7 @@ function BanNhatKyVaTienDo(props: {
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
         <div>
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Activity className="size-4 text-[#007AFF]" />
+            <Activity className="size-4 text-[#107555]" />
             Nhật ký tiến độ dự án
           </h3>
         </div>
@@ -2842,7 +2842,7 @@ function BanNhatKyVaTienDo(props: {
                   className={cn(
                     'group relative rounded-2xl border bg-white p-3.5 sm:p-4.5 transition-all duration-200 space-y-2.5',
                     i === 0
-                      ? 'border-blue-200/90 shadow-[0_2px_12px_rgba(0,122,255,0.06)] ring-1 ring-blue-500/10'
+                      ? 'border-emerald-200/90 shadow-[0_2px_12px_rgba(16,117,85,0.06)] ring-1 ring-emerald-500/10'
                       : 'border-slate-200/80 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
                   )}
                 >
@@ -2864,7 +2864,7 @@ function BanNhatKyVaTienDo(props: {
                           {formatNgay(td.ngay_tao, 'DD/MM/YYYY')} <span className="text-slate-400 font-normal">lúc</span> {formatNgay(td.ngay_tao, 'HH:mm')}
                         </span>
                         {i === 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#007AFF]/10 text-[#007AFF] font-bold text-[10.5px] border border-[#007AFF]/20 shrink-0">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-[#107555] font-bold text-[10.5px] border border-emerald-200 shrink-0">
                             <Sparkles className="size-2.5" /> Mới nhất
                           </span>
                         )}
@@ -2877,7 +2877,7 @@ function BanNhatKyVaTienDo(props: {
                         type="button"
                         title="Chỉnh sửa nội dung hoặc link tài liệu"
                         onClick={() => xuLyBatDauSua(td)}
-                        className="size-7 rounded-lg text-slate-400 hover:text-[#007AFF] hover:bg-blue-50 flex items-center justify-center transition opacity-70 group-hover:opacity-100 cursor-pointer"
+                        className="size-7 rounded-lg text-slate-400 hover:text-[#107555] hover:bg-emerald-50 flex items-center justify-center transition opacity-70 group-hover:opacity-100 cursor-pointer"
                       >
                         <Pencil className="size-3.5" />
                       </button>
@@ -2895,9 +2895,9 @@ function BanNhatKyVaTienDo(props: {
                   {/* Khi đang ở chế độ chỉnh sửa inline */}
                   {dangSuaTDId === td.id ? (
                     <div className="pl-10 sm:pl-11 pr-1 space-y-3 pt-1">
-                      <div className="p-3.5 rounded-xl border border-blue-300 bg-blue-50/50 space-y-3">
+                      <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-[#007AFF] flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-[#107555] flex items-center gap-1.5">
                             <Pencil className="size-3.5" /> Chỉnh sửa tiến độ & tài liệu
                           </span>
                           <div className="flex items-center gap-1.5">
@@ -2905,7 +2905,7 @@ function BanNhatKyVaTienDo(props: {
                               type="button"
                               disabled={dangLuuSua}
                               onClick={() => xuLyLuuSua(td.id)}
-                              className="h-7 px-3 rounded-lg bg-[#007AFF] text-white hover:bg-blue-600 text-xs font-bold inline-flex items-center gap-1 shadow-xs transition cursor-pointer"
+                              className="h-7 px-3 rounded-lg bg-[#107555] text-white hover:bg-[#0d6146] text-xs font-bold inline-flex items-center gap-1 shadow-xs transition cursor-pointer"
                             >
                               {dangLuuSua ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
                               <span>Lưu</span>
@@ -2930,7 +2930,7 @@ function BanNhatKyVaTienDo(props: {
                             onChange={(e) => setTinhHinhSua(e.target.value)}
                             rows={3}
                             placeholder="Nhập nội dung tiến độ..."
-                            className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                            className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                           />
                         </div>
 
@@ -2944,7 +2944,7 @@ function BanNhatKyVaTienDo(props: {
                               value={linkTaiLieuSua}
                               onChange={(e) => setLinkTaiLieuSua(e.target.value)}
                               placeholder="https://drive.google.com/..."
-                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                             />
                           </div>
                           <div>
@@ -2956,7 +2956,7 @@ function BanNhatKyVaTienDo(props: {
                               value={tenTaiLieuSua}
                               onChange={(e) => setTenTaiLieuSua(e.target.value)}
                               placeholder="VD: Báo giá đã duyệt, Bản vẽ CAD..."
-                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                             />
                           </div>
                         </div>
@@ -2987,9 +2987,9 @@ function BanNhatKyVaTienDo(props: {
                             href={td.link_tai_lieu}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/90 hover:bg-blue-50 text-slate-700 hover:text-[#007AFF] text-xs font-semibold border border-slate-200/70 transition shadow-2xs group/link"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/90 hover:bg-emerald-50 text-slate-700 hover:text-[#107555] text-xs font-semibold border border-slate-200/70 transition shadow-2xs group/link"
                           >
-                            <ExternalLink className="size-3 text-slate-400 group-hover/link:text-[#007AFF] transition-colors" />
+                            <ExternalLink className="size-3 text-slate-400 group-hover/link:text-[#107555] transition-colors" />
                             <span>{td.ten_tai_lieu || 'Mở tài liệu đính kèm'}</span>
                           </a>
                         </div>
@@ -3245,7 +3245,7 @@ function BanKhoTaiLieu(props: {
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
         <div>
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Paperclip className="size-4 text-[#007AFF]" />
+            <Paperclip className="size-4 text-[#107555]" />
             Kho tài liệu dự án ({dsTL.length})
           </h3>
         </div>
@@ -3430,7 +3430,7 @@ function BanKhoTaiLieu(props: {
             className={cn(
               'px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer whitespace-nowrap',
               loaiLoc === 'link_khac'
-                ? 'bg-white text-[#007AFF] shadow-xs font-bold'
+                ? 'bg-white text-[#107555] shadow-xs font-bold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -3474,7 +3474,7 @@ function BanKhoTaiLieu(props: {
                 setTuKhoa('');
                 setLoaiLoc('tat_ca');
               }}
-              className="mt-3 text-xs font-bold text-[#007AFF] hover:underline"
+              className="mt-3 text-xs font-bold text-[#107555] hover:underline"
             >
               Xóa bộ lọc tìm kiếm
             </button>
@@ -3494,13 +3494,13 @@ function BanKhoTaiLieu(props: {
                   key={tl.id}
                   className={cn(
                     'rounded-2xl border bg-white p-4 sm:p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition flex flex-col justify-between gap-3 group',
-                    dangSuaTLId === tl.id ? 'border-blue-400 ring-2 ring-[#007AFF]/15 bg-blue-50/20' : 'border-slate-200/90 hover:border-slate-300'
+                    dangSuaTLId === tl.id ? 'border-emerald-400 ring-2 ring-emerald-500/15 bg-emerald-50/20' : 'border-slate-200/90 hover:border-slate-300'
                   )}
                 >
                   {dangSuaTLId === tl.id ? (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between border-b border-blue-200 pb-2">
-                        <span className="text-xs font-bold text-[#007AFF] flex items-center gap-1.5">
+                      <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
+                        <span className="text-xs font-bold text-[#107555] flex items-center gap-1.5">
                           <Pencil className="size-3.5" /> Chỉnh sửa tài liệu
                         </span>
                         <div className="flex items-center gap-1.5">
@@ -3508,7 +3508,7 @@ function BanKhoTaiLieu(props: {
                             type="button"
                             disabled={dangLuuSuaTL}
                             onClick={() => xuLyLuuSuaTL(tl.id)}
-                            className="h-7 px-3 rounded-lg bg-[#007AFF] text-white hover:bg-blue-600 text-xs font-bold inline-flex items-center gap-1 shadow-xs transition cursor-pointer"
+                            className="h-7 px-3 rounded-lg bg-[#107555] text-white hover:bg-[#0d6146] text-xs font-bold inline-flex items-center gap-1 shadow-xs transition cursor-pointer"
                           >
                             {dangLuuSuaTL ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
                             <span>Lưu</span>
@@ -3534,7 +3534,7 @@ function BanKhoTaiLieu(props: {
                             value={tenFileSua}
                             onChange={(e) => setTenFileSua(e.target.value)}
                             placeholder="Tên tài liệu..."
-                            className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 font-medium"
+                            className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                           />
                         </div>
 
@@ -3547,7 +3547,7 @@ function BanKhoTaiLieu(props: {
                             value={urlFileSua}
                             onChange={(e) => setUrlFileSua(e.target.value)}
                             placeholder="https://..."
-                            className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                            className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                           />
                         </div>
 
@@ -3559,7 +3559,7 @@ function BanKhoTaiLieu(props: {
                             <select
                               value={loaiFileSua}
                               onChange={(e) => setLoaiFileSua(e.target.value as any)}
-                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                             >
                               <option value="google_drive">Google Drive</option>
                               <option value="youtube">YouTube</option>
@@ -3575,7 +3575,7 @@ function BanKhoTaiLieu(props: {
                               value={ghiChuFileSua}
                               onChange={(e) => setGhiChuFileSua(e.target.value)}
                               placeholder="Ghi chú thêm..."
-                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
+                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                             />
                           </div>
                         </div>
@@ -3597,7 +3597,7 @@ function BanKhoTaiLieu(props: {
                               'size-8 rounded-lg flex items-center justify-center shrink-0',
                               loaiKey === 'google_drive' ? 'bg-[#34C759]/10 text-[#34C759]' :
                               loaiKey === 'youtube' ? 'bg-[#FF3B30]/10 text-[#FF3B30]' :
-                              'bg-[#007AFF]/10 text-[#007AFF]'
+                              'bg-emerald-50 text-[#107555]'
                             )}>
                               <IconType className="size-4" />
                             </div>
@@ -3612,7 +3612,7 @@ function BanKhoTaiLieu(props: {
                               kich_thuoc="xs"
                               icon_trai={Pencil}
                               onClick={() => xuLyBatDauSuaTL(tl)}
-                              className="text-muted-foreground hover:text-[#007AFF] hover:bg-blue-50"
+                              className="text-muted-foreground hover:text-[#107555] hover:bg-emerald-50"
                             >
                               Sửa
                             </Nut>

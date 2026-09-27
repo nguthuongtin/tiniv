@@ -162,7 +162,7 @@ export const KhoaTruyCap: React.FC<KhoaTruyCapProps> = ({
               }}
               className={cn(
                 'flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-sm font-semibold shadow-sm',
-                'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 transition-colors'
+                'bg-[#107555] text-white hover:bg-[#0d6146] active:scale-[0.99] transition-all'
               )}
             >
               <RotateCcw className="size-4" />
@@ -211,7 +211,7 @@ export const KhoaTruyCap: React.FC<KhoaTruyCapProps> = ({
             <button
               type="button"
               onClick={() => router.replace(TRANG_DANG_NHAP)}
-              className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 text-sm"
+              className="w-full rounded-xl bg-[#107555] hover:bg-[#0d6146] text-white font-semibold py-2.5 px-4 text-sm transition"
             >
               Đi đến trang đăng nhập
             </button>

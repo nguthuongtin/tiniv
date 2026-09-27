@@ -75,7 +75,7 @@ export default function ThanhDieuHuongDuoi() {
               href="/nhan-su"
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-50 transition leading-relaxed active:scale-[0.98]"
             >
-              <div className="size-9 rounded-[12px] bg-gradient-to-br from-[#007AFF] to-[#0055D4] text-white flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/20">
+              <div className="size-9 rounded-[12px] bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-xs shadow-emerald-700/20">
                 <UserCog className="size-[18px]" />
               </div>
               <div className="min-w-0 flex-1">
@@ -137,14 +137,14 @@ export default function ThanhDieuHuongDuoi() {
                   className={cn(
                     'flex flex-col items-center justify-center gap-0.5 py-2 text-[10.5px] transition relative active:scale-95',
                     active
-                      ? 'text-[#007AFF] font-bold'
+                      ? 'text-[#107555] font-bold'
                       : 'text-slate-400 hover:text-slate-700'
                   )}
                 >
                   <div
                     className={cn(
                       'size-8 rounded-[10px] flex items-center justify-center transition',
-                      active ? 'bg-[#007AFF]/10 text-[#007AFF]' : 'bg-transparent'
+                      active ? 'bg-emerald-50 text-[#107555]' : 'bg-transparent'
                     )}
                   >
                     <muc.icon
@@ -156,7 +156,7 @@ export default function ThanhDieuHuongDuoi() {
                   </div>
                   <span className="leading-tight">{muc.nhan}</span>
                   {active && (
-                    <span className="absolute top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#007AFF]" />
+                    <span className="absolute top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#107555]" />
                   )}
                 </Link>
               </li>
@@ -169,7 +169,7 @@ export default function ThanhDieuHuongDuoi() {
               className={cn(
                 'w-full h-full flex flex-col items-center justify-center gap-0.5 py-2 text-[10.5px] transition active:scale-95',
                 moMenuThem
-                  ? 'text-[#007AFF] font-bold'
+                  ? 'text-[#107555] font-bold'
                   : 'text-slate-400 hover:text-slate-700'
               )}
               aria-haspopup="true"
@@ -179,7 +179,7 @@ export default function ThanhDieuHuongDuoi() {
                 className={cn(
                   'size-8 rounded-[10px] flex items-center justify-center transition',
                   moMenuThem
-                    ? 'bg-[#007AFF]/10 text-[#007AFF] ring-1 ring-[#007AFF]/25 shadow-xs'
+                    ? 'bg-emerald-50 text-[#107555] ring-1 ring-emerald-500/25 shadow-xs'
                     : 'bg-transparent'
                 )}
               >

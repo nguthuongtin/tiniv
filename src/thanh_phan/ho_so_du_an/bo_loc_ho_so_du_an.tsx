@@ -109,7 +109,7 @@ export default function BoLocHoSoDuAn({
             value={tuKhoa}
             onChange={(e) => datGiaTri('tuKhoa', e.target.value)}
             placeholder="Tìm kiếm mã hồ sơ, tên dự án..."
-            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
+            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
           />
           {tuKhoa && (
             <button
@@ -130,7 +130,7 @@ export default function BoLocHoSoDuAn({
           className={cn(
             'relative size-11 rounded-xl border flex items-center justify-center transition active:scale-[0.96] shrink-0',
             moRong || soLuongDieuKienKhacMacDinh > 0
-              ? 'bg-[#007AFF] border-[#007AFF] text-white shadow-xs shadow-blue-500/20'
+              ? 'bg-[#107555] border-[#107555] text-white shadow-xs shadow-emerald-700/20'
               : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
           )}
         >
@@ -138,7 +138,7 @@ export default function BoLocHoSoDuAn({
           {soLuongDieuKienKhacMacDinh > 0 && (
             <span className={cn(
               "absolute -top-1 -right-1 size-5 rounded-full text-[10px] font-extrabold flex items-center justify-center border-2 border-white",
-              moRong ? "bg-amber-400 text-slate-900" : "bg-[#007AFF] text-white"
+              moRong ? "bg-amber-400 text-slate-900" : "bg-[#107555] text-white"
             )}>
               {soLuongDieuKienKhacMacDinh}
             </span>
@@ -168,7 +168,7 @@ export default function BoLocHoSoDuAn({
             <select
               value={gia_tri_hien_tai.khach_hang_id ?? ''}
               onChange={(e) => datGiaTri('khach_hang_id', e.target.value ? e.target.value : null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               <option value="">Tất cả khách hàng</option>
               {ds_khach_hang.map((kh) => (
@@ -185,7 +185,7 @@ export default function BoLocHoSoDuAn({
               onChange={(e) =>
                 datGiaTri('giai_doan', e.target.value as DieuKienLocHoSoDuAn['giai_doan'])
               }
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               {CAC_GIAI_DOAN.map((x) => (
                 <option key={x.gia_tri} value={x.gia_tri}>
@@ -203,7 +203,7 @@ export default function BoLocHoSoDuAn({
                   e.target.value as DieuKienLocHoSoDuAn['muc_do_tiem_nang']
                 )
               }
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               {CAC_MUC_TIEM_NANG.map((x) => (
                 <option key={x.gia_tri} value={x.gia_tri}>
@@ -216,7 +216,7 @@ export default function BoLocHoSoDuAn({
             <select
               value={gia_tri_hien_tai.nguoi_quan_ly_id ?? ''}
               onChange={(e) => datGiaTri('nguoi_quan_ly_id', e.target.value ? e.target.value : null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               <option value="">Tất cả người quản lý</option>
               {ds_nhan_su.map((ns) => (
@@ -231,7 +231,7 @@ export default function BoLocHoSoDuAn({
             <select
               value={gia_tri_hien_tai.nguoi_phu_trach_id ?? ''}
               onChange={(e) => datGiaTri('nguoi_phu_trach_id', e.target.value ? e.target.value : null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               <option value="">Tất cả người phụ trách</option>
               {ds_nhan_su.map((ns) => (
@@ -248,7 +248,7 @@ export default function BoLocHoSoDuAn({
               onChange={(e) =>
                 datGiaTri('trang_thai', e.target.value as DieuKienLocHoSoDuAn['trang_thai'])
               }
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             >
               {CAC_TRANG_THAI.filter(Boolean).map((x) => (
                 <option key={x!.gia_tri} value={x!.gia_tri as string}>
@@ -265,7 +265,7 @@ export default function BoLocHoSoDuAn({
               type="date"
               value={gia_tri_hien_tai.ngay_tao_tu_ngay ?? ''}
               onChange={(e) => datGiaTri('ngay_tao_tu_ngay', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             />
           </BoLocMuc>
           <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tạo HS đến ngày</>}>
@@ -273,7 +273,7 @@ export default function BoLocHoSoDuAn({
               type="date"
               value={gia_tri_hien_tai.ngay_tao_den_ngay ?? ''}
               onChange={(e) => datGiaTri('ngay_tao_den_ngay', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20 focus:border-[#007AFF] shadow-2xs"
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             />
           </BoLocMuc>
           <div className="hidden lg:block h-10" />

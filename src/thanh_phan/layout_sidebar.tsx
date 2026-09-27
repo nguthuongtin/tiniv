@@ -189,7 +189,7 @@ const renderDanhMuc = (
                           'group flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13.5px] transition-all',
                           khoa_muc_doan && 'opacity-60',
                           active
-                            ? 'bg-[#007AFF]/10 text-[#007AFF] font-bold shadow-xs'
+                            ? 'bg-[#107555]/10 text-[#107555] font-bold shadow-xs'
                             : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 font-medium'
                         )}
                       >
@@ -197,7 +197,7 @@ const renderDanhMuc = (
                           className={cn(
                             'size-7.5 rounded-[9px] inline-flex items-center justify-center shrink-0 transition-colors',
                             active
-                              ? 'bg-[#007AFF] text-white shadow-xs shadow-blue-500/20'
+                              ? 'bg-[#107555] text-white shadow-xs shadow-emerald-700/20'
                               : 'text-slate-400 group-hover:text-slate-700'
                           )}
                         >
@@ -205,10 +205,10 @@ const renderDanhMuc = (
                         </span>
                         <span className="truncate flex-1">{muc.nhan}</span>
                         {active && (
-                          <span className="size-1.5 rounded-full bg-[#007AFF] shrink-0" />
+                          <span className="size-1.5 rounded-full bg-[#107555] shrink-0" />
                         )}
                         {(muc as any).soon && (
-                          <span className="text-[10px] px-2 h-5 rounded-full bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 inline-flex items-center font-bold shrink-0">
+                          <span className="text-[10px] px-2 h-5 rounded-full bg-[#107555]/10 text-[#107555] border border-[#107555]/20 inline-flex items-center font-bold shrink-0">
                             Soon
                           </span>
                         )}
@@ -241,7 +241,7 @@ const renderCuoiSidebar = (
         className={cn(
           'flex items-center justify-between gap-2 p-1.5 rounded-2xl border transition-all',
           laTrangTaiKhoan
-            ? 'bg-[#007AFF]/10 border-[#007AFF]/35 shadow-xs'
+            ? 'bg-[#107555]/10 border-[#107555]/35 shadow-xs'
             : 'bg-white border-slate-200/90 shadow-xs hover:border-slate-300'
         )}
       >
@@ -254,15 +254,15 @@ const renderCuoiSidebar = (
             ten={nguoiDungHienTai?.ho_va_ten}
             anh={nguoiDungHienTai?.url_anh_dai_dien}
             kich_thuoc="sm"
-            className="shrink-0 rounded-xl group-hover/user:ring-2 group-hover/user:ring-[#007AFF]/40 transition"
+            className="shrink-0 rounded-xl group-hover/user:ring-2 group-hover/user:ring-[#107555]/40 transition"
           />
           <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-bold text-slate-900 group-hover/user:text-[#007AFF] truncate leading-snug transition-colors">
+            <div className="text-[13px] font-bold text-slate-900 group-hover/user:text-[#107555] truncate leading-snug transition-colors">
               {tenNguoiDung}
             </div>
             <div className="text-[11px] text-slate-400 truncate leading-tight font-medium flex items-center gap-1 mt-0.5">
               <span>{vaiTro}</span>
-              <span className="text-[9.5px] px-1 py-0.2 rounded bg-slate-100 text-slate-500 font-semibold group-hover/user:bg-[#007AFF]/10 group-hover/user:text-[#007AFF]">
+              <span className="text-[9.5px] px-1 py-0.2 rounded bg-slate-100 text-slate-500 font-semibold group-hover/user:bg-[#107555]/10 group-hover/user:text-[#107555]">
                 Hồ sơ
               </span>
             </div>
@@ -285,7 +285,7 @@ const renderCuoiSidebar = (
 const renderHeaderSidebar = (nhomHienTai: string) => (
   <div className="h-16 px-4 border-b border-slate-200/80 flex items-center justify-between gap-3 shrink-0 bg-white">
     <div className="flex items-center gap-2.5 min-w-0">
-      <div className="size-9 rounded-[12px] overflow-hidden shadow-sm shadow-blue-500/20 shrink-0 border border-slate-200/60">
+      <div className="size-9 rounded-[12px] overflow-hidden shadow-sm shadow-emerald-700/20 shrink-0 border border-slate-200/60">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icon-192x192.png" alt="TiniPMS" className="size-full object-cover" />
       </div>
@@ -294,7 +294,7 @@ const renderHeaderSidebar = (nhomHienTai: string) => (
           <span className="font-extrabold tracking-tight text-slate-900 text-[15.5px] leading-none">
             TiniPMS
           </span>
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 leading-none">
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#107555]/10 text-[#107555] border border-[#107555]/20 leading-none">
             PMS
           </span>
         </div>

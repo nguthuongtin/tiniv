@@ -310,7 +310,7 @@ export default function DrawerTongKetThang({
                 rows={2}
                 value={deXuat}
                 onChange={(e) => setDeXuat(e.target.value)}
-                placeholder="VD: Đề xuất mở rộng thêm địa bàn huyện lân cận, xin hỗ trợ từ ban giám đốc..."
+                placeholder="VD: Đề xuất mở rộng thêm địa bàn tỉnh/xã lân cận, xin hỗ trợ từ ban giám đốc..."
                 className="w-full rounded-lg border border-border bg-background p-2 text-xs font-medium text-foreground"
               />
             </div>

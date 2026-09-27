@@ -72,7 +72,7 @@ export default function BoCucGoc({
       <head>
         <title>TiniPMS - Quản trị Dự án</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-        <meta name="theme-color" content="#0055d4" />
+        <meta name="theme-color" content="#107555" />
         <meta name="application-name" content="TiniPMS" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -111,7 +111,7 @@ export default function BoCucGoc({
           }}
         />
       </head>
-      <body className="bg-[linear-gradient(180deg,#f8faff_0%,#ffffff_320px)] bg-slate-50 text-slate-900" style={{ colorScheme: 'light' }}>
+      <body className="bg-slate-50 text-slate-900 antialiased" style={{ colorScheme: 'light' }}>
         <BocXacThucToanUngDung>
           <div className="flex h-[100dvh] w-full overflow-hidden min-w-0 max-w-none">
             <aside className="hidden md:flex w-64 h-full flex-shrink-0 flex-col min-h-0 overflow-hidden bg-background/85 backdrop-blur-md">
