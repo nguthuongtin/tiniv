@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
 import { formatNgay } from '../../thu_vien/utils/format_ngay';
+import { dinhDangSoPhanNgan, giaiMaSoPhanNgan } from '../../thu_vien/utils/format_tien';
 import type { SanPhamDichVu, NhomSanPhamDichVu } from '../../thu_vien/types/san_pham_dich_vu';
 import type {
   TaoMoiSanPhamDichVuDTO,
@@ -625,10 +626,10 @@ export default function BangSanPhamDichVu({
                     Giá tham khảo
                   </label>
                   <input
-                    type="number"
-                    value={formSp.gia_tham_khao ?? ''}
-                    onChange={(e) => setFormSp({ ...formSp, gia_tham_khao: parseFloat(e.target.value) || null })}
-                    placeholder="0 ₫"
+                    type="text"
+                    inputMode="numeric"
+                    value={dinhDangSoPhanNgan(formSp.gia_tham_khao)}
+                    onChange={(e) => setFormSp({ ...formSp, gia_tham_khao: giaiMaSoPhanNgan(e.target.value) })}
                     className="w-full h-10 px-3.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   />
                 </div>

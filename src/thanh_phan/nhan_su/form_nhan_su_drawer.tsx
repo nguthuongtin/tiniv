@@ -191,7 +191,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
     if (dangSua) {
       const dto: CapNhatNhanSuDTO = {
         ma_nhan_vien: data.ma_nhan_vien ?? undefined,
-        ho_va_ten: data.ho_va_ten,
+        ho_va_ten: data.ho_va_ten.trim().toUpperCase(),
         so_dien_thoai: (data.so_dien_thoai as string | undefined) ?? null,
         email: data.email,
         chi_nhanh_id: data.chi_nhanh_id ?? null,
@@ -208,7 +208,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
     } else {
       const dto: TaoMoiNhanSuDTO = {
         ma_nhan_vien: data.ma_nhan_vien ?? null,
-        ho_va_ten: data.ho_va_ten,
+        ho_va_ten: data.ho_va_ten.trim().toUpperCase(),
         so_dien_thoai: (data.so_dien_thoai as string | undefined) ?? null,
         email: data.email,
         mat_khau: (data.mat_khau as string | undefined) ?? null,
@@ -273,9 +273,14 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                 <input
                   type="text"
                   disabled={dangXuLy}
-                  {...register('ho_va_ten')}
-                  placeholder="Nguyễn Văn A"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition disabled:bg-slate-50 disabled:text-slate-500"
+                  {...register('ho_va_ten', {
+                    onChange: (e) => {
+                      const upper = e.target.value.toUpperCase();
+                      e.target.value = upper;
+                      setValue('ho_va_ten', upper);
+                    }
+                  })}
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold uppercase focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition disabled:bg-slate-50 disabled:text-slate-500"
                 />
                 {errors.ho_va_ten && (
                   <p className="mt-1 text-xs text-red-600">{errors.ho_va_ten.message}</p>
@@ -289,8 +294,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                   type="text"
                   disabled={dangXuLy}
                   {...register('ma_nhan_vien')}
-                  placeholder="Tự động tạo nếu để trống"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition disabled:text-slate-500"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:bg-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition disabled:text-slate-500"
                 />
                 {errors.ma_nhan_vien && (
                   <p className="mt-1 text-xs text-red-600">{errors.ma_nhan_vien.message}</p>
@@ -307,7 +311,6 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                   type="email"
                   disabled={dangXuLy}
                   {...register('email')}
-                  placeholder="email@congty.com"
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition disabled:bg-slate-50 disabled:text-slate-500"
                 />
                 {errors.email && (
@@ -320,8 +323,7 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                   type="tel"
                   disabled={dangXuLy}
                   {...register('so_dien_thoai')}
-                  placeholder="09xx xxx xxx"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition disabled:bg-slate-50 disabled:text-slate-500"
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition disabled:bg-slate-50 disabled:text-slate-500 font-mono"
                 />
                 {errors.so_dien_thoai && (
                   <p className="mt-1 text-xs text-red-600">{errors.so_dien_thoai.message}</p>
@@ -338,7 +340,6 @@ export default function FormNhanSuDrawer(props: FormNhanSuDrawerProps) {
                   type="text"
                   disabled={dangXuLy}
                   {...register('mat_khau')}
-                  placeholder="Tự tạo mặc định nếu để trống"
                   className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/10 transition disabled:bg-slate-50 disabled:text-slate-500 font-mono tracking-wide"
                 />
                 {errors.mat_khau && (

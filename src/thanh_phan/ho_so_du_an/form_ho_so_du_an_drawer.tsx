@@ -43,6 +43,7 @@ import { useStoreXacThuc } from '../../thu_vien/zustand/store_xac_thuc';
 import {
   Ban_Ve,
   O,
+  O_NhapTien,
   Chon,
   Nhan,
   Nut,
@@ -95,7 +96,8 @@ const SCHEMA_HO_SO_DU_AN = z
     nguoi_quan_ly_id: z.string().trim().nullable().optional(),
     nguoi_phu_trach_id: z.string().trim().nullable().optional(),
     danh_sach_nguoi_ho_tro_ids: z.string().array().default([]),
-    ngay_tao_ho_so: z.string().max(30, 'Ngày tạo không hợp lệ').nullable().optional(),
+    san_pham_khac_mo_ta: z.string().max(500, 'Tên sản phẩm quá dài').trim().nullable().optional(),
+    ngay_tao_ho_so: z.string().max(30, 'Ngày tiếp cận không hợp lệ').nullable().optional(),
     thoi_han_hoan_thanh: z.string().max(30, 'Thời hạn không hợp lệ').nullable().optional(),
     mo_ta: z.string().max(2000, 'Mô tả quá dài (tối đa 2000 ký tự)').trim().nullable().optional(),
     ghi_chu: z.string().max(1000, 'Ghi chú quá dài (tối đa 1000 ký tự)').trim().nullable().optional(),
@@ -107,13 +109,21 @@ const SCHEMA_HO_SO_DU_AN = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['thoi_han_hoan_thanh'],
-          message: 'Thời hạn hoàn thành không được trước ngày tạo hồ sơ'
+          message: 'Ngày dự kiến ký HĐ không được trước ngày tiếp cận dự án'
         });
       }
     }
   });
 
 type GiaTriForm = z.infer<typeof SCHEMA_HO_SO_DU_AN>;
+
+const layNgayHienTaiVN = (): string => {
+  const now = new Date();
+  const nam = now.getFullYear();
+  const thang = String(now.getMonth() + 1).padStart(2, '0');
+  const ngay = String(now.getDate()).padStart(2, '0');
+  return `${nam}-${thang}-${ngay}`;
+};
 
 const GIA_TRI_MAC_DINH: GiaTriForm = {
   ma_ho_so: null,
@@ -129,7 +139,8 @@ const GIA_TRI_MAC_DINH: GiaTriForm = {
   nguoi_quan_ly_id: null,
   nguoi_phu_trach_id: null,
   danh_sach_nguoi_ho_tro_ids: [],
-  ngay_tao_ho_so: new Date().toISOString().split('T')[0],
+  san_pham_khac_mo_ta: null,
+  ngay_tao_ho_so: layNgayHienTaiVN(),
   thoi_han_hoan_thanh: null,
   mo_ta: null,
   ghi_chu: null,
@@ -276,7 +287,8 @@ export default function FormHoSoDuAnDrawer({
         danh_sach_nguoi_ho_tro_ids: Array.isArray(dang_sua.danh_sach_nguoi_ho_tro_ids)
           ? dang_sua.danh_sach_nguoi_ho_tro_ids
           : [],
-        ngay_tao_ho_so: dang_sua.ngay_tao_ho_so ?? new Date().toISOString().split('T')[0],
+        san_pham_khac_mo_ta: dang_sua.san_pham_khac_mo_ta ?? null,
+        ngay_tao_ho_so: dang_sua.ngay_tao_ho_so ?? layNgayHienTaiVN(),
         thoi_han_hoan_thanh: dang_sua.thoi_han_hoan_thanh ?? null,
         mo_ta: dang_sua.mo_ta ?? null,
         ghi_chu: dang_sua.ghi_chu ?? null,
@@ -371,7 +383,7 @@ export default function FormHoSoDuAnDrawer({
       chi_nhanh_id: (values.chi_nhanh_id ?? null) || null,
       phong_ban_id: (values.phong_ban_id ?? null) || null,
       san_pham_dich_vu_id: null,
-      san_pham_khac_mo_ta: null,
+      san_pham_khac_mo_ta: (values.san_pham_khac_mo_ta ?? null) || null,
       nguoi_quan_ly_id: (values.nguoi_quan_ly_id ?? null) || null,
       nguoi_phu_trach_id: (values.nguoi_phu_trach_id ?? null) || null,
       danh_sach_nguoi_ho_tro_ids: dsHoTroSach,
@@ -381,7 +393,7 @@ export default function FormHoSoDuAnDrawer({
       ngay_tao_ho_so:
         values.ngay_tao_ho_so && values.ngay_tao_ho_so.length > 0
           ? values.ngay_tao_ho_so
-          : new Date().toISOString().split('T')[0],
+          : layNgayHienTaiVN(),
       gia_tri_du_kien: Number(values.gia_tri_du_kien) || 0,
       gia_tri_hop_dong: Number(values.gia_tri_hop_dong) || 0,
       trang_thai: 'hoat_dong' as const
@@ -524,7 +536,6 @@ export default function FormHoSoDuAnDrawer({
                     })}
                     id="f-hda-ten"
                     type="text"
-                    placeholder="VÍ DỤ: HỆ THỐNG TRUYỀN THANH THÔNG MINH - UBND XÃ... - 2026"
                     className="text-base font-semibold text-slate-900 uppercase focus:border-emerald-600 focus:ring-emerald-500/20"
                     phan_hoi={errors.ten_du_an?.message ?? null}
                   />
@@ -535,7 +546,6 @@ export default function FormHoSoDuAnDrawer({
                     {...register('ma_ho_so')}
                     id="f-hda-ma"
                     type="text"
-                    placeholder="Tự động hoặc DA-2026-001..."
                     className="font-mono focus:border-emerald-600 focus:ring-emerald-500/20"
                     phan_hoi={errors.ma_ho_so?.message ?? null}
                   />
@@ -587,6 +597,17 @@ export default function FormHoSoDuAnDrawer({
                   />
                 </div>
               </div>
+
+              <div className="space-y-1.5 pt-1">
+                <Nhan htmlFor="f-hda-sp">Sản phẩm / Dịch vụ</Nhan>
+                <O
+                  {...register('san_pham_khac_mo_ta')}
+                  id="f-hda-sp"
+                  type="text"
+                  className="focus:border-emerald-600 focus:ring-emerald-500/20"
+                  phan_hoi={errors.san_pham_khac_mo_ta?.message ?? null}
+                />
+              </div>
             </div>
           </section>
 
@@ -606,25 +627,40 @@ export default function FormHoSoDuAnDrawer({
                     <Controller
                       name="khach_hang_id"
                       control={control}
-                      render={({ field }) => (
-                        <Chon
-                          {...field}
-                          id="f-hda-kh"
-                          value={field.value ?? ''}
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                            field.onChange(e.target.value ? e.target.value : null);
-                          }}
-                          phan_hoi={errors.khach_hang_id?.message ?? null}
-                        >
-                          <option value="">(Chưa chọn khách hàng)</option>
-                          {dsKH.map((kh) => (
-                            <option key={kh.id} value={kh.id}>
-                              {kh.ten_khach_hang}
-                              {kh.ma_so_thue ? ` (MST: ${kh.ma_so_thue})` : ''}
-                            </option>
-                          ))}
-                        </Chon>
-                      )}
+                      render={({ field }) => {
+                        return (
+                          <div className="relative group">
+                            <input
+                              type="text"
+                              placeholder="Nhập tên hoặc MST để tìm..."
+                              className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/60 transition"
+                              defaultValue={dsKH.find(k => k.id === field.value)?.ten_khach_hang ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const matched = dsKH.find(k => k.ten_khach_hang === val);
+                                if (matched) {
+                                  field.onChange(matched.id);
+                                } else {
+                                  field.onChange(null);
+                                }
+                              }}
+                              list="ds-kh-goi-y"
+                              autoComplete="off"
+                            />
+                            <datalist id="ds-kh-goi-y">
+                              {dsKH.map((kh) => (
+                                <option key={kh.id} value={kh.ten_khach_hang}>
+                                  {kh.ma_so_thue ? `MST: ${kh.ma_so_thue}` : ''}
+                                </option>
+                              ))}
+                            </datalist>
+                            <input type="hidden" value={field.value ?? ''} />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                              <Search className="size-4 text-muted-foreground" />
+                            </div>
+                          </div>
+                        );
+                      }}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -866,7 +902,6 @@ export default function FormHoSoDuAnDrawer({
                         type="text"
                         value={tuKhoaNS}
                         onChange={(e) => setTuKhoaNS(e.target.value)}
-                        placeholder="Tìm tên nhân sự..."
                         className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/20"
                       />
                     </div>
@@ -1016,30 +1051,36 @@ export default function FormHoSoDuAnDrawer({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <Nhan htmlFor="f-hda-dk">Giá trị dự kiến (VND)</Nhan>
-                  <O
-                    {...register('gia_tri_du_kien')}
-                    id="f-hda-dk"
-                    type="number"
-                    min={0}
-                    step={1000000}
-                    icon_phai={DollarSign}
-                    placeholder={laBackOffice ? '— ẩn theo vai trò —' : '0'}
-                    phan_hoi={errors.gia_tri_du_kien?.message ?? null}
-                    disabled={laBackOffice}
+                  <Controller
+                    control={control}
+                    name="gia_tri_du_kien"
+                    render={({ field }) => (
+                      <O_NhapTien
+                        id="f-hda-dk"
+                        value={field.value}
+                        onChange={(val) => field.onChange(val)}
+                        icon_phai={DollarSign}
+                        phan_hoi={errors.gia_tri_du_kien?.message ?? null}
+                        disabled={laBackOffice}
+                      />
+                    )}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Nhan htmlFor="f-hda-hd">Giá trị hợp đồng (VND)</Nhan>
-                  <O
-                    {...register('gia_tri_hop_dong')}
-                    id="f-hda-hd"
-                    type="number"
-                    min={0}
-                    step={1000000}
-                    icon_phai={DollarSign}
-                    placeholder={laBackOffice ? '— ẩn theo vai trò —' : '0 (nếu chưa ký HĐ)'}
-                    phan_hoi={errors.gia_tri_hop_dong?.message ?? null}
-                    disabled={laBackOffice}
+                  <Controller
+                    control={control}
+                    name="gia_tri_hop_dong"
+                    render={({ field }) => (
+                      <O_NhapTien
+                        id="f-hda-hd"
+                        value={field.value}
+                        onChange={(val) => field.onChange(val)}
+                        icon_phai={DollarSign}
+                        phan_hoi={errors.gia_tri_hop_dong?.message ?? null}
+                        disabled={laBackOffice}
+                      />
+                    )}
                   />
                 </div>
               </div>
@@ -1067,7 +1108,7 @@ export default function FormHoSoDuAnDrawer({
 
               <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-slate-100">
                 <div className="space-y-1.5">
-                  <Nhan htmlFor="f-hda-ngay">Ngày tạo hồ sơ</Nhan>
+                  <Nhan htmlFor="f-hda-ngay">Ngày tiếp cận dự án</Nhan>
                   <O
                     {...register('ngay_tao_ho_so')}
                     id="f-hda-ngay"
@@ -1077,7 +1118,7 @@ export default function FormHoSoDuAnDrawer({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Nhan htmlFor="f-hda-th">Thời hạn hoàn thành (dự kiến)</Nhan>
+                  <Nhan htmlFor="f-hda-th">Ngày dự kiến ký HĐ</Nhan>
                   <O
                     {...register('thoi_han_hoan_thanh')}
                     id="f-hda-th"
@@ -1106,7 +1147,6 @@ export default function FormHoSoDuAnDrawer({
                   {...register('mo_ta')}
                   id="f-hda-mota"
                   type="textarea"
-                  placeholder="Tóm tắt mục tiêu, phạm vi công việc, yêu cầu kỹ thuật và kết quả bàn giao..."
                   rows={3}
                   phan_hoi={errors.mo_ta?.message ?? null}
                 />
@@ -1117,7 +1157,6 @@ export default function FormHoSoDuAnDrawer({
                   {...register('ghi_chu')}
                   id="f-hda-ghichu"
                   type="textarea"
-                  placeholder="Các lưu ý đặc biệt, thỏa thuận bên lề hoặc lời nhắc cho đội ngũ..."
                   rows={2}
                   phan_hoi={errors.ghi_chu?.message ?? null}
                 />

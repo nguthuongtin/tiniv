@@ -16,6 +16,8 @@ export type {
 
 export { O_Nhap, O } from './o_nhap';
 export type { ONhapProps as O_NhapProps } from './o_nhap';
+export { O_NhapTien } from './o_nhap_tien';
+export type { ONhapTienProps } from './o_nhap_tien';
 
 export { Hieu } from './hieu';
 export type { HieuProps, KieuHieu } from './hieu';

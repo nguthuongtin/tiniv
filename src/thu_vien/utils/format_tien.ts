@@ -48,4 +48,18 @@ export const dinhDangTienNganGon = (val: number | null | undefined): string => {
 
 export const DINH_DANG_TIEN_NGAN_GON = dinhDangTienNganGon;
 
+export const dinhDangSoPhanNgan = (val: number | string | undefined | null): string => {
+  if (val === undefined || val === null || val === '') return '';
+  const numStr = String(val).replace(/\D/g, '');
+  if (!numStr) return '';
+  return Number(numStr).toLocaleString('vi-VN');
+};
+
+export const giaiMaSoPhanNgan = (str: unknown): number => {
+  if (typeof str === 'number') return Number.isFinite(str) ? str : 0;
+  if (!str) return 0;
+  const numStr = String(str).replace(/\D/g, '');
+  return numStr ? Number(numStr) : 0;
+};
+
 export default formatTien;

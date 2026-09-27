@@ -600,6 +600,7 @@ export default function TrangNhanSu() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4 w-[50px] text-center">STT</th>
                   <th className="py-3 px-4 min-w-[240px]">HỌ VÀ TÊN & TÀI KHOẢN</th>
                   <th className="py-3 px-4 min-w-[180px]">PHÒNG BAN & CHI NHÁNH</th>
                   <th className="py-3 px-4 min-w-[130px]">VAI TRÒ</th>
@@ -608,7 +609,7 @@ export default function TrangNhanSu() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
-                {danhSachDaSapXep.map((ns) => {
+                {danhSachDaSapXep.map((ns, index) => {
                   const thongTinVt = chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS);
                   const biKhoa = !ns.trang_thai;
                   const pb = tenPhongBan(ns.phong_ban_id);
@@ -622,6 +623,11 @@ export default function TrangNhanSu() {
                         biKhoa && 'opacity-60 bg-slate-50/30'
                       )}
                     >
+                      {/* 0. STT */}
+                      <td className="py-3.5 px-4 text-center font-semibold text-slate-400 text-xs">
+                        {index + 1}
+                      </td>
+
                       {/* 1. HỌ VÀ TÊN & TÀI KHOẢN */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
@@ -742,132 +748,50 @@ export default function TrangNhanSu() {
           </div>
 
           {/* 2. GIAO DIỆN DANH SÁCH DỄ ĐỌC TRÊN MOBILE (chỉ hiện trên màn hình nhỏ) */}
-          <div className="sm:hidden divide-y divide-slate-100">
-            {danhSachDaSapXep.map((ns) => {
-              const thongTinVt = chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS);
+          <div className="sm:hidden flex flex-col gap-2.5 p-3 bg-slate-50/50">
+            {danhSachDaSapXep.map((ns, index) => {
               const biKhoa = !ns.trang_thai;
               const pb = tenPhongBan(ns.phong_ban_id);
-              const cnStr = tenChiNhanh(ns.chi_nhanh_id);
 
               return (
-                <div
+                <Link
                   key={ns.id}
+                  href={`/nhan-su/${ns.id}`}
                   className={cn(
-                    'p-3.5 space-y-2.5',
-                    biKhoa && 'opacity-60 bg-slate-50/40'
+                    "block p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] active:bg-slate-50 transition-colors",
+                    biKhoa && 'opacity-60 bg-slate-50/50'
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <DaiDien
-                        anh={ns.url_anh_dai_dien ?? undefined}
-                        ten={ns.ho_va_ten}
-                        kich_thuoc="sm"
-                        className="size-9 rounded-lg shrink-0 border border-slate-200"
-                      />
-                      <div className="min-w-0">
-                        <Link
-                          href={`/nhan-su/${ns.id}`}
-                          className="font-bold text-slate-900 text-[14.5px] leading-snug hover:text-emerald-700 transition line-clamp-1"
-                        >
+                  <div className="flex items-center gap-3.5">
+                    <DaiDien
+                      anh={ns.url_anh_dai_dien ?? undefined}
+                      ten={ns.ho_va_ten}
+                      kich_thuoc="sm"
+                      className="size-11 rounded-full shrink-0 border border-slate-200 shadow-2xs"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="font-bold text-slate-900 text-[15px] leading-snug truncate">
+                          <span className="text-slate-400 text-xs font-semibold mr-1.5">#{index + 1}.</span>
                           {ns.ho_va_ten}
-                        </Link>
-                        {ns.chuc_vu && (
-                          <div className="text-[11px] text-slate-500 truncate mt-0.5">
-                            {ns.chuc_vu}
-                          </div>
-                        )}
+                        </div>
+                        <span
+                          className={cn(
+                            'inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9.5px] font-bold border shrink-0 uppercase tracking-wide',
+                            biKhoa
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          )}
+                        >
+                          {biKhoa ? 'ĐÃ KHÓA' : 'HOẠT ĐỘNG'}
+                        </span>
+                      </div>
+                      <div className="text-[13px] font-medium text-slate-500 truncate">
+                        {pb || 'Chưa phân phòng ban'}
                       </div>
                     </div>
-
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border shrink-0',
-                        biKhoa
-                          ? 'bg-rose-50 text-rose-700 border-rose-200/80'
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'size-1.5 rounded-full shrink-0',
-                          biKhoa ? 'bg-rose-500' : 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
-                        )}
-                      />
-                      {biKhoa ? 'Đã khóa' : 'Hoạt động'}
-                    </span>
                   </div>
-
-                  <div className="flex items-center gap-2 flex-wrap text-xs text-slate-600">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
-                      {thongTinVt.nhan}
-                    </span>
-                    {[pb, cnStr].filter(Boolean).length > 0 && (
-                      <span className="text-slate-500 text-xs truncate max-w-[220px]">
-                        {[pb, cnStr].filter(Boolean).join(' • ')}
-                      </span>
-                    )}
-                  </div>
-
-                  {(ns.email || ns.so_dien_thoai) && (
-                    <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap pt-0.5">
-                      {ns.email && (
-                        <span className="inline-flex items-center gap-1 text-slate-600 truncate max-w-[180px]">
-                          <Mail className="size-3 text-slate-400 shrink-0" />
-                          <span className="truncate">{ns.email}</span>
-                        </span>
-                      )}
-                      {ns.so_dien_thoai && (
-                        <span className="inline-flex items-center gap-1 text-slate-600">
-                          <Phone className="size-3 text-slate-400 shrink-0" />
-                          <span>{ns.so_dien_thoai}</span>
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Nút hành động nhanh trên mobile */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                    <Link
-                      href={`/nhan-su/${ns.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 py-1"
-                    >
-                      <Eye className="size-3.5" />
-                      <span>Chi tiết</span>
-                    </Link>
-                    <div className="flex items-center gap-1">
-                      {duocQuanLyNhanSu && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDangSua(ns);
-                              setLoiForm(null);
-                              setMoDrawer(true);
-                            }}
-                            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs transition cursor-pointer"
-                            title="Chỉnh sửa"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setLoiMk(null);
-                              setMkMoiModal('');
-                              setNhapLaiMkModal('');
-                              setMoModalDoiMk(ns);
-                            }}
-                            className="p-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs transition cursor-pointer"
-                            title="Đổi mật khẩu"
-                          >
-                            <KeyRound className="size-3.5" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                </Link>
               );
             })}
           </div>

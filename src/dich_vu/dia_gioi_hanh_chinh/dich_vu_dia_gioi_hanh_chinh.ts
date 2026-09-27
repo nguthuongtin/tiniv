@@ -5,6 +5,8 @@ import {
   doc,
   getDocs,
   setDoc,
+  deleteDoc,
+  writeBatch,
   query,
   where,
   limit,
@@ -13,7 +15,8 @@ import {
 import type { DiaGioiHanhChinh } from '../../thu_vien/types/dia_gioi_hanh_chinh';
 import {
   thamChieuCollection,
-  thamChieuBanGhi
+  thamChieuBanGhi,
+  firebaseFirestore
 } from '../../thu_vien/firebase/client_firebase';
 
 const COLLECTION_NAME = 'dia_gioi_hanh_chinh' as const;
@@ -217,23 +220,27 @@ export const layDanhSachDiaGioiHanhChinh = async (): Promise<DiaGioiHanhChinh[]>
   try {
     const q = query(
       thamChieuCollection(COLLECTION_NAME),
-      limit(1000)
+      limit(10000)
     );
     const snap = await getDocs(q);
-    const res: DiaGioiHanhChinh[] = snap.docs
+    const rawList: DiaGioiHanhChinh[] = snap.docs
       .map((d) => ({ id: d.id, ...(d.data() as Omit<DiaGioiHanhChinh, 'id'>) }))
       .filter((x) => x.trang_thai === 'hoat_dong' || !x.trang_thai);
 
-    if (res.length === 0) {
-      // Tự động khởi tạo dữ liệu mẫu Miền Tây vào Firestore trong background nếu chưa có
-      void tuDongKhoiTaoNeuChuaCo();
-      return DS_DIA_GIOI_MAC_DINH.map((item, index) => ({
-        id: `default_${index + 1}`,
-        ...item
-      }));
+    if (rawList.length === 0) {
+      return [];
     }
 
-    return res;
+    // Khử trùng lặp tên xã theo tỉnh
+    const mapUnique = new Map<string, DiaGioiHanhChinh>();
+    for (const item of rawList) {
+      const key = `${item.tinh_thanh.trim()}__${item.xa_phuong.trim()}`.toLowerCase();
+      if (!mapUnique.has(key)) {
+        mapUnique.set(key, item);
+      }
+    }
+
+    return Array.from(mapUnique.values());
   } catch (err) {
     console.warn('[dich_vu_dia_gioi_hanh_chinh] Catch fallback local:', err);
     return DS_DIA_GIOI_MAC_DINH.map((item, index) => ({
@@ -337,5 +344,150 @@ export const xoaDiaGioiHanhChinh = async (id: string): Promise<void> => {
     );
   } catch (err) {
     console.warn('Lỗi xóa địa giới hành chính Firestore:', err);
+  }
+};
+
+/**
+ * Tự động phân loại đơn vị hành chính dựa vào tiền tố tên gọi
+ */
+export const phanLoaiXaPhuong = (
+  ten: string
+): 'xa' | 'phuong' | 'dac_khu' | 'thi_trai' | 'khac' => {
+  const lower = ten.trim().toLowerCase();
+  if (lower.startsWith('phường') || lower.startsWith('p.')) return 'phuong';
+  if (lower.startsWith('xã') || lower.startsWith('x.')) return 'xa';
+  if (
+    lower.startsWith('thị trấn') ||
+    lower.startsWith('tt.') ||
+    lower.startsWith('t.trấn') ||
+    lower.startsWith('thị xã') ||
+    lower.startsWith('tx.')
+  )
+    return 'thi_trai';
+  if (lower.startsWith('đặc khu') || lower.startsWith('đk.')) return 'dac_khu';
+  return 'xa';
+};
+
+export interface KetQuaImportDiaGioi {
+  tongSoFile: number;
+  tongHopLe: number;
+  thanhCong: number;
+  boQua: number;
+}
+
+/**
+ * Nhập hàng loạt địa giới hành chính vào Firestore sử dụng writeBatch theo khối (chunk 400 records)
+ */
+export const nhapHangLoatDiaGioiHanhChinh = async (
+  danhSach: Array<{
+    tinh_thanh: string;
+    xa_phuong: string;
+    loai?: 'xa' | 'phuong' | 'dac_khu' | 'thi_trai' | 'khac';
+  }>,
+  onTienDo?: (daXuLy: number, tongSo: number) => void
+): Promise<KetQuaImportDiaGioi> => {
+  const now = new Date().toISOString();
+
+  // Khử trùng lặp ngay trong danh sách file đầu vào
+  const mapUniq = new Map<
+    string,
+    {
+      tinh_thanh: string;
+      xa_phuong: string;
+      loai: 'xa' | 'phuong' | 'dac_khu' | 'thi_trai' | 'khac';
+    }
+  >();
+
+  for (const item of danhSach) {
+    const tinh = item.tinh_thanh.trim();
+    const xa = item.xa_phuong.trim();
+    if (!tinh || !xa) continue;
+
+    const key = `${tinh}__${xa}`.toLowerCase();
+    if (!mapUniq.has(key)) {
+      mapUniq.set(key, {
+        tinh_thanh: tinh,
+        xa_phuong: xa,
+        loai: item.loai || phanLoaiXaPhuong(xa)
+      });
+    }
+  }
+
+  const items = Array.from(mapUniq.values());
+  const tongHopLe = items.length;
+  let thanhCong = 0;
+  const CHUNK_SIZE = 400; // Firestore giới hạn tối đa 500 ops/batch
+
+  for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+    const chunk = items.slice(i, i + CHUNK_SIZE);
+    const batch = writeBatch(firebaseFirestore);
+
+    for (const it of chunk) {
+      // Document ID xác định duy nhất theo Tỉnh + Xã, loại bỏ ký tự không an toàn
+      const docId = `${it.tinh_thanh}__${it.xa_phuong}`
+        .replace(/[\/\\#?\[\]]/g, '-')
+        .replace(/\s+/g, '_')
+        .toLowerCase();
+
+      const ref = doc(firebaseFirestore, COLLECTION_NAME, docId);
+      batch.set(
+        ref,
+        {
+          tinh_thanh: it.tinh_thanh,
+          xa_phuong: it.xa_phuong,
+          loai: it.loai,
+          trang_thai: 'hoat_dong',
+          ngay_cap_nhat: now,
+          ngay_tao: now
+        },
+        { merge: true }
+      );
+    }
+
+    await batch.commit();
+    thanhCong += chunk.length;
+
+    if (onTienDo) {
+      onTienDo(thanhCong, tongHopLe);
+    }
+  }
+
+  return {
+    tongSoFile: danhSach.length,
+    tongHopLe,
+    thanhCong,
+    boQua: danhSach.length - tongHopLe
+  };
+};
+
+/**
+ * Xóa sạch toàn bộ dữ liệu địa giới hành chính (Hard Delete)
+ */
+export const xoaToanBoDiaGioiHanhChinh = async (): Promise<number> => {
+  try {
+    const q = query(thamChieuCollection(COLLECTION_NAME), limit(10000));
+    const snap = await getDocs(q);
+    
+    if (snap.empty) return 0;
+
+    let daXoa = 0;
+    const CHUNK_SIZE = 400; // Giới hạn batch
+
+    for (let i = 0; i < snap.docs.length; i += CHUNK_SIZE) {
+      const chunk = snap.docs.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(firebaseFirestore);
+
+      for (const d of chunk) {
+        batch.delete(d.ref);
+      }
+      
+      await batch.commit();
+      daXoa += chunk.length;
+    }
+
+    return daXoa;
+  } catch (err) {
+    console.warn('Lỗi khi xóa toàn bộ địa giới hành chính:', err);
+    throw err;
   }
 };

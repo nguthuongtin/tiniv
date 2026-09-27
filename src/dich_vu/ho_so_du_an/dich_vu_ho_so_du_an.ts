@@ -206,7 +206,7 @@ export const taoHoSoDuAnMoi = async (
   const mac_dinh_trang_thai = dto.trang_thai ?? 'hoat_dong';
   const duLieuRaw: RawBanGhiHDA = {
     ma_ho_so: dto.ma_ho_so?.trim() || '',
-    ten_du_an: dto.ten_du_an.trim(),
+    ten_du_an: dto.ten_du_an.trim().toUpperCase(),
     khach_hang_id: dto.khach_hang_id ?? null,
     nguoi_lien_he_id: dto.nguoi_lien_he_id ?? null,
     chi_nhanh_id: dto.chi_nhanh_id ?? nguoiThucHien?.chi_nhanh_id ?? null,
@@ -272,6 +272,8 @@ export const capNhatHoSoDuAn = async (
       (patchRaw as unknown as Record<string, unknown>)[k] = Array.isArray(giaTriRaw)
         ? giaTriRaw
         : [];
+    } else if (k === 'ten_du_an' && typeof giaTriRaw === 'string') {
+      (patchRaw as unknown as Record<string, unknown>)[k] = giaTriRaw.trim().toUpperCase();
     } else if (
       typeof giaTriRaw === 'string' &&
       k !== 'trang_thai' &&

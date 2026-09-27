@@ -38,8 +38,6 @@ export const ModalHuongDanDatTen: React.FC<ModalHuongDanDatTenProps> = ({
 
   if (!mo) return null;
 
-  const namHienTai = new Date().getFullYear();
-
   const handleChon = (giaTri: string) => {
     const valUpper = giaTri.trim().toUpperCase();
     if (onChonMau) {
@@ -59,22 +57,22 @@ export const ModalHuongDanDatTen: React.FC<ModalHuongDanDatTenProps> = ({
         {/* Header gọn gàng */}
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-3.5">
           <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+            <div className="size-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
               <BookOpen className="size-4" />
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                Quy chuẩn đặt tên (Tự động VIẾT HOA)
+                Gợi ý đặt tên (Tự động VIẾT HOA)
               </h3>
               <p className="text-[11px] text-slate-500">
-                Bấm vào tên mẫu bên dưới để tự động điền nhanh
+                Bấm vào mẫu gợi ý bên dưới để áp dụng nhanh
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onDong}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-slate-700 transition"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-white hover:text-slate-700 transition cursor-pointer"
           >
             <X className="size-4" />
           </button>
@@ -86,110 +84,89 @@ export const ModalHuongDanDatTen: React.FC<ModalHuongDanDatTenProps> = ({
             <button
               type="button"
               onClick={() => setTabHienTai('khach_hang')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition ${
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer ${
                 tabHienTai === 'khach_hang'
-                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50/60 rounded-t-md'
+                  ? 'border-emerald-600 text-emerald-700 bg-emerald-50/60 rounded-t-md'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <Building2 className="size-3.5" />
-              <span>Tên Khách hàng</span>
+              <span>Gợi ý tên Khách hàng</span>
             </button>
             <button
               type="button"
               onClick={() => setTabHienTai('du_an')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition ${
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition cursor-pointer ${
                 tabHienTai === 'du_an'
-                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50/60 rounded-t-md'
+                  ? 'border-emerald-600 text-emerald-700 bg-emerald-50/60 rounded-t-md'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <FolderGit2 className="size-3.5" />
-              <span>Tên Dự án</span>
+              <span>Gợi ý tên Dự án / Giải pháp</span>
             </button>
           </div>
         </div>
 
-        {/* Nội dung ngắn gọn */}
-        <div className="p-5 max-h-[70vh] overflow-y-auto space-y-4 text-xs">
+        {/* Nội dung danh sách gợi ý tinh gọn */}
+        <div className="p-5 max-h-[70vh] overflow-y-auto space-y-3 text-xs">
           {tabHienTai === 'khach_hang' ? (
-            <>
-              {/* Hướng dẫn sơ vài dòng */}
-              <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 text-indigo-900 leading-relaxed">
-                <div className="font-bold text-xs uppercase tracking-wide mb-1">
-                  Cú pháp: [CƠ QUAN / LOẠI HÌNH] [TÊN] - [ĐỊA BÀN]
-                </div>
-                <div className="text-[11px] text-indigo-700">
-                  • Viết hoa toàn bộ, có dấu tiếng Việt, phân tách bằng dấu gạch nối ( - ).<br />
-                  • Không gắn tên cán bộ hay số điện thoại vào tên khách hàng.
-                </div>
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Các mẫu tên Khách hàng chuẩn (Bấm để áp dụng):
               </div>
-
-              {/* Danh sách tên mẫu click để chọn */}
-              <div className="space-y-1.5">
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Các tên mẫu chuẩn (Bấm để áp dụng):
-                </div>
-                <div className="space-y-1.5">
-                  {MAU_DAT_TEN_KHACH_HANG.map((m, idx) => (
+              <div className="space-y-2">
+                {MAU_DAT_TEN_KHACH_HANG.map((m, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleChon(m.mau)}
+                    className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-emerald-500 bg-slate-50/70 hover:bg-emerald-50/60 transition text-left group cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-900 group-hover:text-emerald-900 font-mono text-xs">
+                        {m.mau}
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">{m.nhan}</div>
+                    </div>
+                    <ArrowRight className="size-4 text-slate-300 group-hover:text-emerald-600 transition shrink-0 ml-2" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                {tenKhachHangHienTai
+                  ? `Giải pháp theo Khách hàng "${tenKhachHangHienTai.toUpperCase()}" (Bấm để áp dụng):`
+                  : 'Các loại Sản phẩm / Giải pháp (Bấm để áp dụng):'}
+              </div>
+              <div className="space-y-2">
+                {GIAI_PHAP_DU_AN_PHO_BIEN.map((gp, idx) => {
+                  const tenDayDu = sinhTenDuAnGoiY(gp, tenKhachHangHienTai);
+                  return (
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => handleChon(m.mau)}
-                      className="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:border-indigo-300 bg-slate-50/60 hover:bg-indigo-50/80 transition text-left group"
+                      onClick={() => handleChon(tenDayDu)}
+                      className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-emerald-500 bg-slate-50/70 hover:bg-emerald-50/60 transition text-left group cursor-pointer"
                     >
                       <div>
-                        <div className="font-bold text-slate-900 group-hover:text-indigo-950 font-mono text-xs">
-                          {m.mau}
+                        <div className="font-bold text-slate-900 group-hover:text-emerald-900 font-mono text-xs">
+                          {tenDayDu}
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">{m.nhan}</div>
+                        {tenKhachHangHienTai && (
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            Giải pháp: {gp}
+                          </div>
+                        )}
                       </div>
-                      <ArrowRight className="size-3.5 text-slate-300 group-hover:text-indigo-600 transition shrink-0 ml-2" />
+                      <ArrowRight className="size-4 text-slate-300 group-hover:text-emerald-600 transition shrink-0 ml-2" />
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
-            </>
-          ) : (
-            <>
-              {/* Hướng dẫn sơ vài dòng */}
-              <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 text-indigo-900 leading-relaxed">
-                <div className="font-bold text-xs uppercase tracking-wide mb-1">
-                  Cú pháp: [HẠNG MỤC / GIẢI PHÁP] - [TÊN KHÁCH HÀNG] - [NĂM]
-                </div>
-                <div className="text-[11px] text-indigo-700">
-                  • Viết hoa toàn bộ: Nêu rõ <strong>Làm gì</strong> - <strong>Cho ai</strong> - <strong>Năm nào</strong>.<br />
-                  • Tránh đặt tên ngắn ngủi chung chung như: &quot;DỰ ÁN MỚI&quot;, &quot;GÓI 1&quot;.
-                </div>
-              </div>
-
-              {/* Danh sách tên mẫu click để chọn */}
-              <div className="space-y-1.5">
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  {tenKhachHangHienTai
-                    ? `Các mẫu theo KH "${tenKhachHangHienTai.toUpperCase()}" (Bấm để áp dụng):`
-                    : 'Các mẫu dự án chuẩn (Bấm để áp dụng):'}
-                </div>
-                <div className="space-y-1.5">
-                  {GIAI_PHAP_DU_AN_PHO_BIEN.map((gp, idx) => {
-                    const tenMau = sinhTenDuAnGoiY(gp, tenKhachHangHienTai, namHienTai);
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleChon(tenMau)}
-                        className="w-full flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:border-indigo-300 bg-slate-50/60 hover:bg-indigo-50/80 transition text-left group"
-                      >
-                        <div className="font-bold text-slate-900 group-hover:text-indigo-950 font-mono text-xs truncate">
-                          {tenMau}
-                        </div>
-                        <ArrowRight className="size-3.5 text-slate-300 group-hover:text-indigo-600 transition shrink-0 ml-2" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -201,7 +178,7 @@ export const ModalHuongDanDatTen: React.FC<ModalHuongDanDatTenProps> = ({
           <button
             type="button"
             onClick={onDong}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700 text-xs font-semibold transition"
+            className="px-3.5 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700 text-xs font-semibold transition cursor-pointer"
           >
             Đóng
           </button>
@@ -210,3 +187,5 @@ export const ModalHuongDanDatTen: React.FC<ModalHuongDanDatTenProps> = ({
     </div>
   );
 };
+
+export default ModalHuongDanDatTen;

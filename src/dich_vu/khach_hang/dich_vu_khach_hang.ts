@@ -209,7 +209,7 @@ export const taoKhachHangMoi = async (
 
   const now = new Date().toISOString();
   const duLieuRaw: RawBanGhiKH = {
-    ten_khach_hang: dto.ten_khach_hang.trim(),
+    ten_khach_hang: dto.ten_khach_hang.trim().toUpperCase(),
     loai_khach_hang: dto.loai_khach_hang ?? 'khac',
     ma_so_thue: dto.ma_so_thue?.trim() || null,
     so_dien_thoai: dto.so_dien_thoai?.trim() || null,
@@ -275,10 +275,14 @@ export const capNhatKhachHang = async (
     if (!Object.prototype.hasOwnProperty.call(dto, k)) return;
     const giaTriRaw = (dto as unknown as Record<string, unknown>)[k];
     if (giaTriRaw === undefined) return;
-    (patchRaw as unknown as Record<string, unknown>)[k] =
-      typeof giaTriRaw === 'string' && k !== 'trang_thai' && k !== 'loai_khach_hang'
-        ? giaTriRaw.trim() || null
-        : giaTriRaw;
+    if (k === 'ten_khach_hang' && typeof giaTriRaw === 'string') {
+      (patchRaw as unknown as Record<string, unknown>)[k] = giaTriRaw.trim().toUpperCase();
+    } else {
+      (patchRaw as unknown as Record<string, unknown>)[k] =
+        typeof giaTriRaw === 'string' && k !== 'trang_thai' && k !== 'loai_khach_hang'
+          ? giaTriRaw.trim() || null
+          : giaTriRaw;
+    }
   });
   patchRaw.ngay_cap_nhat = now;
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });

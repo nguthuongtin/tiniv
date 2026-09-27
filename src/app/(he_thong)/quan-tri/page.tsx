@@ -73,7 +73,8 @@ import {
   taoDiaGioiHanhChinh,
   capNhatDiaGioiHanhChinh,
   xoaDiaGioiHanhChinh,
-  napDuLieuMauMienTay
+  napDuLieuMauMienTay,
+  xoaToanBoDiaGioiHanhChinh
 } from '../../../dich_vu/dia_gioi_hanh_chinh/dich_vu_dia_gioi_hanh_chinh';
 
 import BangChiNhanh from '../../../thanh_phan/quan_tri/bang_chi_nhanh';
@@ -485,6 +486,19 @@ export default function TrangQuanTri() {
                 const soLuong = await napDuLieuMauMienTay();
                 themToast('thanh_cong', `Đã nạp thêm ${soLuong} xã/phường/thị trấn mẫu 13 tỉnh Miền Tây`);
                 await taiDuLieu();
+              }}
+              onXoaToanBo={async () => {
+                try {
+                  const daXoa = await xoaToanBoDiaGioiHanhChinh();
+                  themToast('thanh_cong', `Đã xóa thành công ${daXoa} địa giới hành chính.`);
+                  await taiDuLieu();
+                } catch (e) {
+                  themToast('loi', 'Có lỗi xảy ra khi xóa toàn bộ.');
+                }
+              }}
+              onTaiLai={async () => {
+                await taiDuLieu();
+                themToast('thanh_cong', 'Đã tải lại danh sách địa giới hành chính');
               }}
             />
           )}

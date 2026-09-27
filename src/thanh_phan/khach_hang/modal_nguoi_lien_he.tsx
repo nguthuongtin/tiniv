@@ -69,7 +69,7 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
         await capNhatNguoiLienHe(
           {
             id: dangSua.id,
-            ho_va_ten: hoVaTen.trim(),
+            ho_va_ten: hoVaTen.trim().toUpperCase(),
             chuc_vu: chucVu.trim() || null,
             so_dien_thoai: soDienThoai.trim() || null,
             email: email.trim() || null,
@@ -81,7 +81,7 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
         await taoNguoiLienHeMoi(
           {
             khach_hang_id: khachHangId,
-            ho_va_ten: hoVaTen.trim(),
+            ho_va_ten: hoVaTen.trim().toUpperCase(),
             chuc_vu: chucVu.trim() || null,
             so_dien_thoai: soDienThoai.trim() || null,
             email: email.trim() || null,
@@ -142,9 +142,8 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
               type="text"
               required
               value={hoVaTen}
-              onChange={(e) => setHoVaTen(e.target.value)}
-              placeholder="VD: Nguyễn Văn An"
-              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              onChange={(e) => setHoVaTen(e.target.value.toUpperCase())}
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 uppercase font-semibold focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
 
@@ -156,7 +155,6 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
               type="text"
               value={chucVu}
               onChange={(e) => setChucVu(e.target.value)}
-              placeholder="VD: Giám đốc, Kế toán trưởng, Trưởng phòng mua hàng..."
               className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>
@@ -170,7 +168,6 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
                 type="tel"
                 value={soDienThoai}
                 onChange={(e) => setSoDienThoai(e.target.value)}
-                placeholder="0912345678"
                 className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
             </div>
@@ -182,7 +179,6 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="contact@congty.com"
                 className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               />
             </div>
@@ -196,7 +192,6 @@ export const ModalNguoiLienHe: React.FC<ModalNguoiLienHeProps> = ({
               rows={2}
               value={ghiChu}
               onChange={(e) => setGhiChu(e.target.value)}
-              placeholder="Ghi chú thêm về người liên hệ này (vai trò quyết định, thói quen liên hệ...)"
               className="w-full rounded-xl border border-slate-300 p-3 text-sm text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
           </div>

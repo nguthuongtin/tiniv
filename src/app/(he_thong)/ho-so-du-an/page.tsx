@@ -29,8 +29,10 @@ import {
   ChevronLeft,
   ChevronDown,
   RotateCcw,
-  XCircle
+  XCircle,
+  FileSpreadsheet
 } from 'lucide-react';
+import ModalXuatExcelDuAn, { type CheDoXuat } from '../../../thanh_phan/ho_so_du_an/modal_xuat_excel_du_an';
 import { cn } from '../../../thu_vien/utils/cn';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
 import { useStoreXacThuc } from '../../../thu_vien/zustand/store_xac_thuc';
@@ -421,6 +423,11 @@ function TrangHoSoDuAn() {
   const SO_BAN_GHI_MOI_TRANG = 12;
   const [duAnXacNhanXoa, setDuAnXacNhanXoa] = useState<HoSoDuAn | null>(null);
 
+  // Quản lý xuất Excel & chọn dự án
+  const [moModalXuatExcel, setMoModalXuatExcel] = useState(false);
+  const [dsDuAnDaChonIds, setDsDuAnDaChonIds] = useState<Set<string>>(new Set());
+  const [cheDoXuatMacDinh, setCheDoXuatMacDinh] = useState<CheDoXuat | undefined>(undefined);
+
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
   const coQuyenXoa = coQuyen(nguoiDungHienTai, 'du_an.xoa');
   const coQuyenKhoiPhuc = coQuyen(nguoiDungHienTai, 'du_an.khoi_phuc');
@@ -455,6 +462,38 @@ function TrangHoSoDuAn() {
     const batDau = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG;
     return danhSachDaSapXep.slice(batDau, batDau + SO_BAN_GHI_MOI_TRANG);
   }, [danhSachDaSapXep, trangHienTai]);
+
+  const toggleChonDuAn = useCallback((id: string) => {
+    setDsDuAnDaChonIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const chonTatCaTrang = useCallback(() => {
+    setDsDuAnDaChonIds((prev) => {
+      const next = new Set(prev);
+      const idsTrang = danhSachTrangHienTai.map((d) => d.id);
+      const daChonHet = idsTrang.length > 0 && idsTrang.every((id) => next.has(id));
+      if (daChonHet) {
+        idsTrang.forEach((id) => next.delete(id));
+      } else {
+        idsTrang.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, [danhSachTrangHienTai]);
+
+  const daChonHetTrang = useMemo(() => {
+    if (danhSachTrangHienTai.length === 0) return false;
+    return danhSachTrangHienTai.every((d) => dsDuAnDaChonIds.has(d.id));
+  }, [danhSachTrangHienTai, dsDuAnDaChonIds]);
+
+  const duAnDaChonList = useMemo(() => {
+    return danhSach.filter((d) => dsDuAnDaChonIds.has(d.id));
+  }, [danhSach, dsDuAnDaChonIds]);
 
   const groupTienDoMoiNhatTheoDuAn = useMemo(() => {
     const map = new Map<string, TienDoDuAn>();
@@ -869,6 +908,24 @@ function TrangHoSoDuAn() {
 
               <button
                 type="button"
+                onClick={() => {
+                  setCheDoXuatMacDinh(dsDuAnDaChonIds.size > 0 ? 'da_chon' : undefined);
+                  setMoModalXuatExcel(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 border border-slate-200 hover:border-emerald-300 text-xs sm:text-sm font-bold shadow-2xs transition cursor-pointer"
+                title="Xuất file Excel tiến độ dự án"
+              >
+                <FileSpreadsheet className="size-4 text-emerald-700" />
+                <span>Xuất Excel</span>
+                {dsDuAnDaChonIds.size > 0 && (
+                  <span className="size-5 rounded-full bg-emerald-700 text-white text-[11px] font-bold flex items-center justify-center -mr-1">
+                    {dsDuAnDaChonIds.size}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={moThemMoi}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
               >
@@ -883,6 +940,16 @@ function TrangHoSoDuAn() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-3 w-[42px] text-center">
+                    <input
+                      type="checkbox"
+                      aria-label="Chọn tất cả dự án trang này"
+                      checked={daChonHetTrang}
+                      onChange={chonTatCaTrang}
+                      className="size-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500 cursor-pointer"
+                    />
+                  </th>
+                  <th className="py-3 px-3 w-[45px] text-center">STT</th>
                   <th className="py-3 px-4 min-w-[240px]">TÊN DỰ ÁN & KHÁCH HÀNG</th>
                   <th className="py-3 px-4 min-w-[150px]">GIAI ĐOẠN</th>
                   <th className="py-3 px-4 min-w-[140px]">GIÁ TRỊ & TIỀM NĂNG</th>
@@ -891,20 +958,39 @@ function TrangHoSoDuAn() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
-                {danhSachTrangHienTai.map((hda) => {
+                {danhSachTrangHienTai.map((hda, index) => {
                   const kh = hda.khach_hang_id ? dsKhachHang.find((k) => k.id === hda.khach_hang_id) ?? null : null;
                   const nguoiLead = dsNhanSu.find((n) => n.id === (hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id)) ?? null;
                   const gd = tenGiaiDoan[hda.giai_doan] ?? { nhan: String(hda.giai_doan), kieu: 'muted' as const };
                   const tiemNang = TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? { nhan: 'Bình thường', kieu: 'muted' };
+                  const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
+                  const duocChon = dsDuAnDaChonIds.has(hda.id);
 
                   return (
                     <tr
                       key={hda.id}
                       className={cn(
                         'hover:bg-slate-50/70 transition-colors',
-                        hda.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/30'
+                        hda.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/30',
+                        duocChon && 'bg-emerald-50/40'
                       )}
                     >
+                      {/* Checkbox chọn */}
+                      <td className="py-3.5 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          aria-label={`Chọn dự án ${hda.ten_du_an}`}
+                          checked={duocChon}
+                          onChange={() => toggleChonDuAn(hda.id)}
+                          className="size-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* 0. STT */}
+                      <td className="py-3.5 px-3 text-center font-semibold text-slate-400 text-xs">
+                        {stt}
+                      </td>
+
                       {/* 1. TÊN DỰ ÁN & KHÁCH HÀNG */}
                       <td className="py-3.5 px-4">
                         <Link
@@ -923,7 +1009,7 @@ function TrangHoSoDuAn() {
                           {hda.thoi_han_hoan_thanh && (
                             <span className="inline-flex items-center gap-1 text-slate-400">
                               <Clock className="size-3" />
-                              Hạn: {formatNgay(hda.thoi_han_hoan_thanh.slice(0, 10))}
+                              Ký HĐ: {formatNgay(hda.thoi_han_hoan_thanh.slice(0, 10))}
                             </span>
                           )}
                         </div>
@@ -1007,109 +1093,61 @@ function TrangHoSoDuAn() {
           </div>
 
           {/* 2. GIAO DIỆN DANH SÁCH DỄ ĐỌC TRÊN MOBILE (chỉ hiện trên màn hình nhỏ) */}
-          <div className="sm:hidden divide-y divide-slate-100">
-            {danhSachTrangHienTai.map((hda) => {
+          <div className="sm:hidden flex flex-col gap-2.5 p-3 bg-slate-50/50">
+            {danhSachTrangHienTai.map((hda, index) => {
               const kh = hda.khach_hang_id ? dsKhachHang.find((k) => k.id === hda.khach_hang_id) ?? null : null;
-              const nguoiLead = dsNhanSu.find((n) => n.id === (hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id)) ?? null;
-              const gd = tenGiaiDoan[hda.giai_doan] ?? { nhan: String(hda.giai_doan), kieu: 'muted' as const };
-              const tiemNang = TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? { nhan: 'Bình thường', kieu: 'muted' };
+              const gd = tenGiaiDoan[hda.giai_doan] ?? { nhan: String(hda.giai_doan) };
+              const giaTri = laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong);
+              const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
+
+              const duocChon = dsDuAnDaChonIds.has(hda.id);
 
               return (
                 <div
                   key={hda.id}
                   className={cn(
-                    'p-3.5 space-y-2.5',
-                    hda.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/40'
+                    "p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-colors relative",
+                    hda.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/50',
+                    duocChon && 'border-emerald-500 bg-emerald-50/20'
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start justify-between gap-3 mb-1.5">
                     <Link
                       href={`/ho-so-du-an/${hda.id}`}
-                      className="font-bold text-slate-900 text-[14.5px] leading-snug hover:text-emerald-700 transition line-clamp-2"
+                      className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 hover:text-emerald-700 flex-1 pr-1"
                     >
+                      <span className="text-slate-400 text-xs font-semibold mr-1.5">#{stt}.</span>
                       {hda.ten_du_an}
                     </Link>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60 shrink-0">
-                      {gd.nhan}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500">
-                    {kh && (
-                      <span className="inline-flex items-center gap-1 text-slate-700 font-medium">
-                        <Building2 className="size-3 text-slate-400 shrink-0" />
-                        <span className="truncate max-w-[200px]">{kh.ten_khach_hang}</span>
-                      </span>
-                    )}
-                    {hda.thoi_han_hoan_thanh && (
-                      <span className="inline-flex items-center gap-1 text-slate-400">
-                        <Clock className="size-3 shrink-0" />
-                        <span>Hạn: {formatNgay(hda.thoi_han_hoan_thanh.slice(0, 10))}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 text-xs pt-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900 text-sm">
-                        {laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong)}
-                      </span>
-                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">
-                        {tiemNang.nhan}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <input
+                        type="checkbox"
+                        aria-label={`Chọn dự án ${hda.ten_du_an}`}
+                        checked={duocChon}
+                        onChange={() => toggleChonDuAn(hda.id)}
+                        className="size-4.5 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500 cursor-pointer"
+                      />
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
+                        {gd.nhan}
                       </span>
                     </div>
-
-                    {nguoiLead ? (
-                      <div className="flex items-center gap-1 text-xs text-slate-600 font-medium truncate max-w-[150px]">
-                        <User className="size-3 text-slate-400 shrink-0" />
-                        <span className="truncate">{nguoiLead.ho_va_ten}</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-400 italic">Chưa gán</span>
-                    )}
                   </div>
 
-                  {/* Nút hành động nhanh trên mobile */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                    <Link
-                      href={`/ho-so-du-an/${hda.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 py-1"
-                    >
-                      <Eye className="size-3.5" />
-                      <span>Chi tiết</span>
-                    </Link>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => moSua(hda)}
-                        className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs transition cursor-pointer"
-                        title="Chỉnh sửa"
-                      >
-                        <Pencil className="size-3.5" />
-                      </button>
-                      {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc ? (
-                        <button
-                          type="button"
-                          onClick={() => xuLyKhoiPhuc(hda)}
-                          disabled={dangXuLyKhac === hda.id}
-                          className="p-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs transition cursor-pointer disabled:opacity-50"
-                          title="Khôi phục hồ sơ"
-                        >
-                          <RotateCcw className="size-3.5" />
-                        </button>
-                      ) : coQuyenXoa ? (
-                        <button
-                          type="button"
-                          onClick={() => xuLyXoa(hda)}
-                          disabled={dangXuLyKhac === hda.id}
-                          className="p-1.5 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs transition cursor-pointer disabled:opacity-50"
-                          title="Xóa vào thùng rác"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      ) : null}
+                  <Link href={`/ho-so-du-an/${hda.id}`} className="block">
+                    <div className="flex items-center gap-2 flex-wrap text-[12.5px] text-slate-500">
+                      <span className="font-mono font-bold text-emerald-700">
+                        {giaTri}
+                      </span>
+                      {kh && (
+                        <>
+                          <span className="text-slate-300">•</span>
+                          <span className="font-medium text-slate-600 truncate max-w-[200px]">
+                            {kh.ten_khach_hang}
+                          </span>
+                        </>
+                      )}
                     </div>
-                  </div>
+                  </Link>
                 </div>
               );
             })}
@@ -1266,6 +1304,47 @@ function TrangHoSoDuAn() {
           </div>
         </div>
       )}
+      {/* Thanh công cụ nổi khi có dự án được chọn */}
+      {dsDuAnDaChonIds.size > 0 && (
+        <div className="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700/60 backdrop-blur-md flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-200 max-w-[92vw]">
+          <div className="text-xs sm:text-sm font-semibold whitespace-nowrap">
+            Đã chọn <span className="text-emerald-400 font-extrabold">{dsDuAnDaChonIds.size}</span> dự án
+          </div>
+          <div className="h-4 w-[1px] bg-slate-700" />
+          <button
+            type="button"
+            onClick={() => {
+              setCheDoXuatMacDinh('da_chon');
+              setMoModalXuatExcel(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer shrink-0 shadow-xs"
+          >
+            <FileSpreadsheet className="size-3.5" />
+            <span>Xuất Excel ({dsDuAnDaChonIds.size})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDsDuAnDaChonIds(new Set())}
+            className="text-xs text-slate-400 hover:text-white px-2 py-1 transition cursor-pointer shrink-0"
+          >
+            Bỏ chọn
+          </button>
+        </div>
+      )}
+
+      {/* Modal xuất Excel tiến độ dự án */}
+      <ModalXuatExcelDuAn
+        mo={moModalXuatExcel}
+        onDong={() => setMoModalXuatExcel(false)}
+        tatCaDuAn={danhSach}
+        duAnTheoBoLoc={danhSachDaSapXep}
+        duAnDaChon={duAnDaChonList}
+        dsKhachHang={dsKhachHang}
+        dsNhanSu={dsNhanSu}
+        dsTienDo={dsTienDo}
+        tenGiaiDoan={tenGiaiDoan}
+        cheDoMacDinh={cheDoXuatMacDinh}
+      />
     </Bo_Cuc_Trang>
   );
 }

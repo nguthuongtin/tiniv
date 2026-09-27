@@ -407,7 +407,7 @@ export const taoNhanSuMoi = async (
     const maNhanVien = dto.ma_nhan_vien ?? await taoMaNhanVienTuDong();
     const duLieuRaw: RawBanGhiNS = loaiBoUndefined({
       ma_nhan_vien: maNhanVien,
-      ho_va_ten: dto.ho_va_ten.trim(),
+      ho_va_ten: dto.ho_va_ten.trim().toUpperCase(),
       so_dien_thoai: dto.so_dien_thoai?.trim() || null,
       email: emailSach,
       chi_nhanh_id: dto.chi_nhanh_id ?? null,
@@ -485,7 +485,7 @@ export const capNhatNhanSu = async (
     if (auth?.currentUser && auth.currentUser.uid === id) {
       try {
         await authUpdateProfile(auth.currentUser, {
-          displayName: dto.ho_va_ten ? dto.ho_va_ten.trim() : auth.currentUser.displayName ?? undefined,
+          displayName: dto.ho_va_ten ? dto.ho_va_ten.trim().toUpperCase() : auth.currentUser.displayName ?? undefined,
           photoURL: dto.url_anh_dai_dien !== undefined ? dto.url_anh_dai_dien ?? undefined : auth.currentUser.photoURL ?? undefined
         });
       } catch { /* bo qua */ }
@@ -496,7 +496,7 @@ export const capNhatNhanSu = async (
   const duLieuMoi: RawBanGhiNS = loaiBoUndefined({
     ...hienTai,
     ma_nhan_vien: dto.ma_nhan_vien ?? hienTai.ma_nhan_vien,
-    ho_va_ten: dto.ho_va_ten !== undefined ? dto.ho_va_ten.trim() : hienTai.ho_va_ten,
+    ho_va_ten: dto.ho_va_ten !== undefined ? dto.ho_va_ten.trim().toUpperCase() : hienTai.ho_va_ten,
     so_dien_thoai: dto.so_dien_thoai !== undefined
       ? (dto.so_dien_thoai?.trim() || null)
       : hienTai.so_dien_thoai,

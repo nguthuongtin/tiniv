@@ -110,7 +110,7 @@ export default function FormKhachHangDrawer({
   const xaPhuongDangChon = form.watch('xa_phuong');
 
   const danhSachTinh = useMemo(() => {
-    const set = new Set<string>(DANH_SACH_TINH_MIEN_TAY);
+    const set = new Set<string>();
     dsDiaGioi.forEach((x) => {
       if (x.tinh_thanh) set.add(x.tinh_thanh);
     });
@@ -319,7 +319,6 @@ export default function FormKhachHangDrawer({
                       }
                     })}
                     type="text"
-                    placeholder="NHẬP TÊN DOANH NGHIỆP, CÁ NHÂN HOẶC TỔ CHỨC..."
                     className={cn(
                       inputStyleCls,
                       'uppercase font-semibold',
@@ -350,7 +349,6 @@ export default function FormKhachHangDrawer({
                       }}
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ví dụ: 0101234567"
                       className={cn(
                         inputStyleCls,
                         Boolean(form.formState.errors.ma_so_thue) && inputLoiCls,
@@ -376,7 +374,6 @@ export default function FormKhachHangDrawer({
                       }}
                       type="tel"
                       inputMode="tel"
-                      placeholder="Ví dụ: 0912 345 678"
                       className={cn(
                         inputStyleCls,
                         Boolean(form.formState.errors.so_dien_thoai) && inputLoiCls,
@@ -395,7 +392,6 @@ export default function FormKhachHangDrawer({
                     <input
                       {...form.register('email')}
                       type="email"
-                      placeholder="lienhe@doanhnghiep.vn"
                       className={cn(inputStyleCls, Boolean(form.formState.errors.email) && inputLoiCls)}
                     />
                   </TruongForm>
@@ -405,7 +401,6 @@ export default function FormKhachHangDrawer({
                   <input
                     {...form.register('website')}
                     type="url"
-                    placeholder="https://example.com"
                     className={cn(inputStyleCls, Boolean(form.formState.errors.website) && inputLoiCls)}
                   />
                 </TruongForm>
@@ -425,78 +420,38 @@ export default function FormKhachHangDrawer({
               <div className="space-y-3.5">
                 <div className="grid gap-3.5 sm:grid-cols-2">
                   <TruongForm label="Tỉnh / Thành phố" loi={form.formState.errors.tinh_thanh?.message}>
-                    <select
-                      {...form.register('tinh_thanh')}
-                      onChange={(e) => {
-                        form.setValue('tinh_thanh', e.target.value);
-                        form.setValue('xa_phuong', '');
-                      }}
+                    <input
+                      {...form.register('tinh_thanh', {
+                        onChange: (e) => {
+                          form.setValue('xa_phuong', ''); // Reset xã phường khi đổi tỉnh
+                        }
+                      })}
+                      list="ds-tinh-thanh-kh"
+                      placeholder="Chọn hoặc nhập tỉnh/thành..."
+                      autoComplete="off"
                       className={cn(inputStyleCls, Boolean(form.formState.errors.tinh_thanh) && inputLoiCls)}
-                    >
-                      <option value="">-- Chọn Tỉnh / Thành phố ({danhSachTinh.length}) --</option>
+                    />
+                    <datalist id="ds-tinh-thanh-kh">
                       {danhSachTinh.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
+                        <option key={t} value={t} />
                       ))}
-                      {tinhThanhDangChon && !danhSachTinh.includes(tinhThanhDangChon) && (
-                        <option value={tinhThanhDangChon}>{tinhThanhDangChon}</option>
-                      )}
-                    </select>
+                    </datalist>
                   </TruongForm>
 
                   <TruongForm label="Xã / Phường / Đặc khu" loi={form.formState.errors.xa_phuong?.message}>
-                    {nhapTayXa ? (
-                      <div className="flex gap-1.5">
-                        <input
-                          {...form.register('xa_phuong')}
-                          type="text"
-                          placeholder="Nhập tên xã / phường..."
-                          className={cn(inputStyleCls, Boolean(form.formState.errors.xa_phuong) && inputLoiCls)}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setNhapTayXa(false)}
-                          className="px-2.5 py-1 text-xs border rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 shrink-0 font-medium cursor-pointer"
-                          title="Chọn từ danh sách"
-                        >
-                          Danh sách
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-1.5">
-                        <select
-                          {...form.register('xa_phuong')}
-                          disabled={!tinhThanhDangChon}
-                          className={cn(inputStyleCls, Boolean(form.formState.errors.xa_phuong) && inputLoiCls)}
-                        >
-                          <option value="">
-                            {!tinhThanhDangChon
-                              ? '-- Vui lòng chọn Tỉnh trước --'
-                              : dsXaPhuongTheoTinh.length > 0
-                              ? `-- Chọn Xã / Phường (${dsXaPhuongTheoTinh.length}) --`
-                              : '-- Không có xã/phường có sẵn --'}
-                          </option>
-                          {dsXaPhuongTheoTinh.map((item) => (
-                            <option key={item.id} value={item.xa_phuong}>
-                              {item.xa_phuong}
-                            </option>
-                          ))}
-                          {xaPhuongDangChon &&
-                            !dsXaPhuongTheoTinh.some((x) => x.xa_phuong === xaPhuongDangChon) && (
-                              <option value={xaPhuongDangChon}>{xaPhuongDangChon}</option>
-                            )}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setNhapTayXa(true)}
-                          className="px-2.5 py-1 text-xs border rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 shrink-0 font-medium cursor-pointer"
-                          title="Nhập tên khác nếu chưa có trong danh mục"
-                        >
-                          Nhập tay
-                        </button>
-                      </div>
-                    )}
+                    <input
+                      {...form.register('xa_phuong')}
+                      list="ds-xa-phuong-kh"
+                      placeholder={tinhThanhDangChon ? "Chọn hoặc nhập xã/phường..." : "Vui lòng chọn tỉnh trước"}
+                      disabled={!tinhThanhDangChon}
+                      autoComplete="off"
+                      className={cn(inputStyleCls, Boolean(form.formState.errors.xa_phuong) && inputLoiCls)}
+                    />
+                    <datalist id="ds-xa-phuong-kh">
+                      {dsXaPhuongTheoTinh.map((item) => (
+                        <option key={item.id} value={item.xa_phuong} />
+                      ))}
+                    </datalist>
                   </TruongForm>
                 </div>
 
@@ -504,7 +459,6 @@ export default function FormKhachHangDrawer({
                   <input
                     {...form.register('dia_chi')}
                     type="text"
-                    placeholder="Số nhà, đường, khu phố / ấp..."
                     className={cn(inputStyleCls, Boolean(form.formState.errors.dia_chi) && inputLoiCls)}
                   />
                 </TruongForm>
@@ -569,7 +523,6 @@ export default function FormKhachHangDrawer({
                   <textarea
                     {...form.register('ghi_chu')}
                     rows={3}
-                    placeholder="Ghi chú thêm về khách hàng..."
                     className={cn(
                       inputStyleCls,
                       'h-auto min-h-[85px] resize-y py-2.5',

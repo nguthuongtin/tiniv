@@ -249,5 +249,11 @@ service cloud.firestore {
       allow read: if daXacThucVaHoatDong();
       allow write: if daXacThucVaHoatDong();
     }
+
+    // ========== 21. Collection: dia_gioi_hanh_chinh ==========
+    match /dia_gioi_hanh_chinh/{id} {
+      allow read: if daXacThucVaHoatDong();
+      allow create, update, delete: if laGiamDoc();
+    }
   }
 }

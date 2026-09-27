@@ -208,7 +208,7 @@ export default function TrangChiTietNhanSu() {
       await capNhatNhanSu(
         ns.id,
         {
-          ho_va_ten: formSua.ho_va_ten.trim(),
+          ho_va_ten: formSua.ho_va_ten.trim().toUpperCase(),
           ma_nhan_vien: formSua.ma_nhan_vien.trim() || undefined,
           email: formSua.email.trim() !== ns.email ? formSua.email.trim() : undefined,
           so_dien_thoai: formSua.so_dien_thoai.trim() || null,
@@ -561,10 +561,9 @@ export default function TrangChiTietNhanSu() {
                     <input
                       type="text"
                       value={formSua.ho_va_ten}
-                      onChange={(e) => setFormSua((s) => ({ ...s, ho_va_ten: e.target.value }))}
-                      placeholder="Nhập họ và tên đầy đủ..."
+                      onChange={(e) => setFormSua((s) => ({ ...s, ho_va_ten: e.target.value.toUpperCase() }))}
                       required
-                      className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                      className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm font-semibold uppercase text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
                     />
                   </div>
 
@@ -577,8 +576,7 @@ export default function TrangChiTietNhanSu() {
                       type="text"
                       value={formSua.ma_nhan_vien}
                       onChange={(e) => setFormSua((s) => ({ ...s, ma_nhan_vien: e.target.value }))}
-                      placeholder="VD: NV-001..."
-                      className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                      className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
                     />
                   </div>
 
@@ -592,8 +590,7 @@ export default function TrangChiTietNhanSu() {
                       list="goi-y-chuc-vu"
                       value={formSua.chuc_vu}
                       onChange={(e) => setFormSua((s) => ({ ...s, chuc_vu: e.target.value }))}
-                      placeholder="Chọn hoặc nhập chức vụ..."
-                      className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                      className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
                     />
                     <datalist id="goi-y-chuc-vu">
                       {dsChucVu.map((cv) => (
@@ -959,9 +956,8 @@ export default function TrangChiTietNhanSu() {
                     type="email"
                     value={formSua.email}
                     onChange={(e) => setFormSua((s) => ({ ...s, email: e.target.value }))}
-                    placeholder="VD: nhanvien@domain.com"
                     required
-                    className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                    className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
                   />
                   <span className="text-[10.5px] text-muted-foreground block">
                     Đổi email tại đây sẽ tự động đồng bộ cả tài khoản đăng nhập Firebase và hồ sơ nhân sự.
@@ -976,8 +972,7 @@ export default function TrangChiTietNhanSu() {
                     type="tel"
                     value={formSua.so_dien_thoai}
                     onChange={(e) => setFormSua((s) => ({ ...s, so_dien_thoai: e.target.value }))}
-                    placeholder="VD: 0901234567..."
-                    className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                    className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
                   />
                 </div>
               </div>
@@ -1181,9 +1176,8 @@ export default function TrangChiTietNhanSu() {
                   type="text"
                   value={mkMoi}
                   onChange={(e) => setMkMoi(e.target.value)}
-                  placeholder="Nhập mật khẩu mới..."
                   required
-                  className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
+                  className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
                 />
 
                 <div className="space-y-1.5">
@@ -1194,9 +1188,8 @@ export default function TrangChiTietNhanSu() {
                     type="text"
                     value={nhapLaiMk}
                     onChange={(e) => setNhapLaiMk(e.target.value)}
-                    placeholder="Nhập lại mật khẩu..."
                     required
-                    className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
+                    className="w-full h-9 px-3 rounded-[var(--radius-input)] border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
                   />
                 </div>
 

@@ -88,7 +88,7 @@ export const taoNguoiLienHeMoi = async (
   const now = new Date().toISOString();
   const raw: RawNLH = {
     khach_hang_id: dto.khach_hang_id,
-    ho_va_ten: dto.ho_va_ten.trim(),
+    ho_va_ten: dto.ho_va_ten.trim().toUpperCase(),
     chuc_vu: dto.chuc_vu?.trim() || null,
     so_dien_thoai: dto.so_dien_thoai?.trim() || null,
     email: dto.email?.trim() || null,
@@ -123,7 +123,11 @@ export const capNhatNguoiLienHe = async (
     if (k === 'id') return;
     const giaTri = (dto as unknown as Record<string, unknown>)[k];
     if (giaTri === undefined) return;
-    (patch as unknown as Record<string, unknown>)[k] = typeof giaTri === 'string' ? giaTri.trim() || null : giaTri;
+    if (k === 'ho_va_ten' && typeof giaTri === 'string') {
+      (patch as unknown as Record<string, unknown>)[k] = giaTri.trim().toUpperCase();
+    } else {
+      (patch as unknown as Record<string, unknown>)[k] = typeof giaTri === 'string' ? giaTri.trim() || null : giaTri;
+    }
   });
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patch as any, { merge: true });
   const moi = { ...hienTai, ...patch } as NguoiLienHe;

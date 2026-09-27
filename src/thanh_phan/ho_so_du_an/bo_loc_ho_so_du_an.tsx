@@ -260,7 +260,7 @@ export default function BoLocHoSoDuAn({
 
           <div className="col-span-full h-px bg-slate-200/80 my-1" />
 
-          <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tạo HS từ ngày</>}>
+          <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tiếp cận từ ngày</>}>
             <input
               type="date"
               value={gia_tri_hien_tai.ngay_tao_tu_ngay ?? ''}
@@ -268,7 +268,7 @@ export default function BoLocHoSoDuAn({
               className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             />
           </BoLocMuc>
-          <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tạo HS đến ngày</>}>
+          <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tiếp cận đến ngày</>}>
             <input
               type="date"
               value={gia_tri_hien_tai.ngay_tao_den_ngay ?? ''}
@@ -277,7 +277,7 @@ export default function BoLocHoSoDuAn({
             />
           </BoLocMuc>
           <div className="hidden lg:block h-10" />
-          <BoLocMuc label={<><Calendar className="size-3.5 text-[#FF9500]" /> Hạn hoàn thành từ ngày</>}>
+          <BoLocMuc label={<><Calendar className="size-3.5 text-[#FF9500]" /> Dự kiến ký HĐ từ ngày</>}>
             <input
               type="date"
               value={gia_tri_hien_tai.thoi_han_hoan_thanh_tu_ngay ?? ''}
@@ -285,7 +285,7 @@ export default function BoLocHoSoDuAn({
               className="w-full h-10 rounded-xl border border-[#FF9500]/30 bg-amber-50/40 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] shadow-2xs"
             />
           </BoLocMuc>
-          <BoLocMuc label={<><Calendar className="size-3.5 text-[#FF9500]" /> Hạn hoàn thành đến ngày</>}>
+          <BoLocMuc label={<><Calendar className="size-3.5 text-[#FF9500]" /> Dự kiến ký HĐ đến ngày</>}>
             <input
               type="date"
               value={gia_tri_hien_tai.thoi_han_hoan_thanh_den_ngay ?? ''}

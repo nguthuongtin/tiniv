@@ -47,7 +47,8 @@ import {
   RotateCcw,
   Check,
   MessageSquareQuote,
-  Shield
+  Shield,
+  Lightbulb
 } from 'lucide-react';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import type { HoSoDuAn, TienDoDuAn, GiaiDoanDuAn } from '../../../../thu_vien/types/du_an';
@@ -93,8 +94,9 @@ import { layDanhSachGiaiDoan } from '../../../../thu_vien/cau_hinh/giai_doan_du_
 import { duocXemHoSoDuAn, coQuyen } from '../../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import useStoreXacThuc from '../../../../thu_vien/zustand/store_xac_thuc';
 import { ModalLyDoHuyDuAn } from '../../../../thanh_phan/ho_so_du_an/modal_ly_do_huy_du_an';
+import { ModalHuongDanDatTen } from '../../../../thanh_phan/chung/modal_huong_dan_dat_ten';
 import { formatNgay } from '../../../../thu_vien/utils/format_ngay';
-import { formatTien } from '../../../../thu_vien/utils/format_tien';
+import { formatTien, dinhDangSoPhanNgan, giaiMaSoPhanNgan } from '../../../../thu_vien/utils/format_tien';
 import { cn } from '../../../../thu_vien/utils/cn';
 import {
   BoCacTab,
@@ -211,10 +213,11 @@ export default function TrangChiTietHoSoDuAn() {
   const [tabHienTai, setTabHienTai] = useState<TenTab>('tien_do');
   const [moFormTienDo, setMoFormTienDo] = useState(false);
 
-  // State cho Modal xác nhận chuyển giai đoạn & Modal xóa
+  // State cho Modal xác nhận chuyển giai đoạn & Modal xóa & Modal gợi ý tên
   const [giaiDoanMuonChuyen, setGiaiDoanMuonChuyen] = useState<{ key: string; label: string } | null>(null);
   const [moModalXoa, setMoModalXoa] = useState(false);
   const [dangXuLyChuyenGiaiDoan, setDangXuLyChuyenGiaiDoan] = useState(false);
+  const [moModalQuyChuan, setMoModalQuyChuan] = useState(false);
 
   // Toast notifications
   const [dsToast, setDsToast] = useState<{ id: number; dang: 'thanh_cong' | 'loi'; noi_dung: string }[]>([]);
@@ -373,6 +376,7 @@ export default function TrangChiTietHoSoDuAn() {
   const [formSuaDA, setFormSuaDA] = useState<{
     ten_du_an: string;
     ma_ho_so: string;
+    san_pham_khac_mo_ta: string;
     muc_do_tiem_nang: string;
     chi_nhanh_id: string;
     phong_ban_id: string;
@@ -390,6 +394,7 @@ export default function TrangChiTietHoSoDuAn() {
   }>({
     ten_du_an: '',
     ma_ho_so: '',
+    san_pham_khac_mo_ta: '',
     muc_do_tiem_nang: 'trung_binh',
     chi_nhanh_id: '',
     phong_ban_id: '',
@@ -411,6 +416,7 @@ export default function TrangChiTietHoSoDuAn() {
     setFormSuaDA({
       ten_du_an: hda.ten_du_an || '',
       ma_ho_so: hda.ma_ho_so || '',
+      san_pham_khac_mo_ta: hda.san_pham_khac_mo_ta || '',
       muc_do_tiem_nang: hda.muc_do_tiem_nang || 'trung_binh',
       chi_nhanh_id: hda.chi_nhanh_id || '',
       phong_ban_id: hda.phong_ban_id || '',
@@ -421,14 +427,13 @@ export default function TrangChiTietHoSoDuAn() {
       danh_sach_nguoi_ho_tro_ids: Array.isArray(hda.danh_sach_nguoi_ho_tro_ids) ? [...hda.danh_sach_nguoi_ho_tro_ids] : [],
       gia_tri_du_kien: Number(hda.gia_tri_du_kien) || 0,
       gia_tri_hop_dong: Number(hda.gia_tri_hop_dong) || 0,
-      ngay_tao_ho_so: hda.ngay_tao_ho_so || '',
+      ngay_tao_ho_so: hda.ngay_tao_ho_so || (hda.ngay_tao ? hda.ngay_tao.slice(0, 10) : ''),
       thoi_han_hoan_thanh: hda.thoi_han_hoan_thanh || '',
       mo_ta: hda.mo_ta || '',
       ghi_chu: hda.ghi_chu || ''
     });
     setLoiLuuDA(null);
     setDangChinhSua(true);
-    setTabHienTai('thong_tin');
   };
 
   const huyChinhSua = () => {
@@ -438,7 +443,7 @@ export default function TrangChiTietHoSoDuAn() {
 
   const xuLyLuuChinhSuaDA = async () => {
     if (!hda) return;
-    const ten = formSuaDA.ten_du_an.trim();
+    const ten = formSuaDA.ten_du_an.trim().toUpperCase();
     if (!ten) {
       setLoiLuuDA('Tên dự án không được để trống.');
       return;
@@ -453,7 +458,7 @@ export default function TrangChiTietHoSoDuAn() {
           ma_ho_so: formSuaDA.ma_ho_so.trim() || '',
           muc_do_tiem_nang: formSuaDA.muc_do_tiem_nang as any,
           san_pham_dich_vu_id: null,
-          san_pham_khac_mo_ta: null,
+          san_pham_khac_mo_ta: formSuaDA.san_pham_khac_mo_ta.trim() || null,
           chi_nhanh_id: formSuaDA.chi_nhanh_id || null,
           phong_ban_id: formSuaDA.phong_ban_id || null,
           khach_hang_id: formSuaDA.khach_hang_id || null,
@@ -1032,7 +1037,7 @@ export default function TrangChiTietHoSoDuAn() {
       {dangChinhSua && (
         <div className="p-3.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <span className="flex items-center gap-2">
-            <Pencil className="size-4 shrink-0" /> Chế độ chỉnh sửa thông tin dự án đang mở tại tab "Thông tin dự án". Hãy điều chỉnh các thông tin và nhấn "Lưu thay đổi".
+            <Pencil className="size-4 shrink-0" /> Chế độ chỉnh sửa trực tiếp đang mở. Bạn có thể chỉnh sửa các thông tin bên dưới và bấm "Lưu thay đổi".
           </span>
           <div className="flex items-center gap-2 shrink-0">
             <button
@@ -1173,6 +1178,92 @@ export default function TrangChiTietHoSoDuAn() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* CỘT CHÍNH (Trái ~68% - 8 cột) */}
         <div className="lg:col-span-8 space-y-6">
+          {dangChinhSua && (
+            <div className="rounded-[var(--radius-card)] border border-primary/30 bg-card p-5 shadow-sm space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-sm font-bold text-foreground border-b border-border pb-3">
+                <FolderKanban className="size-4 text-primary" />
+                Thông tin chung dự án
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-foreground">
+                      Tên dự án <span className="text-destructive">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setMoModalQuyChuan(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-full transition border border-emerald-200/60 cursor-pointer"
+                      title="Xem gợi ý đặt tên dự án"
+                    >
+                      <Lightbulb className="size-3 text-amber-500 fill-amber-400" />
+                      <span>Gợi ý đặt tên</span>
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={formSuaDA.ten_du_an}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, ten_du_an: e.target.value.toUpperCase() }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 font-semibold uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Mã hồ sơ dự án</label>
+                  <input
+                    type="text"
+                    value={formSuaDA.ma_ho_so}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, ma_ho_so: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground font-mono focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Sản phẩm / Dịch vụ</label>
+                  <input
+                    type="text"
+                    value={formSuaDA.san_pham_khac_mo_ta}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, san_pham_khac_mo_ta: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Ngày tiếp cận dự án</label>
+                  <input
+                    type="date"
+                    value={formSuaDA.ngay_tao_ho_so}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, ngay_tao_ho_so: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Ngày dự kiến ký HĐ</label>
+                  <input
+                    type="date"
+                    value={formSuaDA.thoi_han_hoan_thanh}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, thoi_han_hoan_thanh: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Mô tả phạm vi dự án</label>
+                  <textarea
+                    rows={3}
+                    value={formSuaDA.mo_ta}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, mo_ta: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 resize-y"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Ghi chú nội bộ</label>
+                  <textarea
+                    rows={2}
+                    value={formSuaDA.ghi_chu}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, ghi_chu: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 resize-y"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="rounded-[22px] border border-slate-200/90 bg-white overflow-hidden shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
             <BoCacTab
@@ -1250,12 +1341,6 @@ export default function TrangChiTietHoSoDuAn() {
                     dsPhongBan={dsPhongBan}
                     router={router}
                     anGiaTri={laBackOffice}
-                    dangChinhSua={dangChinhSua}
-                    formSuaDA={formSuaDA}
-                    setFormSuaDA={setFormSuaDA}
-                    dsKH={dsKH}
-                    dsNLH={dsNLH}
-                    dsNS={dsNS}
                   />
                 </NoiDungTab>
               </div>
@@ -1271,41 +1356,81 @@ export default function TrangChiTietHoSoDuAn() {
               Tài chính & Hiệu quả
             </span>
 
-            <div className="space-y-3">
-              <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 p-3.5 flex items-center justify-between">
+            {dangChinhSua ? (
+              <div className="space-y-3">
                 <div>
-                  <div className="text-[11px] font-semibold text-muted-foreground uppercase">Giá trị dự kiến</div>
-                  <div className="text-lg font-black text-foreground tabular-nums mt-0.5">
-                    {laBackOffice ? '***' : hda?.gia_tri_du_kien ? formatTien(hda.gia_tri_du_kien) : '0 ₫'}
-                  </div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Giá trị dự kiến (₫)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    disabled={laBackOffice}
+                    value={laBackOffice ? '' : dinhDangSoPhanNgan(formSuaDA.gia_tri_du_kien)}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, gia_tri_du_kien: giaiMaSoPhanNgan(e.target.value) }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                  />
                 </div>
-                <div className="size-9 rounded-[13px] bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                  <Target className="size-4" />
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Giá trị hợp đồng (₫)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    disabled={laBackOffice}
+                    value={laBackOffice ? '' : dinhDangSoPhanNgan(formSuaDA.gia_tri_hop_dong)}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, gia_tri_hop_dong: giaiMaSoPhanNgan(e.target.value) }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Mức độ tiềm năng</label>
+                  <select
+                    value={formSuaDA.muc_do_tiem_nang}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, muc_do_tiem_nang: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="rat_cao">Rất cao</option>
+                    <option value="cao">Cao</option>
+                    <option value="trung_binh">Trung bình</option>
+                    <option value="thap">Thấp</option>
+                    <option value="rat_thap">Rất thấp</option>
+                  </select>
                 </div>
               </div>
-
-              <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 p-3.5 flex items-center justify-between">
-                <div>
-                  <div className="text-[11px] font-semibold text-muted-foreground uppercase">Giá trị hợp đồng</div>
-                  <div className="text-lg font-black text-[#107555] tabular-nums mt-0.5">
-                    {laBackOffice ? '***' : hda?.gia_tri_hop_dong ? formatTien(hda.gia_tri_hop_dong) : 'Chưa ký HĐ'}
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 p-3.5 flex items-center justify-between">
+                  <div>
+                    <div className="text-[11px] font-semibold text-muted-foreground uppercase">Giá trị dự kiến</div>
+                    <div className="text-lg font-black text-foreground tabular-nums mt-0.5">
+                      {laBackOffice ? '***' : hda?.gia_tri_du_kien ? formatTien(hda.gia_tri_du_kien) : '0 ₫'}
+                    </div>
+                  </div>
+                  <div className="size-9 rounded-[13px] bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Target className="size-4" />
                   </div>
                 </div>
-                <div className="size-9 rounded-[13px] bg-emerald-50 text-[#107555] flex items-center justify-center shrink-0">
-                  <Wallet className="size-4" />
+
+                <div className="rounded-2xl bg-slate-50/70 border border-slate-200/80 p-3.5 flex items-center justify-between">
+                  <div>
+                    <div className="text-[11px] font-semibold text-muted-foreground uppercase">Giá trị hợp đồng</div>
+                    <div className="text-lg font-black text-[#107555] tabular-nums mt-0.5">
+                      {laBackOffice ? '***' : hda?.gia_tri_hop_dong ? formatTien(hda.gia_tri_hop_dong) : 'Chưa ký HĐ'}
+                    </div>
+                  </div>
+                  <div className="size-9 rounded-[13px] bg-emerald-50 text-[#107555] flex items-center justify-center shrink-0">
+                    <Wallet className="size-4" />
+                  </div>
                 </div>
+
+                {hda?.muc_do_tiem_nang && (
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 text-xs">
+                    <span className="text-muted-foreground font-medium">Mức độ tiềm năng:</span>
+                    <Hieu kieu="warning" kich_thuoc="sm">
+                      {TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? hda.muc_do_tiem_nang}
+                    </Hieu>
+                  </div>
+                )}
               </div>
-
-              {hda?.muc_do_tiem_nang && (
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 text-xs">
-                  <span className="text-muted-foreground font-medium">Mức độ tiềm năng:</span>
-                  <Hieu kieu="warning" kich_thuoc="sm">
-                    {TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? hda.muc_do_tiem_nang}
-                  </Hieu>
-                </div>
-              )}
-
-            </div>
+            )}
           </div>
 
           {/* 2. Thẻ Khách hàng */}
@@ -1314,7 +1439,7 @@ export default function TrangChiTietHoSoDuAn() {
               <span className="text-xs uppercase tracking-wider font-bold text-muted-foreground">
                 Đối tác khách hàng
               </span>
-              {kh && (
+              {!dangChinhSua && kh && (
                 <Link
                   href={`/khach-hang/${kh.id}`}
                   className="text-xs text-[#107555] font-semibold hover:underline inline-flex items-center gap-0.5"
@@ -1324,7 +1449,42 @@ export default function TrangChiTietHoSoDuAn() {
               )}
             </div>
 
-            {kh ? (
+            {dangChinhSua ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Khách hàng</label>
+                  <select
+                    value={formSuaDA.khach_hang_id}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, khach_hang_id: e.target.value, nguoi_lien_he_id: '' }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">-- Chưa gắn khách hàng --</option>
+                    {dsKH.map((k) => (
+                      <option key={k.id} value={k.id}>
+                        {k.ten_khach_hang} {k.ma_so_thue ? `(MST: ${k.ma_so_thue})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Người liên hệ chính</label>
+                  <select
+                    value={formSuaDA.nguoi_lien_he_id}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, nguoi_lien_he_id: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">-- Chưa chọn người liên hệ --</option>
+                    {dsNLH
+                      .filter((n) => !formSuaDA.khach_hang_id || n.khach_hang_id === formSuaDA.khach_hang_id)
+                      .map((n) => (
+                        <option key={n.id} value={n.id}>
+                          {n.ho_va_ten} {n.chuc_vu ? `— ${n.chuc_vu}` : ''} {n.so_dien_thoai ? `(${n.so_dien_thoai})` : ''}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+            ) : kh ? (
               <div className="space-y-3 text-sm">
                 <div>
                   <div className="font-bold text-foreground text-base">{kh.ten_khach_hang}</div>
@@ -1371,38 +1531,140 @@ export default function TrangChiTietHoSoDuAn() {
               Đội ngũ phụ trách
             </span>
 
-            <div className="space-y-3.5 text-sm">
-              <div className="flex items-center gap-3">
-                <DaiDien ten={nql?.ho_va_ten ?? 'PM'} anh={nql?.url_anh_dai_dien ?? undefined} kich_thuoc="md" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[11px] font-semibold text-muted-foreground uppercase">Quản lý dự án (PM)</div>
-                  <div className="font-bold text-foreground truncate">{nql?.ho_va_ten ?? 'Chưa phân công'}</div>
-                  {nql?.email && <div className="text-xs text-muted-foreground truncate">{nql.email}</div>}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <DaiDien ten={npt?.ho_va_ten ?? 'PT'} anh={npt?.url_anh_dai_dien ?? undefined} kich_thuoc="md" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[11px] font-semibold text-muted-foreground uppercase">Phụ trách chính (PIC)</div>
-                  <div className="font-bold text-foreground truncate">{npt?.ho_va_ten ?? 'Chưa phân công'}</div>
-                  {npt?.email && <div className="text-xs text-muted-foreground truncate">{npt.email}</div>}
-                </div>
-              </div>
-
-              {dsNHT.length > 0 && (
-                <div className="pt-2 border-t border-slate-100">
-                  <div className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Thành viên hỗ trợ ({dsNHT.length})</div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {dsNHT.map((ns) => (
-                      <span key={ns.id} title={ns.ho_va_ten}>
-                        <DaiDien ten={ns.ho_va_ten} anh={ns.url_anh_dai_dien ?? undefined} kich_thuoc="xs" />
-                      </span>
+            {dangChinhSua ? (
+              <div className="space-y-3 text-sm">
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Chi nhánh</label>
+                  <select
+                    value={formSuaDA.chi_nhanh_id}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, chi_nhanh_id: e.target.value, phong_ban_id: '' }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">-- Chưa chọn chi nhánh --</option>
+                    {dsChiNhanh.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.ten_chi_nhanh}
+                      </option>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Phòng ban</label>
+                  <select
+                    value={formSuaDA.phong_ban_id}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, phong_ban_id: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">-- Chưa chọn phòng ban --</option>
+                    {dsPhongBan
+                      .filter((p) => !formSuaDA.chi_nhanh_id || p.chi_nhanh_id === formSuaDA.chi_nhanh_id)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.ten_phong_ban}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Quản lý dự án (PM)</label>
+                  <select
+                    value={formSuaDA.nguoi_quan_ly_id}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, nguoi_quan_ly_id: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">-- Chưa phân công PM --</option>
+                    {dsNS.map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.ho_va_ten} ({n.chuc_vu || n.vai_tro || 'NS'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1 block">Phụ trách chính (PIC)</label>
+                  <select
+                    value={formSuaDA.nguoi_phu_trach_id}
+                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, nguoi_phu_trach_id: e.target.value }))}
+                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="">-- Chưa phân công PIC --</option>
+                    {dsNS.map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.ho_va_ten} ({n.chuc_vu || n.vai_tro || 'NS'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-foreground">
+                      Người hỗ trợ ({formSuaDA.danh_sach_nguoi_ho_tro_ids.length})
+                    </label>
+                  </div>
+                  <div className="max-h-36 overflow-y-auto space-y-1 p-1 rounded-lg border border-border bg-muted/20">
+                    {dsNS
+                      .filter((ns) => ns.id !== formSuaDA.nguoi_quan_ly_id && ns.id !== formSuaDA.nguoi_phu_trach_id)
+                      .map((ns) => {
+                        const daChon = formSuaDA.danh_sach_nguoi_ho_tro_ids.includes(ns.id);
+                        return (
+                          <button
+                            key={ns.id}
+                            type="button"
+                            onClick={() => {
+                              const set = new Set(formSuaDA.danh_sach_nguoi_ho_tro_ids);
+                              if (set.has(ns.id)) set.delete(ns.id);
+                              else set.add(ns.id);
+                              setFormSuaDA((f: any) => ({ ...f, danh_sach_nguoi_ho_tro_ids: Array.from(set) }));
+                            }}
+                            className={cn(
+                              'w-full flex items-center justify-between p-1.5 rounded text-xs transition text-left cursor-pointer',
+                              daChon
+                                ? 'bg-primary/10 text-primary font-semibold'
+                                : 'hover:bg-muted text-foreground'
+                            )}
+                          >
+                            <span className="truncate">{ns.ho_va_ten}</span>
+                            {daChon && <Check className="size-3 text-primary shrink-0" />}
+                          </button>
+                        );
+                      })}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-3.5 text-sm">
+                <div className="flex items-center gap-3">
+                  <DaiDien ten={nql?.ho_va_ten ?? 'PM'} anh={nql?.url_anh_dai_dien ?? undefined} kich_thuoc="md" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-semibold text-muted-foreground uppercase">Quản lý dự án (PM)</div>
+                    <div className="font-bold text-foreground truncate">{nql?.ho_va_ten ?? 'Chưa phân công'}</div>
+                    {nql?.email && <div className="text-xs text-muted-foreground truncate">{nql.email}</div>}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <DaiDien ten={npt?.ho_va_ten ?? 'PT'} anh={npt?.url_anh_dai_dien ?? undefined} kich_thuoc="md" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-semibold text-muted-foreground uppercase">Phụ trách chính (PIC)</div>
+                    <div className="font-bold text-foreground truncate">{npt?.ho_va_ten ?? 'Chưa phân công'}</div>
+                    {npt?.email && <div className="text-xs text-muted-foreground truncate">{npt.email}</div>}
+                  </div>
+                </div>
+
+                {dsNHT.length > 0 && (
+                  <div className="pt-2 border-t border-slate-100">
+                    <div className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">Thành viên hỗ trợ ({dsNHT.length})</div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {dsNHT.map((ns) => (
+                        <span key={ns.id} title={ns.ho_va_ten}>
+                          <DaiDien ten={ns.ho_va_ten} anh={ns.url_anh_dai_dien ?? undefined} kich_thuoc="xs" />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 4. Thẻ Thời hạn & Tuổi dự án */}
@@ -1422,7 +1684,7 @@ export default function TrangChiTietHoSoDuAn() {
               </div>
               {hda?.thoi_han_hoan_thanh && (
                 <div className="p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 flex items-center justify-between">
-                  <span className="text-muted-foreground">Hạn hoàn thành:</span>
+                  <span className="text-muted-foreground">Dự kiến ký HĐ:</span>
                   <span className="font-bold text-[#107555]">{formatNgay(hda.thoi_han_hoan_thanh)}</span>
                 </div>
               )}
@@ -1439,6 +1701,16 @@ export default function TrangChiTietHoSoDuAn() {
         }}
         onXacNhan={xuLyXacNhanHuy}
         dangXuLy={!!dangXuLyKhac['cgd_manual']}
+      />
+
+      <ModalHuongDanDatTen
+        mo={moModalQuyChuan}
+        onDong={() => setMoModalQuyChuan(false)}
+        loaiMacDinh="du_an"
+        tenKhachHangHienTai={kh?.ten_khach_hang ?? null}
+        onChonMau={(mau) => {
+          setFormSuaDA((prev: any) => ({ ...prev, ten_du_an: mau.toUpperCase() }));
+        }}
       />
 
       {/* Modal xác nhận chuyển giai đoạn từ Stepper */}
@@ -1754,13 +2026,7 @@ function BanThongTinHDA({
   dsChiNhanh,
   dsPhongBan,
   router,
-  anGiaTri = false,
-  dangChinhSua = false,
-  formSuaDA,
-  setFormSuaDA,
-  dsKH = [],
-  dsNLH = [],
-  dsNS = []
+  anGiaTri = false
 }: {
   hda: HoSoDuAn | null;
   dangTai: boolean;
@@ -1773,357 +2039,7 @@ function BanThongTinHDA({
   dsPhongBan: PhongBan[];
   router: ReturnType<typeof useRouter>;
   anGiaTri?: boolean;
-  dangChinhSua?: boolean;
-  formSuaDA?: any;
-  setFormSuaDA?: React.Dispatch<React.SetStateAction<any>>;
-  dsKH?: KhachHang[];
-  dsNLH?: NguoiLienHe[];
-  dsNS?: NhanSu[];
 }) {
-  if (dangChinhSua && formSuaDA && setFormSuaDA) {
-    const chiNhanhChon = formSuaDA.chi_nhanh_id;
-    const khachHangChon = formSuaDA.khach_hang_id;
-    const dsPbTheoCn = chiNhanhChon ? dsPhongBan.filter((p) => p.chi_nhanh_id === chiNhanhChon) : dsPhongBan;
-    const dsNlhTheoKh = khachHangChon ? dsNLH.filter((n) => n.khach_hang_id === khachHangChon) : dsNLH;
-    const dsHoTroDangChon = Array.isArray(formSuaDA.danh_sach_nguoi_ho_tro_ids) ? formSuaDA.danh_sach_nguoi_ho_tro_ids : [];
-
-    const toggleNguoiHoTro = (nsId: string) => {
-      const set = new Set<string>(dsHoTroDangChon);
-      if (set.has(nsId)) set.delete(nsId);
-      else set.add(nsId);
-      setFormSuaDA((prev: any) => ({ ...prev, danh_sach_nguoi_ho_tro_ids: Array.from(set) }));
-    };
-
-    return (
-      <div className="space-y-6 animate-in fade-in duration-200">
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Cột trái */}
-          <div className="space-y-5">
-            <Nhom label="Thông tin cơ bản dự án">
-              <div>
-                <label className="text-xs font-semibold text-foreground mb-1 block">
-                  Tên dự án <span className="text-destructive">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formSuaDA.ten_du_an}
-                  onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, ten_du_an: e.target.value }))}
-                  className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 font-medium"
-                  placeholder="Nhập tên dự án"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-foreground mb-1 block">Mã hồ sơ</label>
-                  <input
-                    type="text"
-                    value={formSuaDA.ma_ho_so}
-                    onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, ma_ho_so: e.target.value }))}
-                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:border-primary/60"
-                    placeholder="Mã hồ sơ"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-foreground mb-1 block">Mức tiềm năng</label>
-                  <select
-                    value={formSuaDA.muc_do_tiem_nang}
-                    onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, muc_do_tiem_nang: e.target.value }))}
-                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60"
-                  >
-                    <option value="rat_cao">Rất cao</option>
-                    <option value="cao">Cao</option>
-                    <option value="trung_binh">Trung bình</option>
-                    <option value="thap">Thấp</option>
-                    <option value="rat_thap">Rất thấp</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-foreground mb-1 block">Chi nhánh</label>
-                  <select
-                    value={formSuaDA.chi_nhanh_id}
-                    onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, chi_nhanh_id: e.target.value, phong_ban_id: '' }))}
-                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60"
-                  >
-                    <option value="">-- Chưa chọn --</option>
-                    {dsChiNhanh.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.ten_chi_nhanh}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-foreground mb-1 block">Phòng ban</label>
-                  <select
-                    value={formSuaDA.phong_ban_id}
-                    onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, phong_ban_id: e.target.value }))}
-                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60"
-                  >
-                    <option value="">-- Chưa chọn --</option>
-                    {dsPbTheoCn.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.ten_phong_ban}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-foreground mb-1 block">Thời hạn hoàn thành</label>
-                <input
-                  type="date"
-                  value={formSuaDA.thoi_han_hoan_thanh}
-                  onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, thoi_han_hoan_thanh: e.target.value }))}
-                  className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60"
-                />
-              </div>
-            </Nhom>
-
-            <Nhom label="Tài chính">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-foreground mb-1 block">Giá trị dự kiến (₫)</label>
-                  <input
-                    type="number"
-                    disabled={anGiaTri}
-                    value={anGiaTri ? '' : formSuaDA.gia_tri_du_kien}
-                    onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, gia_tri_du_kien: Number(e.target.value) || 0 }))}
-                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:border-primary/60 disabled:opacity-50"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-foreground mb-1 block">Giá trị hợp đồng (₫)</label>
-                  <input
-                    type="number"
-                    disabled={anGiaTri}
-                    value={anGiaTri ? '' : formSuaDA.gia_tri_hop_dong}
-                    onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, gia_tri_hop_dong: Number(e.target.value) || 0 }))}
-                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:border-primary/60 disabled:opacity-50"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-            </Nhom>
-
-            <Nhom label="Mô tả & Ghi chú">
-              <div>
-                <label className="text-xs font-semibold text-foreground mb-1 block">Mô tả phạm vi dự án</label>
-                <textarea
-                  rows={3}
-                  value={formSuaDA.mo_ta}
-                  onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, mo_ta: e.target.value }))}
-                  className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 resize-y"
-                  placeholder="Mô tả chi tiết mục tiêu, phạm vi hoặc yêu cầu triển khai..."
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-foreground mb-1 block">Ghi chú nội bộ</label>
-                <textarea
-                  rows={2}
-                  value={formSuaDA.ghi_chu}
-                  onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, ghi_chu: e.target.value }))}
-                  className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 resize-y"
-                  placeholder="Ghi chú nội bộ lưu ý riêng cho đội ngũ..."
-                />
-              </div>
-            </Nhom>
-          </div>
-
-          {/* Cột phải */}
-          <div className="space-y-5">
-            <Nhom label="Khách hàng & Người liên hệ">
-              <div>
-                <label className="text-xs font-semibold text-foreground mb-1 block">Đối tác khách hàng</label>
-                <select
-                  value={formSuaDA.khach_hang_id}
-                  onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, khach_hang_id: e.target.value, nguoi_lien_he_id: '' }))}
-                  className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60"
-                >
-                  <option value="">-- Chưa gắn khách hàng --</option>
-                  {dsKH.map((k) => (
-                    <option key={k.id} value={k.id}>
-                      {k.ten_khach_hang} {k.ma_so_thue ? `(MST: ${k.ma_so_thue})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-foreground mb-1 block">Người liên hệ chính</label>
-                <select
-                  value={formSuaDA.nguoi_lien_he_id}
-                  onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, nguoi_lien_he_id: e.target.value }))}
-                  className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60"
-                >
-                  <option value="">-- Chưa chọn người liên hệ --</option>
-                  {dsNlhTheoKh.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.ho_va_ten} {n.chuc_vu ? `— ${n.chuc_vu}` : ''} {n.so_dien_thoai ? `(${n.so_dien_thoai})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </Nhom>
-
-            <Nhom label="Đội ngũ phụ trách & Nhân sự tham gia">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-foreground mb-1 block">Người quản lý (PM)</label>
-                  <select
-                    value={formSuaDA.nguoi_quan_ly_id}
-                    onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, nguoi_quan_ly_id: e.target.value }))}
-                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60"
-                  >
-                    <option value="">-- Chưa phân công --</option>
-                    {dsNS.map((n) => (
-                      <option key={n.id} value={n.id}>
-                        {n.ho_va_ten} ({n.chuc_vu || n.vai_tro || 'NS'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-foreground mb-1 block">Phụ trách chính (PIC)</label>
-                  <select
-                    value={formSuaDA.nguoi_phu_trach_id}
-                    onChange={(e) => setFormSuaDA((prev: any) => ({ ...prev, nguoi_phu_trach_id: e.target.value }))}
-                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60"
-                  >
-                    <option value="">-- Chưa phân công --</option>
-                    {dsNS.map((n) => (
-                      <option key={n.id} value={n.id}>
-                        {n.ho_va_ten} ({n.chuc_vu || n.vai_tro || 'NS'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Danh sách người hỗ trợ đa phòng ban */}
-              <div className="space-y-2 pt-2 border-t border-border/70">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <UserPlus className="size-3.5 text-primary" />
-                    Thành viên hỗ trợ theo từng phòng ban ({dsHoTroDangChon.length})
-                  </label>
-                  {dsNS.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const tatCaId = dsNS
-                          .filter((ns) => ns.id !== formSuaDA.nguoi_phu_trach_id && ns.id !== formSuaDA.nguoi_quan_ly_id)
-                          .map((ns) => ns.id);
-                        const tatCaDaChon = tatCaId.every((id) => dsHoTroDangChon.includes(id)) && tatCaId.length > 0;
-                        setFormSuaDA((prev: any) => ({
-                          ...prev,
-                          danh_sach_nguoi_ho_tro_ids: tatCaDaChon ? [] : tatCaId
-                        }));
-                      }}
-                      className="text-[11px] font-bold text-primary hover:underline"
-                    >
-                      {dsHoTroDangChon.length > 0 ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-3 max-h-[360px] overflow-y-auto rounded-xl border border-border bg-muted/20 p-2.5">
-                  {dsPhongBan.map((pb) => {
-                    const nsThuocPb = dsNS.filter((ns) => ns.phong_ban_id === pb.id);
-                    if (nsThuocPb.length === 0) return null;
-                    const soChon = nsThuocPb.filter((ns) => dsHoTroDangChon.includes(ns.id)).length;
-                    return (
-                      <div key={pb.id} className="rounded-lg border border-border bg-card p-3 space-y-2">
-                        <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                            <Building2 className="size-3.5 text-primary shrink-0" />
-                            <span>{pb.ten_phong_ban}</span>
-                            <span className="rounded-full bg-muted text-muted-foreground text-[10px] px-1.5 py-0.2 font-semibold">
-                              {nsThuocPb.length} người
-                            </span>
-                          </div>
-                          {soChon > 0 && (
-                            <span className="text-[11px] font-bold text-primary">
-                              Đã chọn {soChon}/{nsThuocPb.length}
-                            </span>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                          {nsThuocPb.map((ns) => {
-                            const daChon = dsHoTroDangChon.includes(ns.id);
-                            const laNQLHoacNPT = ns.id === formSuaDA.nguoi_quan_ly_id || ns.id === formSuaDA.nguoi_phu_trach_id;
-                            return (
-                              <button
-                                key={ns.id}
-                                type="button"
-                                disabled={laNQLHoacNPT}
-                                onClick={() => toggleNguoiHoTro(ns.id)}
-                                className={cn(
-                                  'flex items-center gap-2 p-1.5 rounded-lg border text-left transition text-xs',
-                                  laNQLHoacNPT
-                                    ? 'opacity-40 border-dashed border-border bg-muted/30 cursor-not-allowed'
-                                    : daChon
-                                    ? 'border-primary/50 bg-primary/10 text-primary font-bold shadow-xs'
-                                    : 'border-border/70 bg-background text-foreground hover:bg-muted/60'
-                                )}
-                              >
-                                <DaiDien ten={ns.ho_va_ten} anh={ns.url_anh_dai_dien} kich_thuoc="xs" />
-                                <div className="min-w-0 flex-1">
-                                  <div className="truncate font-semibold text-[11.5px]">{ns.ho_va_ten}</div>
-                                  <div className="text-[10px] opacity-75 truncate">{ns.chuc_vu || ns.vai_tro || 'Thành viên'}</div>
-                                </div>
-                                {daChon && <CheckCircle2 className="size-3.5 text-primary shrink-0" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {dsNS.filter((ns) => !ns.phong_ban_id || !dsPhongBan.some((p) => p.id === ns.phong_ban_id)).length > 0 && (
-                    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
-                      <div className="text-xs font-bold text-foreground border-b border-border/60 pb-1.5">
-                        Chưa phân phòng ban
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        {dsNS
-                          .filter((ns) => !ns.phong_ban_id || !dsPhongBan.some((p) => p.id === ns.phong_ban_id))
-                          .map((ns) => {
-                            const daChon = dsHoTroDangChon.includes(ns.id);
-                            return (
-                              <button
-                                key={ns.id}
-                                type="button"
-                                onClick={() => toggleNguoiHoTro(ns.id)}
-                                className={cn(
-                                  'flex items-center gap-2 p-1.5 rounded-lg border text-left transition text-xs',
-                                  daChon
-                                    ? 'border-primary/50 bg-primary/10 text-primary font-bold shadow-xs'
-                                    : 'border-border/70 bg-background text-foreground hover:bg-muted/60'
-                                )}
-                              >
-                                <DaiDien ten={ns.ho_va_ten} anh={ns.url_anh_dai_dien} kich_thuoc="xs" />
-                                <div className="min-w-0 flex-1 truncate font-semibold text-[11.5px]">{ns.ho_va_ten}</div>
-                                {daChon && <CheckCircle2 className="size-3.5 text-primary shrink-0" />}
-                              </button>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Nhom>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const chiNhanh = hda?.chi_nhanh_id ? dsChiNhanh.find((c) => c.id === hda.chi_nhanh_id) ?? null : null;
   const phongBan = hda?.phong_ban_id ? dsPhongBan.find((p) => p.id === hda.phong_ban_id) ?? null : null;
@@ -2169,14 +2085,20 @@ function BanThongTinHDA({
           />
           <InfoDong
             bieuTuong={Calendar}
-            label="Ngày tạo hồ sơ"
-            value={hda?.ngay_tao_ho_so ? formatNgay(hda.ngay_tao_ho_so) : '(Chưa có)'}
+            label="Ngày tiếp cận dự án"
+            value={hda?.ngay_tao_ho_so ? formatNgay(hda.ngay_tao_ho_so) : hda?.ngay_tao ? formatNgay(hda.ngay_tao.slice(0, 10)) : '(Chưa có)'}
             dangTai={dangTai}
           />
           <InfoDong
             bieuTuong={Calendar}
-            label="Thời hạn hoàn thành"
+            label="Ngày dự kiến ký HĐ"
             value={hda?.thoi_han_hoan_thanh ? formatNgay(hda.thoi_han_hoan_thanh) : '(Chưa đặt)'}
+            dangTai={dangTai}
+          />
+          <InfoDong
+            bieuTuong={Layers}
+            label="Sản phẩm / Dịch vụ"
+            value={hda?.san_pham_khac_mo_ta || '(Chưa cập nhật)'}
             dangTai={dangTai}
           />
         </Nhom>
@@ -2691,7 +2613,6 @@ function BanNhatKyVaTienDo(props: {
                 value={noiDung}
                 onChange={(e) => setNoiDung(e.target.value)}
                 rows={3}
-                placeholder="Nhập chi tiết tiến trình công việc, tình hình hiện tại hoặc trao đổi vừa diễn ra..."
                 className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 resize-y min-h-[75px]"
               />
             </div>
@@ -2729,7 +2650,6 @@ function BanNhatKyVaTienDo(props: {
                       type="text"
                       value={tenFile}
                       onChange={(e) => setTenFile(e.target.value)}
-                      placeholder="VD: Báo giá chi tiết, Bản vẽ layout..."
                       className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
                     />
                   </div>
@@ -2742,7 +2662,6 @@ function BanNhatKyVaTienDo(props: {
                       type="url"
                       value={urlFile}
                       onChange={(e) => setUrlFile(e.target.value)}
-                      placeholder="https://drive.google.com/... hoặc https://..."
                       className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
                     />
                   </div>
@@ -2770,7 +2689,6 @@ function BanNhatKyVaTienDo(props: {
                       type="text"
                       value={ghiChuFile}
                       onChange={(e) => setGhiChuFile(e.target.value)}
-                      placeholder="VD: Bản chốt lần 2..."
                       className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
                     />
                   </div>
@@ -2929,7 +2847,6 @@ function BanNhatKyVaTienDo(props: {
                             value={tinhHinhSua}
                             onChange={(e) => setTinhHinhSua(e.target.value)}
                             rows={3}
-                            placeholder="Nhập nội dung tiến độ..."
                             className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                           />
                         </div>
@@ -2943,7 +2860,6 @@ function BanNhatKyVaTienDo(props: {
                               type="url"
                               value={linkTaiLieuSua}
                               onChange={(e) => setLinkTaiLieuSua(e.target.value)}
-                              placeholder="https://drive.google.com/..."
                               className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                             />
                           </div>
@@ -2955,7 +2871,6 @@ function BanNhatKyVaTienDo(props: {
                               type="text"
                               value={tenTaiLieuSua}
                               onChange={(e) => setTenTaiLieuSua(e.target.value)}
-                              placeholder="VD: Báo giá đã duyệt, Bản vẽ CAD..."
                               className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                             />
                           </div>
@@ -3069,7 +2984,6 @@ function BanNhatKyVaTienDo(props: {
                             rows={2}
                             value={noiDungChiDao}
                             onChange={(e) => setNoiDungChiDao(e.target.value)}
-                            placeholder="Nhập ý kiến phản hồi, nhận xét, chỉ đạo hoặc lưu ý phối hợp cho mốc tiến độ này..."
                             className="w-full rounded-lg border border-amber-500/40 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                           />
                         </div>
@@ -3289,7 +3203,6 @@ function BanKhoTaiLieu(props: {
                 type="text"
                 value={tenFile}
                 onChange={(e) => setTenFile(e.target.value)}
-                placeholder="VD: Hợp đồng nguyên tắc, Bản vẽ thiết kế..."
                 className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60 font-medium"
               />
             </div>
@@ -3302,7 +3215,6 @@ function BanKhoTaiLieu(props: {
                 type="url"
                 value={urlFile}
                 onChange={(e) => setUrlFile(e.target.value)}
-                placeholder="https://drive.google.com/... hoặc https://..."
                 className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60 font-mono"
               />
             </div>
@@ -3330,7 +3242,6 @@ function BanKhoTaiLieu(props: {
                 type="text"
                 value={ghiChuFile}
                 onChange={(e) => setGhiChuFile(e.target.value)}
-                placeholder="VD: File đính kèm lần nghiệm thu 1..."
                 className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
               />
             </div>
@@ -3372,7 +3283,6 @@ function BanKhoTaiLieu(props: {
             type="text"
             value={tuKhoa}
             onChange={(e) => setTuKhoa(e.target.value)}
-            placeholder="Tìm kiếm tài liệu theo tên, ghi chú..."
             className="w-full pl-9 pr-8 py-2 rounded-[var(--radius-input)] border border-border bg-background text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/15 transition"
           />
           {tuKhoa && (
@@ -3533,7 +3443,6 @@ function BanKhoTaiLieu(props: {
                             type="text"
                             value={tenFileSua}
                             onChange={(e) => setTenFileSua(e.target.value)}
-                            placeholder="Tên tài liệu..."
                             className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                           />
                         </div>
@@ -3546,7 +3455,6 @@ function BanKhoTaiLieu(props: {
                             type="url"
                             value={urlFileSua}
                             onChange={(e) => setUrlFileSua(e.target.value)}
-                            placeholder="https://..."
                             className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                           />
                         </div>
@@ -3574,7 +3482,6 @@ function BanKhoTaiLieu(props: {
                               type="text"
                               value={ghiChuFileSua}
                               onChange={(e) => setGhiChuFileSua(e.target.value)}
-                              placeholder="Ghi chú thêm..."
                               className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                             />
                           </div>
