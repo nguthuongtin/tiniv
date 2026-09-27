@@ -1111,43 +1111,48 @@ function TrangHoSoDuAn() {
                     duocChon && 'border-emerald-500 bg-emerald-50/20'
                   )}
                 >
-                  <div className="flex items-start justify-between gap-3 mb-1.5">
-                    <Link
-                      href={`/ho-so-du-an/${hda.id}`}
-                      className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 hover:text-emerald-700 flex-1 pr-1"
-                    >
-                      <span className="text-slate-400 text-xs font-semibold mr-1.5">#{stt}.</span>
-                      {hda.ten_du_an}
-                    </Link>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <input
-                        type="checkbox"
-                        aria-label={`Chọn dự án ${hda.ten_du_an}`}
-                        checked={duocChon}
-                        onChange={() => toggleChonDuAn(hda.id)}
-                        className="size-4.5 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500 cursor-pointer"
-                      />
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
-                        {gd.nhan}
-                      </span>
-                    </div>
-                  </div>
-
-                  <Link href={`/ho-so-du-an/${hda.id}`} className="block">
-                    <div className="flex items-center gap-2 flex-wrap text-[12.5px] text-slate-500">
-                      <span className="font-mono font-bold text-emerald-700">
-                        {giaTri}
-                      </span>
-                      {kh && (
-                        <>
-                          <span className="text-slate-300">•</span>
-                          <span className="font-medium text-slate-600 truncate max-w-[200px]">
-                            {kh.ten_khach_hang}
+                    <div className="flex items-start gap-2.5 mb-2.5">
+                      {/* Checkbox và STT nằm gọn một bên */}
+                      <div className="flex flex-col items-center gap-2 pt-0.5 shrink-0">
+                        <input
+                          type="checkbox"
+                          aria-label={`Chọn dự án ${hda.ten_du_an}`}
+                          checked={duocChon}
+                          onChange={() => toggleChonDuAn(hda.id)}
+                          className="size-4.5 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span className="text-slate-400 text-xs font-bold">{stt}.</span>
+                      </div>
+                      
+                      {/* Nội dung chính */}
+                      <Link href={`/ho-so-du-an/${hda.id}`} className="flex-1 min-w-0 flex flex-col gap-1.5">
+                        <div className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 hover:text-emerald-700 pr-1 block">
+                          {hda.ten_du_an}
+                        </div>
+                        {kh && (
+                          <div className="flex items-start gap-1.5 text-[13px] text-slate-600">
+                            <Building2 className="size-3.5 mt-0.5 shrink-0 text-slate-400" />
+                            <span className="font-medium line-clamp-2">{kh.ten_khach_hang}</span>
+                          </div>
+                        )}
+                        {nguoiLead && (
+                          <div className="flex items-start gap-1.5 text-[13px] text-slate-600">
+                            <User className="size-3.5 mt-0.5 shrink-0 text-slate-400" />
+                            <span className="font-medium line-clamp-1">{nguoiLead.ho_va_ten}</span>
+                          </div>
+                        )}
+                        
+                        {/* Footer card */}
+                        <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
+                            {gd.nhan}
                           </span>
-                        </>
-                      )}
+                          <span className="font-mono font-bold text-emerald-700 text-xs">
+                            {giaTri}
+                          </span>
+                        </div>
+                      </Link>
                     </div>
-                  </Link>
                 </div>
               );
             })}

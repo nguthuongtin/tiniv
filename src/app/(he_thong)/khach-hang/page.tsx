@@ -584,30 +584,31 @@ export default function TrangKhachHang() {
                 <Link
                   key={kh.id}
                   href={`/khach-hang/${kh.id}`}
-                  className="block p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] active:bg-slate-50 transition-colors"
+                  className="flex items-start gap-2.5 p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] active:bg-slate-50 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-3 mb-1.5">
-                    <div className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2">
-                      <span className="text-slate-400 text-xs font-semibold mr-1.5">#{index + 1}.</span>
+                  <div className="pt-0.5 shrink-0">
+                    <span className="text-slate-400 text-xs font-bold">{index + 1}.</span>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                    <div className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 block">
                       {kh.ten_khach_hang}
                     </div>
-                    <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold border shrink-0', thongTinTrangThai.capsule)}>
-                      {thongTinTrangThai.nhan}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap text-[12.5px] text-slate-500">
-                    <span className="font-semibold text-emerald-700">
-                      {loaiKhNhan}
-                    </span>
+                    
                     {kh.so_dien_thoai && (
-                      <>
-                        <span className="text-slate-300">•</span>
-                        <span className="font-medium text-slate-600">
-                          {kh.so_dien_thoai}
-                        </span>
-                      </>
+                      <div className="flex items-center gap-1.5 text-[13px] text-slate-600">
+                        <span className="font-medium">{kh.so_dien_thoai}</span>
+                      </div>
                     )}
+                    
+                    <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
+                      <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold border shrink-0', thongTinTrangThai.capsule)}>
+                        {thongTinTrangThai.nhan}
+                      </span>
+                      <span className="font-semibold text-emerald-700 text-xs">
+                        {loaiKhNhan}
+                      </span>
+                    </div>
                   </div>
                 </Link>
               );

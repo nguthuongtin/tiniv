@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useStoreXacThuc } from '../thu_vien/zustand/store_xac_thuc';
 import {
   Home,
   ChevronRight,
@@ -161,6 +162,7 @@ const timThongTinTrang = (pathname: string): { thongTin: ThongTinTrang; laChiTie
 
 export default function ThanhPhanTopbar() {
   const pathname = usePathname() ?? '/';
+  const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
   const { thongTin, laChiTiet, tieuDeChiTiet } = timThongTinTrang(pathname);
   const PageIcon = thongTin.icon;
   const ParentIcon = thongTin.parent?.icon;
@@ -239,6 +241,22 @@ export default function ThanhPhanTopbar() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Tên nhân sự trên Mobile/Desktop */}
+        <div className="flex items-center gap-2 pl-2 sm:pl-3 sm:border-l sm:border-slate-200/80">
+          <div className="hidden sm:flex flex-col items-end justify-center mr-1">
+            <span className="text-[13px] font-bold text-slate-900 leading-none">
+              {nguoiDungHienTai?.ho_va_ten || 'Trang chủ'}
+            </span>
+            <span className="text-[11px] text-slate-500 font-medium">
+              {nguoiDungHienTai?.vai_tro === 'giam_doc' ? 'Giám đốc' : 
+               nguoiDungHienTai?.vai_tro === 'truong_phong' ? 'Trưởng phòng' : 'Nhân viên'}
+            </span>
+          </div>
+          <div className="size-8 sm:size-9 rounded-full bg-emerald-100 text-[#107555] flex items-center justify-center font-bold text-[13px] border border-emerald-200 shrink-0">
+            {nguoiDungHienTai?.ho_va_ten?.charAt(0)?.toUpperCase() || 'U'}
+          </div>
+        </div>
+
         <button
           type="button"
           className="hidden md:inline-flex items-center justify-center size-9.5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition relative shadow-2xs active:scale-95"
@@ -247,6 +265,7 @@ export default function ThanhPhanTopbar() {
           <Bell className="size-4" strokeWidth={2} />
           <span className="absolute top-2 right-2 size-2 rounded-full bg-[#FF3B30] ring-2 ring-white" />
         </button>
+        
         {thongTin.nut_them && (
           <button
             type="button"

@@ -944,13 +944,8 @@ export default function TrangChu() {
       {/* 1A. Header trên Mobile: Siêu tinh gọn, không nút bấm trùng lặp */}
       <div className="sm:hidden flex items-center justify-between pt-0.5">
         <div>
-          <div className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
-            <span>{loiChao.text}</span>
-            <span>•</span>
-            <span>{ngayLocal}</span>
-          </div>
           <h1 className="text-[17px] font-extrabold text-slate-900 tracking-tight leading-tight">
-            {nguoiDungHienTai?.ho_va_ten || 'Trang tổng quan'}
+            Trang tổng quan
           </h1>
         </div>
 
@@ -985,30 +980,17 @@ export default function TrangChu() {
         </Link>
       </div>
 
-      {/* 1B. Header trên Desktop: Hero Card màu Emerald chuẩn ảnh mẫu 1 */}
-      <section className="hidden sm:flex sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-700 rounded-2xl p-5 sm:p-6 text-white shadow-sm border border-emerald-900/20">
+      {/* 1B. Header trên Desktop: Hero Card tinh gọn */}
+      <section className="hidden sm:flex sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-700 rounded-2xl p-4 sm:p-5 text-white shadow-sm border border-emerald-900/20">
         <div>
-          <div className="flex items-center gap-2.5">
-            <span className="flex items-center justify-center size-8 rounded-full bg-white/20 text-white backdrop-blur-xs">
-              {loiChao.icon === 'sun' && <Sun className="size-4.5" />}
-              {loiChao.icon === 'sunset' && <Sunset className="size-4.5" />}
-              {loiChao.icon === 'moon' && <Moon className="size-4.5" />}
-            </span>
-            <span className="text-sm font-medium text-emerald-100">
-              {loiChao.text},
-            </span>
-            <span className="text-lg font-bold text-white tracking-tight">
-              {nguoiDungHienTai?.ho_va_ten || 'Bạn'}
-            </span>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/15 text-white border border-white/20">
-              {layTenVaiTro(nguoiDungHienTai?.vai_tro)}
-            </span>
-          </div>
-          <p className="text-[13px] text-emerald-100/80 mt-1 flex items-center gap-2">
+          <h1 className="text-lg font-bold text-white tracking-tight">
+            Tổng quan hệ thống
+          </h1>
+          <p className="text-[13px] text-emerald-100/80 mt-0.5 flex items-center gap-2">
             <Calendar className="size-3.5 text-emerald-200" />
             <span>{chuoiNgayHienTai}</span>
             <span className="text-emerald-300/50">·</span>
-            <span>Hệ thống quản lý điều hành & dự án</span>
+            <span>Quản lý điều hành & dự án</span>
           </p>
         </div>
 
@@ -1313,14 +1295,7 @@ export default function TrangChu() {
               <div>
                 <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
                   <span>Cập nhật tiến độ & tài liệu</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-200/60">
-                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Trực tiếp
-                  </span>
                 </h2>
-                <p className="text-[11px] text-slate-400 font-medium">
-                  Nhật ký hoạt động và tiến độ mới nhất của các dự án
-                </p>
               </div>
             </div>
 

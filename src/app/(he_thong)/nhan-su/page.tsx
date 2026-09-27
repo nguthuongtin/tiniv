@@ -758,26 +758,33 @@ export default function TrangNhanSu() {
                   key={ns.id}
                   href={`/nhan-su/${ns.id}`}
                   className={cn(
-                    "block p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] active:bg-slate-50 transition-colors",
+                    "flex items-start gap-2.5 p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] active:bg-slate-50 transition-colors",
                     biKhoa && 'opacity-60 bg-slate-50/50'
                   )}
                 >
-                  <div className="flex items-center gap-3.5">
+                  <div className="pt-0.5 shrink-0">
+                    <span className="text-slate-400 text-xs font-bold">{index + 1}.</span>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0 flex items-start gap-3">
                     <DaiDien
                       anh={ns.url_anh_dai_dien ?? undefined}
                       ten={ns.ho_va_ten}
                       kich_thuoc="sm"
                       className="size-11 rounded-full shrink-0 border border-slate-200 shadow-2xs"
                     />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <div className="font-bold text-slate-900 text-[15px] leading-snug truncate">
-                          <span className="text-slate-400 text-xs font-semibold mr-1.5">#{index + 1}.</span>
-                          {ns.ho_va_ten}
-                        </div>
+                    <div className="min-w-0 flex-1 flex flex-col gap-1">
+                      <div className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2">
+                        {ns.ho_va_ten}
+                      </div>
+                      <div className="text-[13px] font-medium text-slate-500 truncate">
+                        {pb || 'Chưa phân PB'}
+                      </div>
+                      
+                      <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
                         <span
                           className={cn(
-                            'inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[9.5px] font-bold border shrink-0 uppercase tracking-wide',
+                            'inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold border shrink-0 uppercase tracking-wide',
                             biKhoa
                               ? 'bg-rose-50 text-rose-700 border-rose-200'
                               : 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -785,9 +792,6 @@ export default function TrangNhanSu() {
                         >
                           {biKhoa ? 'ĐÃ KHÓA' : 'HOẠT ĐỘNG'}
                         </span>
-                      </div>
-                      <div className="text-[13px] font-medium text-slate-500 truncate">
-                        {pb || 'Chưa phân phòng ban'}
                       </div>
                     </div>
                   </div>
