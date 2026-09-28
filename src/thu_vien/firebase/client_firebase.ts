@@ -108,7 +108,8 @@ type TenCollection =
   | 'bao_cao_ke_hoach_thang'
   | 'dia_gioi_hanh_chinh'
   | 'cau_hinh_he_thong'
-  | 'kho_tai_lieu';
+  | 'kho_tai_lieu'
+  | 'ai_danh_gia_nhan_su';
 
 export const thamChieuCollection = (ten: TenCollection): CollectionReference => {
   return collection(csdl, ten);

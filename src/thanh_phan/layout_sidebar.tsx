@@ -18,7 +18,8 @@ import {
   BarChart3,
   Settings2,
   CalendarRange,
-  BookOpen
+  BookOpen,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '../thu_vien/utils/cn';
 import useStoreXacThuc from '../thu_vien/zustand/store_xac_thuc';
@@ -35,6 +36,13 @@ interface MucSidebar {
 
 const DANH_MUC_SIDEBAR: MucSidebar[] = [
   { href: '/', icon: Home, nhan: 'Tổng quan', nhom: 'Tổng quan' },
+  {
+    href: '/tong-quan-lanh-dao',
+    icon: TrendingUp,
+    nhan: 'Tổng quan Lãnh đạo',
+    nhom: 'Tổng quan',
+    quyen: 'lanh_dao.xem'
+  },
   { href: '/khach-hang', icon: Building2, nhan: 'Khách hàng', nhom: 'Module' },
   { href: '/ho-so-du-an', icon: FolderKanban, nhan: 'Hồ sơ dự án', nhom: 'Module', quyen: 'du_an.xem' },
   { href: '/ke-hoach', icon: CalendarRange, nhan: 'Kế hoạch', nhom: 'Module', quyen: 'ke_hoach.xem' },

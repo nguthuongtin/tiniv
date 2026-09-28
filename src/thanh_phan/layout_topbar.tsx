@@ -17,7 +17,8 @@ import {
   Plus,
   Bell,
   User,
-  BookOpen
+  BookOpen,
+  TrendingUp
 } from 'lucide-react';
 
 interface ThongTinTrang {
@@ -36,6 +37,12 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     mo_ta: 'Bảng điều khiển hệ thống và các module chính',
     icon: Home,
     placeholder_tim: 'Tìm kiếm hồ sơ, khách hàng...'
+  },
+  '/tong-quan-lanh-dao': {
+    nhan: 'Tổng quan Lãnh đạo',
+    mo_ta: 'Giám sát chỉ số nhân sự, dự án trọng điểm và đánh giá hiệu suất AI',
+    icon: TrendingUp,
+    placeholder_tim: 'Tìm kiếm nhân sự, dự án...'
   },
   '/khach-hang': {
     nhan: 'Khách hàng',

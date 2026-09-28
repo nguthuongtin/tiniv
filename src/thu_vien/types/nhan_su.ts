@@ -151,6 +151,7 @@ export const DANH_SACH_QUYEN_HAN_HE_THONG: ItemQuyenHan[] = [
   { ma_quyen: 'nhan_su.xem', ten_quyen: 'Xem danh sách nhân sự', nhom: 'nhan_su' },
   { ma_quyen: 'nhan_su.quan_ly', ten_quyen: 'Thêm, sửa & quản lý nhân sự', nhom: 'nhan_su' },
   // Hệ thống
+  { ma_quyen: 'lanh_dao.xem', ten_quyen: 'Xem Tổng quan Lãnh đạo & Đánh giá AI', nhom: 'he_thong' },
   { ma_quyen: 'he_thong.quan_tri', ten_quyen: 'Quản trị hệ thống & Ma trận phân quyền', nhom: 'he_thong' }
 ];
 

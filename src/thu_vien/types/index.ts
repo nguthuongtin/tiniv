@@ -18,3 +18,5 @@ export type { BaoCaoCongViec, ChiTietBaoCaoCongViec } from './bao_cao_cong_viec'
 export type { TaiLieuDuAn } from './tai_lieu';
 
 export type { HanhDongNhatKy, NhatKyHoatDong } from './nhat_ky_hoat_dong';
+
+export * from './ai_danh_gia';
