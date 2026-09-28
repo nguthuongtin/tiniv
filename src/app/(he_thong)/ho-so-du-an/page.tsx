@@ -1099,6 +1099,8 @@ function TrangHoSoDuAn() {
               const gd = tenGiaiDoan[hda.giai_doan] ?? { nhan: String(hda.giai_doan) };
               const giaTri = laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong);
               const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
+              const idLead = hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id;
+              const nguoiLead = idLead ? dsNhanSu.find((n) => n.id === idLead) ?? null : null;
 
               const duocChon = dsDuAnDaChonIds.has(hda.id);
 
