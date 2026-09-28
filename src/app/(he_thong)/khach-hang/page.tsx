@@ -19,7 +19,8 @@ import {
   Eye,
   UserRound,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  RotateCcw
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -37,7 +38,8 @@ import {
   danhSachKhachHang,
   taoKhachHangMoi,
   capNhatKhachHang,
-  doiTrangThaiKhachHang
+  doiTrangThaiKhachHang,
+  khoiPhucKhachHang
 } from '../../../dich_vu/khach_hang/dich_vu_khach_hang';
 import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
@@ -56,7 +58,7 @@ import {
 const BO_LOC_MAC_DINH: DieuKienLocKhachHang = {
   tuKhoa: null,
   loai_khach_hang: 'tat_ca',
-  trang_thai: 'tat_ca',
+  trang_thai: 'hoat_dong',
   chi_nhanh_id: null,
   nguoi_phu_trach_id: null,
   ngay_tao_tu_ngay: null,
@@ -243,6 +245,20 @@ export default function TrangKhachHang() {
       await tai_lai_du_lieu();
     } catch (err: any) {
       them_thong_bao('loi', 'Không thể xóa: ' + (err?.message ?? ''));
+    } finally {
+      set_dang_xu_ly_khac((o) => ({ ...o, [key]: false }));
+    }
+  };
+
+  const xu_ly_khoi_phuc = async (kh: KhachHang) => {
+    const key = `khoi_phuc_${kh.id}`;
+    set_dang_xu_ly_khac((o) => ({ ...o, [key]: true }));
+    try {
+      await khoiPhucKhachHang(kh.id, nguoi_dung_hien_tai ?? null);
+      them_thong_bao('thanh_cong', `Đã khôi phục khách hàng "${kh.ten_khach_hang}"`);
+      await tai_lai_du_lieu();
+    } catch (err: any) {
+      them_thong_bao('loi', 'Không thể khôi phục: ' + (err?.message ?? ''));
     } finally {
       set_dang_xu_ly_khac((o) => ({ ...o, [key]: false }));
     }
@@ -540,25 +556,37 @@ export default function TrangKhachHang() {
                           >
                             <Pencil className="size-4" />
                           </button>
-                          <button
-                            type="button"
-                            disabled={Boolean(dang_xu_ly_khac[`doi_tt_${kh.id}`])}
-                            onClick={() => xu_ly_doi_trang_thai(kh)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition disabled:opacity-50 cursor-pointer"
-                            title={kh.trang_thai === 'hoat_dong' ? 'Tạm dừng' : 'Kích hoạt'}
-                          >
-                            {kh.trang_thai === 'hoat_dong' ? <Lock className="size-4" /> : <Unlock className="size-4" />}
-                          </button>
-                          {kh.trang_thai !== 'da_xoa' && (
+                          {kh.trang_thai === 'da_xoa' ? (
                             <button
                               type="button"
-                              disabled={Boolean(dang_xu_ly_khac[`xoa_${kh.id}`])}
-                              onClick={() => xu_ly_xoa_mem(kh)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition disabled:opacity-50 cursor-pointer"
-                              title="Xóa vào thùng rác"
+                              disabled={Boolean(dang_xu_ly_khac[`khoi_phuc_${kh.id}`])}
+                              onClick={() => xu_ly_khoi_phuc(kh)}
+                              className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50 cursor-pointer"
+                              title="Khôi phục khách hàng"
                             >
-                              <Trash2 className="size-4" />
+                              <RotateCcw className="size-4" />
                             </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                disabled={Boolean(dang_xu_ly_khac[`doi_tt_${kh.id}`])}
+                                onClick={() => xu_ly_doi_trang_thai(kh)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition disabled:opacity-50 cursor-pointer"
+                                title={kh.trang_thai === 'hoat_dong' ? 'Tạm dừng' : 'Kích hoạt'}
+                              >
+                                {kh.trang_thai === 'hoat_dong' ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={Boolean(dang_xu_ly_khac[`xoa_${kh.id}`])}
+                                onClick={() => xu_ly_xoa_mem(kh)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition disabled:opacity-50 cursor-pointer"
+                                title="Xóa vào thùng rác"
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -578,39 +606,56 @@ export default function TrangKhachHang() {
                   ? { nhan: 'HỢP TÁC', capsule: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
                   : kh.trang_thai === 'tam_dung'
                   ? { nhan: 'TẠM DỪNG', capsule: 'bg-amber-50 text-amber-700 border-amber-200' }
-                  : { nhan: 'ĐÃ XÓA', capsule: 'bg-slate-100 text-slate-600 border-slate-200' };
+                  : { nhan: 'ĐÃ XÓA', capsule: 'bg-rose-50 text-rose-700 border-rose-200' };
 
               return (
-                <Link
+                <div
                   key={kh.id}
-                  href={`/khach-hang/${kh.id}`}
-                  className="flex items-start gap-2.5 p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] active:bg-slate-50 transition-colors"
+                  className={cn(
+                    "p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-colors relative",
+                    kh.trang_thai === 'da_xoa' && 'opacity-70 bg-slate-50/50'
+                  )}
                 >
-                  <div className="pt-0.5 shrink-0">
-                    <span className="text-slate-400 text-xs font-bold">{index + 1}.</span>
-                  </div>
-                  
-                  <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                    <div className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 block">
-                      {kh.ten_khach_hang}
+                  <div className="flex items-start gap-2.5">
+                    <div className="pt-0.5 shrink-0">
+                      <span className="text-slate-400 text-xs font-bold">{index + 1}.</span>
                     </div>
                     
-                    {kh.so_dien_thoai && (
-                      <div className="flex items-center gap-1.5 text-[13px] text-slate-600">
-                        <span className="font-medium">{kh.so_dien_thoai}</span>
+                    <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                      <Link href={`/khach-hang/${kh.id}`} className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 block hover:text-emerald-700">
+                        {kh.ten_khach_hang}
+                      </Link>
+                      
+                      {kh.so_dien_thoai && (
+                        <div className="flex items-center gap-1.5 text-[13px] text-slate-600">
+                          <span className="font-medium">{kh.so_dien_thoai}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold border shrink-0', thongTinTrangThai.capsule)}>
+                            {thongTinTrangThai.nhan}
+                          </span>
+                          <span className="font-semibold text-emerald-700 text-xs">
+                            {loaiKhNhan}
+                          </span>
+                        </div>
+                        {kh.trang_thai === 'da_xoa' && (
+                          <button
+                            type="button"
+                            disabled={Boolean(dang_xu_ly_khac[`khoi_phuc_${kh.id}`])}
+                            onClick={() => xu_ly_khoi_phuc(kh)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+                          >
+                            <RotateCcw className="size-3" strokeWidth={2.5} />
+                            <span>Khôi phục</span>
+                          </button>
+                        )}
                       </div>
-                    )}
-                    
-                    <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
-                      <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold border shrink-0', thongTinTrangThai.capsule)}>
-                        {thongTinTrangThai.nhan}
-                      </span>
-                      <span className="font-semibold text-emerald-700 text-xs">
-                        {loaiKhNhan}
-                      </span>
                     </div>
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>

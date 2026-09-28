@@ -31,7 +31,8 @@ import {
   ShieldCheck,
   ChevronRight,
   ChevronDown,
-  User
+  User,
+  RotateCcw
 } from 'lucide-react';
 import { cn } from '../../../thu_vien/utils/cn';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
@@ -52,6 +53,7 @@ import {
   doiMatKhauNhanSu,
   guiEmailDatLaiMatKhau,
   xoaMemNhanSu,
+  khoiPhucNhanSu,
   chonThongTinVaiTro
 } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
@@ -294,6 +296,23 @@ export default function TrangNhanSu() {
       setDangXuLyKhac((t) => {
         const m = { ...t };
         delete m[`xoa_${ns.id}`];
+        return m;
+      });
+    }
+  };
+
+  const xuLyKhoiPhuc = async (ns: NhanSu) => {
+    setDangXuLyKhac((t) => ({ ...t, [`khoi_phuc_${ns.id}`]: true }));
+    try {
+      await khoiPhucNhanSu(ns.id, nguoiDungHienTai);
+      themToast('thanh_cong', `Đã khôi phục nhân viên "${ns.ho_va_ten}".`);
+      await taiLai();
+    } catch (e) {
+      themToast('loi', 'Khôi phục thất bại: ' + (e as Error).message);
+    } finally {
+      setDangXuLyKhac((t) => {
+        const m = { ...t };
+        delete m[`khoi_phuc_${ns.id}`];
         return m;
       });
     }
@@ -711,31 +730,54 @@ export default function TrangNhanSu() {
                           </Link>
                           {duocQuanLyNhanSu && (
                             <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setDangSua(ns);
-                                  setLoiForm(null);
-                                  setMoDrawer(true);
-                                }}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                                title="Chỉnh sửa"
-                              >
-                                <Pencil className="size-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setLoiMk(null);
-                                  setMkMoiModal('');
-                                  setNhapLaiMkModal('');
-                                  setMoModalDoiMk(ns);
-                                }}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition cursor-pointer"
-                                title="Đổi mật khẩu"
-                              >
-                                <KeyRound className="size-4" />
-                              </button>
+                              {ns.trang_thai_du_lieu === 'da_xoa' ? (
+                                <button
+                                  type="button"
+                                  disabled={Boolean(dangXuLyKhac[`khoi_phuc_${ns.id}`])}
+                                  onClick={() => xuLyKhoiPhuc(ns)}
+                                  className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition cursor-pointer disabled:opacity-50"
+                                  title="Khôi phục nhân sự"
+                                >
+                                  <RotateCcw className="size-4" />
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDangSua(ns);
+                                      setLoiForm(null);
+                                      setMoDrawer(true);
+                                    }}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                                    title="Chỉnh sửa"
+                                  >
+                                    <Pencil className="size-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setLoiMk(null);
+                                      setMkMoiModal('');
+                                      setNhapLaiMkModal('');
+                                      setMoModalDoiMk(ns);
+                                    }}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition cursor-pointer"
+                                    title="Đổi mật khẩu"
+                                  >
+                                    <KeyRound className="size-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={Boolean(dangXuLyKhac[`xoa_${ns.id}`])}
+                                    onClick={() => xuLyXoa(ns)}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
+                                    title="Xóa vào thùng rác"
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </button>
+                                </>
+                              )}
                             </>
                           )}
                         </div>
@@ -751,51 +793,67 @@ export default function TrangNhanSu() {
           <div className="sm:hidden flex flex-col gap-2.5 p-3 bg-slate-50/50">
             {danhSachDaSapXep.map((ns, index) => {
               const biKhoa = !ns.trang_thai;
+              const daXoa = ns.trang_thai_du_lieu === 'da_xoa';
               const pb = tenPhongBan(ns.phong_ban_id);
 
               return (
-                <Link
+                <div
                   key={ns.id}
-                  href={`/nhan-su/${ns.id}`}
                   className={cn(
-                    "flex items-start gap-2.5 p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] active:bg-slate-50 transition-colors",
-                    biKhoa && 'opacity-60 bg-slate-50/50'
+                    "p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-colors relative",
+                    daXoa ? 'opacity-70 bg-slate-50/50' : biKhoa ? 'opacity-60 bg-slate-50/50' : ''
                   )}
                 >
-                  <div className="pt-0.5 shrink-0">
-                    <span className="text-slate-400 text-xs font-bold">{index + 1}.</span>
-                  </div>
-                  
-                  <div className="flex-1 min-w-0 flex items-start gap-3">
-                    <DaiDien
-                      anh={ns.url_anh_dai_dien ?? undefined}
-                      ten={ns.ho_va_ten}
-                      kich_thuoc="sm"
-                      className="size-11 rounded-full shrink-0 border border-slate-200 shadow-2xs"
-                    />
-                    <div className="min-w-0 flex-1 flex flex-col gap-1">
-                      <div className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2">
-                        {ns.ho_va_ten}
-                      </div>
-                      <div className="text-[13px] font-medium text-slate-500 truncate">
-                        {pb || 'Chưa phân PB'}
-                      </div>
-                      
-                      <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
-                        <span
-                          className={cn(
-                            'inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold border shrink-0 uppercase tracking-wide',
-                            biKhoa
-                              ? 'bg-rose-50 text-rose-700 border-rose-200'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  <div className="flex items-start gap-2.5">
+                    <div className="pt-0.5 shrink-0">
+                      <span className="text-slate-400 text-xs font-bold">{index + 1}.</span>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0 flex items-start gap-3">
+                      <DaiDien
+                        anh={ns.url_anh_dai_dien ?? undefined}
+                        ten={ns.ho_va_ten}
+                        kich_thuoc="sm"
+                        className="size-11 rounded-full shrink-0 border border-slate-200 shadow-2xs"
+                      />
+                      <div className="min-w-0 flex-1 flex flex-col gap-1">
+                        <Link href={`/nhan-su/${ns.id}`} className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 hover:text-emerald-700 block">
+                          {ns.ho_va_ten}
+                        </Link>
+                        <div className="text-[13px] font-medium text-slate-500 truncate">
+                          {pb || 'Chưa phân PB'}
+                        </div>
+                        
+                        <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
+                          <span
+                            className={cn(
+                              'inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold border shrink-0 uppercase tracking-wide',
+                              daXoa
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : biKhoa
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            )}
+                          >
+                            {daXoa ? 'ĐÃ XÓA' : biKhoa ? 'ĐÃ KHÓA' : 'HOẠT ĐỘNG'}
+                          </span>
+
+                          {daXoa && duocQuanLyNhanSu && (
+                            <button
+                              type="button"
+                              disabled={Boolean(dangXuLyKhac[`khoi_phuc_${ns.id}`])}
+                              onClick={() => xuLyKhoiPhuc(ns)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+                            >
+                              <RotateCcw className="size-3" strokeWidth={2.5} />
+                              <span>Khôi phục</span>
+                            </button>
                           )}
-                        >
-                          {biKhoa ? 'ĐÃ KHÓA' : 'HOẠT ĐỘNG'}
-                        </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>

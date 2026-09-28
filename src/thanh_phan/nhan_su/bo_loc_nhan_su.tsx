@@ -185,6 +185,18 @@ export default function BoLocNhanSu(props: BoLocNhanSuProps) {
             </select>
           </BoLocMuc>
 
+          <BoLocMuc label={<><ShieldCheck className="size-3.5 text-emerald-600" /> Trạng thái hồ sơ</>}>
+            <select
+              value={boLocHienTai.trang_thai_du_lieu ?? 'hoat_dong'}
+              onChange={(e) => capNhatMotTruong('trang_thai_du_lieu', (e.target.value as any) || 'hoat_dong')}
+              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
+            >
+              <option value="hoat_dong">Đang hoạt động (Mặc định)</option>
+              <option value="da_xoa">Đã xóa (Thùng rác)</option>
+              <option value="tat_ca">Tất cả trạng thái</option>
+            </select>
+          </BoLocMuc>
+
           <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tạo (từ)</>}>
             <input
               type="date"

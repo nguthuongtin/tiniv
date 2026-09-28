@@ -16,10 +16,10 @@ const CAC_LOAI_KH: Array<{ gia_tri: 'tat_ca' | LoaiKhachHang; nhan: string }> = 
 ];
 
 const CAC_TRANG_THAI: Array<{ gia_tri: DieuKienLocKhachHang['trang_thai']; nhan: string }> = [
-  { gia_tri: 'tat_ca', nhan: 'Tất cả trạng thái' },
-  { gia_tri: 'hoat_dong', nhan: 'Đang hợp tác' },
+  { gia_tri: 'hoat_dong', nhan: 'Đang hoạt động (Mặc định)' },
   { gia_tri: 'tam_dung', nhan: 'Tạm dừng' },
-  { gia_tri: 'da_xoa', nhan: 'Đã xóa (tạm)' }
+  { gia_tri: 'da_xoa', nhan: 'Đã xóa (Thùng rác)' },
+  { gia_tri: 'tat_ca', nhan: 'Tất cả trạng thái' }
 ];
 
 interface BoLocKhachHangProps {
@@ -41,7 +41,7 @@ export default function BoLocKhachHang({
     let dem = 0;
     if (tuKhoa && tuKhoa.trim().length > 0) dem++;
     if (gia_tri_hien_tai.loai_khach_hang && gia_tri_hien_tai.loai_khach_hang !== 'tat_ca') dem++;
-    if (gia_tri_hien_tai.trang_thai && gia_tri_hien_tai.trang_thai !== 'tat_ca') dem++;
+    if (gia_tri_hien_tai.trang_thai && gia_tri_hien_tai.trang_thai !== 'hoat_dong') dem++;
     if (gia_tri_hien_tai.chi_nhanh_id && gia_tri_hien_tai.chi_nhanh_id !== 'tat_ca') dem++;
     if (gia_tri_hien_tai.nguoi_phu_trach_id && gia_tri_hien_tai.nguoi_phu_trach_id !== 'tat_ca') dem++;
     if (gia_tri_hien_tai.ngay_tao_tu_ngay) dem++;
@@ -57,7 +57,7 @@ export default function BoLocKhachHang({
     khi_thay_doi({
       tuKhoa: null,
       loai_khach_hang: 'tat_ca',
-      trang_thai: 'tat_ca',
+      trang_thai: 'hoat_dong',
       chi_nhanh_id: null,
       nguoi_phu_trach_id: null,
       ngay_tao_tu_ngay: null,

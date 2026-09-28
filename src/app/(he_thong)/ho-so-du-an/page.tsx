@@ -1146,12 +1146,40 @@ function TrangHoSoDuAn() {
                         
                         {/* Footer card */}
                         <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
-                            {gd.nhan}
-                          </span>
-                          <span className="font-mono font-bold text-emerald-700 text-xs">
-                            {giaTri}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
+                              {gd.nhan}
+                            </span>
+                            {hda.trang_thai === 'da_xoa' && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 uppercase tracking-wide">
+                                Đã xóa
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-emerald-700 text-xs">
+                              {giaTri}
+                            </span>
+                            {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc && (
+                              <button
+                                type="button"
+                                disabled={dangXuLyKhac === hda.id}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  xuLyKhoiPhuc(hda);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+                              >
+                                {dangXuLyKhac === hda.id ? (
+                                  <Loader2 className="size-3 animate-spin" />
+                                ) : (
+                                  <RotateCcw className="size-3" strokeWidth={2.5} />
+                                )}
+                                <span>Khôi phục</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </Link>
                     </div>

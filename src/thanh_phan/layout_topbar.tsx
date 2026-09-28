@@ -16,7 +16,8 @@ import {
   Settings,
   Plus,
   Bell,
-  User
+  User,
+  BookOpen
 } from 'lucide-react';
 
 interface ThongTinTrang {
@@ -82,6 +83,14 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     nut_them: 'Thêm kế hoạch',
     placeholder_tim: 'Tìm kiếm kế hoạch...',
     event_them: 'ebms:ke_hoach:them_moi'
+  },
+  '/kho-tai-lieu': {
+    nhan: 'Kho tài liệu',
+    mo_ta: 'Thư viện liên kết, biểu mẫu và tài nguyên công ty & cá nhân',
+    icon: BookOpen,
+    nut_them: 'Thêm tài liệu',
+    placeholder_tim: 'Tìm kiếm tài liệu, liên kết...',
+    event_them: 'ebms:kho_tai_lieu:them_moi'
   },
   '/quan-tri': {
     nhan: 'Quản trị hệ thống',
@@ -154,6 +163,7 @@ const timThongTinTrang = (pathname: string): { thongTin: ThongTinTrang; laChiTie
     };
   }
 
+  if (pathname.startsWith('/kho-tai-lieu')) return { thongTin: MAP_TIEU_DE['/kho-tai-lieu'], laChiTiet: false };
   if (pathname.startsWith('/ke-hoach')) return { thongTin: MAP_TIEU_DE['/ke-hoach'], laChiTiet: false };
   if (pathname.startsWith('/quan-tri')) return { thongTin: MAP_TIEU_DE['/quan-tri'], laChiTiet: false };
 

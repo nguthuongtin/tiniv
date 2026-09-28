@@ -17,7 +17,8 @@ import {
   Users,
   BarChart3,
   Settings2,
-  CalendarRange
+  CalendarRange,
+  BookOpen
 } from 'lucide-react';
 import { cn } from '../thu_vien/utils/cn';
 import useStoreXacThuc from '../thu_vien/zustand/store_xac_thuc';
@@ -38,6 +39,7 @@ const DANH_MUC_SIDEBAR: MucSidebar[] = [
   { href: '/ho-so-du-an', icon: FolderKanban, nhan: 'Hồ sơ dự án', nhom: 'Module', quyen: 'du_an.xem' },
   { href: '/ke-hoach', icon: CalendarRange, nhan: 'Kế hoạch', nhom: 'Module', quyen: 'ke_hoach.xem' },
   { href: '/bao-cao-cong-viec', icon: FileText, nhan: 'Báo cáo công việc', nhom: 'Module', quyen: ['bao_cao.xem', 'bao_cao.tao'] },
+  { href: '/kho-tai-lieu', icon: BookOpen, nhan: 'Kho tài liệu', nhom: 'Module' },
   { href: '/nhan-su', icon: Users, nhan: 'Nhân sự', nhom: 'Module', quyen: ['nhan_su.xem', 'nhan_su.quan_ly'] },
   { href: '/bao-cao', icon: BarChart3, nhan: 'Báo cáo & Thống kê', nhom: 'Quản trị', quyen: 'bao_cao.xem' },
   { href: '/quan-tri', icon: Settings2, nhan: 'Quản trị', nhom: 'Quản trị', quyen: 'he_thong.quan_tri' }

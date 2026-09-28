@@ -255,5 +255,26 @@ service cloud.firestore {
       allow read: if daXacThucVaHoatDong();
       allow create, update, delete: if laGiamDoc();
     }
+
+    // ========== 22. Collection: kho_tai_lieu ==========
+    match /kho_tai_lieu/{id} {
+      allow read: if daXacThucVaHoatDong() && (
+        resource.data.pham_vi == 'chung'
+        || resource.data.nguoi_tao_id == request.auth.uid
+        || laGiamDoc()
+      );
+      allow create: if laNhanVien()
+        && request.resource.data.nguoi_tao_id == request.auth.uid;
+      allow update: if (
+        (laGiamDoc() || (laNhanVien() && resource.data.nguoi_tao_id == request.auth.uid))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['nguoi_tao_id']) || request.resource.data.nguoi_tao_id == resource.data.nguoi_tao_id)
+      ) || (
+        laNhanVien()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['luot_mo'])
+        && request.resource.data.luot_mo is number
+      );
+      allow delete: if (laNhanVien() && resource.data.nguoi_tao_id == request.auth.uid)
+        || laQuanTriHeThong();
+    }
   }
 }

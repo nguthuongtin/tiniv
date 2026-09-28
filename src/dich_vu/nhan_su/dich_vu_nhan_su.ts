@@ -202,6 +202,11 @@ const sapXepVaLocThem = (mang: NhanSu[], loc?: DieuKienLocNhanSu): NhanSu[] => {
     if (loc?.vai_tro && loc.vai_tro !== 'tat_ca' && ns.vai_tro !== loc.vai_tro) return false;
     if (loc?.chi_nhanh_id && ns.chi_nhanh_id !== loc.chi_nhanh_id) return false;
     if (loc?.phong_ban_id && ns.phong_ban_id !== loc.phong_ban_id) return false;
+    if (loc?.trang_thai_du_lieu === 'da_xoa') {
+      if (ns.trang_thai_du_lieu !== 'da_xoa') return false;
+    } else if (loc?.trang_thai_du_lieu === 'hoat_dong' || !loc?.trang_thai_du_lieu) {
+      if (ns.trang_thai_du_lieu === 'da_xoa') return false;
+    }
     if (loc?.trang_thai_hoat_dong) {
       if (loc.trang_thai_hoat_dong === 'hoat_dong' && !ns.trang_thai) return false;
       if (loc.trang_thai_hoat_dong === 'khoa' && ns.trang_thai) return false;
@@ -224,10 +229,9 @@ export const danhSachNhanSu = async (
   if (loc?.chi_nhanh_id) {
     mangRangBuoc.unshift(where('chi_nhanh_id', '==', loc.chi_nhanh_id));
   }
-  const ttDuLieu = loc?.trang_thai_du_lieu && loc.trang_thai_du_lieu !== 'tat_ca'
-    ? loc.trang_thai_du_lieu
-    : 'hoat_dong';
-  mangRangBuoc.unshift(where('trang_thai_du_lieu', '==', ttDuLieu));
+  if (loc?.trang_thai_du_lieu && loc.trang_thai_du_lieu !== 'tat_ca') {
+    mangRangBuoc.unshift(where('trang_thai_du_lieu', '==', loc.trang_thai_du_lieu));
+  }
   if (loc?.trang_thai_hoat_dong === 'hoat_dong') {
     mangRangBuoc.unshift(where('trang_thai', '==', true));
   }
@@ -646,6 +650,20 @@ export const xoaMemNhanSu = async (
   );
 };
 
+export const khoiPhucNhanSu = async (
+  id: string,
+  nguoiThucHien: Pick<NhanSu, 'id'> | null | undefined
+): Promise<void> => {
+  await capNhatNhanSu(id, { trang_thai_du_lieu: 'hoat_dong', trang_thai: true }, nguoiThucHien);
+  await ghiNhatKyHoatDong(
+    nguoiThucHien?.id,
+    'nhan_su',
+    'khoi_phuc',
+    id,
+    'Khôi phục tài khoản nhân sự'
+  );
+};
+
 export const langNgheThayDoiDanhSachNhanSu = (
   callback: (mang: NhanSu[]) => void,
   loc?: DieuKienLocNhanSu
@@ -653,10 +671,9 @@ export const langNgheThayDoiDanhSachNhanSu = (
   const mangRangBuoc: QueryConstraint[] = [
     limit(GIOI_HAN_MAC_DINH)
   ];
-  const ttDuLieu = loc?.trang_thai_du_lieu && loc.trang_thai_du_lieu !== 'tat_ca'
-    ? loc.trang_thai_du_lieu
-    : 'hoat_dong';
-  mangRangBuoc.unshift(where('trang_thai_du_lieu', '==', ttDuLieu));
+  if (loc?.trang_thai_du_lieu && loc.trang_thai_du_lieu !== 'tat_ca') {
+    mangRangBuoc.unshift(where('trang_thai_du_lieu', '==', loc.trang_thai_du_lieu));
+  }
   if (loc?.vai_tro && loc.vai_tro !== 'tat_ca') {
     mangRangBuoc.unshift(where('vai_tro', '==', loc.vai_tro));
   }

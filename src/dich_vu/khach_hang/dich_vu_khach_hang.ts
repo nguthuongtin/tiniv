@@ -75,7 +75,7 @@ export const danhSachKhachHang = async (
   if (loc?.loai_khach_hang && loc.loai_khach_hang !== 'tat_ca') {
     mangRangBuoc.unshift(where('loai_khach_hang', '==', loc.loai_khach_hang));
   }
-  if (loc?.trang_thai && loc.trang_thai !== 'tat_ca') {
+  if (loc?.trang_thai === 'da_xoa' || loc?.trang_thai === 'tam_dung') {
     mangRangBuoc.unshift(where('trang_thai', '==', loc.trang_thai));
   }
   if (loc?.nguoi_phu_trach_id) {
@@ -88,6 +88,14 @@ export const danhSachKhachHang = async (
     const results: KhachHang[] = [];
     for (const d of snapshot.docs) {
       const kh = chuyenDoiDocThanhDoiTuong(d.id, d.data());
+      // Lọc trạng thái (tự động ẩn đã xóa khi mặc định/hoat_dong)
+      if (loc?.trang_thai === 'da_xoa') {
+        if (kh.trang_thai !== 'da_xoa') continue;
+      } else if (loc?.trang_thai === 'tam_dung') {
+        if (kh.trang_thai !== 'tam_dung') continue;
+      } else if (loc?.trang_thai === 'hoat_dong' || !loc?.trang_thai) {
+        if (kh.trang_thai === 'da_xoa') continue;
+      }
       if (tuKhoaLower) {
         const khop =
           kh.ten_khach_hang.toLowerCase().includes(tuKhoaLower) ||
@@ -325,6 +333,13 @@ export const xoaMemKhachHang = async (
   return doiTrangThaiKhachHang(id, 'da_xoa', nguoiThucHien);
 };
 
+export const khoiPhucKhachHang = async (
+  id: string,
+  nguoiThucHien: Pick<NhanSu, 'id'> | null | undefined
+): Promise<KhachHang> => {
+  return doiTrangThaiKhachHang(id, 'hoat_dong', nguoiThucHien);
+};
+
 export const langNgheThayDoiDanhSachKhachHang = (
   callback: (mang: KhachHang[]) => void,
   loc?: DieuKienLocKhachHang
@@ -336,7 +351,7 @@ export const langNgheThayDoiDanhSachKhachHang = (
   if (loc?.loai_khach_hang && loc.loai_khach_hang !== 'tat_ca') {
     mangRangBuoc.unshift(where('loai_khach_hang', '==', loc.loai_khach_hang));
   }
-  if (loc?.trang_thai && loc.trang_thai !== 'tat_ca') {
+  if (loc?.trang_thai === 'da_xoa' || loc?.trang_thai === 'tam_dung') {
     mangRangBuoc.unshift(where('trang_thai', '==', loc.trang_thai));
   }
   if (loc?.nguoi_phu_trach_id) {
@@ -348,6 +363,14 @@ export const langNgheThayDoiDanhSachKhachHang = (
     const tuKhoa = loc?.tuKhoa?.trim().toLowerCase() ?? '';
     snap.forEach((d) => {
       const kh = chuyenDoiDocThanhDoiTuong(d.id, d.data());
+      // Lọc trạng thái (tự động ẩn đã xóa khi mặc định/hoat_dong)
+      if (loc?.trang_thai === 'da_xoa') {
+        if (kh.trang_thai !== 'da_xoa') return;
+      } else if (loc?.trang_thai === 'tam_dung') {
+        if (kh.trang_thai !== 'tam_dung') return;
+      } else if (loc?.trang_thai === 'hoat_dong' || !loc?.trang_thai) {
+        if (kh.trang_thai === 'da_xoa') return;
+      }
       if (tuKhoa) {
         const khop =
           kh.ten_khach_hang.toLowerCase().includes(tuKhoa) ||
