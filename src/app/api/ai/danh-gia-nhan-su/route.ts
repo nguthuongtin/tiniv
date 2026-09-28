@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const model = configData.model || 'gemini-3.8-flash';
+    const model = configData.model || 'gemini-3.5-flash-lite';
     // Đảm bảo lấy ngày theo múi giờ Việt Nam (Asia/Ho_Chi_Minh)
     const ngayHomNayVN = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
     const ngayMucTieu = ngay_danh_gia || ngayHomNayVN;

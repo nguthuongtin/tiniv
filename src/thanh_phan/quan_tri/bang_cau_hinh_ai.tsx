@@ -312,19 +312,19 @@ export default function BangCauHinhAI() {
               <div className="space-y-2">
                 {[
                   {
+                    id: 'gemini-3.5-flash-lite',
+                    ten: 'Gemini 3.5 Flash-Lite (Khuyên dùng)',
+                    moTa: 'Tốc độ siêu nhanh, nhẹ và không lo bị nghẽn giới hạn lượt gọi (Free Tier)'
+                  },
+                  {
+                    id: 'gemini-3.5-flash',
+                    ten: 'Gemini 3.5 Flash',
+                    moTa: 'Mô hình chuẩn cân bằng tốt giữa tốc độ và độ thông minh'
+                  },
+                  {
                     id: 'gemini-3.8-flash',
-                    ten: 'Gemini 2.0 Flash (Khuyên dùng)',
-                    moTa: 'Tốc độ cực nhanh, thông minh và phản hồi chuẩn xác'
-                  },
-                  {
-                    id: 'gemini-1.5-flash',
-                    ten: 'Gemini 1.5 Flash',
-                    moTa: 'Bản ổn định, chi phí thấp, tối ưu tóm tắt'
-                  },
-                  {
-                    id: 'gemini-1.5-pro',
-                    ten: 'Gemini 1.5 Pro',
-                    moTa: 'Mô hình lập luận chuyên sâu, phân tích nhiều ngữ cảnh'
+                    ten: 'Gemini 3.8 Flash (Cao cấp nhất)',
+                    moTa: 'Bản phân tích chuyên sâu nhất (Free Tier giới hạn 20 lần/ngày)'
                   }
                 ].map((m) => (
                   <div

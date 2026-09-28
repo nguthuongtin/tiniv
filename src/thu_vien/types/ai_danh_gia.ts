@@ -59,7 +59,7 @@ export interface CauHinhAIGemini {
 
 export const CAU_HINH_AI_MAC_DINH: CauHinhAIGemini = {
   gemini_api_key: '',
-  model: 'gemini-3.8-flash',
+  model: 'gemini-3.5-flash-lite',
   tu_dong_danh_gia_hang_ngay: true,
   gio_chay_tu_dong: '23:00',
   tieu_chi_kich_hoat: {

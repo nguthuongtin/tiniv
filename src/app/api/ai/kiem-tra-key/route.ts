@@ -3,7 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 
 export async function POST(req: Request) {
   try {
-    const { apiKey, model = 'gemini-3.8-flash' } = await req.json();
+    const { apiKey, model = 'gemini-3.5-flash-lite' } = await req.json();
 
     if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length === 0) {
       return NextResponse.json({
