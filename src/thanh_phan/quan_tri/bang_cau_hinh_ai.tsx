@@ -312,7 +312,7 @@ export default function BangCauHinhAI() {
               <div className="space-y-2">
                 {[
                   {
-                    id: 'gemini-2.0-flash',
+                    id: 'gemini-3.8-flash',
                     ten: 'Gemini 2.0 Flash (Khuyên dùng)',
                     moTa: 'Tốc độ cực nhanh, thông minh và phản hồi chuẩn xác'
                   },

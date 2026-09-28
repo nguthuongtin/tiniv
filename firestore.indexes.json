@@ -168,6 +168,14 @@
         { "fieldPath": "module", "order": "ASCENDING" },
         { "fieldPath": "thoi_gian", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "ai_danh_gia_nhan_su",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nhan_vien_id", "order": "ASCENDING" },
+        { "fieldPath": "ngay_danh_gia", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

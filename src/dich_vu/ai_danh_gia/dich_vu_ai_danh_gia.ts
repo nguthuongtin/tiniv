@@ -84,17 +84,20 @@ export const layLichSuDanhGiaNhanVien = async (
 ): Promise<AIDanhGiaNhanSu[]> => {
   try {
     const colRef = collection(csdl, COLLECTION_NAME);
+    // Truy vấn theo nhan_vien_id và sắp xếp trong bộ nhớ để không cần tạo Firestore Composite Index
     const q = query(
       colRef,
-      where('nhan_vien_id', '==', nhanVienId),
-      orderBy('ngay_danh_gia', 'desc'),
-      limit(soLuong)
+      where('nhan_vien_id', '==', nhanVienId)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((docSnap) => ({
+    const items = snapshot.docs.map((docSnap) => ({
       id: docSnap.id,
       ...docSnap.data()
     })) as AIDanhGiaNhanSu[];
+
+    return items
+      .sort((a, b) => (b.ngay_danh_gia || '').localeCompare(a.ngay_danh_gia || ''))
+      .slice(0, soLuong);
   } catch (error) {
     console.error('Lỗi lấy lịch sử đánh giá nhân viên:', error);
     return [];

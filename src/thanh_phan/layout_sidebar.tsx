@@ -155,10 +155,28 @@ const renderDanhMuc = (
     return coQuyen(nguoiDungHienTai, muc.quyen);
   };
 
+  const laLanhDao =
+    nguoiDungHienTai &&
+    (coQuyen(nguoiDungHienTai, 'lanh_dao.xem') ||
+      ['giam_doc', 'truong_phong', 'quan_tri_he_thong'].includes(nguoiDungHienTai.vai_tro as string));
+
+  const danhMucTuyChinh = DANH_MUC_SIDEBAR.filter((m) => {
+    // Nếu là lãnh đạo: ẩn trang tổng quan thường '/', thay bằng '/tong-quan-lanh-dao'
+    if (laLanhDao && m.href === '/') return false;
+    // Nếu không phải lãnh đạo: ẩn trang tổng quan lãnh đạo
+    if (!laLanhDao && m.href === '/tong-quan-lanh-dao') return false;
+    return true;
+  }).map((m) => {
+    if (laLanhDao && m.href === '/tong-quan-lanh-dao') {
+      return { ...m, nhan: 'Tổng quan' };
+    }
+    return m;
+  });
+
   return (
     <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
       {['Tổng quan', 'Module', 'Quản trị'].map((tenNhom) => {
-        const ds = DANH_MUC_SIDEBAR.filter(
+        const ds = danhMucTuyChinh.filter(
           (m) => m.nhom === tenNhom && kiemTraQuyenMuc(m)
         );
         if (!ds.length) return null;

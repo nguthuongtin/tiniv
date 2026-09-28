@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminFirestore } from '../../../../thu_vien/firebase/admin_firebase';
 import type { AIDanhGiaNhanSu, CauHinhAIGemini } from '../../../../thu_vien/types/ai_danh_gia';
 import { CAU_HINH_AI_MAC_DINH } from '../../../../thu_vien/types/ai_danh_gia';
+import { GoogleGenAI } from '@google/genai';
 
 export const maxDuration = 60; // Allow sufficient time for AI generation
 
@@ -29,8 +30,10 @@ export async function POST(req: Request) {
       );
     }
 
-    const model = configData.model || 'gemini-2.0-flash';
-    const ngayMucTieu = ngay_danh_gia || new Date().toISOString().split('T')[0];
+    const model = configData.model || 'gemini-3.8-flash';
+    // Đảm bảo lấy ngày theo múi giờ Việt Nam (Asia/Ho_Chi_Minh)
+    const ngayHomNayVN = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+    const ngayMucTieu = ngay_danh_gia || ngayHomNayVN;
 
     // 2. Xác định danh sách nhân sự cần phân tích
     let danhSachNhanSuCanChay: any[] = [];
@@ -65,10 +68,11 @@ export async function POST(req: Request) {
 
     // 3. Phân tích từng nhân sự
     const ketQuaDanhGia: AIDanhGiaNhanSu[] = [];
+    let loiCuoiCung = '';
 
     for (const ns of danhSachNhanSuCanChay) {
       const nsId = ns.id;
-      const tenNs = ns.ho_ten || ns.ten || 'Nhân viên';
+      const tenNs = ns.ho_va_ten || ns.ho_ten || ns.ten || 'Nhân viên';
 
       // 3.1. Lấy danh sách dự án mà nhân viên là người phụ trách chính
       const duAnSnap = await db
@@ -92,39 +96,41 @@ export async function POST(req: Request) {
         0
       );
 
-      // 3.2. Lấy Kế hoạch Tuần hiện tại
+      // 3.2. Lấy Kế hoạch Tuần (sắp xếp giảm dần để luôn lấy tuần hiện tại & gần nhất)
       const keHoachTuanSnap = await db
         .collection('ke_hoach_tuan')
         .where('nhan_vien_id', '==', nsId)
-        .limit(2)
         .get();
 
       const dsKeHoachTuan = keHoachTuanSnap.docs
         .map((d) => ({ id: d.id, ...d.data() } as any))
-        .filter((k) => k.trang_thai_du_lieu !== 'da_xoa');
+        .filter((k) => k.trang_thai_du_lieu !== 'da_xoa')
+        .sort((a, b) => (b.tuan || b.ngay_tao || '').localeCompare(a.tuan || a.ngay_tao || ''))
+        .slice(0, 2);
 
-      // 3.3. Lấy Kế hoạch Tháng hiện tại
+      // 3.3. Lấy Kế hoạch Tháng (sắp xếp giảm dần để luôn lấy tháng hiện tại)
       const keHoachThangSnap = await db
         .collection('ke_hoach_thang')
         .where('nhan_vien_id', '==', nsId)
-        .limit(2)
         .get();
 
       const dsKeHoachThang = keHoachThangSnap.docs
         .map((d) => ({ id: d.id, ...d.data() } as any))
-        .filter((k) => k.trang_thai_du_lieu !== 'da_xoa');
+        .filter((k) => k.trang_thai_du_lieu !== 'da_xoa')
+        .sort((a, b) => (b.thang || b.ngay_tao || '').localeCompare(a.thang || a.ngay_tao || ''))
+        .slice(0, 2);
 
-      // 3.4. Lấy Báo cáo công việc gần nhất (14 ngày)
+      // 3.4. Lấy Báo cáo công việc (sắp xếp giảm dần để lấy 14 ngày mới nhất tính đến hôm nay)
       const baoCaoSnap = await db
         .collection('bao_cao_cong_viec')
         .where('nhan_vien_id', '==', nsId)
-        .limit(14)
         .get();
 
       const dsBaoCao = baoCaoSnap.docs
         .map((d) => ({ id: d.id, ...d.data() } as any))
         .filter((b) => b.trang_thai_du_lieu !== 'da_xoa')
-        .sort((a, b) => (b.ngay_bao_cao || '').localeCompare(a.ngay_bao_cao || ''));
+        .sort((a, b) => (b.ngay_bao_cao || b.ngay_tao || '').localeCompare(a.ngay_bao_cao || a.ngay_tao || ''))
+        .slice(0, 14);
 
       // 3.5. Xây dựng Prompt cho Google Gemini
       const duAnTomTat = dsDuAn.map((da) => ({
@@ -137,6 +143,7 @@ export async function POST(req: Request) {
 
       const keHoachTuanTomTat = dsKeHoachTuan.flatMap((kh) =>
         (kh.danh_sach_tac_chien || []).map((tc: any) => ({
+          tuan: kh.tuan,
           viec_tuan: tc.noi_dung_tuan || tc.hanh_dong_tuan || tc.ten_khach_hang_du_an,
           cam_ket: tc.dau_ra_cam_ket || tc.ket_qua_mong_muon,
           da_xong: tc.da_hoan_thanh,
@@ -144,15 +151,31 @@ export async function POST(req: Request) {
         }))
       );
 
-      const baoCaoTomTat = dsBaoCao.map((bc) => ({
-        ngay: bc.ngay_bao_cao,
-        noi_dung:
-          bc.noi_dung_thuc_hien ||
-          (bc.danh_sach_chi_tiet || []).map((ct: any) => ct.noi_dung).join('; ') ||
-          'Chưa ghi nội dung',
-        kho_khan: bc.kho_khan || 'Không có',
-        ke_hoach_ngay_mai: bc.ke_hoach_ngay_mai || ''
-      }));
+      const keHoachThangTomTat = dsKeHoachThang.flatMap((kh) =>
+        (kh.danh_sach_dia_ban || []).map((db: any) => ({
+          thang: kh.thang,
+          dia_ban_khach_hang: db.ten_khach_hang_du_an || db.co_quan_doanh_nghiep,
+          muc_tieu: db.muc_tieu_thang || db.ten_muc_tieu,
+          doanh_so_du_kien: db.doanh_so_du_kien || db.gia_tri_hd,
+          ket_qua_thuc_te: db.ket_qua_thuc_te || db.thuc_te_thu
+        }))
+      );
+
+      const baoCaoTomTat = dsBaoCao.map((bc) => {
+        const noiDungChiTiet = Array.isArray(bc.danh_sach_chi_tiet)
+          ? bc.danh_sach_chi_tiet
+              .map((ct: any) => ct?.noi_dung?.trim())
+              .filter(Boolean)
+              .join('; ')
+          : '';
+
+        return {
+          ngay: bc.ngay_bao_cao,
+          noi_dung: noiDungChiTiet || bc.noi_dung_thuc_hien || 'Chưa ghi nội dung',
+          kho_khan: bc.kho_khan || 'Không có',
+          ke_hoach_ngay_mai: bc.ke_hoach_ngay_mai || ''
+        };
+      });
 
       const promptData = {
         thong_tin_nhan_su: {
@@ -168,6 +191,7 @@ export async function POST(req: Request) {
           tong_gia_tri: tongGiaTriDuKien,
           danh_sach: duAnTomTat
         },
+        ke_hoach_thang: keHoachThangTomTat,
         ke_hoach_tuan: keHoachTuanTomTat,
         bao_cao_cong_viec_gan_day: baoCaoTomTat,
         ngay_danh_gia: ngayMucTieu
@@ -212,46 +236,39 @@ Mỗi tiêu chí trong 9 tiêu chí trên BẮT BUỘC phải có trường:
 }`;
 
       // 3.6. Gọi Google Gemini API
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-      const resAI = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `${systemPrompt}\n\nDỮ LIỆU ĐỐI SOÁT CỦA NHÂN SỰ:\n${JSON.stringify(
-                    promptData,
-                    null,
-                    2
-                  )}`
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.2
+      const client = new GoogleGenAI({ apiKey });
+      let rawText;
+      try {
+        const interaction = await client.interactions.create({
+          model,
+          input: `${systemPrompt}\n\nDỮ LIỆU ĐỐI SOÁT CỦA NHÂN SỰ:\n${JSON.stringify(promptData, null, 2)}`,
+          response_format: {
+            type: 'text',
+            mime_type: 'application/json'
           }
-        })
-      });
-
-      if (!resAI.ok) {
-        const errJson = await resAI.json().catch(() => ({}));
-        console.error(`Lỗi gọi Gemini cho nhân viên ${tenNs}:`, errJson);
+        });
+        rawText = interaction.output_text;
+      } catch (err: any) {
+        loiCuoiCung = err?.message || String(err);
+        console.error('Lỗi gọi Gemini cho nhân viên ' + tenNs + ':', err);
+        continue;
+      }
+      if (!rawText) {
+        loiCuoiCung = 'Mô hình AI không phản hồi nội dung văn bản';
         continue;
       }
 
-      const aiData = await resAI.json();
-      const rawText = aiData?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawText) continue;
-
       let parsed: any;
       try {
-        parsed = JSON.parse(rawText);
-      } catch (e) {
+        let cleanText = (rawText || '').trim();
+        if (cleanText.startsWith('```json')) {
+          cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanText.startsWith('```')) {
+          cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        parsed = JSON.parse(cleanText);
+      } catch (e: any) {
+        loiCuoiCung = 'Không thể đọc định dạng JSON từ phản hồi của AI';
         console.error('Lỗi parse JSON từ Gemini:', rawText);
         continue;
       }
@@ -282,6 +299,16 @@ Mỗi tiêu chí trong 9 tiêu chí trên BẮT BUỘC phải có trường:
       // 3.7. Lưu vào Firestore collection ai_danh_gia_nhan_su
       await db.collection('ai_danh_gia_nhan_su').doc(docId).set(record, { merge: true });
       ketQuaDanhGia.push(record);
+    }
+
+    if (ketQuaDanhGia.length === 0 && (nhan_vien_id || danhSachNhanSuCanChay.length > 0)) {
+      return NextResponse.json(
+        {
+          thanh_cong: false,
+          loi: loiCuoiCung || 'Không thể tạo bản đánh giá từ AI. Vui lòng kiểm tra lại API Key hoặc dữ liệu nhân sự.'
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

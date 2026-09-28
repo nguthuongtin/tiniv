@@ -110,9 +110,10 @@ export default function DrawerChiTietDanhGia({
     if (!nhanSu?.id) return;
     setDangChayAI(true);
     try {
+      const ngayHomNay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
       const res = await kichHoatAIDanhGia({
         nhan_vien_id: nhanSu.id,
-        ngay_danh_gia: new Date().toISOString().split('T')[0]
+        ngay_danh_gia: ngayHomNay
       });
 
       if (res.thanh_cong && res.du_lieu) {
@@ -161,45 +162,46 @@ export default function DrawerChiTietDanhGia({
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/40 backdrop-blur-xs flex justify-end transition-opacity animate-in fade-in duration-200">
       <div className="w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col transform transition-transform animate-in slide-in-from-right duration-200">
         {/* Header */}
-        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/60">
-          <div className="flex items-center gap-3">
+        <div className="p-3.5 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/60 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <DaiDien
               anh={nhanSu.url_anh_dai_dien || ''}
               ten={nhanSu.ho_va_ten || 'NV'}
-              className="w-12 h-12 text-base font-semibold ring-2 ring-white shadow-xs"
+              className="w-10 h-10 sm:w-12 sm:h-12 text-sm sm:text-base font-semibold ring-2 ring-white shadow-xs shrink-0"
             />
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-800">{nhanSu.ho_va_ten}</h3>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-200/70 text-slate-700">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-slate-800 truncate">{nhanSu.ho_va_ten}</h3>
+                <span className="text-[10px] sm:text-[11px] font-mono px-1.5 py-0.2 rounded bg-slate-200/70 text-slate-700 shrink-0">
                   {nhanSu.ma_nhan_vien || nhanSu.id.slice(0, 6)}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 truncate mt-0.5">
                 {nhanSu.chuc_vu || 'Nhân viên kinh doanh'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <Nut
               kieu="primary"
               onClick={handleChayAI}
               disabled={dangChayAI}
-              className="bg-[#185942] hover:bg-[#134634] text-xs font-semibold shadow-xs"
+              className="bg-[#185942] hover:bg-[#134634] text-xs font-semibold shadow-xs py-1.5 px-2.5 sm:px-3 sm:py-2"
             >
               {dangChayAI ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1 sm:mr-1.5" />
               ) : (
-                <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
+                <Sparkles className="w-3.5 h-3.5 mr-1 sm:mr-1.5 text-amber-300" />
               )}
-              {dangChayAI ? 'Đang phân tích...' : 'Phân tích AI'}
+              <span className="hidden xs:inline">{dangChayAI ? 'Đang chạy...' : 'Phân tích AI'}</span>
+              <span className="xs:hidden">{dangChayAI ? '...' : 'AI'}</span>
             </Nut>
 
             <button
               type="button"
               onClick={onDong}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors"
+              className="p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -207,26 +209,26 @@ export default function DrawerChiTietDanhGia({
         </div>
 
         {/* 4 Thẻ chỉ số phụ trách chính */}
-        <div className="grid grid-cols-4 gap-2 p-4 bg-slate-100/50 border-b border-slate-200 text-center">
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 sm:p-4 bg-slate-100/50 border-b border-slate-200 text-center">
+          <div className="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
             <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
               Dự án chính
             </p>
-            <p className="text-lg font-bold text-slate-800 mt-0.5">{dsDuAnPhuTrach.length}</p>
+            <p className="text-base sm:text-lg font-bold text-slate-800 mt-0.5">{dsDuAnPhuTrach.length}</p>
           </div>
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+          <div className="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
             <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">
               Tiềm năng cao
             </p>
-            <p className="text-lg font-bold text-amber-700 mt-0.5">{soTiemNangCao}</p>
+            <p className="text-base sm:text-lg font-bold text-amber-700 mt-0.5">{soTiemNangCao}</p>
           </div>
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+          <div className="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
             <p className="text-[10px] font-semibold text-purple-600 uppercase tracking-wider">
               Sắp ký HĐ
             </p>
-            <p className="text-lg font-bold text-purple-700 mt-0.5">{soSapKyHD}</p>
+            <p className="text-base sm:text-lg font-bold text-purple-700 mt-0.5">{soSapKyHD}</p>
           </div>
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
+          <div className="bg-white p-2 sm:p-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
             <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">
               Giá trị dự kiến
             </p>
@@ -237,7 +239,7 @@ export default function DrawerChiTietDanhGia({
         </div>
 
         {/* Tabs chọn xem */}
-        <div className="flex border-b border-slate-200 px-4 bg-white text-xs font-semibold">
+        <div className="flex border-b border-slate-200 px-3 sm:px-4 bg-white text-xs font-semibold overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setTabHienTai('danh_gia')}

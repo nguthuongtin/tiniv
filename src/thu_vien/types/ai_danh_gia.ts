@@ -40,7 +40,7 @@ export interface AIDanhGiaNhanSu {
 
 export interface CauHinhAIGemini {
   gemini_api_key?: string;
-  model: string; // 'gemini-2.0-flash' | 'gemini-1.5-flash' | 'gemini-1.5-pro'
+  model: string; // 'gemini-3.8-flash' | 'gemini-3.7-flash' | 'gemini-1.5-pro'
   tu_dong_danh_gia_hang_ngay: boolean;
   gio_chay_tu_dong?: string; // e.g. "23:00"
   tieu_chi_kich_hoat: {
@@ -59,7 +59,7 @@ export interface CauHinhAIGemini {
 
 export const CAU_HINH_AI_MAC_DINH: CauHinhAIGemini = {
   gemini_api_key: '',
-  model: 'gemini-2.0-flash',
+  model: 'gemini-3.8-flash',
   tu_dong_danh_gia_hang_ngay: true,
   gio_chay_tu_dong: '23:00',
   tieu_chi_kich_hoat: {

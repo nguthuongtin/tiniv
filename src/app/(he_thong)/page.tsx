@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { coQuyen } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
 import {
   FolderKanban,
   UsersRound,
@@ -499,7 +501,23 @@ interface CapNhatDuAnHienThi {
 }
 
 export default function TrangChu() {
+  const router = useRouter();
   const { nguoiDungHienTai } = useStoreXacThuc();
+
+  const duocXemLanhDao = useMemo(() => {
+    if (!nguoiDungHienTai) return false;
+    return (
+      coQuyen(nguoiDungHienTai, 'lanh_dao.xem') ||
+      ['giam_doc', 'truong_phong', 'quan_tri_he_thong'].includes(nguoiDungHienTai.vai_tro as string)
+    );
+  }, [nguoiDungHienTai]);
+
+  useEffect(() => {
+    if (duocXemLanhDao) {
+      router.replace('/tong-quan-lanh-dao');
+    }
+  }, [duocXemLanhDao, router]);
+
   const [dangTai, setDangTai] = useState(true);
 
   const [dsTatCaDuAn, setDsTatCaDuAn] = useState<HoSoDuAn[]>([]);
@@ -937,6 +955,15 @@ export default function TrangChu() {
     if (dsDuAnLienQuan.length === 0) return 0;
     return Math.round((soHoanThanh / dsDuAnLienQuan.length) * 100);
   }, [dsDuAnLienQuan, soHoanThanh]);
+
+  if (duocXemLanhDao) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-slate-500">
+        <Loader2 className="w-8 h-8 animate-spin text-[#185942]" />
+        <p className="text-sm font-medium">Đang chuyển đến Tổng quan Lãnh đạo...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-none space-y-3.5 sm:space-y-6">

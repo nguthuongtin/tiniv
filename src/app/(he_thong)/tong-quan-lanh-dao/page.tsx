@@ -56,8 +56,10 @@ export default function TrangTongQuanLanhDao() {
   const [dsPhongBan, setDsPhongBan] = useState<PhongBan[]>([]);
   const [dsDanhGiaAI, setDsDanhGiaAI] = useState<AIDanhGiaNhanSu[]>([]);
 
-  // State bộ lọc
-  const [ngayChon, setNgayChon] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  // State bộ lọc (mặc định theo ngày hiện tại giờ Việt Nam)
+  const [ngayChon, setNgayChon] = useState<string>(() =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
+  );
   const [tuKhoa, setTuKhoa] = useState('');
   const [chiNhanhId, setChiNhanhId] = useState<string>('tat_ca');
   const [phongBanId, setPhongBanId] = useState<string>('tat_ca');
@@ -243,34 +245,33 @@ export default function TrangTongQuanLanhDao() {
   return (
     <div className="space-y-6 pb-12">
       {/* 1. Header Banner dành cho Lãnh đạo */}
-      <div className="bg-gradient-to-r from-[#185942] via-[#144b37] to-[#0f3a2b] rounded-2xl p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5">
+      <div className="bg-gradient-to-r from-[#185942] via-[#144b37] to-[#0f3a2b] rounded-2xl p-4 sm:p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-400/20 text-emerald-200 text-xs font-semibold mb-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-400/20 text-emerald-200 text-[11px] sm:text-xs font-semibold mb-1.5 sm:mb-2">
             <TrendingUp className="w-3.5 h-3.5" />
             Executive Leadership Center
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Trung Tâm Điều Hành & Giám Sát Lãnh Đạo</h1>
-          <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
-            Theo dõi tải trọng dự án của từng nhân viên phụ trách chính, lọc dự án tiềm năng cao & sắp ký
-            hợp đồng, kết hợp nhận định tự động 9 tiêu chí từ Google Gemini AI.
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Trung Tâm Điều Hành & Giám Sát Lãnh Đạo</h1>
+          <p className="text-emerald-100/80 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
+            Giám sát tải trọng dự án nhân viên phụ trách chính, lọc dự án tiềm năng &amp; sắp ký hợp đồng, kết hợp nhận định tự động 9 tiêu chí từ Google Gemini AI.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 self-start md:self-center">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 self-stretch md:self-center">
           <div className="flex items-center bg-white/10 backdrop-blur-xs rounded-xl px-3 py-2 border border-white/20 text-xs font-medium text-emerald-100">
-            <Calendar className="w-3.5 h-3.5 mr-2" />
+            <Calendar className="w-3.5 h-3.5 mr-2 shrink-0" />
             <input
               type="date"
               value={ngayChon}
               onChange={(e) => setNgayChon(e.target.value)}
-              className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer"
+              className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer w-full text-xs"
             />
           </div>
 
           <Nut
             onClick={handleChayAIToanBo}
             disabled={dangChayAITatCa}
-            className="bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold text-xs shadow-sm"
+            className="bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold text-xs shadow-sm py-2 px-3.5 justify-center"
           >
             {dangChayAITatCa ? (
               <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
@@ -283,60 +284,57 @@ export default function TrangTongQuanLanhDao() {
       </div>
 
       {/* 2. Các thẻ KPI Lãnh đạo */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Thẻ 1: Tổng nhân sự */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 sm:space-y-2">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
               Nhân sự theo dõi
             </span>
-            <Users className="w-5 h-5 text-slate-600" />
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
           </div>
-          <p className="text-2xl font-black text-slate-800">{thongKeLanhDao.tongNhanSu}</p>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <span>Phụ trách:</span>
-            <span className="font-bold text-slate-700">
-              {thongKeLanhDao.tongDuAnPhuTrach} dự án chính
-            </span>
-          </div>
+          <p className="text-xl sm:text-2xl font-black text-slate-800">{thongKeLanhDao.tongNhanSu}</p>
+          <p className="text-[11px] sm:text-xs text-slate-500 truncate">
+            {thongKeLanhDao.tongDuAnPhuTrach} dự án chính
+          </p>
         </div>
 
         {/* Thẻ 2: Dự án tiềm năng cao */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 sm:space-y-2">
           <div className="flex items-center justify-between text-amber-500">
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-amber-700">
               Tiềm năng cao
             </span>
-            <Flame className="w-5 h-5 text-amber-500" />
+            <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
           </div>
-          <p className="text-2xl font-black text-amber-700">{thongKeLanhDao.tongTiemNangCao}</p>
-          <p className="text-xs text-slate-500">Mức độ tiềm năng &quot;Cao&quot; & &quot;Rất cao&quot;</p>
+          <p className="text-xl sm:text-2xl font-black text-amber-700">{thongKeLanhDao.tongTiemNangCao}</p>
+          <p className="text-[11px] sm:text-xs text-slate-500 truncate">Tiềm năng &quot;Cao&quot; &amp; &quot;Rất cao&quot;</p>
         </div>
 
         {/* Thẻ 3: Dự án sắp ký hợp đồng */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 sm:space-y-2">
           <div className="flex items-center justify-between text-purple-500">
-            <span className="text-xs font-semibold uppercase tracking-wider text-purple-700">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-purple-700">
               Sắp ký hợp đồng
             </span>
-            <Award className="w-5 h-5 text-purple-600" />
+            <Award className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
           </div>
-          <p className="text-2xl font-black text-purple-700">{thongKeLanhDao.tongSapKyHD}</p>
-          <p className="text-xs text-slate-500">Giai đoạn Báo giá / Đàm phán / Ký HĐ</p>
+          <p className="text-xl sm:text-2xl font-black text-purple-700">{thongKeLanhDao.tongSapKyHD}</p>
+          <p className="text-[11px] sm:text-xs text-slate-500 truncate">Báo giá / Đàm phán / Ký HĐ</p>
         </div>
 
         {/* Thẻ 4: Tổng giá trị & Sức khỏe AI */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 sm:space-y-2">
           <div className="flex items-center justify-between text-[#185942]">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Tổng giá trị dự kiến
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Giá trị dự kiến
             </span>
-            <Sparkles className="w-5 h-5 text-[#185942]" />
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#185942]" />
           </div>
-          <p className="text-xl font-black text-[#185942] truncate">
+          <p className="text-lg sm:text-xl font-black text-[#185942] truncate">
             {DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongGiaTri)}
           </p>
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 text-[11px] flex-wrap">
             <span className="text-emerald-700 font-bold">{thongKeLanhDao.soTot} Tốt</span>
             <span>•</span>
             <span className="text-amber-600 font-bold">{thongKeLanhDao.soCanhBao} Cảnh báo</span>
@@ -347,66 +345,71 @@ export default function TrangTongQuanLanhDao() {
       </div>
 
       {/* 3. Thanh tìm kiếm & Bộ lọc */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap items-center gap-3">
-        {/* Ô tìm kiếm */}
-        <div className="relative flex-1 min-w-[220px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={tuKhoa}
-            onChange={(e) => setTuKhoa(e.target.value)}
-            placeholder="Tìm theo tên nhân viên, email, số điện thoại..."
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#185942]/20 focus:border-[#185942]"
-          />
+      <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2.5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          {/* Ô tìm kiếm */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={tuKhoa}
+              onChange={(e) => setTuKhoa(e.target.value)}
+              placeholder="Tìm theo tên nhân viên, email, số điện thoại..."
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#185942]/20 focus:border-[#185942]"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            {/* Lọc Chi nhánh */}
+            {phamVi.toanCongTy && (
+              <select
+                value={chiNhanhId}
+                onChange={(e) => setChiNhanhId(e.target.value)}
+                className="flex-1 sm:flex-none px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none cursor-pointer max-w-[160px] truncate"
+              >
+                <option value="tat_ca">Tất cả chi nhánh</option>
+                {dsChiNhanh.map((cn) => (
+                  <option key={cn.id} value={cn.id}>
+                    {cn.ten_chi_nhanh}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Lọc Phòng ban */}
+            <select
+              value={phongBanId}
+              onChange={(e) => setPhongBanId(e.target.value)}
+              className="flex-1 sm:flex-none px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none cursor-pointer max-w-[160px] truncate"
+            >
+              <option value="tat_ca">Tất cả phòng ban</option>
+              {dsPhongBan.map((pb) => (
+                <option key={pb.id} value={pb.id}>
+                  {pb.ten_phong_ban}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* Lọc Chi nhánh */}
-        {phamVi.toanCongTy && (
-          <select
-            value={chiNhanhId}
-            onChange={(e) => setChiNhanhId(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none cursor-pointer"
-          >
-            <option value="tat_ca">Tất cả chi nhánh</option>
-            {dsChiNhanh.map((cn) => (
-              <option key={cn.id} value={cn.id}>
-                {cn.ten_chi_nhanh}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {/* Lọc Phòng ban */}
-        <select
-          value={phongBanId}
-          onChange={(e) => setPhongBanId(e.target.value)}
-          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none cursor-pointer"
-        >
-          <option value="tat_ca">Tất cả phòng ban</option>
-          {dsPhongBan.map((pb) => (
-            <option key={pb.id} value={pb.id}>
-              {pb.ten_phong_ban}
-            </option>
-          ))}
-        </select>
-
-        {/* Lọc Sức khỏe AI */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+        {/* Lọc Sức khỏe AI: cuộn ngang mượt mà trên mobile */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <span className="text-[11px] text-slate-400 font-semibold shrink-0 mr-1">Lọc AI:</span>
           {[
             { key: 'tat_ca', label: 'Tất cả AI' },
-            { key: 'tot', label: 'Tốt' },
-            { key: 'canh_bao', label: 'Cảnh báo' },
-            { key: 'rui_ro', label: 'Rủi ro' }
+            { key: 'tot', label: 'Tốt / Đạt' },
+            { key: 'canh_bao', label: 'Cần lưu ý' },
+            { key: 'rui_ro', label: 'Rủi ro cao' }
           ].map((m) => (
             <button
               key={m.key}
               type="button"
               onClick={() => setBoLocMucDoAI(m.key as any)}
               className={cn(
-                'px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer',
+                'px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0',
                 boLocMucDoAI === m.key
-                  ? 'bg-white text-slate-800 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-[#185942] text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
               )}
             >
               {m.label}
@@ -416,23 +419,23 @@ export default function TrangTongQuanLanhDao() {
       </div>
 
       {/* 4. Danh sách Nhân sự & Bảng Chỉ số Dự án + Nhận định AI */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-[#185942]" />
             <h3 className="font-bold text-slate-800 text-sm">
-              Danh Sách Nhân Sự & Chỉ Số Phụ Trách ({dsNhanSuHienThi.length})
+              Danh Sách Nhân Sự &amp; Chỉ Số Phụ Trách ({dsNhanSuHienThi.length})
             </h3>
           </div>
-          <span className="text-xs text-slate-400">
-            Chỉ tính các dự án nhân viên được chỉ định là người phụ trách chính
+          <span className="text-[11px] text-slate-400">
+            Chỉ tính các dự án nhân viên là người phụ trách chính
           </span>
         </div>
 
         {dangTai ? (
           <div className="py-16 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
             <Loader2 className="w-6 h-6 animate-spin text-[#185942]" />
-            <span>Đang tổng hợp dữ liệu nhân sự & dự án...</span>
+            <span>Đang tổng hợp dữ liệu nhân sự &amp; dự án...</span>
           </div>
         ) : dsNhanSuHienThi.length === 0 ? (
           <div className="py-16 text-center text-slate-400 text-xs">
@@ -461,64 +464,93 @@ export default function TrangTongQuanLanhDao() {
                 <div
                   key={ns.id}
                   onClick={() => setNhanSuDangChon(ns)}
-                  className="p-4 hover:bg-slate-50/80 transition-colors cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                  className="p-3.5 sm:p-4 hover:bg-slate-50/90 transition-all cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4"
                 >
-                  {/* Cột 1: Thông tin nhân sự */}
-                  <div className="flex items-center gap-3 min-w-[240px]">
-                    <DaiDien
-                      anh={ns.url_anh_dai_dien || ''}
-                      ten={ns.ho_va_ten || 'NV'}
-                      className="w-11 h-11 text-sm font-semibold ring-2 ring-slate-100 shrink-0"
-                    />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-800 hover:text-[#185942] transition-colors">
-                          {ns.ho_va_ten}
-                        </span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">
-                          {ns.ma_nhan_vien || ns.id.slice(0, 5)}
-                        </span>
+                  {/* Top mobile / Cột 1 desktop: Thông tin nhân sự & Badge điểm AI */}
+                  <div className="flex items-center justify-between gap-3 min-w-[220px]">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <DaiDien
+                        anh={ns.url_anh_dai_dien || ''}
+                        ten={ns.ho_va_ten || 'NV'}
+                        className="w-10 h-10 sm:w-11 sm:h-11 text-xs sm:text-sm font-semibold ring-2 ring-slate-100 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-sm text-slate-800 hover:text-[#185942] transition-colors truncate">
+                            {ns.ho_va_ten}
+                          </span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 shrink-0">
+                            {ns.ma_nhan_vien || ns.id.slice(0, 5)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          {ns.chuc_vu || 'Nhân viên kinh doanh'}
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {ns.chuc_vu || 'Nhân viên kinh doanh'}
-                      </p>
+                    </div>
+
+                    {/* Badge điểm AI hiển thị nổi bật trên mobile góc phải */}
+                    <div className="lg:hidden shrink-0">
+                      {aiRecord ? (
+                        <span
+                          className={cn(
+                            'text-[11px] font-black px-2 py-0.5 rounded-lg inline-flex items-center gap-1',
+                            aiRecord.muc_do_tong_the === 'tot' && 'bg-emerald-100 text-emerald-800',
+                            aiRecord.muc_do_tong_the === 'canh_bao' && 'bg-amber-100 text-amber-800',
+                            aiRecord.muc_do_tong_the === 'rui_ro' && 'bg-rose-100 text-rose-800'
+                          )}
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          {aiRecord.diem_hieu_suat}/100
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg font-medium">
+                          Chưa phân tích
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Cột 2: Chỉ số Dự án phụ trách chính */}
-                  <div className="flex items-center gap-3">
+                  {/* Middle mobile / Cột 2 desktop: Chỉ số Dự án phụ trách chính */}
+                  <div className="grid grid-cols-3 sm:flex items-center gap-2 sm:gap-3">
                     {/* Tổng dự án */}
-                    <div className="bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl text-center min-w-[70px]">
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Dự án chính</p>
-                      <p className="text-base font-black text-slate-800">{duAnCuaNS.length}</p>
+                    <div className="bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 rounded-xl text-center min-w-[70px]">
+                      <p className="text-[9.5px] uppercase font-bold text-slate-400">Dự án chính</p>
+                      <p className="text-sm sm:text-base font-black text-slate-800">{duAnCuaNS.length}</p>
                     </div>
 
                     {/* Tiềm năng cao */}
-                    <div className="bg-amber-50/70 border border-amber-200/80 px-3 py-1.5 rounded-xl text-center min-w-[75px]">
-                      <p className="text-[10px] uppercase font-bold text-amber-600">Tiềm năng</p>
-                      <p className="text-base font-black text-amber-700">{soTiemNang}</p>
+                    <div className="bg-amber-50/70 border border-amber-200/80 px-2.5 py-1.5 rounded-xl text-center min-w-[70px]">
+                      <p className="text-[9.5px] uppercase font-bold text-amber-600">Tiềm năng</p>
+                      <p className="text-sm sm:text-base font-black text-amber-700">{soTiemNang}</p>
                     </div>
 
                     {/* Sắp ký HĐ */}
-                    <div className="bg-purple-50/70 border border-purple-200/80 px-3 py-1.5 rounded-xl text-center min-w-[75px]">
-                      <p className="text-[10px] uppercase font-bold text-purple-600">Sắp ký HĐ</p>
-                      <p className="text-base font-black text-purple-700">{soSapKy}</p>
+                    <div className="bg-purple-50/70 border border-purple-200/80 px-2.5 py-1.5 rounded-xl text-center min-w-[70px]">
+                      <p className="text-[9.5px] uppercase font-bold text-purple-600">Sắp ký HĐ</p>
+                      <p className="text-sm sm:text-base font-black text-purple-700">{soSapKy}</p>
                     </div>
 
-                    {/* Giá trị */}
-                    <div className="hidden sm:block text-right min-w-[100px]">
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Giá trị dự kiến</p>
-                      <p className="text-xs font-black text-emerald-700 mt-0.5">
+                    {/* Giá trị trên desktop & tablet */}
+                    <div className="hidden sm:block text-right min-w-[95px]">
+                      <p className="text-[9.5px] uppercase font-bold text-slate-400">Giá trị dự kiến</p>
+                      <p className="text-xs font-black text-emerald-700 mt-0.5 truncate">
                         {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
                       </p>
                     </div>
                   </div>
 
-                  {/* Cột 3: Tóm tắt Đánh giá AI */}
-                  <div className="flex-1 lg:max-w-md bg-slate-50/90 p-2.5 rounded-xl border border-slate-200/80 flex items-start gap-2.5">
+                  {/* Giá trị hiển thị phụ trên mobile */}
+                  <div className="sm:hidden flex items-center justify-between text-[11px] px-1 text-slate-500">
+                    <span>Tổng giá trị dự kiến:</span>
+                    <span className="font-bold text-emerald-700">{DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}</span>
+                  </div>
+
+                  {/* Bottom mobile / Cột 3 desktop: Tóm tắt Đánh giá AI */}
+                  <div className="flex-1 lg:max-w-md bg-slate-50/90 p-2 sm:p-2.5 rounded-xl border border-slate-200/80 flex items-start gap-2">
                     {aiRecord ? (
                       <>
-                        <div className="shrink-0 text-center">
+                        <div className="hidden lg:block shrink-0 text-center">
                           <span
                             className={cn(
                               'text-[10px] font-black px-2 py-0.5 rounded-md inline-block',
@@ -530,20 +562,21 @@ export default function TrangTongQuanLanhDao() {
                             {aiRecord.diem_hieu_suat}/100
                           </span>
                         </div>
-                        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed flex-1">
                           {aiRecord.nhan_dinh_chung}
                         </p>
                       </>
                     ) : (
-                      <div className="flex items-center gap-2 text-xs text-slate-400 py-1">
-                        <Sparkles className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Chưa có đánh giá hôm nay • Bấm để chạy phân tích</span>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 py-0.5 flex-1">
+                        <Sparkles className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">Chưa có đánh giá hôm nay • Chạm để phân tích</span>
                       </div>
                     )}
+                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 self-center lg:hidden" />
                   </div>
 
-                  {/* Cột 4: Nút mũi tên */}
-                  <div className="flex items-center justify-end text-slate-400 hover:text-slate-700">
+                  {/* Cột 4: Nút mũi tên desktop */}
+                  <div className="hidden lg:flex items-center justify-end text-slate-400 hover:text-slate-700">
                     <ChevronRight className="w-5 h-5" />
                   </div>
                 </div>
