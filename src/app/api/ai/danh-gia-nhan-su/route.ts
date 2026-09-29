@@ -61,10 +61,22 @@ export async function POST(req: Request) {
 
       danhSachNhanSuCanChay = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((ns: any) => 
-          ns.trang_thai_du_lieu !== 'da_xoa' && 
-          kinhDoanhIds.includes(ns.phong_ban_id) // Chỉ lấy nhân viên phòng Kinh doanh
-        );
+        .filter((ns: any) => {
+          if (ns.trang_thai_du_lieu === 'da_xoa') return false;
+          if (!kinhDoanhIds.includes(ns.phong_ban_id)) return false;
+          
+          // Trưởng phòng KD là người quản lý/điều hành kế hoạch chung, không trực tiếp nhận KPI doanh số cá nhân
+          if (
+            ns.vai_tro === 'truong_phong' ||
+            ns.vai_tro === 'giam_doc' ||
+            ns.vai_tro === 'quan_tri_he_thong' ||
+            (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng') ||
+            (ns.chuc_vu || '').toLowerCase().includes('phó phòng')
+          ) {
+            return false;
+          }
+          return true;
+        });
     }
 
     if (danhSachNhanSuCanChay.length === 0) {

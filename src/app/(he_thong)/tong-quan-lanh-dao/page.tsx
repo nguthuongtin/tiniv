@@ -128,6 +128,24 @@ export default function TrangTongQuanLanhDao() {
 
   const dsNhanSuHienThi = useMemo(() => {
     return dsNhanSu.filter((ns) => {
+      // Chỉ theo dõi và đánh giá NHÂN VIÊN KINH DOANH
+      const pb = dsPhongBan.find((p) => p.id === ns.phong_ban_id);
+      const tenPb = (pb?.ten_phong_ban || '').toLowerCase();
+      if (!tenPb.includes('kinh doanh')) {
+        return false;
+      }
+
+      // Trưởng phòng KD là người quản lý/điều hành kế hoạch chung, không trực tiếp nhận KPI doanh số cá nhân
+      if (
+        ns.vai_tro === 'truong_phong' ||
+        ns.vai_tro === 'giam_doc' ||
+        ns.vai_tro === 'quan_tri_he_thong' ||
+        (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng') ||
+        (ns.chuc_vu || '').toLowerCase().includes('phó phòng')
+      ) {
+        return false;
+      }
+
       // Phạm vi quản lý theo tài khoản
       if (!phamVi.toanCongTy) {
         if (ns.phong_ban_id && !phamVi.danhSachPhongBanIds.includes(ns.phong_ban_id)) {
@@ -249,11 +267,11 @@ export default function TrangTongQuanLanhDao() {
         <div>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-400/20 text-emerald-200 text-[11px] sm:text-xs font-semibold mb-1.5 sm:mb-2">
             <TrendingUp className="w-3.5 h-3.5" />
-            Executive Leadership Center
+            Kinh Doanh • Giám Sát &amp; Điều Hành
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Trung Tâm Điều Hành & Giám Sát Lãnh Đạo</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Trung Tâm Giám Sát Đội Ngũ Kinh Doanh</h1>
           <p className="text-emerald-100/80 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
-            Giám sát tải trọng dự án nhân viên phụ trách chính, lọc dự án tiềm năng &amp; sắp ký hợp đồng, kết hợp nhận định tự động 9 tiêu chí từ Google Gemini AI.
+            Theo dõi khối lượng dự án đội ngũ chuyên viên kinh doanh phụ trách chính, lọc dự án tiềm năng &amp; sắp ký hợp đồng, đối chiếu kết quả thực tế qua Google AI.
           </p>
         </div>
 
@@ -289,13 +307,13 @@ export default function TrangTongQuanLanhDao() {
         <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 sm:space-y-2">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Nhân sự theo dõi
+              Nhân viên KD
             </span>
             <Users className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
           </div>
           <p className="text-xl sm:text-2xl font-black text-slate-800">{thongKeLanhDao.tongNhanSu}</p>
           <p className="text-[11px] sm:text-xs text-slate-500 truncate">
-            {thongKeLanhDao.tongDuAnPhuTrach} dự án chính
+            {thongKeLanhDao.tongDuAnPhuTrach} dự án phụ trách
           </p>
         </div>
 
