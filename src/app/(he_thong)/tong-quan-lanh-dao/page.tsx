@@ -44,6 +44,7 @@ import {
   kichHoatAIDanhGia
 } from '../../../dich_vu/ai_danh_gia/dich_vu_ai_danh_gia';
 import DrawerChiTietDanhGia from '../../../thanh_phan/tong_quan_lanh_dao/drawer_chi_tiet_danh_gia';
+import ModalDanhSachDuAn from '../../../thanh_phan/tong_quan_lanh_dao/modal_danh_sach_du_an';
 
 export default function TrangTongQuanLanhDao() {
   const { nguoiDungHienTai } = useStoreXacThuc();
@@ -65,9 +66,15 @@ export default function TrangTongQuanLanhDao() {
   const [phongBanId, setPhongBanId] = useState<string>('tat_ca');
   const [boLocMucDoAI, setBoLocMucDoAI] = useState<'tat_ca' | 'tot' | 'canh_bao' | 'rui_ro'>('tat_ca');
 
-  // State tương tác AI & Drawer
+  // State tương tác AI & Drawer & Modal Drill-down
   const [dangChayAITatCa, setDangChayAITatCa] = useState(false);
   const [nhanSuDangChon, setNhanSuDangChon] = useState<NhanSu | null>(null);
+  const [duAnModal, setDuAnModal] = useState<{
+    mo: boolean;
+    tieuDe: string;
+    moTaPhu?: string;
+    danhSachDuAn: HoSoDuAn[];
+  } | null>(null);
 
   // 1. Kiểm tra phân quyền truy cập
   const duocPhepXem = useMemo(() => {
@@ -186,20 +193,20 @@ export default function TrangTongQuanLanhDao() {
     });
   }, [dsNhanSu, phamVi, chiNhanhId, phongBanId, tuKhoa, boLocMucDoAI, dsDanhGiaAI]);
 
-  // 5. Thống kê KPI cấp cao
+  // 5. Thống kê cấp cao
   const thongKeLanhDao = useMemo(() => {
     const nhanVienIds = new Set(dsNhanSuHienThi.map((ns) => ns.id));
     const duAnPhuTrach = dsDuAn.filter(
       (da) => da.nguoi_phu_trach_id && nhanVienIds.has(da.nguoi_phu_trach_id)
     );
 
-    const tongTiemNangCao = duAnPhuTrach.filter((da) =>
+    const duAnTiemNangCao = duAnPhuTrach.filter((da) =>
       ['cao', 'rat_cao'].includes(da.muc_do_tiem_nang)
-    ).length;
+    );
 
-    const tongSapKyHD = duAnPhuTrach.filter((da) =>
+    const duAnSapKyHD = duAnPhuTrach.filter((da) =>
       ['dam_phan', 'bao_gia', 'ky_hop_dong'].includes(da.giai_doan)
-    ).length;
+    );
 
     const tongGiaTri = duAnPhuTrach.reduce((sum, da) => sum + (Number(da.gia_tri_du_kien) || 0), 0);
 
@@ -218,8 +225,11 @@ export default function TrangTongQuanLanhDao() {
     return {
       tongNhanSu: dsNhanSuHienThi.length,
       tongDuAnPhuTrach: duAnPhuTrach.length,
-      tongTiemNangCao,
-      tongSapKyHD,
+      duAnPhuTrach,
+      tongTiemNangCao: duAnTiemNangCao.length,
+      duAnTiemNangCao,
+      tongSapKyHD: duAnSapKyHD.length,
+      duAnSapKyHD,
       tongGiaTri,
       soTot,
       soCanhBao,
@@ -261,104 +271,122 @@ export default function TrangTongQuanLanhDao() {
   }
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* 1. Header Banner dành cho Lãnh đạo */}
-      <div className="bg-gradient-to-r from-[#185942] via-[#144b37] to-[#0f3a2b] rounded-2xl p-4 sm:p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
+    <div className="space-y-5 pb-12">
+      {/* 1. Header tinh gọn */}
+      <div className="bg-[#185942] rounded-2xl p-4 sm:p-5 text-white shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-400/20 text-emerald-200 text-[11px] sm:text-xs font-semibold mb-1.5 sm:mb-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 text-xs font-semibold mb-1">
             <TrendingUp className="w-3.5 h-3.5" />
-            Kinh Doanh • Giám Sát &amp; Điều Hành
+            Phòng Kinh Doanh
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Trung Tâm Giám Sát Đội Ngũ Kinh Doanh</h1>
-          <p className="text-emerald-100/80 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
-            Theo dõi khối lượng dự án đội ngũ chuyên viên kinh doanh phụ trách chính, lọc dự án tiềm năng &amp; sắp ký hợp đồng, đối chiếu kết quả thực tế qua Google AI.
-          </p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Tổng Quan Kinh Doanh</h1>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 self-stretch md:self-center">
-          <div className="flex items-center bg-white/10 backdrop-blur-xs rounded-xl px-3 py-2 border border-white/20 text-xs font-medium text-emerald-100">
+        <div className="flex items-center gap-2 self-stretch md:self-auto">
+          <div className="flex items-center bg-white/10 rounded-xl px-3 py-2 border border-white/20 text-xs font-medium text-emerald-100">
             <Calendar className="w-3.5 h-3.5 mr-2 shrink-0" />
             <input
               type="date"
               value={ngayChon}
               onChange={(e) => setNgayChon(e.target.value)}
-              className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer w-full text-xs"
+              className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer text-xs"
             />
           </div>
 
           <Nut
             onClick={handleChayAIToanBo}
             disabled={dangChayAITatCa}
-            className="bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold text-xs shadow-sm py-2 px-3.5 justify-center"
+            className="bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold text-xs shadow-xs py-2 px-3.5 justify-center"
           >
             {dangChayAITatCa ? (
               <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
             ) : (
               <Sparkles className="w-4 h-4 mr-1.5" />
             )}
-            {dangChayAITatCa ? 'AI đang phân tích...' : 'Quét AI toàn bộ'}
+            {dangChayAITatCa ? 'AI đang phân tích...' : 'Cập nhật AI hôm nay'}
           </Nut>
         </div>
       </div>
 
-      {/* 2. Các thẻ KPI Lãnh đạo */}
+      {/* 2. Thẻ chỉ số tổng hợp (Nhấp vào để xem danh sách chi tiết) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* Thẻ 1: Tổng nhân sự */}
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 sm:space-y-2">
+        {/* Thẻ 1: Tổng nhân viên KD */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Nhân viên KD
             </span>
-            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
+            <Users className="w-4 h-4 text-slate-600" />
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-800">{thongKeLanhDao.tongNhanSu}</p>
-          <p className="text-[11px] sm:text-xs text-slate-500 truncate">
-            {thongKeLanhDao.tongDuAnPhuTrach} dự án phụ trách
-          </p>
+          <p className="text-2xl font-black text-slate-800">{thongKeLanhDao.tongNhanSu}</p>
+          <p className="text-xs text-slate-500">{thongKeLanhDao.tongDuAnPhuTrach} dự án phụ trách</p>
         </div>
 
-        {/* Thẻ 2: Dự án tiềm năng cao */}
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 sm:space-y-2">
+        {/* Thẻ 2: Dự án tiềm năng cao (Clickable) */}
+        <div
+          onClick={() =>
+            setDuAnModal({
+              mo: true,
+              tieuDe: 'Dự án Tiềm năng cao (Toàn đội ngũ)',
+              moTaPhu: 'Các dự án có tiềm năng Cao & Rất cao',
+              danhSachDuAn: thongKeLanhDao.duAnTiemNangCao
+            })
+          }
+          className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 hover:border-amber-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between text-amber-500">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-amber-700">
+            <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">
               Tiềm năng cao
             </span>
-            <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+            <Flame className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
           </div>
-          <p className="text-xl sm:text-2xl font-black text-amber-700">{thongKeLanhDao.tongTiemNangCao}</p>
-          <p className="text-[11px] sm:text-xs text-slate-500 truncate">Tiềm năng &quot;Cao&quot; &amp; &quot;Rất cao&quot;</p>
+          <p className="text-2xl font-black text-amber-700">{thongKeLanhDao.tongTiemNangCao}</p>
+          <p className="text-[11px] text-amber-700/80 font-medium">Nhấp xem danh sách &rarr;</p>
         </div>
 
-        {/* Thẻ 3: Dự án sắp ký hợp đồng */}
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 sm:space-y-2">
+        {/* Thẻ 3: Dự án sắp ký hợp đồng (Clickable) */}
+        <div
+          onClick={() =>
+            setDuAnModal({
+              mo: true,
+              tieuDe: 'Dự án Sắp ký hợp đồng (Toàn đội ngũ)',
+              moTaPhu: 'Giai đoạn Báo giá, Đàm phán, Ký HĐ',
+              danhSachDuAn: thongKeLanhDao.duAnSapKyHD
+            })
+          }
+          className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 hover:border-purple-400 hover:shadow-xs transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between text-purple-500">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-purple-700">
+            <span className="text-xs font-semibold uppercase tracking-wider text-purple-700">
               Sắp ký hợp đồng
             </span>
-            <Award className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+            <Award className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
           </div>
-          <p className="text-xl sm:text-2xl font-black text-purple-700">{thongKeLanhDao.tongSapKyHD}</p>
-          <p className="text-[11px] sm:text-xs text-slate-500 truncate">Báo giá / Đàm phán / Ký HĐ</p>
+          <p className="text-2xl font-black text-purple-700">{thongKeLanhDao.tongSapKyHD}</p>
+          <p className="text-[11px] text-purple-700/80 font-medium">Nhấp xem danh sách &rarr;</p>
         </div>
 
-        {/* Thẻ 4: Tổng giá trị & Sức khỏe AI */}
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 sm:space-y-2">
+        {/* Thẻ 4: Tổng giá trị dự kiến (Clickable) */}
+        <div
+          onClick={() =>
+            setDuAnModal({
+              mo: true,
+              tieuDe: 'Tất cả dự án đang chạy (Toàn đội ngũ)',
+              danhSachDuAn: thongKeLanhDao.duAnPhuTrach
+            })
+          }
+          className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 hover:border-emerald-500 hover:shadow-xs transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between text-[#185942]">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Giá trị dự kiến
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Tổng giá trị dự kiến
             </span>
-            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#185942]" />
+            <Sparkles className="w-4 h-4 text-[#185942] group-hover:scale-110 transition-transform" />
           </div>
-          <p className="text-lg sm:text-xl font-black text-[#185942] truncate">
+          <p className="text-xl font-black text-[#185942] truncate">
             {DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongGiaTri)}
           </p>
-          <div className="flex items-center gap-1.5 text-[11px] flex-wrap">
-            <span className="text-emerald-700 font-bold">{thongKeLanhDao.soTot} Tốt</span>
-            <span>•</span>
-            <span className="text-amber-600 font-bold">{thongKeLanhDao.soCanhBao} Cảnh báo</span>
-            <span>•</span>
-            <span className="text-rose-600 font-bold">{thongKeLanhDao.soRuiRo} Rủi ro</span>
-          </div>
+          <p className="text-[11px] text-emerald-700 font-medium">Nhấp xem danh sách &rarr;</p>
         </div>
       </div>
 
@@ -410,21 +438,21 @@ export default function TrangTongQuanLanhDao() {
           </div>
         </div>
 
-        {/* Lọc Sức khỏe AI: cuộn ngang mượt mà trên mobile */}
+        {/* Lọc tình trạng AI */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          <span className="text-[11px] text-slate-400 font-semibold shrink-0 mr-1">Lọc AI:</span>
+          <span className="text-xs text-slate-400 font-semibold shrink-0 mr-1">Tình trạng:</span>
           {[
-            { key: 'tat_ca', label: 'Tất cả AI' },
+            { key: 'tat_ca', label: 'Tất cả' },
             { key: 'tot', label: 'Tốt / Đạt' },
             { key: 'canh_bao', label: 'Cần lưu ý' },
-            { key: 'rui_ro', label: 'Rủi ro cao' }
+            { key: 'rui_ro', label: 'Rủi ro' }
           ].map((m) => (
             <button
               key={m.key}
               type="button"
               onClick={() => setBoLocMucDoAI(m.key as any)}
               className={cn(
-                'px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0',
+                'px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0',
                 boLocMucDoAI === m.key
                   ? 'bg-[#185942] text-white shadow-2xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
@@ -436,83 +464,242 @@ export default function TrangTongQuanLanhDao() {
         </div>
       </div>
 
-      {/* 4. Danh sách Nhân sự & Bảng Chỉ số Dự án + Nhận định AI */}
+      {/* 4. Danh sách Nhân viên Kinh Doanh */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-[#185942]" />
             <h3 className="font-bold text-slate-800 text-sm">
-              Danh Sách Nhân Sự &amp; Chỉ Số Phụ Trách ({dsNhanSuHienThi.length})
+              Đội Ngũ Kinh Doanh ({dsNhanSuHienThi.length})
             </h3>
           </div>
-          <span className="text-[11px] text-slate-400">
-            Chỉ tính các dự án nhân viên là người phụ trách chính
-          </span>
         </div>
 
         {dangTai ? (
           <div className="py-16 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
             <Loader2 className="w-6 h-6 animate-spin text-[#185942]" />
-            <span>Đang tổng hợp dữ liệu nhân sự &amp; dự án...</span>
+            <span>Đang tải danh sách nhân viên &amp; dự án...</span>
           </div>
         ) : dsNhanSuHienThi.length === 0 ? (
           <div className="py-16 text-center text-slate-400 text-xs">
             Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại.
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
-            {dsNhanSuHienThi.map((ns) => {
-              // Dự án nhân viên phụ trách chính
-              const duAnCuaNS = dsDuAn.filter((da) => da.nguoi_phu_trach_id === ns.id);
-              const soTiemNang = duAnCuaNS.filter((da) =>
-                ['cao', 'rat_cao'].includes(da.muc_do_tiem_nang)
-              ).length;
-              const soSapKy = duAnCuaNS.filter((da) =>
-                ['dam_phan', 'bao_gia', 'ky_hop_dong'].includes(da.giai_doan)
-              ).length;
-              const giaTriDuAn = duAnCuaNS.reduce(
-                (sum, da) => sum + (Number(da.gia_tri_du_kien) || 0),
-                0
-              );
+          <>
+            {/* GIAO DIỆN BẢNG TRÊN PC (Desktop Table - Căn chỉnh theo cột ngay ngắn) */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 text-slate-500 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-100">
+                    <th className="py-3 px-4 w-[240px]">Nhân viên</th>
+                    <th className="py-3 px-3 text-center w-[100px]">Dự án</th>
+                    <th className="py-3 px-3 text-center w-[110px]">Tiềm năng</th>
+                    <th className="py-3 px-3 text-center w-[110px]">Sắp ký HĐ</th>
+                    <th className="py-3 px-4 text-right w-[130px]">Giá trị dự kiến</th>
+                    <th className="py-3 px-4">Đánh giá AI</th>
+                    <th className="py-3 px-4 text-right w-[80px]"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {dsNhanSuHienThi.map((ns) => {
+                    const duAnCuaNS = dsDuAn.filter((da) => da.nguoi_phu_trach_id === ns.id);
+                    const dsTiemNangCuaNS = duAnCuaNS.filter((da) =>
+                      ['cao', 'rat_cao'].includes(da.muc_do_tiem_nang)
+                    );
+                    const dsSapKyCuaNS = duAnCuaNS.filter((da) =>
+                      ['dam_phan', 'bao_gia', 'ky_hop_dong'].includes(da.giai_doan)
+                    );
+                    const giaTriDuAn = duAnCuaNS.reduce(
+                      (sum, da) => sum + (Number(da.gia_tri_du_kien) || 0),
+                      0
+                    );
+                    const aiRecord = dsDanhGiaAI.find((d) => d.nhan_vien_id === ns.id);
 
-              // Đánh giá AI hôm nay
-              const aiRecord = dsDanhGiaAI.find((d) => d.nhan_vien_id === ns.id);
+                    return (
+                      <tr
+                        key={ns.id}
+                        onClick={() => setNhanSuDangChon(ns)}
+                        className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                      >
+                        {/* Cột 1: Nhân viên */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <DaiDien
+                              anh={ns.url_anh_dai_dien || ''}
+                              ten={ns.ho_va_ten || 'NV'}
+                              className="w-9 h-9 text-xs ring-1 ring-slate-200 shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-800 group-hover:text-[#185942] transition-colors truncate">
+                                {ns.ho_va_ten}
+                              </p>
+                              <p className="text-[11px] text-slate-400 font-mono">
+                                {ns.ma_nhan_vien || ns.id.slice(0, 5)}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
 
-              return (
-                <div
-                  key={ns.id}
-                  onClick={() => setNhanSuDangChon(ns)}
-                  className="p-3.5 sm:p-4 hover:bg-slate-50/90 transition-all cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4"
-                >
-                  {/* Top mobile / Cột 1 desktop: Thông tin nhân sự & Badge điểm AI */}
-                  <div className="flex items-center justify-between gap-3 min-w-[220px]">
-                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                      <DaiDien
-                        anh={ns.url_anh_dai_dien || ''}
-                        ten={ns.ho_va_ten || 'NV'}
-                        className="w-10 h-10 sm:w-11 sm:h-11 text-xs sm:text-sm font-semibold ring-2 ring-slate-100 shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-sm text-slate-800 hover:text-[#185942] transition-colors truncate">
-                            {ns.ho_va_ten}
+                        {/* Cột 2: Dự án phụ trách (Nhấp xem chi tiết) */}
+                        <td className="py-3 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDuAnModal({
+                                mo: true,
+                                tieuDe: `Dự án phụ trách • ${ns.ho_va_ten}`,
+                                danhSachDuAn: duAnCuaNS
+                              });
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition-colors cursor-pointer inline-flex items-center gap-1 text-xs"
+                            title="Nhấp để xem danh sách dự án"
+                          >
+                            <span>{duAnCuaNS.length}</span>
+                          </button>
+                        </td>
+
+                        {/* Cột 3: Tiềm năng cao (Nhấp xem chi tiết) */}
+                        <td className="py-3 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDuAnModal({
+                                mo: true,
+                                tieuDe: `Dự án tiềm năng cao • ${ns.ho_va_ten}`,
+                                danhSachDuAn: dsTiemNangCuaNS
+                              });
+                            }}
+                            className={cn(
+                              'px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer inline-flex items-center gap-1 text-xs',
+                              dsTiemNangCuaNS.length > 0
+                                ? 'bg-amber-100/80 hover:bg-amber-200 text-amber-800'
+                                : 'bg-slate-100 text-slate-400'
+                            )}
+                            title="Nhấp để xem danh sách dự án tiềm năng"
+                          >
+                            {dsTiemNangCuaNS.length > 0 && <Flame className="w-3 h-3 text-amber-600" />}
+                            <span>{dsTiemNangCuaNS.length}</span>
+                          </button>
+                        </td>
+
+                        {/* Cột 4: Sắp ký HĐ (Nhấp xem chi tiết) */}
+                        <td className="py-3 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDuAnModal({
+                                mo: true,
+                                tieuDe: `Dự án sắp ký hợp đồng • ${ns.ho_va_ten}`,
+                                danhSachDuAn: dsSapKyCuaNS
+                              });
+                            }}
+                            className={cn(
+                              'px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer inline-flex items-center gap-1 text-xs',
+                              dsSapKyCuaNS.length > 0
+                                ? 'bg-purple-100/80 hover:bg-purple-200 text-purple-800'
+                                : 'bg-slate-100 text-slate-400'
+                            )}
+                            title="Nhấp để xem danh sách dự án sắp ký"
+                          >
+                            {dsSapKyCuaNS.length > 0 && <Award className="w-3 h-3 text-purple-600" />}
+                            <span>{dsSapKyCuaNS.length}</span>
+                          </button>
+                        </td>
+
+                        {/* Cột 5: Giá trị dự kiến */}
+                        <td className="py-3 px-4 text-right font-bold text-emerald-700">
+                          {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
+                        </td>
+
+                        {/* Cột 6: Đánh giá AI */}
+                        <td className="py-3 px-4">
+                          {aiRecord ? (
+                            <div className="flex items-center gap-2 max-w-md">
+                              <span
+                                className={cn(
+                                  'text-[10px] font-black px-2 py-0.5 rounded-md shrink-0',
+                                  aiRecord.muc_do_tong_the === 'tot' && 'bg-emerald-100 text-emerald-800',
+                                  aiRecord.muc_do_tong_the === 'canh_bao' && 'bg-amber-100 text-amber-800',
+                                  aiRecord.muc_do_tong_the === 'rui_ro' && 'bg-rose-100 text-rose-800'
+                                )}
+                              >
+                                {aiRecord.diem_hieu_suat}/100
+                              </span>
+                              <p className="text-slate-600 truncate text-xs leading-normal">
+                                {aiRecord.nhan_dinh_chung}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic text-xs">Chưa có đánh giá</span>
+                          )}
+                        </td>
+
+                        {/* Cột 7: Nút xem */}
+                        <td className="py-3 px-4 text-right">
+                          <span className="text-xs text-[#185942] font-semibold opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5">
+                            Chi tiết <ChevronRight className="w-3.5 h-3.5" />
                           </span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 shrink-0">
-                            {ns.ma_nhan_vien || ns.id.slice(0, 5)}
-                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* GIAO DIỆN THẺ TRÊN MOBILE (Responsive Cards) */}
+            <div className="lg:hidden divide-y divide-slate-100">
+              {dsNhanSuHienThi.map((ns) => {
+                const duAnCuaNS = dsDuAn.filter((da) => da.nguoi_phu_trach_id === ns.id);
+                const dsTiemNangCuaNS = duAnCuaNS.filter((da) =>
+                  ['cao', 'rat_cao'].includes(da.muc_do_tiem_nang)
+                );
+                const dsSapKyCuaNS = duAnCuaNS.filter((da) =>
+                  ['dam_phan', 'bao_gia', 'ky_hop_dong'].includes(da.giai_doan)
+                );
+                const giaTriDuAn = duAnCuaNS.reduce(
+                  (sum, da) => sum + (Number(da.gia_tri_du_kien) || 0),
+                  0
+                );
+                const aiRecord = dsDanhGiaAI.find((d) => d.nhan_vien_id === ns.id);
+
+                return (
+                  <div
+                    key={ns.id}
+                    onClick={() => setNhanSuDangChon(ns)}
+                    className="p-3.5 hover:bg-slate-50/90 transition-all cursor-pointer space-y-2.5"
+                  >
+                    {/* Hàng 1: Avatar, Tên & Điểm AI */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <DaiDien
+                          anh={ns.url_anh_dai_dien || ''}
+                          ten={ns.ho_va_ten || 'NV'}
+                          className="w-10 h-10 text-xs font-semibold ring-1 ring-slate-200 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-sm text-slate-800 truncate">
+                              {ns.ho_va_ten}
+                            </span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 shrink-0">
+                              {ns.ma_nhan_vien || ns.id.slice(0, 5)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-bold text-emerald-700 mt-0.5">
+                            {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
+                          </p>
                         </div>
-                        <p className="text-xs text-slate-500 truncate mt-0.5">
-                          {ns.chuc_vu || 'Nhân viên kinh doanh'}
-                        </p>
                       </div>
-                    </div>
 
-                    {/* Badge điểm AI hiển thị nổi bật trên mobile góc phải */}
-                    <div className="lg:hidden shrink-0">
+                      {/* Điểm AI */}
                       {aiRecord ? (
                         <span
                           className={cn(
-                            'text-[11px] font-black px-2 py-0.5 rounded-lg inline-flex items-center gap-1',
+                            'text-[11px] font-black px-2 py-0.5 rounded-lg inline-flex items-center gap-1 shrink-0',
                             aiRecord.muc_do_tong_the === 'tot' && 'bg-emerald-100 text-emerald-800',
                             aiRecord.muc_do_tong_the === 'canh_bao' && 'bg-amber-100 text-amber-800',
                             aiRecord.muc_do_tong_the === 'rui_ro' && 'bg-rose-100 text-rose-800'
@@ -522,85 +709,84 @@ export default function TrangTongQuanLanhDao() {
                           {aiRecord.diem_hieu_suat}/100
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg font-medium">
+                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg font-medium shrink-0">
                           Chưa phân tích
                         </span>
                       )}
                     </div>
-                  </div>
 
-                  {/* Middle mobile / Cột 2 desktop: Chỉ số Dự án phụ trách chính */}
-                  <div className="grid grid-cols-3 sm:flex items-center gap-2 sm:gap-3">
-                    {/* Tổng dự án */}
-                    <div className="bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 rounded-xl text-center min-w-[70px]">
-                      <p className="text-[9.5px] uppercase font-bold text-slate-400">Dự án chính</p>
-                      <p className="text-sm sm:text-base font-black text-slate-800">{duAnCuaNS.length}</p>
+                    {/* Hàng 2: Ba nút chỉ số nhấp được (Dự án, Tiềm năng, Sắp ký) */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDuAnModal({
+                            mo: true,
+                            tieuDe: `Dự án phụ trách • ${ns.ho_va_ten}`,
+                            danhSachDuAn: duAnCuaNS
+                          });
+                        }}
+                        className="bg-slate-50 border border-slate-200/80 px-2 py-1.5 rounded-xl text-center hover:bg-slate-100 transition-colors"
+                      >
+                        <p className="text-[9.5px] uppercase font-bold text-slate-400">Dự án</p>
+                        <p className="text-sm font-black text-slate-800">{duAnCuaNS.length}</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDuAnModal({
+                            mo: true,
+                            tieuDe: `Dự án tiềm năng cao • ${ns.ho_va_ten}`,
+                            danhSachDuAn: dsTiemNangCuaNS
+                          });
+                        }}
+                        className={cn(
+                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
+                          dsTiemNangCuaNS.length > 0
+                            ? 'bg-amber-50/70 border-amber-200/80 text-amber-800 hover:bg-amber-100'
+                            : 'bg-slate-50 border-slate-200/80 text-slate-400'
+                        )}
+                      >
+                        <p className="text-[9.5px] uppercase font-bold text-amber-600">Tiềm năng</p>
+                        <p className="text-sm font-black text-amber-700">{dsTiemNangCuaNS.length}</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDuAnModal({
+                            mo: true,
+                            tieuDe: `Dự án sắp ký hợp đồng • ${ns.ho_va_ten}`,
+                            danhSachDuAn: dsSapKyCuaNS
+                          });
+                        }}
+                        className={cn(
+                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
+                          dsSapKyCuaNS.length > 0
+                            ? 'bg-purple-50/70 border-purple-200/80 text-purple-800 hover:bg-purple-100'
+                            : 'bg-slate-50 border-slate-200/80 text-slate-400'
+                        )}
+                      >
+                        <p className="text-[9.5px] uppercase font-bold text-purple-600">Sắp ký HĐ</p>
+                        <p className="text-sm font-black text-purple-700">{dsSapKyCuaNS.length}</p>
+                      </button>
                     </div>
 
-                    {/* Tiềm năng cao */}
-                    <div className="bg-amber-50/70 border border-amber-200/80 px-2.5 py-1.5 rounded-xl text-center min-w-[70px]">
-                      <p className="text-[9.5px] uppercase font-bold text-amber-600">Tiềm năng</p>
-                      <p className="text-sm sm:text-base font-black text-amber-700">{soTiemNang}</p>
-                    </div>
-
-                    {/* Sắp ký HĐ */}
-                    <div className="bg-purple-50/70 border border-purple-200/80 px-2.5 py-1.5 rounded-xl text-center min-w-[70px]">
-                      <p className="text-[9.5px] uppercase font-bold text-purple-600">Sắp ký HĐ</p>
-                      <p className="text-sm sm:text-base font-black text-purple-700">{soSapKy}</p>
-                    </div>
-
-                    {/* Giá trị trên desktop & tablet */}
-                    <div className="hidden sm:block text-right min-w-[95px]">
-                      <p className="text-[9.5px] uppercase font-bold text-slate-400">Giá trị dự kiến</p>
-                      <p className="text-xs font-black text-emerald-700 mt-0.5 truncate">
-                        {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
+                    {/* Hàng 3: Nhận định AI tóm tắt */}
+                    {aiRecord && (
+                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed bg-slate-50/80 p-2 rounded-xl border border-slate-100">
+                        {aiRecord.nhan_dinh_chung}
                       </p>
-                    </div>
-                  </div>
-
-                  {/* Giá trị hiển thị phụ trên mobile */}
-                  <div className="sm:hidden flex items-center justify-between text-[11px] px-1 text-slate-500">
-                    <span>Tổng giá trị dự kiến:</span>
-                    <span className="font-bold text-emerald-700">{DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}</span>
-                  </div>
-
-                  {/* Bottom mobile / Cột 3 desktop: Tóm tắt Đánh giá AI */}
-                  <div className="flex-1 lg:max-w-md bg-slate-50/90 p-2 sm:p-2.5 rounded-xl border border-slate-200/80 flex items-start gap-2">
-                    {aiRecord ? (
-                      <>
-                        <div className="hidden lg:block shrink-0 text-center">
-                          <span
-                            className={cn(
-                              'text-[10px] font-black px-2 py-0.5 rounded-md inline-block',
-                              aiRecord.muc_do_tong_the === 'tot' && 'bg-emerald-100 text-emerald-800',
-                              aiRecord.muc_do_tong_the === 'canh_bao' && 'bg-amber-100 text-amber-800',
-                              aiRecord.muc_do_tong_the === 'rui_ro' && 'bg-rose-100 text-rose-800'
-                            )}
-                          >
-                            {aiRecord.diem_hieu_suat}/100
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed flex-1">
-                          {aiRecord.nhan_dinh_chung}
-                        </p>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400 py-0.5 flex-1">
-                        <Sparkles className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate">Chưa có đánh giá hôm nay • Chạm để phân tích</span>
-                      </div>
                     )}
-                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 self-center lg:hidden" />
                   </div>
-
-                  {/* Cột 4: Nút mũi tên desktop */}
-                  <div className="hidden lg:flex items-center justify-end text-slate-400 hover:text-slate-700">
-                    <ChevronRight className="w-5 h-5" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
@@ -626,6 +812,17 @@ export default function TrangTongQuanLanhDao() {
           });
         }}
       />
+
+      {/* 6. Modal Drill-down hiển thị danh sách dự án khi nhấp vào chỉ số tổng hợp */}
+      {duAnModal?.mo && (
+        <ModalDanhSachDuAn
+          tieuDe={duAnModal.tieuDe}
+          moTaPhu={duAnModal.moTaPhu}
+          danhSachDuAn={duAnModal.danhSachDuAn}
+          danhSachNhanSu={dsNhanSu}
+          onDong={() => setDuAnModal(null)}
+        />
+      )}
     </div>
   );
 }
