@@ -1,31 +1,90 @@
 'use client';
 
-import { Printer, CheckCircle2, AlertCircle, Eye, Users } from 'lucide-react';
-import type { KeHoachThang } from '../../thu_vien/types/ke_hoach';
+import { useMemo, useState } from 'react';
+import {
+  Printer,
+  CheckCircle2,
+  AlertCircle,
+  Eye,
+  Users,
+  Search,
+  DollarSign,
+  MapPin,
+  Target,
+  X,
+  ListOrdered,
+  UserCheck
+} from 'lucide-react';
+import type { KeHoachThang, ItemKeHoachThang, LoaiMucTieuThang } from '../../thu_vien/types/ke_hoach';
 import type { BaoCaoKeHoachThang } from '../../thu_vien/types/bao_cao_ke_hoach';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
+import type { HoSoDuAn } from '../../thu_vien/types/du_an';
+import type { KhachHang } from '../../thu_vien/types/khach_hang';
 import { Nut } from '../ui';
 import { DINH_DANG_TIEN_NGAN_GON } from '../../thu_vien/utils/format_tien';
+import { cn } from '../../thu_vien/utils/cn';
 
 interface Props {
   danhSachNhanSu: NhanSu[];
   danhSachKeHoach: KeHoachThang[];
   danhSachBaoCao: BaoCaoKeHoachThang[];
+  danhSachDuAn?: HoSoDuAn[];
+  danhSachKhachHang?: KhachHang[];
   thang: string;
-  onXemChiTietNV: (nhanVienId: string) => void;
+  onXemChiTietNV?: (nhanVienId: string) => void;
 }
+
+const renderBadgeLoai = (loai?: LoaiMucTieuThang) => {
+  switch (loai) {
+    case 'tai_chinh':
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+          <DollarSign className="size-3" /> Thu tiền
+        </span>
+      );
+    case 'khach_hang':
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+          <Users className="size-3" /> Khách hàng
+        </span>
+      );
+    case 'khac':
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/20">
+          <Target className="size-3" /> Khác
+        </span>
+      );
+    case 'thi_truong':
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+          <MapPin className="size-3" /> Thị trường
+        </span>
+      );
+  }
+};
 
 export default function BangTongQuanTeamThang({
   danhSachNhanSu,
   danhSachKeHoach,
   danhSachBaoCao,
+  danhSachDuAn = [],
+  danhSachKhachHang = [],
   thang,
   onXemChiTietNV
 }: Props) {
-  const tongSoNV = danhSachNhanSu.length;
-  const mapKeHoach = new Map(danhSachKeHoach.map((kh) => [kh.nhan_vien_id, kh]));
-  const mapBaoCao = new Map(danhSachBaoCao.map((bc) => [bc.nhan_vien_id, bc]));
+  const [cheDoXem, setCheDoXem] = useState<'ke_hoach_gom' | 'theo_nhan_su'>('ke_hoach_gom');
+  const [locNhanSuId, setLocNhanSuId] = useState<string>('tat_ca');
+  const [locLoaiMucTieu, setLocLoaiMucTieu] = useState<string>('tat_ca');
+  const [tuKhoa, setTuKhoa] = useState<string>('');
 
+  const mapNhanSu = useMemo(() => new Map(danhSachNhanSu.map((ns) => [ns.id, ns])), [danhSachNhanSu]);
+  const mapDuAn = useMemo(() => new Map(danhSachDuAn.map((da) => [da.id, da])), [danhSachDuAn]);
+  const mapKhachHang = useMemo(() => new Map(danhSachKhachHang.map((kh) => [kh.id, kh])), [danhSachKhachHang]);
+  const mapKeHoach = useMemo(() => new Map(danhSachKeHoach.map((kh) => [kh.nhan_vien_id, kh])), [danhSachKeHoach]);
+  const mapBaoCao = useMemo(() => new Map(danhSachBaoCao.map((bc) => [bc.nhan_vien_id, bc])), [danhSachBaoCao]);
+
+  const tongSoNV = danhSachNhanSu.length;
   let tongGiaTriHdTeam = 0;
   let tongDuKienThuTeam = 0;
   let tongThucTeThuTeam = 0;
@@ -84,28 +143,102 @@ export default function BangTongQuanTeamThang({
 
   const tyLeDatTeam = tongDuKienThuTeam > 0 ? Math.round((tongThucTeThuTeam / tongDuKienThuTeam) * 100) : 0;
 
+  // Gom toàn bộ mục tiêu tháng của mọi người
+  const tatCaMucTieu = useMemo(() => {
+    const list: Array<{
+      item: ItemKeHoachThang;
+      nhanSu: NhanSu;
+      keHoachId: string;
+      tenDuAn?: string;
+      tenKhachHang?: string;
+    }> = [];
+
+    danhSachKeHoach.forEach((kh) => {
+      const ns = mapNhanSu.get(kh.nhan_vien_id);
+      if (!ns) return;
+
+      (kh.danh_sach_dia_ban || []).forEach((item) => {
+        const da = item.du_an_id ? mapDuAn.get(item.du_an_id) : undefined;
+        const khItem = item.khach_hang_id ? mapKhachHang.get(item.khach_hang_id) : undefined;
+
+        list.push({
+          item,
+          nhanSu: ns,
+          keHoachId: kh.id,
+          tenDuAn: da?.ten_du_an,
+          tenKhachHang: khItem?.ten_khach_hang
+        });
+      });
+    });
+
+    return list;
+  }, [danhSachKeHoach, mapNhanSu, mapDuAn, mapKhachHang]);
+
+  // Lọc mục tiêu gom
+  const danhSachMucTieuLoc = useMemo(() => {
+    return tatCaMucTieu.filter(({ item, nhanSu, tenDuAn, tenKhachHang }) => {
+      if (locNhanSuId !== 'tat_ca' && nhanSu.id !== locNhanSuId) return false;
+
+      const loai = item.loai_muc_tieu || (item.du_kien_thu_thang_nay ? 'tai_chinh' : 'thi_truong');
+      if (locLoaiMucTieu !== 'tat_ca' && loai !== locLoaiMucTieu) return false;
+
+      if (tuKhoa.trim()) {
+        const kw = tuKhoa.toLowerCase();
+        const text = [
+          nhanSu.ho_va_ten,
+          nhanSu.ma_nhan_vien,
+          item.ten_khach_hang_du_an,
+          (item as any).dia_ban,
+          item.tinh_thanh,
+          item.xa_phuong,
+          item.co_quan_doanh_nghiep,
+          item.nguoi_lien_he,
+          item.muc_tieu_thang,
+          item.ten_muc_tieu,
+          item.ghi_chu,
+          item.ghi_chu_ket_qua,
+          tenDuAn,
+          tenKhachHang
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (!text.includes(kw)) return false;
+      }
+
+      return true;
+    });
+  }, [tatCaMucTieu, locNhanSuId, locLoaiMucTieu, tuKhoa]);
+
   const xuLyInTongHop = () => {
     window.print();
   };
 
+  const xuLyChonNhanSuTuBang = (nsId: string) => {
+    setLocNhanSuId(nsId);
+    setCheDoXem('ke_hoach_gom');
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Header & Bộ thẻ thống kê */}
+    <div className="space-y-5">
+      {/* Tiêu đề & Thao tác in */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="font-extrabold text-base text-foreground flex items-center gap-2">
+          <h2 className="font-extrabold text-lg text-foreground flex items-center gap-2">
             <Users className="size-5 text-primary" />
-            Tổng quan Kế hoạch & KPI Tháng — Toàn đội
-          </h3>
+            Kế hoạch & Mục tiêu tháng chung
+          </h2>
           <span className="text-xs text-muted-foreground block mt-0.5">
-            Tổng hợp mục tiêu chỉ tiêu, tiến độ hoàn thành KPI và doanh thu của các thành viên
+            Tổng hợp chỉ tiêu, dự án và doanh thu của toàn bộ đội ngũ kinh doanh ({thang})
           </span>
         </div>
         <Nut kieu="outline" icon_trai={Printer} onClick={xuLyInTongHop} className="print:hidden">
-          In / Xuất PDF báo cáo
+          In / Xuất PDF
         </Nut>
       </div>
 
+      {/* 4 Thẻ KPI tóm tắt */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-xl border border-border/80 bg-card p-4 shadow-xs">
           <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
@@ -120,173 +253,449 @@ export default function BangTongQuanTeamThang({
         </div>
 
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-xs">
-          <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">
+          <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
             Chỉ tiêu Doanh thu team
           </span>
-          <span className="text-2xl font-black text-emerald-600 mt-1 block">
+          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-300 mt-1 block">
             {DINH_DANG_TIEN_NGAN_GON(tongDuKienThuTeam)}
           </span>
-          <span className="text-[10px] text-emerald-700/80 mt-1 block font-mono">
+          <span className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 mt-1 block font-mono">
             Tổng HĐ: {DINH_DANG_TIEN_NGAN_GON(tongGiaTriHdTeam)}
           </span>
         </div>
 
         <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 shadow-xs">
-          <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">
+          <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider block">
             Doanh thu thực tế đã thu
           </span>
-          <span className="text-2xl font-black text-blue-600 mt-1 block">
+          <span className="text-2xl font-black text-blue-600 dark:text-blue-300 mt-1 block">
             {DINH_DANG_TIEN_NGAN_GON(tongThucTeThuTeam)}
           </span>
-          <span className="text-[10px] text-blue-700/80 mt-1 block font-bold font-mono">
+          <span className="text-[10px] text-blue-700/80 dark:text-blue-400/80 mt-1 block font-bold font-mono">
             Đạt {tyLeDatTeam}% chỉ tiêu doanh thu
           </span>
         </div>
 
         <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 shadow-xs">
-          <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider block">
+          <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wider block">
             Đã nộp báo cáo
           </span>
-          <span className="text-2xl font-black text-purple-600 mt-1 block">
+          <span className="text-2xl font-black text-purple-600 dark:text-purple-300 mt-1 block">
             {soNVNopBaoCao} / {soNVLapKeHoach || tongSoNV}
           </span>
-          <span className="text-[10px] text-purple-700/80 mt-1 block">
+          <span className="text-[10px] text-purple-700/80 dark:text-purple-400/80 mt-1 block">
             Báo cáo tổng kết tháng
           </span>
         </div>
       </div>
 
-      {/* Bảng danh sách từng nhân sự */}
-      <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs">
-        <div className="p-3.5 border-b border-border/80 bg-muted/20 flex items-center justify-between">
-          <span className="font-bold text-xs text-foreground uppercase tracking-wider">
-            Bảng chỉ tiêu thành viên ({dataBang.length})
-          </span>
-          <span className="text-[11px] text-muted-foreground">Tháng: {thang}</span>
+      {/* Chuyển đổi chế độ xem */}
+      <div className="flex items-center justify-between gap-3 border-b border-border pb-2 flex-wrap">
+        <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setCheDoXem('ke_hoach_gom')}
+            className={cn(
+              'h-8 px-3.5 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5',
+              cheDoXem === 'ke_hoach_gom'
+                ? 'bg-background text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <ListOrdered className="size-3.5" />
+            Tất cả mục tiêu đã gom ({tatCaMucTieu.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setCheDoXem('theo_nhan_su')}
+            className={cn(
+              'h-8 px-3.5 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5',
+              cheDoXem === 'theo_nhan_su'
+                ? 'bg-background text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <UserCheck className="size-3.5" />
+            Tổng hợp theo thành viên ({danhSachNhanSu.length})
+          </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border/80 bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                <th className="py-3 px-3 w-10 text-center">STT</th>
-                <th className="py-3 px-3 min-w-[180px]">Thành viên</th>
-                <th className="py-3 px-3 min-w-[90px] text-center">Số mục tiêu</th>
-                <th className="py-3 px-3 min-w-[130px] text-right">Chỉ tiêu doanh thu</th>
-                <th className="py-3 px-3 min-w-[130px] text-right">Thực tế đã thu</th>
-                <th className="py-3 px-3 min-w-[90px] text-center">% Hoàn thành KPI</th>
-                <th className="py-3 px-3 min-w-[130px] text-center">Báo cáo tháng</th>
-                <th className="py-3 px-3 min-w-[160px]">Khó khăn / Đề xuất</th>
-                <th className="py-3 px-3 w-20 text-center print:hidden">Chi tiết</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {dataBang.map((item, idx) => {
-                return (
-                  <tr key={item.nhanSu.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-3 px-3 text-center font-bold text-muted-foreground">
-                      {idx + 1}
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="font-bold text-foreground">{item.nhanSu.ho_va_ten}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {item.nhanSu.ma_nhan_vien} {item.nhanSu.chuc_vu ? `• ${item.nhanSu.chuc_vu}` : ''}
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 text-center font-mono font-bold text-foreground">
-                      {item.soMucTieu > 0 ? (
-                        <span>{item.soMucTieu}</span>
-                      ) : (
-                        <span className="text-muted-foreground text-[11px]">Chưa lập</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-bold text-emerald-600">
-                      {item.duKien > 0 ? DINH_DANG_TIEN_NGAN_GON(item.duKien) : '—'}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-bold text-blue-600">
-                      {item.thucTe > 0 ? DINH_DANG_TIEN_NGAN_GON(item.thucTe) : '—'}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      {item.soMucTieu > 0 ? (
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono ${
-                            item.tyLeHoanThanhKPI >= 100
-                              ? 'bg-emerald-500/15 text-emerald-700'
-                              : item.tyLeHoanThanhKPI >= 50
-                              ? 'bg-amber-500/15 text-amber-700'
-                              : item.tyLeHoanThanhKPI > 0
-                              ? 'bg-blue-500/15 text-blue-700'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {item.tyLeHoanThanhKPI}%
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-[11px]">—</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      {item.daGuiBC ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 inline-flex items-center gap-1">
-                          <CheckCircle2 className="size-3" /> Đã nộp
-                        </span>
-                      ) : item.baoCao?.trang_thai === 'nhap' ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700">
-                          Đang nháp
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 inline-flex items-center gap-1">
-                          <AlertCircle className="size-3" /> Chưa nộp
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-muted-foreground text-[11px]">
-                      {item.baoCao?.kho_khan ? (
-                        <div className="line-clamp-2 text-foreground font-medium">
-                          ⚠️ {item.baoCao.kho_khan}
-                        </div>
-                      ) : item.baoCao?.de_xuat ? (
-                        <div className="line-clamp-2 text-primary">
-                          💡 {item.baoCao.de_xuat}
-                        </div>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-center print:hidden">
-                      <button
-                        type="button"
-                        onClick={() => onXemChiTietNV(item.nhanSu.id)}
-                        className="h-7 px-2 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center gap-1 mx-auto text-[11px] font-bold transition-colors"
-                        title="Xem kế hoạch thành viên"
-                      >
-                        <Eye className="size-3" /> Xem
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-border bg-muted/50 font-bold">
-                <td colSpan={3} className="py-3 px-3 text-right uppercase text-[11px] text-muted-foreground">
-                  Tổng cộng toàn team:
-                </td>
-                <td className="py-3 px-3 text-right font-mono text-xs tabular-nums text-emerald-600">
-                  {DINH_DANG_TIEN_NGAN_GON(tongDuKienThuTeam)}
-                </td>
-                <td className="py-3 px-3 text-right font-mono text-xs tabular-nums text-blue-600">
-                  {DINH_DANG_TIEN_NGAN_GON(tongThucTeThuTeam)}
-                </td>
-                <td className="py-3 px-3 text-center font-mono text-xs text-blue-700">
-                  {tyLeDatTeam}%
-                </td>
-                <td colSpan={3}></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        {cheDoXem === 'ke_hoach_gom' && locNhanSuId !== 'tat_ca' && (
+          <div className="inline-flex items-center gap-1.5 text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-lg font-semibold">
+            <span>Đang lọc: {mapNhanSu.get(locNhanSuId)?.ho_va_ten}</span>
+            <button
+              type="button"
+              onClick={() => setLocNhanSuId('tat_ca')}
+              className="hover:bg-primary/20 rounded p-0.5 transition-colors cursor-pointer"
+              title="Xem tất cả"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* CHẾ ĐỘ 1: TẤT CẢ MỤC TIÊU ĐÃ GOM */}
+      {cheDoXem === 'ke_hoach_gom' && (
+        <div className="space-y-3">
+          {/* Thanh công cụ lọc */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-card p-3 rounded-xl border border-border/80 shadow-xs print:hidden">
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                Nhân sự
+              </label>
+              <select
+                value={locNhanSuId}
+                onChange={(e) => setLocNhanSuId(e.target.value)}
+                className="w-full h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+              >
+                <option value="tat_ca">Tất cả nhân sự ({danhSachNhanSu.length})</option>
+                {danhSachNhanSu.map((ns) => (
+                  <option key={ns.id} value={ns.id}>
+                    {ns.ho_va_ten} ({ns.ma_nhan_vien})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                Nhóm mục tiêu
+              </label>
+              <select
+                value={locLoaiMucTieu}
+                onChange={(e) => setLocLoaiMucTieu(e.target.value)}
+                className="w-full h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+              >
+                <option value="tat_ca">Tất cả nhóm</option>
+                <option value="tai_chinh">Thu tiền</option>
+                <option value="thi_truong">Thị trường</option>
+                <option value="khach_hang">Khách hàng</option>
+                <option value="khac">Khác</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
+                Tìm kiếm
+              </label>
+              <div className="relative">
+                <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={tuKhoa}
+                  onChange={(e) => setTuKhoa(e.target.value)}
+                  placeholder="Tìm mục tiêu, khách hàng, dự án, địa bàn..."
+                  className="w-full h-8 rounded-lg border border-border bg-background pl-8 pr-2.5 text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Bảng danh sách mục tiêu gom lại */}
+          <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs">
+            <div className="p-3 border-b border-border/80 bg-muted/20 flex items-center justify-between">
+              <span className="font-bold text-xs text-foreground uppercase tracking-wider">
+                Danh sách mục tiêu tháng toàn đội ({danhSachMucTieuLoc.length} mục tiêu)
+              </span>
+              <span className="text-[11px] text-muted-foreground font-mono">{thang}</span>
+            </div>
+
+            {danhSachMucTieuLoc.length === 0 ? (
+              <div className="py-16 text-center text-muted-foreground text-xs space-y-1">
+                <p className="font-semibold text-foreground">Không tìm thấy mục tiêu nào phù hợp.</p>
+                <p>Thử điều chỉnh bộ lọc hoặc chọn tháng khác.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border/80 bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                      <th className="py-3 px-3 w-10 text-center">STT</th>
+                      <th className="py-3 px-3 min-w-[160px]">Phụ trách</th>
+                      <th className="py-3 px-3 min-w-[200px]">Mục tiêu / Dự án / Địa bàn</th>
+                      <th className="py-3 px-3 min-w-[110px] text-center">Nhóm</th>
+                      <th className="py-3 px-3 min-w-[140px] text-right">Chỉ tiêu / Kế hoạch</th>
+                      <th className="py-3 px-3 min-w-[140px] text-right">Thực tế đạt được</th>
+                      <th className="py-3 px-3 min-w-[100px] text-center">% Hoàn thành</th>
+                      <th className="py-3 px-3 min-w-[180px]">Đánh giá / Ghi chú</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {danhSachMucTieuLoc.map(({ item, nhanSu, tenDuAn, tenKhachHang }, idx) => {
+                      const isTC =
+                        item.loai_muc_tieu === 'tai_chinh' ||
+                        (!item.loai_muc_tieu && (item.du_kien_thu_thang_nay || 0) > 0);
+                      const diaBanStr = [item.xa_phuong, item.tinh_thanh].filter(Boolean).join(', ');
+                      const tenMucTieu =
+                        tenDuAn || tenKhachHang || item.ten_khach_hang_du_an || (item as any).dia_ban;
+
+                      // Tính % hoàn thành của item
+                      let tyLeItem = 0;
+                      if (isTC) {
+                        const target = item.du_kien_thu_thang_nay || item.chi_tieu || 0;
+                        const tt = item.thuc_te_thu ?? item.ket_qua_thuc_te ?? 0;
+                        tyLeItem = target > 0 ? Math.round((tt / target) * 100) : 0;
+                      } else {
+                        const target = item.chi_tieu || 0;
+                        const tt = item.ket_qua_thuc_te || 0;
+                        tyLeItem = target > 0 ? Math.round((tt / target) * 100) : 0;
+                      }
+
+                      return (
+                        <tr key={`${item.id || idx}_${nhanSu.id}`} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-3 px-3 text-center font-bold text-muted-foreground">
+                            {idx + 1}
+                          </td>
+
+                          {/* Phụ trách */}
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-foreground">{nhanSu.ho_va_ten}</div>
+                            <div className="text-[11px] text-muted-foreground font-mono">
+                              {nhanSu.ma_nhan_vien} {nhanSu.chuc_vu ? `• ${nhanSu.chuc_vu}` : ''}
+                            </div>
+                          </td>
+
+                          {/* Mục tiêu / Dự án / Địa bàn */}
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-foreground leading-snug">{tenMucTieu}</div>
+                            {item.muc_tieu_thang && (
+                              <div className="text-[11px] text-muted-foreground mt-0.5">
+                                🎯 {item.muc_tieu_thang}
+                              </div>
+                            )}
+                            {item.co_quan_doanh_nghiep && (
+                              <div className="text-[11px] text-foreground/80 mt-0.5">
+                                🏢 {item.co_quan_doanh_nghiep}
+                              </div>
+                            )}
+                            {diaBanStr && (
+                              <div className="text-[10px] text-muted-foreground mt-0.5">
+                                📍 {diaBanStr}
+                              </div>
+                            )}
+                            {item.nguoi_lien_he && (
+                              <div className="text-[10px] text-muted-foreground">
+                                👤 {item.nguoi_lien_he}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Nhóm */}
+                          <td className="py-3 px-3 text-center">
+                            {renderBadgeLoai(item.loai_muc_tieu)}
+                          </td>
+
+                          {/* Chỉ tiêu / Kế hoạch */}
+                          <td className="py-3 px-3 text-right">
+                            {isTC ? (
+                              <div>
+                                <div className="font-mono font-bold text-emerald-600">
+                                  {DINH_DANG_TIEN_NGAN_GON(
+                                    item.du_kien_thu_thang_nay || item.chi_tieu || 0
+                                  )}
+                                </div>
+                                {(item.gia_tri_hd || 0) > 0 && (
+                                  <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                                    HĐ: {DINH_DANG_TIEN_NGAN_GON(item.gia_tri_hd || 0)}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="font-mono font-bold text-foreground">
+                                {item.chi_tieu ? `${item.chi_tieu} ${item.don_vi_tinh || ''}` : '—'}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Thực tế đạt được */}
+                          <td className="py-3 px-3 text-right">
+                            {isTC ? (
+                              <div className="font-mono font-bold text-blue-600">
+                                {DINH_DANG_TIEN_NGAN_GON(item.thuc_te_thu ?? item.ket_qua_thuc_te ?? 0)}
+                              </div>
+                            ) : (
+                              <div className="font-mono font-bold text-blue-600">
+                                {item.ket_qua_thuc_te != null
+                                  ? `${item.ket_qua_thuc_te} ${item.don_vi_tinh || ''}`
+                                  : '—'}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* % Hoàn thành */}
+                          <td className="py-3 px-3 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono inline-block ${
+                                tyLeItem >= 100
+                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                  : tyLeItem >= 50
+                                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                                  : tyLeItem > 0
+                                  ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {tyLeItem}%
+                            </span>
+                          </td>
+
+                          {/* Đánh giá / Ghi chú */}
+                          <td className="py-3 px-3 text-[11px] text-muted-foreground">
+                            {item.ghi_chu_ket_qua ? (
+                              <div className="text-foreground font-medium line-clamp-2">
+                                {item.ghi_chu_ket_qua}
+                              </div>
+                            ) : item.ghi_chu ? (
+                              <div className="line-clamp-2">{item.ghi_chu}</div>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CHẾ ĐỘ 2: BẢNG THEO DÕI THÀNH VIÊN */}
+      {cheDoXem === 'theo_nhan_su' && (
+        <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs">
+          <div className="p-3.5 border-b border-border/80 bg-muted/20 flex items-center justify-between">
+            <span className="font-bold text-xs text-foreground uppercase tracking-wider">
+              Bảng chỉ tiêu thành viên ({dataBang.length})
+            </span>
+            <span className="text-[11px] text-muted-foreground font-mono">Tháng: {thang}</span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border/80 bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  <th className="py-3 px-3 w-10 text-center">STT</th>
+                  <th className="py-3 px-3 min-w-[180px]">Thành viên</th>
+                  <th className="py-3 px-3 min-w-[90px] text-center">Số mục tiêu</th>
+                  <th className="py-3 px-3 min-w-[130px] text-right">Chỉ tiêu doanh thu</th>
+                  <th className="py-3 px-3 min-w-[130px] text-right">Thực tế đã thu</th>
+                  <th className="py-3 px-3 min-w-[90px] text-center">% Hoàn thành KPI</th>
+                  <th className="py-3 px-3 min-w-[130px] text-center">Báo cáo tháng</th>
+                  <th className="py-3 px-3 min-w-[160px]">Khó khăn / Đề xuất</th>
+                  <th className="py-3 px-3 w-28 text-center print:hidden">Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {dataBang.map((item, idx) => {
+                  return (
+                    <tr key={item.nhanSu.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="py-3 px-3 text-center font-bold text-muted-foreground">
+                        {idx + 1}
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-foreground">{item.nhanSu.ho_va_ten}</div>
+                        <div className="text-[11px] text-muted-foreground font-mono">
+                          {item.nhanSu.ma_nhan_vien} {item.nhanSu.chuc_vu ? `• ${item.nhanSu.chuc_vu}` : ''}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 text-center font-mono font-bold text-foreground">
+                        {item.soMucTieu > 0 ? (
+                          <span>{item.soMucTieu}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-[11px]">Chưa lập</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-bold text-emerald-600">
+                        {item.duKien > 0 ? DINH_DANG_TIEN_NGAN_GON(item.duKien) : '—'}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-bold text-blue-600">
+                        {item.thucTe > 0 ? DINH_DANG_TIEN_NGAN_GON(item.thucTe) : '—'}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        {item.soMucTieu > 0 ? (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                              item.tyLeHoanThanhKPI >= 100
+                                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                : item.tyLeHoanThanhKPI >= 50
+                                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                                : item.tyLeHoanThanhKPI > 0
+                                ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {item.tyLeHoanThanhKPI}%
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-[11px]">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        {item.daGuiBC ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1">
+                            <CheckCircle2 className="size-3" /> Đã nộp
+                          </span>
+                        ) : item.baoCao?.trang_thai === 'nhap' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                            Đang nháp
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 inline-flex items-center gap-1">
+                            <AlertCircle className="size-3" /> Chưa nộp
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-muted-foreground text-[11px]">
+                        {item.baoCao?.kho_khan ? (
+                          <div className="line-clamp-2 text-foreground font-medium">
+                            ⚠️ {item.baoCao.kho_khan}
+                          </div>
+                        ) : item.baoCao?.de_xuat ? (
+                          <div className="line-clamp-2 text-primary">
+                            💡 {item.baoCao.de_xuat}
+                          </div>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-center print:hidden">
+                        <button
+                          type="button"
+                          onClick={() => xuLyChonNhanSuTuBang(item.nhanSu.id)}
+                          className="h-7 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center justify-center gap-1 mx-auto text-[11px] font-bold transition-colors cursor-pointer"
+                          title="Lọc xem toàn bộ mục tiêu của nhân sự này"
+                        >
+                          <Eye className="size-3" /> Xem mục tiêu ({item.soMucTieu})
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border bg-muted/50 font-bold">
+                  <td colSpan={3} className="py-3 px-3 text-right uppercase text-[11px] text-muted-foreground">
+                    Tổng cộng toàn team:
+                  </td>
+                  <td className="py-3 px-3 text-right font-mono text-xs tabular-nums text-emerald-600">
+                    {DINH_DANG_TIEN_NGAN_GON(tongDuKienThuTeam)}
+                  </td>
+                  <td className="py-3 px-3 text-right font-mono text-xs tabular-nums text-blue-600">
+                    {DINH_DANG_TIEN_NGAN_GON(tongThucTeThuTeam)}
+                  </td>
+                  <td className="py-3 px-3 text-center font-mono text-xs text-blue-700">
+                    {tyLeDatTeam}%
+                  </td>
+                  <td colSpan={3}></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

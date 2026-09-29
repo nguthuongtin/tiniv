@@ -85,7 +85,12 @@ const taoDanhSachTuanNam = (nam: number) => {
 };
 
 export default function TrangKeHoachNVKD() {
-  const [tabHienTai, setTabHienTai] = useState<'thang' | 'tuan' | 'team_tuan' | 'team_thang'>('thang');
+  const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
+  const laQuanLyHoacGiamDoc =
+    ['quan_tri_he_thong', 'giam_doc', 'truong_phong'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
+    coQuyen(nguoiDungHienTai, 'ke_hoach.duyet');
+
+  const [tabHienTai, setTabHienTai] = useState<'thang' | 'tuan' | 'team_tuan' | 'team_thang'>('team_tuan');
   const [dangTai, setDangTai] = useState(true);
 
   // Time selectors
@@ -128,21 +133,52 @@ export default function TrangKeHoachNVKD() {
   const [moDrawerTongKetTuan, setMoDrawerTongKetTuan] = useState(false);
   const [moDrawerTongKetThang, setMoDrawerTongKetThang] = useState(false);
 
-  const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
-  const laQuanLyHoacGiamDoc =
-    ['quan_tri_he_thong', 'giam_doc', 'truong_phong'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
-    coQuyen(nguoiDungHienTai, 'ke_hoach.duyet');
+  // Định tuyến tab mặc định theo vai trò: Giám đốc / TP chỉ xem Kế hoạch chung của toàn đội
+  useEffect(() => {
+    if (laQuanLyHoacGiamDoc) {
+      if (tabHienTai === 'tuan' || tabHienTai === 'thang') {
+        setTabHienTai('team_tuan');
+      }
+    } else {
+      if (tabHienTai === 'team_tuan' || tabHienTai === 'team_thang') {
+        setTabHienTai('tuan');
+      }
+    }
+  }, [laQuanLyHoacGiamDoc]);
 
   const phamVi = useMemo(() => {
     return layPhamViPhongBan(nguoiDungHienTai);
   }, [nguoiDungHienTai]);
 
+  // Danh sách nhân sự cho cá nhân
   const dsNhanSuDuocChon = useMemo(() => {
     if (!nguoiDungHienTai) return [];
     if (phamVi.toanCongTy) return dsNhanSu;
     return dsNhanSu.filter((ns) =>
       ns.id === nguoiDungHienTai.id || (ns.phong_ban_id && phamVi.danhSachPhongBanIds.includes(ns.phong_ban_id))
     );
+  }, [dsNhanSu, nguoiDungHienTai, phamVi]);
+
+  // Danh sách nhân sự kinh doanh toàn đội (loại trừ Giám đốc / Trưởng phòng để thống kê chuẩn xác)
+  const dsNhanSuTeam = useMemo(() => {
+    if (!nguoiDungHienTai) return [];
+    return dsNhanSu.filter((ns) => {
+      if (!phamVi.toanCongTy) {
+        if (ns.phong_ban_id && !phamVi.danhSachPhongBanIds.includes(ns.phong_ban_id)) {
+          return false;
+        }
+      }
+      if (
+        ns.vai_tro === 'truong_phong' ||
+        ns.vai_tro === 'giam_doc' ||
+        ns.vai_tro === 'quan_tri_he_thong' ||
+        (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng') ||
+        (ns.chuc_vu || '').toLowerCase().includes('phó phòng')
+      ) {
+        return false;
+      }
+      return true;
+    });
   }, [dsNhanSu, nguoiDungHienTai, phamVi]);
 
   useEffect(() => {
@@ -524,32 +560,7 @@ export default function TrangKeHoachNVKD() {
       <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-border print:hidden">
         {/* Main Tabs */}
         <div className="flex items-center gap-1 bg-muted p-1 rounded-xl flex-wrap">
-          <button
-            type="button"
-            onClick={() => setTabHienTai('thang')}
-            className={cn(
-              'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2',
-              tabHienTai === 'thang'
-                ? 'bg-background text-foreground shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <CalendarDays className="size-4" /> Kế hoạch Tháng
-          </button>
-          <button
-            type="button"
-            onClick={() => setTabHienTai('tuan')}
-            className={cn(
-              'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2',
-              tabHienTai === 'tuan'
-                ? 'bg-background text-foreground shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <CalendarRange className="size-4" /> Kế hoạch Tuần
-          </button>
-
-          {laQuanLyHoacGiamDoc && (
+          {laQuanLyHoacGiamDoc ? (
             <>
               <button
                 type="button"
@@ -557,11 +568,11 @@ export default function TrangKeHoachNVKD() {
                 className={cn(
                   'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2',
                   tabHienTai === 'team_tuan'
-                    ? 'bg-background text-primary shadow-xs'
+                    ? 'bg-background text-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <LayoutDashboard className="size-4" /> Tổng quan Tuần (Team)
+                <CalendarRange className="size-4" /> Kế hoạch Tuần
               </button>
               <button
                 type="button"
@@ -569,17 +580,44 @@ export default function TrangKeHoachNVKD() {
                 className={cn(
                   'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2',
                   tabHienTai === 'team_thang'
-                    ? 'bg-background text-primary shadow-xs'
+                    ? 'bg-background text-foreground shadow-xs'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <LayoutDashboard className="size-4" /> Tổng quan Tháng (Team)
+                <CalendarDays className="size-4" /> Kế hoạch Tháng
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setTabHienTai('tuan')}
+                className={cn(
+                  'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2',
+                  tabHienTai === 'tuan'
+                    ? 'bg-background text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <CalendarRange className="size-4" /> Kế hoạch Tuần
+              </button>
+              <button
+                type="button"
+                onClick={() => setTabHienTai('thang')}
+                className={cn(
+                  'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2',
+                  tabHienTai === 'thang'
+                    ? 'bg-background text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <CalendarDays className="size-4" /> Kế hoạch Tháng
               </button>
             </>
           )}
         </div>
 
-        {/* Filters: Time & Employee Selectors */}
+        {/* Filters: Time Selectors */}
         <div className="flex items-center gap-2 flex-wrap">
           {tabHienTai === 'thang' || tabHienTai === 'team_thang' ? (
             <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg p-1">
@@ -648,24 +686,6 @@ export default function TrangKeHoachNVKD() {
               </button>
             </div>
           )}
-
-          {laQuanLyHoacGiamDoc && (tabHienTai === 'thang' || tabHienTai === 'tuan') && (
-            <div className="flex items-center gap-1 text-xs ml-1">
-              <Users className="size-4 text-muted-foreground" />
-              <select
-                value={nhanVienChonId}
-                onChange={(e) => setNhanVienChonId(e.target.value)}
-                className="h-9 rounded-lg border border-border bg-background px-3 text-xs font-semibold"
-              >
-                <option value={nguoiDungHienTai?.id ?? ''}>Kế hoạch của tôi</option>
-                {dsNhanSuDuocChon.map((ns) => (
-                  <option key={ns.id} value={ns.id}>
-                    {ns.ho_va_ten} ({ns.ma_nhan_vien})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
       </div>
 
@@ -720,25 +740,21 @@ export default function TrangKeHoachNVKD() {
         />
       ) : tabHienTai === 'team_tuan' ? (
         <BangTongQuanTeamTuan
-          danhSachNhanSu={dsNhanSuDuocChon}
+          danhSachNhanSu={dsNhanSuTeam}
           danhSachKeHoach={dsKeHoachTeamTuan}
           danhSachBaoCao={dsBaoCaoTeamTuan}
+          danhSachDuAn={dsHoSoDuAn}
+          danhSachKhachHang={dsKhachHang}
           tuan={tuanChon}
-          onXemChiTietNV={(nvId) => {
-            setNhanVienChonId(nvId);
-            setTabHienTai('tuan');
-          }}
         />
       ) : (
         <BangTongQuanTeamThang
-          danhSachNhanSu={dsNhanSuDuocChon}
+          danhSachNhanSu={dsNhanSuTeam}
           danhSachKeHoach={dsKeHoachTeamThang}
           danhSachBaoCao={dsBaoCaoTeamThang}
+          danhSachDuAn={dsHoSoDuAn}
+          danhSachKhachHang={dsKhachHang}
           thang={thangChon}
-          onXemChiTietNV={(nvId) => {
-            setNhanVienChonId(nvId);
-            setTabHienTai('thang');
-          }}
         />
       )}
 
