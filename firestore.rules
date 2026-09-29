@@ -282,5 +282,19 @@ service cloud.firestore {
       allow read: if laTruongPhong();
       allow create, update, delete: if laTruongPhong();
     }
+
+    // ========== 24. Collection: leads ==========
+    match /leads/{id} {
+      allow read: if daXacThucVaHoatDong();
+      allow create: if laNhanVien() && request.resource.data.nguoi_tao_id == request.auth.uid;
+      allow update: if laGiamDoc()
+        || (daXacThucVaHoatDong() && (
+          resource.data.nguoi_tao_id == request.auth.uid
+          || resource.data.nguoi_phu_trach_id == request.auth.uid
+        ));
+      allow delete: if (laNhanVien() && resource.data.nguoi_tao_id == request.auth.uid)
+        || laQuanTriHeThong();
+    }
   }
 }
+

@@ -159,6 +159,7 @@ interface FormHoSoDuAnDrawerProps {
   mo: boolean;
   khi_dong: () => void;
   dang_sua: HoSoDuAn | null;
+  giaTriMacDinh?: Partial<GiaTriForm> | null;
   khi_luu: (dto: TaoMoiHoSoDuAnDTO | CapNhatHoSoDuAnDTO) => Promise<void> | void;
   dang_xu_ly?: boolean;
   loi_thong_bao?: string | null;
@@ -168,6 +169,7 @@ export default function FormHoSoDuAnDrawer({
   mo,
   khi_dong,
   dang_sua,
+  giaTriMacDinh,
   khi_luu,
   dang_xu_ly = false,
   loi_thong_bao = null
@@ -298,7 +300,8 @@ export default function FormHoSoDuAnDrawer({
       reset({
         ...GIA_TRI_MAC_DINH,
         chi_nhanh_id: nguoiDungHienTai?.chi_nhanh_id ?? null,
-        phong_ban_id: nguoiDungHienTai?.phong_ban_id ?? null
+        phong_ban_id: nguoiDungHienTai?.phong_ban_id ?? null,
+        ...(giaTriMacDinh || {})
       });
     }
     setTuKhoaNS('');

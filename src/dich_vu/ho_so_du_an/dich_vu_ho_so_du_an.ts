@@ -116,9 +116,17 @@ const sapXepVaLocThem = (mang: HoSoDuAn[], loc?: DieuKienLocHoSoDuAn): HoSoDuAn[
   });
 };
 
+let _cacheDanhSachHDA: { locStr: string; kq: { mang: HoSoDuAn[]; tong_so?: number }; ts: number } | null = null;
+const CACHE_TTL_HDA = 30000; // 30 seconds
+
 export const danhSachHoSoDuAn = async (
   loc?: DieuKienLocHoSoDuAn
 ): Promise<{ mang: HoSoDuAn[]; tong_so?: number }> => {
+  const locStr = JSON.stringify(loc || {});
+  if (_cacheDanhSachHDA && _cacheDanhSachHDA.locStr === locStr && Date.now() - _cacheDanhSachHDA.ts < CACHE_TTL_HDA) {
+    return _cacheDanhSachHDA.kq;
+  }
+
   const mangRangBuoc: QueryConstraint[] = [
     limit(GIOI_HAN_MAC_DINH)
   ];
@@ -154,7 +162,10 @@ export const danhSachHoSoDuAn = async (
       resultsRaw.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
     }
     resultsRaw.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
-    return { mang: sapXepVaLocThem(resultsRaw, loc), tong_so: snapshot.size };
+    
+    const kq = { mang: sapXepVaLocThem(resultsRaw, loc), tong_so: snapshot.size };
+    _cacheDanhSachHDA = { locStr, kq, ts: Date.now() };
+    return kq;
   } catch (err) {
     console.warn('[dich_vu_ho_so_du_an] danhSachHoSoDuAn catch:', err);
     return { mang: [], tong_so: 0 };
@@ -246,6 +257,7 @@ export const taoHoSoDuAnMoi = async (
     moi.id,
     `Tao ho so du an "${moi.ten_du_an}"${logThem ? ` (${logThem})` : ''}`
   );
+  _cacheDanhSachHDA = null;
   return moi;
 };
 
@@ -299,6 +311,7 @@ export const capNhatHoSoDuAn = async (
     moi.id,
     `Cap nhat ho so du an "${moi.ten_du_an}"${logThem ? ` (${logThem})` : ''}`
   );
+  _cacheDanhSachHDA = null;
   return moi;
 };
 

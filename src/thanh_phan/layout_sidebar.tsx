@@ -19,7 +19,8 @@ import {
   Settings2,
   CalendarRange,
   BookOpen,
-  TrendingUp
+  TrendingUp,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../thu_vien/utils/cn';
 import useStoreXacThuc from '../thu_vien/zustand/store_xac_thuc';
@@ -43,6 +44,7 @@ const DANH_MUC_SIDEBAR: MucSidebar[] = [
     nhom: 'Tổng quan',
     quyen: 'lanh_dao.xem'
   },
+  { href: '/lead', icon: Sparkles, nhan: 'Lead', nhom: 'Module' },
   { href: '/khach-hang', icon: Building2, nhan: 'Khách hàng', nhom: 'Module' },
   { href: '/ho-so-du-an', icon: FolderKanban, nhan: 'Hồ sơ dự án', nhom: 'Module', quyen: 'du_an.xem' },
   { href: '/ke-hoach', icon: CalendarRange, nhan: 'Kế hoạch', nhom: 'Module', quyen: 'ke_hoach.xem' },

@@ -66,9 +66,17 @@ const chuyenDoiDocThanhDoiTuong = (
   };
 };
 
+let _cacheDanhSachKH: { locStr: string; kq: { mang: KhachHang[]; tong_so?: number }; ts: number } | null = null;
+const CACHE_TTL_KH = 30000; // 30 seconds
+
 export const danhSachKhachHang = async (
   loc?: DieuKienLocKhachHang
 ): Promise<{ mang: KhachHang[]; tong_so?: number }> => {
+  const locStr = JSON.stringify(loc || {});
+  if (_cacheDanhSachKH && _cacheDanhSachKH.locStr === locStr && Date.now() - _cacheDanhSachKH.ts < CACHE_TTL_KH) {
+    return _cacheDanhSachKH.kq;
+  }
+
   const mangRangBuoc: QueryConstraint[] = [
     limit(GIOI_HAN_MAC_DINH)
   ];
@@ -111,7 +119,10 @@ export const danhSachKhachHang = async (
       results.push(kh);
     }
     results.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
-    return { mang: results, tong_so: snapshot.size };
+    
+    const kq = { mang: results, tong_so: snapshot.size };
+    _cacheDanhSachKH = { locStr, kq, ts: Date.now() };
+    return kq;
   } catch (err) {
     console.warn('[dich_vu_khach_hang] danhSachKhachHang catch:', err);
     return { mang: [], tong_so: 0 };
@@ -244,6 +255,7 @@ export const taoKhachHangMoi = async (
     moi.id,
     `Tạo khách hàng "${moi.ten_khach_hang}"`
   );
+  _cacheDanhSachKH = null;
   return moi;
 };
 
@@ -302,6 +314,7 @@ export const capNhatKhachHang = async (
     moi.id,
     `Cập nhật khách hàng "${moi.ten_khach_hang}"`
   );
+  _cacheDanhSachKH = null;
   return moi;
 };
 

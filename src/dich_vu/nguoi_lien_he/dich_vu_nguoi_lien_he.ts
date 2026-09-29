@@ -70,9 +70,17 @@ const sapXepVaLocThem = (mang: NguoiLienHe[], loc?: DieuKienLocNguoiLienHe): Ngu
   });
 };
 
+let _cacheDanhSachNLH: { locStr: string; kq: { mang: NguoiLienHe[]; tong_so?: number }; ts: number } | null = null;
+const CACHE_TTL_NLH = 30000; // 30 seconds
+
 export const danhSachNguoiLienHe = async (
   loc?: DieuKienLocNguoiLienHe
 ): Promise<{ mang: NguoiLienHe[]; tong_so?: number }> => {
+  const locStr = JSON.stringify(loc || {});
+  if (_cacheDanhSachNLH && _cacheDanhSachNLH.locStr === locStr && Date.now() - _cacheDanhSachNLH.ts < CACHE_TTL_NLH) {
+    return _cacheDanhSachNLH.kq;
+  }
+
   const mangRangBuoc: QueryConstraint[] = [limit(GIOI_HAN_MAC_DINH)];
   if (loc?.khach_hang_id) {
     mangRangBuoc.unshift(where('khach_hang_id', '==', loc.khach_hang_id));
@@ -84,7 +92,9 @@ export const danhSachNguoiLienHe = async (
     resultsRaw.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
   }
   resultsRaw.sort((a, b) => a.ho_va_ten.localeCompare(b.ho_va_ten, 'vi'));
-  return { mang: sapXepVaLocThem(resultsRaw, loc), tong_so: snapshot.size };
+  const kq = { mang: sapXepVaLocThem(resultsRaw, loc), tong_so: snapshot.size };
+  _cacheDanhSachNLH = { locStr, kq, ts: Date.now() };
+  return kq;
 };
 
 export const layChiTietNguoiLienHe = async (id: string): Promise<NguoiLienHe | null> => {
@@ -131,6 +141,7 @@ export const taoNguoiLienHeMoi = async (
     moi.khach_hang_id,
     `Thêm liên hệ "${moi.ho_va_ten}" cho khách hàng`
   );
+  _cacheDanhSachNLH = null;
   return moi;
 };
 
@@ -163,6 +174,7 @@ export const capNhatNguoiLienHe = async (
     moi.khach_hang_id,
     `Cập nhật liên hệ "${moi.ho_va_ten}"`
   );
+  _cacheDanhSachNLH = null;
   return moi;
 };
 
@@ -180,6 +192,7 @@ export const xoaNguoiLienHe = async (
     hienTai.khach_hang_id,
     `Xóa liên hệ "${hienTai.ho_va_ten}"`
   );
+  _cacheDanhSachNLH = null;
 };
 
 export const langNgheThayDoiDanhSachNguoiLienHe = (

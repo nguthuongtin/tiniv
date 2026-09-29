@@ -20,14 +20,16 @@ import {
   UserRound,
   ChevronRight,
   ChevronDown,
-  RotateCcw
+  RotateCcw,
+  FolderKanban
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '../../../thu_vien/utils/cn';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
 import useStoreXacThuc from '../../../thu_vien/zustand/store_xac_thuc';
-import type { KhachHang } from '../../../thu_vien/types/khach_hang';
+import type { KhachHang, NguoiLienHe } from '../../../thu_vien/types/khach_hang';
+import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
 import type { ChiNhanh, NhanSu } from '../../../thu_vien/types/nhan_su';
 import type {
   CapNhatKhachHangDTO,
@@ -44,6 +46,7 @@ import {
 import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachHoSoDuAn } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
+import { danhSachNguoiLienHe } from '../../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import { duocXemKhachHang, duocXemHoSoDuAn } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import BoLocKhachHang from '../../../thanh_phan/khach_hang/bo_loc_khach_hang';
 import FormKhachHangDrawer from '../../../thanh_phan/khach_hang/form_khach_hang_drawer';
@@ -80,6 +83,8 @@ export default function TrangKhachHang() {
   const [danh_sach, set_danh_sach] = useState<KhachHang[]>([]);
   const [dsChiNhanh, setDsChiNhanh] = useState<ChiNhanh[]>([]);
   const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>([]);
+  const [dsDuAn, setDsDuAn] = useState<HoSoDuAn[]>([]);
+  const [dsNguoiLienHe, setDsNguoiLienHe] = useState<NguoiLienHe[]>([]);
   const [dieu_kien, set_dieu_kien] = useState<DieuKienLocKhachHang>(BO_LOC_MAC_DINH);
 
   const [mo_drawer, set_mo_drawer] = useState(false);
@@ -101,12 +106,16 @@ export default function TrangKhachHang() {
   const tai_lai_du_lieu = useCallback(async () => {
     set_dang_tai(true);
     try {
-      const [resKh, resHda] = await Promise.all([
+      const vaiTroKey = String(nguoi_dung_hien_tai?.vai_tro || '');
+      const laQuanLy = vaiTroKey === 'quan_tri_he_thong' || vaiTroKey === 'giam_doc' || vaiTroKey === 'truong_phong';
+
+      const [resKh, resHda, resNlh] = await Promise.all([
         danhSachKhachHang(dieu_kien),
-        danhSachHoSoDuAn({ trang_thai: 'tat_ca' }).catch(() => ({ mang: [] }))
+        danhSachHoSoDuAn({ trang_thai: 'tat_ca' }).catch(() => ({ mang: [] })),
+        danhSachNguoiLienHe().catch(() => ({ mang: [] }))
       ]);
 
-      const dsDuAnCuaToi = resHda.mang.filter((hda) => duocXemHoSoDuAn(nguoi_dung_hien_tai, hda));
+      const dsDuAnCuaToi = laQuanLy ? resHda.mang : resHda.mang.filter((hda) => duocXemHoSoDuAn(nguoi_dung_hien_tai, hda));
       const dsKhachHangIdsCoDuAn = new Set(dsDuAnCuaToi.map((hda) => hda.khach_hang_id).filter(Boolean) as string[]);
 
       const dsLoc = resKh.mang.filter((kh) =>
@@ -114,6 +123,8 @@ export default function TrangKhachHang() {
       );
 
       set_danh_sach(dsLoc);
+      setDsDuAn(resHda.mang);
+      setDsNguoiLienHe(resNlh.mang);
     } catch (err: any) {
       them_thong_bao('loi', 'Không thể tải danh sách khách hàng: ' + (err?.message ?? 'lỗi mạng'));
       set_danh_sach([]);
@@ -145,13 +156,18 @@ export default function TrangKhachHang() {
     (async () => {
       set_dang_tai(true);
       try {
-        const [resKh, resHda] = await Promise.all([
+        const vaiTroKey = String(nguoi_dung_hien_tai?.vai_tro || '');
+        const laQuanLy = vaiTroKey === 'quan_tri_he_thong' || vaiTroKey === 'giam_doc' || vaiTroKey === 'truong_phong';
+
+        const [resKh, resHda, resNlh] = await Promise.all([
           danhSachKhachHang(dieu_kien),
-          danhSachHoSoDuAn({ trang_thai: 'tat_ca' }).catch(() => ({ mang: [] }))
+          danhSachHoSoDuAn({ trang_thai: 'tat_ca' }).catch(() => ({ mang: [] })),
+          danhSachNguoiLienHe().catch(() => ({ mang: [] }))
         ]);
+
         if (huy_effect) return;
 
-        const dsDuAnCuaToi = resHda.mang.filter((hda) => duocXemHoSoDuAn(nguoi_dung_hien_tai, hda));
+        const dsDuAnCuaToi = laQuanLy ? resHda.mang : resHda.mang.filter((hda) => duocXemHoSoDuAn(nguoi_dung_hien_tai, hda));
         const dsKhachHangIdsCoDuAn = new Set(dsDuAnCuaToi.map((hda) => hda.khach_hang_id).filter(Boolean) as string[]);
 
         const dsLoc = resKh.mang.filter((kh) =>
@@ -159,6 +175,8 @@ export default function TrangKhachHang() {
         );
 
         set_danh_sach(dsLoc);
+        setDsDuAn(resHda.mang);
+        setDsNguoiLienHe(resNlh.mang);
       } catch (err: any) {
         if (!huy_effect) them_thong_bao('loi', 'Tải danh sách khách hàng lỗi: ' + (err?.message ?? ''));
       } finally {
@@ -265,6 +283,33 @@ export default function TrangKhachHang() {
   };
 
   const [kieuSapXep, setKieuSapXep] = useState<'moi_nhat' | 'cu_nhat' | 'ten_az'>('moi_nhat');
+
+  const mapNhanSu = useMemo(() => {
+    const map = new Map<string, NhanSu>();
+    dsNhanSu.forEach((ns) => map.set(ns.id, ns));
+    return map;
+  }, [dsNhanSu]);
+
+  const mapSoLuongDuAnTheoKhachHang = useMemo(() => {
+    const map = new Map<string, number>();
+    dsDuAn.forEach((da) => {
+      if (da.khach_hang_id && da.trang_thai !== 'da_xoa') {
+        map.set(da.khach_hang_id, (map.get(da.khach_hang_id) || 0) + 1);
+      }
+    });
+    return map;
+  }, [dsDuAn]);
+
+  const mapNguoiLienHeTheoKhachHang = useMemo(() => {
+    const map = new Map<string, NguoiLienHe>();
+    // Since dsNguoiLienHe is sorted or in order, first one encountered per khach_hang_id is considered primary
+    dsNguoiLienHe.forEach((nlh) => {
+      if (nlh.khach_hang_id && !map.has(nlh.khach_hang_id)) {
+        map.set(nlh.khach_hang_id, nlh);
+      }
+    });
+    return map;
+  }, [dsNguoiLienHe]);
 
   const danhSachDaSapXep = useMemo(() => {
     const ds = [...danh_sach];
@@ -453,22 +498,18 @@ export default function TrangKhachHang() {
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   <th className="py-3 px-4 w-[50px] text-center">STT</th>
-                  <th className="py-3 px-4 min-w-[260px]">THÔNG TIN KHÁCH HÀNG</th>
-                  <th className="py-3 px-4 min-w-[200px]">ĐỊA BÀN HOẠT ĐỘNG</th>
-                  <th className="py-3 px-4 w-[130px]">PHÂN LOẠI</th>
-                  <th className="py-3 px-4 w-[120px]">TRẠNG THÁI</th>
-                  <th className="py-3 px-4 w-[120px] text-right">THAO TÁC</th>
+                  <th className="py-3 px-4 min-w-[240px]">THÔNG TIN KHÁCH HÀNG</th>
+                  <th className="py-3 px-4 w-[110px] text-center">DỰ ÁN</th>
+                  <th className="py-3 px-4 min-w-[180px]">PHỤ TRÁCH</th>
+                  <th className="py-3 px-4 min-w-[200px]">NGƯỜI LIÊN HỆ</th>
+                  <th className="py-3 px-4 w-[110px] text-right">THAO TÁC</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
                 {danhSachDaSapXep.map((kh, index) => {
-                  const loaiKhNhan = TEN_LOAI_KH[kh.loai_khach_hang]?.nhan || 'Khách hàng';
-                  const thongTinTrangThai =
-                    kh.trang_thai === 'hoat_dong'
-                      ? { nhan: 'Hợp tác', capsule: 'bg-emerald-50 text-emerald-700 border-emerald-200/80', dot: 'bg-emerald-500' }
-                      : kh.trang_thai === 'tam_dung'
-                      ? { nhan: 'Tạm dừng', capsule: 'bg-amber-50 text-amber-700 border-amber-200/80', dot: 'bg-amber-500' }
-                      : { nhan: 'Đã xóa', capsule: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
+                  const soLuongDa = mapSoLuongDuAnTheoKhachHang.get(kh.id) || 0;
+                  const nguoiPhuTrach = kh.nguoi_phu_trach_id ? mapNhanSu.get(kh.nguoi_phu_trach_id) : null;
+                  const lienHeChinh = mapNguoiLienHeTheoKhachHang.get(kh.id);
 
                   return (
                     <tr
@@ -510,32 +551,77 @@ export default function TrangKhachHang() {
                         </div>
                       </td>
 
-                      {/* 2. ĐỊA BÀN HOẠT ĐỘNG */}
+                      {/* 2. DỰ ÁN */}
+                      <td className="py-3.5 px-4 text-center">
+                        <Link
+                          href={`/khach-hang/${kh.id}#du-an`}
+                          className={cn(
+                            'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all',
+                            soLuongDa > 0
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 hover:bg-emerald-100 hover:text-emerald-800'
+                              : 'bg-slate-100 text-slate-400 border border-slate-200 hover:bg-slate-200/60'
+                          )}
+                          title={`${soLuongDa} dự án`}
+                        >
+                          <FolderKanban className="size-3.5" />
+                          <span>{soLuongDa}</span>
+                        </Link>
+                      </td>
+
+                      {/* 3. PHỤ TRÁCH */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1 text-xs font-semibold text-slate-700">
-                          <MapPin className="size-3.5 text-emerald-600 shrink-0" />
-                          <span>{[kh.xa_phuong, kh.tinh_thanh].filter(Boolean).join(' • ') || 'Chưa cập nhật'}</span>
-                        </div>
-                        {kh.dia_chi && (
-                          <div className="text-[11px] text-slate-400 truncate max-w-[220px] mt-0.5">
-                            {kh.dia_chi}
+                        {nguoiPhuTrach ? (
+                          <div className="flex items-center gap-2">
+                            <div className="size-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] font-bold shrink-0">
+                              {nguoiPhuTrach.ho_va_ten?.charAt(0) || 'N'}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold text-slate-900 truncate">
+                                {nguoiPhuTrach.ho_va_ten}
+                              </div>
+                              {nguoiPhuTrach.chuc_vu && (
+                                <div className="text-[11px] text-slate-400 truncate">
+                                  {nguoiPhuTrach.chuc_vu}
+                                </div>
+                              )}
+                            </div>
                           </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">Chưa phân công</span>
                         )}
                       </td>
 
-                      {/* 3. PHÂN LOẠI */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
-                          {loaiKhNhan}
-                        </span>
-                      </td>
-
-                      {/* 4. TRẠNG THÁI */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border', thongTinTrangThai.capsule)}>
-                          <span className={cn('size-1.5 rounded-full shrink-0', thongTinTrangThai.dot)} />
-                          {thongTinTrangThai.nhan}
-                        </span>
+                      {/* 4. NGƯỜI LIÊN HỆ */}
+                      <td className="py-3.5 px-4">
+                        {lienHeChinh ? (
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-slate-900 truncate flex items-center gap-1.5">
+                              <span>{lienHeChinh.ho_va_ten}</span>
+                              {lienHeChinh.chuc_vu && (
+                                <span className="text-[11px] text-slate-500 font-normal">({lienHeChinh.chuc_vu})</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5 flex-wrap">
+                              {lienHeChinh.so_dien_thoai && (
+                                <a
+                                  href={`tel:${lienHeChinh.so_dien_thoai}`}
+                                  className="inline-flex items-center gap-1 hover:text-emerald-700"
+                                >
+                                  <Phone className="size-3 text-slate-400" />
+                                  <span>{lienHeChinh.so_dien_thoai}</span>
+                                </a>
+                              )}
+                              {lienHeChinh.email && (
+                                <span className="inline-flex items-center gap-1 text-slate-400">
+                                  <Mail className="size-3" />
+                                  <span className="truncate max-w-[120px]">{lienHeChinh.email}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">Chưa có liên hệ</span>
+                        )}
                       </td>
 
                       {/* 5. THAO TÁC */}
@@ -600,13 +686,9 @@ export default function TrangKhachHang() {
           {/* 2. GIAO DIỆN DANH SÁCH DỄ ĐỌC TRÊN MOBILE (chỉ hiện trên màn hình nhỏ) */}
           <div className="sm:hidden flex flex-col gap-2.5 p-3 bg-slate-50/50">
             {danhSachDaSapXep.map((kh, index) => {
-              const loaiKhNhan = TEN_LOAI_KH[kh.loai_khach_hang]?.nhan || 'Khách hàng';
-              const thongTinTrangThai =
-                kh.trang_thai === 'hoat_dong'
-                  ? { nhan: 'HỢP TÁC', capsule: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
-                  : kh.trang_thai === 'tam_dung'
-                  ? { nhan: 'TẠM DỪNG', capsule: 'bg-amber-50 text-amber-700 border-amber-200' }
-                  : { nhan: 'ĐÃ XÓA', capsule: 'bg-rose-50 text-rose-700 border-rose-200' };
+              const soLuongDa = mapSoLuongDuAnTheoKhachHang.get(kh.id) || 0;
+              const nguoiPhuTrach = kh.nguoi_phu_trach_id ? mapNhanSu.get(kh.nguoi_phu_trach_id) : null;
+              const lienHeChinh = mapNguoiLienHeTheoKhachHang.get(kh.id);
 
               return (
                 <div
@@ -622,25 +704,51 @@ export default function TrangKhachHang() {
                     </div>
                     
                     <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                      <Link href={`/khach-hang/${kh.id}`} className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 block hover:text-emerald-700">
-                        {kh.ten_khach_hang}
-                      </Link>
+                      <div className="flex items-start justify-between gap-2">
+                        <Link href={`/khach-hang/${kh.id}`} className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 block hover:text-emerald-700">
+                          {kh.ten_khach_hang}
+                        </Link>
+                        <Link
+                          href={`/khach-hang/${kh.id}#du-an`}
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold shrink-0',
+                            soLuongDa > 0
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                              : 'bg-slate-100 text-slate-400 border border-slate-200'
+                          )}
+                        >
+                          <FolderKanban className="size-3" />
+                          <span>{soLuongDa} DA</span>
+                        </Link>
+                      </div>
                       
-                      {kh.so_dien_thoai && (
-                        <div className="flex items-center gap-1.5 text-[13px] text-slate-600">
-                          <span className="font-medium">{kh.so_dien_thoai}</span>
+                      {/* Phụ trách & Người liên hệ */}
+                      <div className="grid grid-cols-1 gap-1 text-xs text-slate-600 mt-0.5">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="text-slate-400 shrink-0">Phụ trách:</span>
+                          <span className="font-medium text-slate-800 truncate">
+                            {nguoiPhuTrach?.ho_va_ten || 'Chưa phân công'}
+                          </span>
                         </div>
-                      )}
+                        {lienHeChinh && (
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="text-slate-400 shrink-0">Liên hệ:</span>
+                            <span className="font-medium text-slate-800 truncate">
+                              {lienHeChinh.ho_va_ten} {lienHeChinh.so_dien_thoai ? `• ${lienHeChinh.so_dien_thoai}` : ''}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                       
                       <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
-                        <div className="flex items-center gap-1.5">
-                          <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold border shrink-0', thongTinTrangThai.capsule)}>
-                            {thongTinTrangThai.nhan}
-                          </span>
-                          <span className="font-semibold text-emerald-700 text-xs">
-                            {loaiKhNhan}
-                          </span>
-                        </div>
+                        {kh.so_dien_thoai ? (
+                          <a href={`tel:${kh.so_dien_thoai}`} className="inline-flex items-center gap-1 text-xs text-slate-500 font-medium">
+                            <Phone className="size-3 text-slate-400" />
+                            <span>{kh.so_dien_thoai}</span>
+                          </a>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">Chưa có SĐT</span>
+                        )}
                         {kh.trang_thai === 'da_xoa' && (
                           <button
                             type="button"

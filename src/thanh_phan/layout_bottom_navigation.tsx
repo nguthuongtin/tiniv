@@ -11,7 +11,8 @@ import {
   UserCog,
   Shield,
   LogOut,
-  BarChart3
+  BarChart3,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../thu_vien/utils/cn';
 import useStoreXacThuc from '../thu_vien/zustand/store_xac_thuc';
@@ -49,14 +50,20 @@ export default function ThanhDieuHuongDuoi() {
       )}
     >
       {moMenuThem && (
-        <div
-          className="absolute inset-0 bottom-0 -z-10 bg-slate-900/20 backdrop-blur-xs min-h-[100dvh]"
-          onClick={() => setMoMenuThem(false)}
-        />
-      )}
-
-      {moMenuThem && (
         <div className="absolute inset-x-3 bottom-20 rounded-[22px] border border-slate-200/90 bg-white shadow-[0_10px_35px_rgba(0,0,0,0.12)] p-2 space-y-0.5 animate-in slide-in-from-bottom-6 fade-in duration-200">
+          <Link
+            href="/lead"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-50 transition leading-relaxed active:scale-[0.98]"
+          >
+            <div className="size-9 rounded-[12px] bg-gradient-to-br from-[#007AFF] to-[#0055D4] text-white flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/20">
+              <Sparkles className="size-[18px]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold leading-snug">Lead</div>
+              <div className="text-[11px] text-slate-400 leading-tight">Tiếp cận & khai thác</div>
+            </div>
+          </Link>
+
           <Link
             href="/khach-hang"
             className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-50 transition leading-relaxed active:scale-[0.98]"
