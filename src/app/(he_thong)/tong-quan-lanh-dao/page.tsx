@@ -61,10 +61,7 @@ export default function TrangTongQuanLanhDao() {
   const [ngayChon, setNgayChon] = useState<string>(() =>
     new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
   );
-  const [tuKhoa, setTuKhoa] = useState('');
-  const [chiNhanhId, setChiNhanhId] = useState<string>('tat_ca');
-  const [phongBanId, setPhongBanId] = useState<string>('tat_ca');
-  const [boLocMucDoAI, setBoLocMucDoAI] = useState<'tat_ca' | 'tot' | 'canh_bao' | 'rui_ro'>('tat_ca');
+
 
   // State tương tác AI & Drawer & Modal Drill-down
   const [dangChayAITatCa, setDangChayAITatCa] = useState(false);
@@ -160,38 +157,9 @@ export default function TrangTongQuanLanhDao() {
         }
       }
 
-      // Bộ lọc chi nhánh
-      if (chiNhanhId !== 'tat_ca' && ns.chi_nhanh_id !== chiNhanhId) {
-        return false;
-      }
-
-      // Bộ lọc phòng ban
-      if (phongBanId !== 'tat_ca' && ns.phong_ban_id !== phongBanId) {
-        return false;
-      }
-
-      // Tìm kiếm từ khóa
-      if (tuKhoa.trim()) {
-        const kw = tuKhoa.toLowerCase();
-        const ten = (ns.ho_va_ten || '').toLowerCase();
-        const email = (ns.email || '').toLowerCase();
-        const sdt = (ns.so_dien_thoai || '').toLowerCase();
-        if (!ten.includes(kw) && !email.includes(kw) && !sdt.includes(kw)) {
-          return false;
-        }
-      }
-
-      // Bộ lọc mức độ AI
-      if (boLocMucDoAI !== 'tat_ca') {
-        const dg = dsDanhGiaAI.find((d) => d.nhan_vien_id === ns.id);
-        if (!dg || dg.muc_do_tong_the !== boLocMucDoAI) {
-          return false;
-        }
-      }
-
       return true;
     });
-  }, [dsNhanSu, phamVi, chiNhanhId, phongBanId, tuKhoa, boLocMucDoAI, dsDanhGiaAI]);
+  }, [dsNhanSu, dsPhongBan, phamVi]);
 
   // 5. Thống kê cấp cao
   const thongKeLanhDao = useMemo(() => {
@@ -271,7 +239,7 @@ export default function TrangTongQuanLanhDao() {
   }
 
   return (
-    <div className="space-y-5 pb-12">
+    <div className="space-y-6 pb-12">
       {/* 1. Header tinh gọn */}
       <div className="bg-[#185942] rounded-2xl p-4 sm:p-5 text-white shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
         <div>
@@ -282,7 +250,7 @@ export default function TrangTongQuanLanhDao() {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Tổng Quan Kinh Doanh</h1>
         </div>
 
-        <div className="flex items-center gap-2 self-stretch md:self-auto">
+        <div className="flex items-center gap-2.5 self-stretch md:self-auto">
           <div className="flex items-center bg-white/10 rounded-xl px-3 py-2 border border-white/20 text-xs font-medium text-emerald-100">
             <Calendar className="w-3.5 h-3.5 mr-2 shrink-0" />
             <input
@@ -298,28 +266,30 @@ export default function TrangTongQuanLanhDao() {
             disabled={dangChayAITatCa}
             className="bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold text-xs shadow-xs py-2 px-3.5 justify-center"
           >
-            {dangChayAITatCa ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
-            ) : (
-              <Sparkles className="w-4 h-4 mr-1.5" />
-            )}
-            {dangChayAITatCa ? 'AI đang phân tích...' : 'Cập nhật AI hôm nay'}
+            <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", dangChayAITatCa && "animate-spin")} />
+            {dangChayAITatCa ? 'Đang cập nhật...' : 'Cập nhật đánh giá'}
           </Nut>
         </div>
       </div>
 
-      {/* 2. Thẻ chỉ số tổng hợp (Nhấp vào để xem danh sách chi tiết) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      {/* 2. Thẻ chỉ số tổng hợp (Thiết kế chuyên nghiệp, nhấp vào xem danh sách) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Thẻ 1: Tổng nhân viên KD */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Nhân viên KD
             </span>
-            <Users className="w-4 h-4 text-slate-600" />
+            <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+              <Users className="w-4 h-4" />
+            </div>
           </div>
-          <p className="text-2xl font-black text-slate-800">{thongKeLanhDao.tongNhanSu}</p>
-          <p className="text-xs text-slate-500">{thongKeLanhDao.tongDuAnPhuTrach} dự án phụ trách</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+            {thongKeLanhDao.tongNhanSu}
+          </p>
+          <p className="text-xs text-slate-500 font-medium">
+            {thongKeLanhDao.tongDuAnPhuTrach} dự án đang phụ trách
+          </p>
         </div>
 
         {/* Thẻ 2: Dự án tiềm năng cao (Clickable) */}
@@ -332,16 +302,22 @@ export default function TrangTongQuanLanhDao() {
               danhSachDuAn: thongKeLanhDao.duAnTiemNangCao
             })
           }
-          className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 hover:border-amber-400 hover:shadow-xs transition-all cursor-pointer group"
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2 hover:border-amber-400 hover:shadow-xs transition-all cursor-pointer group"
         >
-          <div className="flex items-center justify-between text-amber-500">
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
               Tiềm năng cao
             </span>
-            <Flame className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
+            <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-600 group-hover:scale-105 transition-transform">
+              <Flame className="w-4 h-4" />
+            </div>
           </div>
-          <p className="text-2xl font-black text-amber-700">{thongKeLanhDao.tongTiemNangCao}</p>
-          <p className="text-[11px] text-amber-700/80 font-medium">Nhấp xem danh sách &rarr;</p>
+          <p className="text-2xl sm:text-3xl font-black text-amber-700 tracking-tight">
+            {thongKeLanhDao.tongTiemNangCao}
+          </p>
+          <p className="text-xs text-slate-500 font-medium">
+            Khả năng chốt hợp đồng cao
+          </p>
         </div>
 
         {/* Thẻ 3: Dự án sắp ký hợp đồng (Clickable) */}
@@ -354,16 +330,22 @@ export default function TrangTongQuanLanhDao() {
               danhSachDuAn: thongKeLanhDao.duAnSapKyHD
             })
           }
-          className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 hover:border-purple-400 hover:shadow-xs transition-all cursor-pointer group"
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2 hover:border-purple-400 hover:shadow-xs transition-all cursor-pointer group"
         >
-          <div className="flex items-center justify-between text-purple-500">
-            <span className="text-xs font-semibold uppercase tracking-wider text-purple-700">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-purple-700">
               Sắp ký hợp đồng
             </span>
-            <Award className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
+            <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200/60 flex items-center justify-center text-purple-600 group-hover:scale-105 transition-transform">
+              <Award className="w-4 h-4" />
+            </div>
           </div>
-          <p className="text-2xl font-black text-purple-700">{thongKeLanhDao.tongSapKyHD}</p>
-          <p className="text-[11px] text-purple-700/80 font-medium">Nhấp xem danh sách &rarr;</p>
+          <p className="text-2xl sm:text-3xl font-black text-purple-700 tracking-tight">
+            {thongKeLanhDao.tongSapKyHD}
+          </p>
+          <p className="text-xs text-slate-500 font-medium">
+            Giai đoạn đàm phán &amp; hoàn tất
+          </p>
         </div>
 
         {/* Thẻ 4: Tổng giá trị dự kiến (Clickable) */}
@@ -375,101 +357,31 @@ export default function TrangTongQuanLanhDao() {
               danhSachDuAn: thongKeLanhDao.duAnPhuTrach
             })
           }
-          className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1 hover:border-emerald-500 hover:shadow-xs transition-all cursor-pointer group"
+          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2 hover:border-emerald-500 hover:shadow-xs transition-all cursor-pointer group"
         >
-          <div className="flex items-center justify-between text-[#185942]">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
               Tổng giá trị dự kiến
             </span>
-            <Sparkles className="w-4 h-4 text-[#185942] group-hover:scale-110 transition-transform" />
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-[#185942] group-hover:scale-105 transition-transform">
+              <Layers className="w-4 h-4" />
+            </div>
           </div>
-          <p className="text-xl font-black text-[#185942] truncate">
+          <p className="text-xl sm:text-2xl font-black text-[#185942] truncate tracking-tight">
             {DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongGiaTri)}
           </p>
-          <p className="text-[11px] text-emerald-700 font-medium">Nhấp xem danh sách &rarr;</p>
+          <p className="text-xs text-slate-500 font-medium">
+            Toàn bộ dự án đang theo dõi
+          </p>
         </div>
       </div>
 
-      {/* 3. Thanh tìm kiếm & Bộ lọc */}
-      <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/90 shadow-2xs space-y-2.5">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-          {/* Ô tìm kiếm */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={tuKhoa}
-              onChange={(e) => setTuKhoa(e.target.value)}
-              placeholder="Tìm theo tên nhân viên, email, số điện thoại..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#185942]/20 focus:border-[#185942]"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Lọc Chi nhánh */}
-            {phamVi.toanCongTy && (
-              <select
-                value={chiNhanhId}
-                onChange={(e) => setChiNhanhId(e.target.value)}
-                className="flex-1 sm:flex-none px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none cursor-pointer max-w-[160px] truncate"
-              >
-                <option value="tat_ca">Tất cả chi nhánh</option>
-                {dsChiNhanh.map((cn) => (
-                  <option key={cn.id} value={cn.id}>
-                    {cn.ten_chi_nhanh}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {/* Lọc Phòng ban */}
-            <select
-              value={phongBanId}
-              onChange={(e) => setPhongBanId(e.target.value)}
-              className="flex-1 sm:flex-none px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none cursor-pointer max-w-[160px] truncate"
-            >
-              <option value="tat_ca">Tất cả phòng ban</option>
-              {dsPhongBan.map((pb) => (
-                <option key={pb.id} value={pb.id}>
-                  {pb.ten_phong_ban}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Lọc tình trạng AI */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          <span className="text-xs text-slate-400 font-semibold shrink-0 mr-1">Tình trạng:</span>
-          {[
-            { key: 'tat_ca', label: 'Tất cả' },
-            { key: 'tot', label: 'Tốt / Đạt' },
-            { key: 'canh_bao', label: 'Cần lưu ý' },
-            { key: 'rui_ro', label: 'Rủi ro' }
-          ].map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              onClick={() => setBoLocMucDoAI(m.key as any)}
-              className={cn(
-                'px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0',
-                boLocMucDoAI === m.key
-                  ? 'bg-[#185942] text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
-              )}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 4. Danh sách Nhân viên Kinh Doanh */}
+      {/* 3. Danh sách Đội Ngũ Kinh Doanh */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        <div className="p-3.5 sm:p-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#185942]" />
-            <h3 className="font-bold text-slate-800 text-sm">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Users className="w-5 h-5 text-[#185942]" />
+            <h3 className="font-bold text-slate-800 text-base sm:text-lg">
               Đội Ngũ Kinh Doanh ({dsNhanSuHienThi.length})
             </h3>
           </div>
@@ -481,23 +393,23 @@ export default function TrangTongQuanLanhDao() {
             <span>Đang tải danh sách nhân viên &amp; dự án...</span>
           </div>
         ) : dsNhanSuHienThi.length === 0 ? (
-          <div className="py-16 text-center text-slate-400 text-xs">
-            Không tìm thấy nhân sự phù hợp với bộ lọc hiện tại.
+          <div className="py-16 text-center text-slate-400 text-sm">
+            Chưa có dữ liệu nhân viên kinh doanh.
           </div>
         ) : (
           <>
-            {/* GIAO DIỆN BẢNG TRÊN PC (Desktop Table - Căn chỉnh theo cột ngay ngắn) */}
+            {/* GIAO DIỆN BẢNG TRÊN PC (Desktop Table - Cột rõ ràng, chữ to ngay ngắn) */}
             <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/80 text-slate-500 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-100">
-                    <th className="py-3 px-4 w-[240px]">Nhân viên</th>
-                    <th className="py-3 px-3 text-center w-[100px]">Dự án</th>
-                    <th className="py-3 px-3 text-center w-[110px]">Tiềm năng</th>
-                    <th className="py-3 px-3 text-center w-[110px]">Sắp ký HĐ</th>
-                    <th className="py-3 px-4 text-right w-[130px]">Giá trị dự kiến</th>
-                    <th className="py-3 px-4">Đánh giá AI</th>
-                    <th className="py-3 px-4 text-right w-[80px]"></th>
+                  <tr className="bg-slate-50/80 text-slate-500 font-bold uppercase tracking-wider text-xs border-b border-slate-200/80">
+                    <th className="py-3.5 px-5 w-[260px]">Nhân viên</th>
+                    <th className="py-3.5 px-3 text-center w-[110px]">Dự án</th>
+                    <th className="py-3.5 px-3 text-center w-[120px]">Tiềm năng</th>
+                    <th className="py-3.5 px-3 text-center w-[120px]">Sắp ký HĐ</th>
+                    <th className="py-3.5 px-5 text-right w-[150px]">Giá trị dự kiến</th>
+                    <th className="py-3.5 px-5">Nhận định tổng quan</th>
+                    <th className="py-3.5 px-4 text-right w-[90px]"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -519,21 +431,21 @@ export default function TrangTongQuanLanhDao() {
                       <tr
                         key={ns.id}
                         onClick={() => setNhanSuDangChon(ns)}
-                        className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                        className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
                       >
                         {/* Cột 1: Nhân viên */}
-                        <td className="py-3 px-4">
+                        <td className="py-4 px-5">
                           <div className="flex items-center gap-3">
                             <DaiDien
                               anh={ns.url_anh_dai_dien || ''}
                               ten={ns.ho_va_ten || 'NV'}
-                              className="w-9 h-9 text-xs ring-1 ring-slate-200 shrink-0"
+                              className="w-10 h-10 text-xs font-bold ring-1 ring-slate-200 shrink-0"
                             />
                             <div className="min-w-0">
-                              <p className="font-bold text-slate-800 group-hover:text-[#185942] transition-colors truncate">
+                              <p className="font-bold text-base text-slate-900 group-hover:text-[#185942] transition-colors truncate">
                                 {ns.ho_va_ten}
                               </p>
-                              <p className="text-[11px] text-slate-400 font-mono">
+                              <p className="text-xs text-slate-400 font-mono mt-0.5">
                                 {ns.ma_nhan_vien || ns.id.slice(0, 5)}
                               </p>
                             </div>
@@ -541,7 +453,7 @@ export default function TrangTongQuanLanhDao() {
                         </td>
 
                         {/* Cột 2: Dự án phụ trách (Nhấp xem chi tiết) */}
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-4 px-3 text-center">
                           <button
                             type="button"
                             onClick={(e) => {
@@ -552,15 +464,15 @@ export default function TrangTongQuanLanhDao() {
                                 danhSachDuAn: duAnCuaNS
                               });
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition-colors cursor-pointer inline-flex items-center gap-1 text-xs"
-                            title="Nhấp để xem danh sách dự án"
+                            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition-colors cursor-pointer text-sm"
+                            title="Xem danh sách dự án"
                           >
-                            <span>{duAnCuaNS.length}</span>
+                            {duAnCuaNS.length}
                           </button>
                         </td>
 
                         {/* Cột 3: Tiềm năng cao (Nhấp xem chi tiết) */}
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-4 px-3 text-center">
                           <button
                             type="button"
                             onClick={(e) => {
@@ -572,20 +484,20 @@ export default function TrangTongQuanLanhDao() {
                               });
                             }}
                             className={cn(
-                              'px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer inline-flex items-center gap-1 text-xs',
+                              'px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer text-sm inline-flex items-center gap-1',
                               dsTiemNangCuaNS.length > 0
-                                ? 'bg-amber-100/80 hover:bg-amber-200 text-amber-800'
+                                ? 'bg-amber-100/90 hover:bg-amber-200 text-amber-800'
                                 : 'bg-slate-100 text-slate-400'
                             )}
-                            title="Nhấp để xem danh sách dự án tiềm năng"
+                            title="Xem danh sách dự án tiềm năng"
                           >
-                            {dsTiemNangCuaNS.length > 0 && <Flame className="w-3 h-3 text-amber-600" />}
+                            {dsTiemNangCuaNS.length > 0 && <Flame className="w-3.5 h-3.5 text-amber-600" />}
                             <span>{dsTiemNangCuaNS.length}</span>
                           </button>
                         </td>
 
                         {/* Cột 4: Sắp ký HĐ (Nhấp xem chi tiết) */}
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-4 px-3 text-center">
                           <button
                             type="button"
                             onClick={(e) => {
@@ -597,48 +509,48 @@ export default function TrangTongQuanLanhDao() {
                               });
                             }}
                             className={cn(
-                              'px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer inline-flex items-center gap-1 text-xs',
+                              'px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer text-sm inline-flex items-center gap-1',
                               dsSapKyCuaNS.length > 0
-                                ? 'bg-purple-100/80 hover:bg-purple-200 text-purple-800'
+                                ? 'bg-purple-100/90 hover:bg-purple-200 text-purple-800'
                                 : 'bg-slate-100 text-slate-400'
                             )}
-                            title="Nhấp để xem danh sách dự án sắp ký"
+                            title="Xem danh sách dự án sắp ký"
                           >
-                            {dsSapKyCuaNS.length > 0 && <Award className="w-3 h-3 text-purple-600" />}
+                            {dsSapKyCuaNS.length > 0 && <Award className="w-3.5 h-3.5 text-purple-600" />}
                             <span>{dsSapKyCuaNS.length}</span>
                           </button>
                         </td>
 
                         {/* Cột 5: Giá trị dự kiến */}
-                        <td className="py-3 px-4 text-right font-bold text-emerald-700">
+                        <td className="py-4 px-5 text-right font-bold text-sm text-emerald-700">
                           {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
                         </td>
 
-                        {/* Cột 6: Đánh giá AI */}
-                        <td className="py-3 px-4">
+                        {/* Cột 6: Nhận định tổng quan */}
+                        <td className="py-4 px-5">
                           {aiRecord ? (
-                            <div className="flex items-center gap-2 max-w-md">
+                            <div className="flex items-center gap-2.5 max-w-lg">
                               <span
                                 className={cn(
-                                  'text-[10px] font-black px-2 py-0.5 rounded-md shrink-0',
+                                  'text-xs font-bold px-2 py-0.5 rounded-lg shrink-0',
                                   aiRecord.muc_do_tong_the === 'tot' && 'bg-emerald-100 text-emerald-800',
                                   aiRecord.muc_do_tong_the === 'canh_bao' && 'bg-amber-100 text-amber-800',
                                   aiRecord.muc_do_tong_the === 'rui_ro' && 'bg-rose-100 text-rose-800'
                                 )}
                               >
-                                {aiRecord.diem_hieu_suat}/100
+                                {aiRecord.diem_hieu_suat} điểm
                               </span>
-                              <p className="text-slate-600 truncate text-xs leading-normal">
+                              <p className="text-slate-700 text-sm truncate leading-relaxed">
                                 {aiRecord.nhan_dinh_chung}
                               </p>
                             </div>
                           ) : (
-                            <span className="text-slate-400 italic text-xs">Chưa có đánh giá</span>
+                            <span className="text-slate-400 italic text-sm">Chưa có nhận định</span>
                           )}
                         </td>
 
-                        {/* Cột 7: Nút xem */}
-                        <td className="py-3 px-4 text-right">
+                        {/* Cột 7: Nút chi tiết */}
+                        <td className="py-4 px-4 text-right">
                           <span className="text-xs text-[#185942] font-semibold opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5">
                             Chi tiết <ChevronRight className="w-3.5 h-3.5" />
                           </span>
@@ -670,47 +582,46 @@ export default function TrangTongQuanLanhDao() {
                   <div
                     key={ns.id}
                     onClick={() => setNhanSuDangChon(ns)}
-                    className="p-3.5 hover:bg-slate-50/90 transition-all cursor-pointer space-y-2.5"
+                    className="p-4 hover:bg-slate-50/90 transition-all cursor-pointer space-y-3"
                   >
-                    {/* Hàng 1: Avatar, Tên & Điểm AI */}
+                    {/* Hàng 1: Avatar, Tên & Điểm đánh giá */}
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0">
                         <DaiDien
                           anh={ns.url_anh_dai_dien || ''}
                           ten={ns.ho_va_ten || 'NV'}
-                          className="w-10 h-10 text-xs font-semibold ring-1 ring-slate-200 shrink-0"
+                          className="w-11 h-11 text-sm font-semibold ring-1 ring-slate-200 shrink-0"
                         />
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-sm text-slate-800 truncate">
+                            <span className="font-bold text-base text-slate-900 truncate">
                               {ns.ho_va_ten}
                             </span>
-                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 shrink-0">
+                            <span className="text-xs font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 shrink-0">
                               {ns.ma_nhan_vien || ns.id.slice(0, 5)}
                             </span>
                           </div>
-                          <p className="text-[11px] font-bold text-emerald-700 mt-0.5">
+                          <p className="text-xs font-bold text-emerald-700 mt-0.5">
                             {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
                           </p>
                         </div>
                       </div>
 
-                      {/* Điểm AI */}
+                      {/* Điểm đánh giá */}
                       {aiRecord ? (
                         <span
                           className={cn(
-                            'text-[11px] font-black px-2 py-0.5 rounded-lg inline-flex items-center gap-1 shrink-0',
+                            'text-xs font-bold px-2 py-0.5 rounded-lg shrink-0',
                             aiRecord.muc_do_tong_the === 'tot' && 'bg-emerald-100 text-emerald-800',
                             aiRecord.muc_do_tong_the === 'canh_bao' && 'bg-amber-100 text-amber-800',
                             aiRecord.muc_do_tong_the === 'rui_ro' && 'bg-rose-100 text-rose-800'
                           )}
                         >
-                          <Sparkles className="w-3 h-3" />
-                          {aiRecord.diem_hieu_suat}/100
+                          {aiRecord.diem_hieu_suat} điểm
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg font-medium shrink-0">
-                          Chưa phân tích
+                        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg font-medium shrink-0">
+                          Chưa có nhận định
                         </span>
                       )}
                     </div>
@@ -727,10 +638,10 @@ export default function TrangTongQuanLanhDao() {
                             danhSachDuAn: duAnCuaNS
                           });
                         }}
-                        className="bg-slate-50 border border-slate-200/80 px-2 py-1.5 rounded-xl text-center hover:bg-slate-100 transition-colors"
+                        className="bg-slate-50 border border-slate-200/80 px-2 py-2 rounded-xl text-center hover:bg-slate-100 transition-colors"
                       >
-                        <p className="text-[9.5px] uppercase font-bold text-slate-400">Dự án</p>
-                        <p className="text-sm font-black text-slate-800">{duAnCuaNS.length}</p>
+                        <p className="text-[10px] uppercase font-bold text-slate-400">Dự án</p>
+                        <p className="text-base font-black text-slate-800">{duAnCuaNS.length}</p>
                       </button>
 
                       <button
@@ -744,14 +655,14 @@ export default function TrangTongQuanLanhDao() {
                           });
                         }}
                         className={cn(
-                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
+                          'border px-2 py-2 rounded-xl text-center transition-colors',
                           dsTiemNangCuaNS.length > 0
                             ? 'bg-amber-50/70 border-amber-200/80 text-amber-800 hover:bg-amber-100'
                             : 'bg-slate-50 border-slate-200/80 text-slate-400'
                         )}
                       >
-                        <p className="text-[9.5px] uppercase font-bold text-amber-600">Tiềm năng</p>
-                        <p className="text-sm font-black text-amber-700">{dsTiemNangCuaNS.length}</p>
+                        <p className="text-[10px] uppercase font-bold text-amber-600">Tiềm năng</p>
+                        <p className="text-base font-black text-amber-700">{dsTiemNangCuaNS.length}</p>
                       </button>
 
                       <button
@@ -765,20 +676,20 @@ export default function TrangTongQuanLanhDao() {
                           });
                         }}
                         className={cn(
-                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
+                          'border px-2 py-2 rounded-xl text-center transition-colors',
                           dsSapKyCuaNS.length > 0
                             ? 'bg-purple-50/70 border-purple-200/80 text-purple-800 hover:bg-purple-100'
                             : 'bg-slate-50 border-slate-200/80 text-slate-400'
                         )}
                       >
-                        <p className="text-[9.5px] uppercase font-bold text-purple-600">Sắp ký HĐ</p>
-                        <p className="text-sm font-black text-purple-700">{dsSapKyCuaNS.length}</p>
+                        <p className="text-[10px] uppercase font-bold text-purple-600">Sắp ký HĐ</p>
+                        <p className="text-base font-black text-purple-700">{dsSapKyCuaNS.length}</p>
                       </button>
                     </div>
 
-                    {/* Hàng 3: Nhận định AI tóm tắt */}
+                    {/* Hàng 3: Nhận định tóm tắt */}
                     {aiRecord && (
-                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed bg-slate-50/80 p-2 rounded-xl border border-slate-100">
+                      <p className="text-sm text-slate-700 line-clamp-2 leading-relaxed bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
                         {aiRecord.nhan_dinh_chung}
                       </p>
                     )}
@@ -790,7 +701,7 @@ export default function TrangTongQuanLanhDao() {
         )}
       </div>
 
-      {/* 5. Drawer Xem chi tiết Đánh giá AI */}
+      {/* 4. Drawer Xem chi tiết Đánh giá */}
       <DrawerChiTietDanhGia
         nhanSu={nhanSuDangChon}
         danhGiaHienTai={
@@ -813,7 +724,7 @@ export default function TrangTongQuanLanhDao() {
         }}
       />
 
-      {/* 6. Modal Drill-down hiển thị danh sách dự án khi nhấp vào chỉ số tổng hợp */}
+      {/* 5. Modal Drill-down hiển thị danh sách dự án khi nhấp vào chỉ số tổng hợp */}
       {duAnModal?.mo && (
         <ModalDanhSachDuAn
           tieuDe={duAnModal.tieuDe}

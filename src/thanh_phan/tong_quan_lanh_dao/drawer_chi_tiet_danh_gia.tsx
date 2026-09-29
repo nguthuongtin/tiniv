@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   X,
   Sparkles,
@@ -189,13 +190,8 @@ export default function DrawerChiTietDanhGia({
               disabled={dangChayAI}
               className="bg-[#185942] hover:bg-[#134634] text-xs font-semibold shadow-xs py-1.5 px-2.5 sm:px-3 sm:py-2"
             >
-              {dangChayAI ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1 sm:mr-1.5" />
-              ) : (
-                <Sparkles className="w-3.5 h-3.5 mr-1 sm:mr-1.5 text-amber-300" />
-              )}
-              <span className="hidden xs:inline">{dangChayAI ? 'Đang chạy...' : 'Phân tích AI'}</span>
-              <span className="xs:hidden">{dangChayAI ? '...' : 'AI'}</span>
+              <RefreshCw className={cn("w-3.5 h-3.5 mr-1 sm:mr-1.5", dangChayAI && "animate-spin")} />
+              <span>{dangChayAI ? 'Đang cập nhật...' : 'Cập nhật đánh giá'}</span>
             </Nut>
 
             <button
@@ -250,8 +246,8 @@ export default function DrawerChiTietDanhGia({
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             )}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            Nhận định AI
+            <FileText className="w-3.5 h-3.5" />
+            Đánh giá chi tiết
           </button>
           <button
             type="button"
@@ -387,8 +383,7 @@ export default function DrawerChiTietDanhGia({
                   </div>
                   <h4 className="font-semibold text-slate-800 text-sm">Chưa có đánh giá hôm nay</h4>
                   <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    Bấm nút &quot;Phân tích AI&quot; ở góc trên để hệ thống tự động gom Kế hoạch, Báo
-                    cáo ngày và Dự án của nhân sự này để phân tích ngay.
+                    Bấm nút bên dưới để hệ thống đối chiếu Kế hoạch, Báo cáo ngày và Hồ sơ Dự án của nhân sự để đưa ra nhận định ngay.
                   </p>
                   <Nut
                     kieu="primary"
@@ -396,12 +391,8 @@ export default function DrawerChiTietDanhGia({
                     disabled={dangChayAI}
                     className="bg-[#185942] hover:bg-[#134634] text-xs font-semibold shadow-xs mx-auto"
                   >
-                    {dangChayAI ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                    ) : (
-                      <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
-                    )}
-                    Bắt đầu phân tích AI
+                    <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", dangChayAI && "animate-spin")} />
+                    {dangChayAI ? 'Đang cập nhật...' : 'Bắt đầu đánh giá'}
                   </Nut>
                 </div>
               )}
@@ -420,12 +411,13 @@ export default function DrawerChiTietDanhGia({
               ) : (
                 <div className="space-y-2">
                   {dsDuAnPhuTrach.map((da) => (
-                    <div
+                    <Link
                       key={da.id}
-                      className="p-3 bg-white rounded-xl border border-slate-200 hover:border-slate-300 shadow-2xs space-y-1.5"
+                      href={`/ho-so-du-an/${da.id}`}
+                      className="block p-3 bg-white rounded-xl border border-slate-200 hover:border-[#185942]/40 hover:shadow-xs transition-all space-y-1.5"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <span className="font-semibold text-xs text-slate-800 leading-snug">
+                        <span className="font-semibold text-xs text-slate-800 leading-snug group-hover:text-[#185942]">
                           {da.ten_du_an}
                         </span>
                         <span className="font-mono text-[10px] text-slate-400 shrink-0">
@@ -452,7 +444,7 @@ export default function DrawerChiTietDanhGia({
                           </span>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

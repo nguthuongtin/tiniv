@@ -106,22 +106,21 @@ export default function ModalDanhSachDuAn({
                       </span>
                       <Link
                         href={`/ho-so-du-an/${da.id}`}
-                        target="_blank"
-                        className="font-bold text-sm text-slate-800 hover:text-[#185942] transition-colors truncate"
+                        className="font-bold text-base text-slate-800 hover:text-[#185942] transition-colors truncate"
                       >
                         {da.ten_du_an}
                       </Link>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap text-xs text-slate-500">
+                    <div className="flex items-center gap-2.5 flex-wrap text-sm text-slate-600">
                       {nguoiPhuTrach && (
-                        <span className="inline-flex items-center gap-1 font-medium text-slate-600">
-                          <User className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="inline-flex items-center gap-1 font-medium text-slate-700">
+                          <User className="w-4 h-4 text-slate-400" />
                           {nguoiPhuTrach.ho_va_ten}
                         </span>
                       )}
                       <span>•</span>
-                      <span className="font-semibold text-emerald-700">
+                      <span className="font-bold text-emerald-700">
                         {DINH_DANG_TIEN_NGAN_GON(Number(da.gia_tri_du_kien) || 0)}
                       </span>
                     </div>
@@ -153,9 +152,8 @@ export default function ModalDanhSachDuAn({
                     {/* Nút mở dự án */}
                     <Link
                       href={`/ho-so-du-an/${da.id}`}
-                      target="_blank"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-[#185942] hover:bg-slate-100 transition-colors"
-                      title="Mở chi tiết dự án"
+                      className="p-2 rounded-lg text-slate-400 hover:text-[#185942] hover:bg-slate-100 transition-colors"
+                      title="Xem chi tiết dự án"
                     >
                       <ArrowUpRight className="w-4 h-4" />
                     </Link>
