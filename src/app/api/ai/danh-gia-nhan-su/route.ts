@@ -47,6 +47,12 @@ export async function POST(req: Request) {
       }
       danhSachNhanSuCanChay.push({ id: snap.id, ...snap.data() });
     } else {
+      // Lấy danh sách ID phòng ban thuộc nhóm "Kinh doanh"
+      const pbSnap = await db.collection('phong_ban').get();
+      const kinhDoanhIds = pbSnap.docs
+        .filter((d) => (d.data().ten_phong_ban || d.data().ten || '').toLowerCase().includes('kinh doanh'))
+        .map((d) => d.id);
+
       // Lấy tất cả nhân sự đang hoạt động
       const snap = await db
         .collection('nhan_su')
@@ -55,7 +61,10 @@ export async function POST(req: Request) {
 
       danhSachNhanSuCanChay = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((ns: any) => ns.trang_thai_du_lieu !== 'da_xoa');
+        .filter((ns: any) => 
+          ns.trang_thai_du_lieu !== 'da_xoa' && 
+          kinhDoanhIds.includes(ns.phong_ban_id) // Chỉ lấy nhân viên phòng Kinh doanh
+        );
     }
 
     if (danhSachNhanSuCanChay.length === 0) {
