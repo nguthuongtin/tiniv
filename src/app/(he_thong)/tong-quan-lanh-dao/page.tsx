@@ -868,15 +868,18 @@ export default function TrangTongQuanLanhDao() {
                           });
                         }}
                         className={cn(
-                          'border px-2 py-1.5 rounded-xl text-center transition-colors col-span-2 sm:col-span-1',
+                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
                           dsDiaBan.length > 0
                             ? 'bg-indigo-50/70 border-indigo-200/80 text-indigo-800 hover:bg-indigo-100'
                             : 'bg-slate-50 border-slate-200/80 text-slate-400'
                         )}
                       >
-                        <p className="text-[10px] uppercase font-bold text-indigo-600">KH tháng</p>
+                        <p className="text-[10px] uppercase font-bold text-indigo-600 flex items-center justify-center gap-0.5">
+                          <Target className="w-2.5 h-2.5" />
+                          <span>KH tháng</span>
+                        </p>
                         <p className="text-sm font-black text-indigo-800">
-                          {dsDiaBan.length > 0 ? `${dsDiaBan.length} MT` : '—'}
+                          {dsDiaBan.length}
                         </p>
                       </button>
                     </div>
