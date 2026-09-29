@@ -23,7 +23,8 @@ import {
   SlidersHorizontal,
   ExternalLink,
   Layers,
-  FileCheck
+  FileCheck,
+  Target
 } from 'lucide-react';
 import { useStoreXacThuc } from '../../../thu_vien/zustand/store_xac_thuc';
 import { coQuyen, layPhamViPhongBan } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
@@ -43,8 +44,15 @@ import {
   langNgheThayDoiAIDanhGia,
   kichHoatAIDanhGia
 } from '../../../dich_vu/ai_danh_gia/dich_vu_ai_danh_gia';
+import type { KeHoachTuan, KeHoachThang } from '../../../thu_vien/types/ke_hoach';
+import {
+  danhSachKeHoachTuanTheoFilter,
+  danhSachKeHoachThangTheoFilter,
+  layTuanFromDateISO
+} from '../../../dich_vu/ke_hoach/dich_vu_ke_hoach';
 import DrawerChiTietDanhGia from '../../../thanh_phan/tong_quan_lanh_dao/drawer_chi_tiet_danh_gia';
 import ModalDanhSachDuAn from '../../../thanh_phan/tong_quan_lanh_dao/modal_danh_sach_du_an';
+import ModalChiTietKeHoach from '../../../thanh_phan/tong_quan_lanh_dao/modal_chi_tiet_ke_hoach';
 
 export default function TrangTongQuanLanhDao() {
   const { nguoiDungHienTai } = useStoreXacThuc();
@@ -56,12 +64,13 @@ export default function TrangTongQuanLanhDao() {
   const [dsChiNhanh, setDsChiNhanh] = useState<ChiNhanh[]>([]);
   const [dsPhongBan, setDsPhongBan] = useState<PhongBan[]>([]);
   const [dsDanhGiaAI, setDsDanhGiaAI] = useState<AIDanhGiaNhanSu[]>([]);
+  const [dsKeHoachTuan, setDsKeHoachTuan] = useState<KeHoachTuan[]>([]);
+  const [dsKeHoachThang, setDsKeHoachThang] = useState<KeHoachThang[]>([]);
 
   // State bộ lọc (mặc định theo ngày hiện tại giờ Việt Nam)
   const [ngayChon, setNgayChon] = useState<string>(() =>
     new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
   );
-
 
   // State tương tác AI & Drawer & Modal Drill-down
   const [dangChayAITatCa, setDangChayAITatCa] = useState(false);
@@ -71,6 +80,14 @@ export default function TrangTongQuanLanhDao() {
     tieuDe: string;
     moTaPhu?: string;
     danhSachDuAn: HoSoDuAn[];
+  } | null>(null);
+  const [keHoachModal, setKeHoachModal] = useState<{
+    mo: boolean;
+    loai: 'tuan' | 'thang';
+    tieuDe: string;
+    nhanVienTen: string;
+    keHoachTuan?: KeHoachTuan | null;
+    keHoachThang?: KeHoachThang | null;
   } | null>(null);
 
   // 1. Kiểm tra phân quyền truy cập
@@ -100,12 +117,17 @@ export default function TrangTongQuanLanhDao() {
   const taiToanBoDuLieu = async () => {
     setDangTai(true);
     try {
-      const [resNS, resDA, resCN, resPB, resAI] = await Promise.all([
+      const tuanHienTai = layTuanFromDateISO(ngayChon);
+      const thangHienTai = ngayChon.slice(0, 7);
+
+      const [resNS, resDA, resCN, resPB, resAI, resKHTuan, resKHThang] = await Promise.all([
         danhSachNhanSu(),
         danhSachHoSoDuAn(),
         danhSachChiNhanh(),
         danhSachPhongBan(),
-        danhSachAIDanhGia(ngayChon)
+        danhSachAIDanhGia(ngayChon),
+        danhSachKeHoachTuanTheoFilter(tuanHienTai),
+        danhSachKeHoachThangTheoFilter(thangHienTai)
       ]);
 
       const mangNS = Array.isArray(resNS) ? resNS : resNS?.mang || [];
@@ -118,6 +140,8 @@ export default function TrangTongQuanLanhDao() {
       setDsChiNhanh(mangCN.filter((cn: ChiNhanh) => cn.trang_thai_du_lieu !== 'da_xoa'));
       setDsPhongBan(mangPB.filter((pb: PhongBan) => pb.trang_thai_du_lieu !== 'da_xoa'));
       setDsDanhGiaAI(resAI);
+      setDsKeHoachTuan(resKHTuan || []);
+      setDsKeHoachThang(resKHThang || []);
     } catch (e) {
       console.error('Lỗi khi tải dữ liệu lãnh đạo:', e);
     } finally {
@@ -399,17 +423,19 @@ export default function TrangTongQuanLanhDao() {
         ) : (
           <>
             {/* GIAO DIỆN BẢNG TRÊN PC (Desktop Table - Cột rõ ràng, chữ to ngay ngắn) */}
-            <div className="hidden lg:block overflow-x-auto">
+            <div className="hidden xl:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/80 text-slate-500 font-bold uppercase tracking-wider text-xs border-b border-slate-200/80">
-                    <th className="py-3.5 px-5 w-[260px]">Nhân viên</th>
-                    <th className="py-3.5 px-3 text-center w-[110px]">Dự án</th>
-                    <th className="py-3.5 px-3 text-center w-[120px]">Tiềm năng</th>
-                    <th className="py-3.5 px-3 text-center w-[120px]">Sắp ký HĐ</th>
-                    <th className="py-3.5 px-5 text-right w-[150px]">Giá trị dự kiến</th>
-                    <th className="py-3.5 px-5">Nhận định tổng quan</th>
-                    <th className="py-3.5 px-4 text-right w-[90px]"></th>
+                    <th className="py-3.5 px-4 w-[220px]">Nhân viên</th>
+                    <th className="py-3.5 px-2 text-center w-[75px]">Dự án</th>
+                    <th className="py-3.5 px-2 text-center w-[85px]">Tiềm năng</th>
+                    <th className="py-3.5 px-2 text-center w-[85px]">Sắp ký HĐ</th>
+                    <th className="py-3.5 px-3 text-right w-[125px]">Giá trị dự kiến</th>
+                    <th className="py-3.5 px-3 text-center w-[120px]">Tổng hợp KH tuần</th>
+                    <th className="py-3.5 px-3 text-center w-[130px]">KH tháng tổng hợp</th>
+                    <th className="py-3.5 px-2 text-center w-[85px]">Điểm</th>
+                    <th className="py-3.5 px-4">Hành động cần làm</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -427,56 +453,61 @@ export default function TrangTongQuanLanhDao() {
                     );
                     const aiRecord = dsDanhGiaAI.find((d) => d.nhan_vien_id === ns.id);
 
+                    // Kế hoạch tuần & tháng
+                    const khTuan = dsKeHoachTuan.find((k) => k.nhan_vien_id === ns.id);
+                    const dsTacChien = khTuan?.danh_sach_tac_chien || [];
+                    const soTuanXong = dsTacChien.filter((x) => x.da_hoan_thanh).length;
+
+                    const khThang = dsKeHoachThang.find((k) => k.nhan_vien_id === ns.id);
+                    const dsDiaBan = khThang?.danh_sach_dia_ban || [];
+
                     return (
                       <tr
                         key={ns.id}
-                        onClick={() => setNhanSuDangChon(ns)}
-                        className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
+                        className="hover:bg-slate-50/90 transition-colors group"
                       >
                         {/* Cột 1: Nhân viên */}
-                        <td className="py-4 px-5">
+                        <td className="py-3.5 px-4">
                           <div className="flex items-center gap-3">
                             <DaiDien
                               anh={ns.url_anh_dai_dien || ''}
                               ten={ns.ho_va_ten || 'NV'}
-                              className="w-10 h-10 text-xs font-bold ring-1 ring-slate-200 shrink-0"
+                              className="w-9 h-9 text-xs font-bold ring-1 ring-slate-200 shrink-0"
                             />
                             <div className="min-w-0">
-                              <p className="font-bold text-base text-slate-900 group-hover:text-[#185942] transition-colors truncate">
+                              <p className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-[#185942] transition-colors truncate">
                                 {ns.ho_va_ten}
                               </p>
-                              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                              <p className="text-xs text-slate-400 font-mono">
                                 {ns.ma_nhan_vien || ns.id.slice(0, 5)}
                               </p>
                             </div>
                           </div>
                         </td>
 
-                        {/* Cột 2: Dự án phụ trách (Nhấp xem chi tiết) */}
-                        <td className="py-4 px-3 text-center">
+                        {/* Cột 2: Dự án phụ trách */}
+                        <td className="py-3.5 px-2 text-center">
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={() => {
                               setDuAnModal({
                                 mo: true,
                                 tieuDe: `Dự án phụ trách • ${ns.ho_va_ten}`,
                                 danhSachDuAn: duAnCuaNS
                               });
                             }}
-                            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition-colors cursor-pointer text-sm"
+                            className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition-colors cursor-pointer text-xs"
                             title="Xem danh sách dự án"
                           >
                             {duAnCuaNS.length}
                           </button>
                         </td>
 
-                        {/* Cột 3: Tiềm năng cao (Nhấp xem chi tiết) */}
-                        <td className="py-4 px-3 text-center">
+                        {/* Cột 3: Tiềm năng cao */}
+                        <td className="py-3.5 px-2 text-center">
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={() => {
                               setDuAnModal({
                                 mo: true,
                                 tieuDe: `Dự án tiềm năng cao • ${ns.ho_va_ten}`,
@@ -484,24 +515,23 @@ export default function TrangTongQuanLanhDao() {
                               });
                             }}
                             className={cn(
-                              'px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer text-sm inline-flex items-center gap-1',
+                              'px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer text-xs inline-flex items-center gap-1',
                               dsTiemNangCuaNS.length > 0
                                 ? 'bg-amber-100/90 hover:bg-amber-200 text-amber-800'
                                 : 'bg-slate-100 text-slate-400'
                             )}
                             title="Xem danh sách dự án tiềm năng"
                           >
-                            {dsTiemNangCuaNS.length > 0 && <Flame className="w-3.5 h-3.5 text-amber-600" />}
+                            {dsTiemNangCuaNS.length > 0 && <Flame className="w-3 h-3 text-amber-600" />}
                             <span>{dsTiemNangCuaNS.length}</span>
                           </button>
                         </td>
 
-                        {/* Cột 4: Sắp ký HĐ (Nhấp xem chi tiết) */}
-                        <td className="py-4 px-3 text-center">
+                        {/* Cột 4: Sắp ký HĐ */}
+                        <td className="py-3.5 px-2 text-center">
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={() => {
                               setDuAnModal({
                                 mo: true,
                                 tieuDe: `Dự án sắp ký hợp đồng • ${ns.ho_va_ten}`,
@@ -509,51 +539,111 @@ export default function TrangTongQuanLanhDao() {
                               });
                             }}
                             className={cn(
-                              'px-3 py-1.5 rounded-xl font-bold transition-colors cursor-pointer text-sm inline-flex items-center gap-1',
+                              'px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer text-xs inline-flex items-center gap-1',
                               dsSapKyCuaNS.length > 0
                                 ? 'bg-purple-100/90 hover:bg-purple-200 text-purple-800'
                                 : 'bg-slate-100 text-slate-400'
                             )}
                             title="Xem danh sách dự án sắp ký"
                           >
-                            {dsSapKyCuaNS.length > 0 && <Award className="w-3.5 h-3.5 text-purple-600" />}
+                            {dsSapKyCuaNS.length > 0 && <Award className="w-3 h-3 text-purple-600" />}
                             <span>{dsSapKyCuaNS.length}</span>
                           </button>
                         </td>
 
                         {/* Cột 5: Giá trị dự kiến */}
-                        <td className="py-4 px-5 text-right font-bold text-sm text-emerald-700">
+                        <td className="py-3.5 px-3 text-right font-bold text-xs sm:text-sm text-emerald-700">
                           {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
                         </td>
 
-                        {/* Cột 6: Nhận định tổng quan */}
-                        <td className="py-4 px-5">
-                          {aiRecord ? (
-                            <div className="flex items-center gap-2.5 max-w-lg">
-                              <span
-                                className={cn(
-                                  'text-xs font-bold px-2 py-0.5 rounded-lg shrink-0',
-                                  aiRecord.muc_do_tong_the === 'tot' && 'bg-emerald-100 text-emerald-800',
-                                  aiRecord.muc_do_tong_the === 'canh_bao' && 'bg-amber-100 text-amber-800',
-                                  aiRecord.muc_do_tong_the === 'rui_ro' && 'bg-rose-100 text-rose-800'
-                                )}
-                              >
-                                {aiRecord.diem_hieu_suat} điểm
-                              </span>
-                              <p className="text-slate-700 text-sm truncate leading-relaxed">
-                                {aiRecord.nhan_dinh_chung}
-                              </p>
-                            </div>
+                        {/* Cột 6: Tổng hợp KH tuần */}
+                        <td className="py-3.5 px-3 text-center">
+                          {dsTacChien.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setKeHoachModal({
+                                  mo: true,
+                                  loai: 'tuan',
+                                  tieuDe: `Kế hoạch tuần ${layTuanFromDateISO(ngayChon)}`,
+                                  nhanVienTen: ns.ho_va_ten,
+                                  keHoachTuan: khTuan
+                                });
+                              }}
+                              className={cn(
+                                'px-2.5 py-1 rounded-xl text-xs font-bold transition-colors cursor-pointer inline-flex items-center gap-1',
+                                soTuanXong === dsTacChien.length
+                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
+                                  : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+                              )}
+                              title="Bấm để xem chi tiết kế hoạch tuần"
+                            >
+                              <Calendar className="w-3 h-3" />
+                              <span>{soTuanXong}/{dsTacChien.length} việc</span>
+                            </button>
                           ) : (
-                            <span className="text-slate-400 italic text-sm">Chưa có nhận định</span>
+                            <span className="text-slate-400 text-xs italic">Chưa lập</span>
                           )}
                         </td>
 
-                        {/* Cột 7: Nút chi tiết */}
-                        <td className="py-4 px-4 text-right">
-                          <span className="text-xs text-[#185942] font-semibold opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5">
-                            Chi tiết <ChevronRight className="w-3.5 h-3.5" />
-                          </span>
+                        {/* Cột 7: KH tháng tổng hợp */}
+                        <td className="py-3.5 px-3 text-center">
+                          {dsDiaBan.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setKeHoachModal({
+                                  mo: true,
+                                  loai: 'thang',
+                                  tieuDe: `Kế hoạch tháng ${ngayChon.slice(0, 7)}`,
+                                  nhanVienTen: ns.ho_va_ten,
+                                  keHoachThang: khThang
+                                });
+                              }}
+                              className="px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer inline-flex items-center gap-1"
+                              title="Bấm để xem chi tiết kế hoạch tháng"
+                            >
+                              <Target className="w-3 h-3" />
+                              <span>{dsDiaBan.length} mục tiêu</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 text-xs italic">Chưa lập</span>
+                          )}
+                        </td>
+
+                        {/* Cột 8: Điểm (Dạng 50/100, bấm vào ra thông tin đánh giá) */}
+                        <td className="py-3.5 px-2 text-center">
+                          {aiRecord ? (
+                            <button
+                              type="button"
+                              onClick={() => setNhanSuDangChon(ns)}
+                              className={cn(
+                                'px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer border hover:scale-105',
+                                aiRecord.muc_do_tong_the === 'tot' &&
+                                  'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100',
+                                aiRecord.muc_do_tong_the === 'canh_bao' &&
+                                  'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100',
+                                aiRecord.muc_do_tong_the === 'rui_ro' &&
+                                  'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                              )}
+                              title="Bấm để xem thông tin đánh giá"
+                            >
+                              {aiRecord.diem_hieu_suat}/100
+                            </button>
+                          ) : (
+                            <span className="text-slate-300 text-xs italic">—</span>
+                          )}
+                        </td>
+
+                        {/* Cột 9: 1 câu tóm ngắn gọn hành động cần làm */}
+                        <td className="py-3.5 px-4">
+                          {aiRecord ? (
+                            <p className="text-slate-700 text-xs sm:text-sm font-medium line-clamp-2 leading-relaxed">
+                              {aiRecord.de_xuat_cho_quan_ly || aiRecord.nhan_dinh_chung}
+                            </p>
+                          ) : (
+                            <span className="text-slate-400 italic text-xs">Chưa có hành động đề xuất</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -562,8 +652,8 @@ export default function TrangTongQuanLanhDao() {
               </table>
             </div>
 
-            {/* GIAO DIỆN THẺ TRÊN MOBILE (Responsive Cards) */}
-            <div className="lg:hidden divide-y divide-slate-100">
+            {/* GIAO DIỆN THẺ TRÊN TABLET & MOBILE (Responsive Cards) */}
+            <div className="xl:hidden divide-y divide-slate-100">
               {dsNhanSuHienThi.map((ns) => {
                 const duAnCuaNS = dsDuAn.filter((da) => da.nguoi_phu_trach_id === ns.id);
                 const dsTiemNangCuaNS = duAnCuaNS.filter((da) =>
@@ -578,13 +668,19 @@ export default function TrangTongQuanLanhDao() {
                 );
                 const aiRecord = dsDanhGiaAI.find((d) => d.nhan_vien_id === ns.id);
 
+                const khTuan = dsKeHoachTuan.find((k) => k.nhan_vien_id === ns.id);
+                const dsTacChien = khTuan?.danh_sach_tac_chien || [];
+                const soTuanXong = dsTacChien.filter((x) => x.da_hoan_thanh).length;
+
+                const khThang = dsKeHoachThang.find((k) => k.nhan_vien_id === ns.id);
+                const dsDiaBan = khThang?.danh_sach_dia_ban || [];
+
                 return (
                   <div
                     key={ns.id}
-                    onClick={() => setNhanSuDangChon(ns)}
-                    className="p-4 hover:bg-slate-50/90 transition-all cursor-pointer space-y-3"
+                    className="p-4 hover:bg-slate-50/90 transition-all space-y-3"
                   >
-                    {/* Hàng 1: Avatar, Tên & Điểm đánh giá */}
+                    {/* Hàng 1: Avatar, Tên & Điểm đánh giá (bấm ô điểm ra thông tin đánh giá) */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
                         <DaiDien
@@ -607,18 +703,24 @@ export default function TrangTongQuanLanhDao() {
                         </div>
                       </div>
 
-                      {/* Điểm đánh giá */}
+                      {/* Điểm dạng 50/100 */}
                       {aiRecord ? (
-                        <span
+                        <button
+                          type="button"
+                          onClick={() => setNhanSuDangChon(ns)}
                           className={cn(
-                            'text-xs font-bold px-2 py-0.5 rounded-lg shrink-0',
-                            aiRecord.muc_do_tong_the === 'tot' && 'bg-emerald-100 text-emerald-800',
-                            aiRecord.muc_do_tong_the === 'canh_bao' && 'bg-amber-100 text-amber-800',
-                            aiRecord.muc_do_tong_the === 'rui_ro' && 'bg-rose-100 text-rose-800'
+                            'px-2.5 py-1 rounded-lg text-xs font-black border transition-transform active:scale-95 shrink-0',
+                            aiRecord.muc_do_tong_the === 'tot' &&
+                              'bg-emerald-50 text-emerald-800 border-emerald-200',
+                            aiRecord.muc_do_tong_the === 'canh_bao' &&
+                              'bg-amber-50 text-amber-800 border-amber-200',
+                            aiRecord.muc_do_tong_the === 'rui_ro' &&
+                              'bg-rose-50 text-rose-800 border-rose-200'
                           )}
+                          title="Bấm để xem thông tin đánh giá"
                         >
-                          {aiRecord.diem_hieu_suat} điểm
-                        </span>
+                          {aiRecord.diem_hieu_suat}/100
+                        </button>
                       ) : (
                         <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg font-medium shrink-0">
                           Chưa có nhận định
@@ -626,28 +728,26 @@ export default function TrangTongQuanLanhDao() {
                       )}
                     </div>
 
-                    {/* Hàng 2: Ba nút chỉ số nhấp được (Dự án, Tiềm năng, Sắp ký) */}
-                    <div className="grid grid-cols-3 gap-2">
+                    {/* Hàng 2: Các nút chỉ số nhấp được (Dự án, Tiềm năng, Sắp ký, KH tuần, KH tháng) */}
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={() => {
                           setDuAnModal({
                             mo: true,
                             tieuDe: `Dự án phụ trách • ${ns.ho_va_ten}`,
                             danhSachDuAn: duAnCuaNS
                           });
                         }}
-                        className="bg-slate-50 border border-slate-200/80 px-2 py-2 rounded-xl text-center hover:bg-slate-100 transition-colors"
+                        className="bg-slate-50 border border-slate-200/80 px-2 py-1.5 rounded-xl text-center hover:bg-slate-100 transition-colors"
                       >
                         <p className="text-[10px] uppercase font-bold text-slate-400">Dự án</p>
-                        <p className="text-base font-black text-slate-800">{duAnCuaNS.length}</p>
+                        <p className="text-sm font-black text-slate-800">{duAnCuaNS.length}</p>
                       </button>
 
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={() => {
                           setDuAnModal({
                             mo: true,
                             tieuDe: `Dự án tiềm năng cao • ${ns.ho_va_ten}`,
@@ -655,20 +755,19 @@ export default function TrangTongQuanLanhDao() {
                           });
                         }}
                         className={cn(
-                          'border px-2 py-2 rounded-xl text-center transition-colors',
+                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
                           dsTiemNangCuaNS.length > 0
                             ? 'bg-amber-50/70 border-amber-200/80 text-amber-800 hover:bg-amber-100'
                             : 'bg-slate-50 border-slate-200/80 text-slate-400'
                         )}
                       >
                         <p className="text-[10px] uppercase font-bold text-amber-600">Tiềm năng</p>
-                        <p className="text-base font-black text-amber-700">{dsTiemNangCuaNS.length}</p>
+                        <p className="text-sm font-black text-amber-700">{dsTiemNangCuaNS.length}</p>
                       </button>
 
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={() => {
                           setDuAnModal({
                             mo: true,
                             tieuDe: `Dự án sắp ký hợp đồng • ${ns.ho_va_ten}`,
@@ -676,22 +775,79 @@ export default function TrangTongQuanLanhDao() {
                           });
                         }}
                         className={cn(
-                          'border px-2 py-2 rounded-xl text-center transition-colors',
+                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
                           dsSapKyCuaNS.length > 0
                             ? 'bg-purple-50/70 border-purple-200/80 text-purple-800 hover:bg-purple-100'
                             : 'bg-slate-50 border-slate-200/80 text-slate-400'
                         )}
                       >
                         <p className="text-[10px] uppercase font-bold text-purple-600">Sắp ký HĐ</p>
-                        <p className="text-base font-black text-purple-700">{dsSapKyCuaNS.length}</p>
+                        <p className="text-sm font-black text-purple-700">{dsSapKyCuaNS.length}</p>
+                      </button>
+
+                      {/* KH tuần mobile */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (dsTacChien.length === 0) return;
+                          setKeHoachModal({
+                            mo: true,
+                            loai: 'tuan',
+                            tieuDe: `Kế hoạch tuần ${layTuanFromDateISO(ngayChon)}`,
+                            nhanVienTen: ns.ho_va_ten,
+                            keHoachTuan: khTuan
+                          });
+                        }}
+                        className={cn(
+                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
+                          dsTacChien.length > 0
+                            ? 'bg-blue-50/70 border-blue-200/80 text-blue-800 hover:bg-blue-100'
+                            : 'bg-slate-50 border-slate-200/80 text-slate-400'
+                        )}
+                      >
+                        <p className="text-[10px] uppercase font-bold text-blue-600">KH tuần</p>
+                        <p className="text-sm font-black text-blue-800">
+                          {dsTacChien.length > 0 ? `${soTuanXong}/${dsTacChien.length}` : '—'}
+                        </p>
+                      </button>
+
+                      {/* KH tháng mobile */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (dsDiaBan.length === 0) return;
+                          setKeHoachModal({
+                            mo: true,
+                            loai: 'thang',
+                            tieuDe: `Kế hoạch tháng ${ngayChon.slice(0, 7)}`,
+                            nhanVienTen: ns.ho_va_ten,
+                            keHoachThang: khThang
+                          });
+                        }}
+                        className={cn(
+                          'border px-2 py-1.5 rounded-xl text-center transition-colors col-span-2 sm:col-span-1',
+                          dsDiaBan.length > 0
+                            ? 'bg-indigo-50/70 border-indigo-200/80 text-indigo-800 hover:bg-indigo-100'
+                            : 'bg-slate-50 border-slate-200/80 text-slate-400'
+                        )}
+                      >
+                        <p className="text-[10px] uppercase font-bold text-indigo-600">KH tháng</p>
+                        <p className="text-sm font-black text-indigo-800">
+                          {dsDiaBan.length > 0 ? `${dsDiaBan.length} MT` : '—'}
+                        </p>
                       </button>
                     </div>
 
-                    {/* Hàng 3: Nhận định tóm tắt */}
+                    {/* Hàng 3: 1 câu tóm ngắn gọn hành động cần làm */}
                     {aiRecord && (
-                      <p className="text-sm text-slate-700 line-clamp-2 leading-relaxed bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
-                        {aiRecord.nhan_dinh_chung}
-                      </p>
+                      <div className="bg-slate-50/90 p-2.5 rounded-xl border border-slate-100 space-y-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Hành động cần làm:
+                        </span>
+                        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
+                          {aiRecord.de_xuat_cho_quan_ly || aiRecord.nhan_dinh_chung}
+                        </p>
+                      </div>
                     )}
                   </div>
                 );
@@ -732,6 +888,18 @@ export default function TrangTongQuanLanhDao() {
           danhSachDuAn={duAnModal.danhSachDuAn}
           danhSachNhanSu={dsNhanSu}
           onDong={() => setDuAnModal(null)}
+        />
+      )}
+
+      {/* 6. Modal Drill-down hiển thị kế hoạch tuần và tháng */}
+      {keHoachModal?.mo && (
+        <ModalChiTietKeHoach
+          loai={keHoachModal.loai}
+          tieuDe={keHoachModal.tieuDe}
+          nhanVienTen={keHoachModal.nhanVienTen}
+          keHoachTuan={keHoachModal.keHoachTuan}
+          keHoachThang={keHoachModal.keHoachThang}
+          onDong={() => setKeHoachModal(null)}
         />
       )}
     </div>
