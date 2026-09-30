@@ -28,14 +28,20 @@ import {
 } from 'lucide-react';
 
 function getTenNgan(hoVaTen?: string | null) {
-  if (!hoVaTen) return 'Trang chủ';
-  const parts = hoVaTen.trim().split(' ');
-  if (parts.length <= 2) return hoVaTen;
+  if (!hoVaTen) return 'Tài khoản';
+  const clean = hoVaTen.trim();
+  const lower = clean.toLowerCase();
+  if (lower.includes('ebms') || lower.includes('quản trị') || lower.includes('hệ thống') || lower === 'admin') {
+    return 'Quản trị';
+  }
+  const parts = clean.split(/\s+/);
+  if (parts.length <= 2) return clean;
   return parts.slice(-2).join(' ');
 }
 
 interface ThongTinTrang {
   nhan: string;
+  nhan_mobile?: string;
   mo_ta: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   nut_them?: string;
@@ -47,18 +53,35 @@ interface ThongTinTrang {
 const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
   '/': {
     nhan: 'Tổng quan',
+    nhan_mobile: 'Tổng quan',
     mo_ta: 'Bảng điều khiển hệ thống và các module chính',
     icon: Home,
     placeholder_tim: 'Tìm kiếm hồ sơ, khách hàng...'
   },
   '/tong-quan-lanh-dao': {
-    nhan: 'Tổng quan Lãnh đạo',
-    mo_ta: 'Giám sát chỉ số nhân sự, dự án trọng điểm và đánh giá hiệu suất AI',
+    nhan: 'Tổng quan Điều hành',
+    nhan_mobile: 'Tổng quan',
+    mo_ta: 'Theo dõi tiến độ đội ngũ và dự án trọng điểm',
     icon: TrendingUp,
     placeholder_tim: 'Tìm kiếm nhân sự, dự án...'
   },
+  '/lich-cong-tac': {
+    nhan: 'Lịch công tác',
+    nhan_mobile: 'Lịch hẹn',
+    mo_ta: 'Lịch hẹn gặp và làm việc với khách hàng',
+    icon: Calendar,
+    placeholder_tim: 'Tìm lịch hẹn...'
+  },
+  '/lead': {
+    nhan: 'Quản lý Lead',
+    nhan_mobile: 'Lead',
+    mo_ta: 'Tiếp cận và khai thác khách hàng tiềm năng',
+    icon: Sparkles,
+    placeholder_tim: 'Tìm kiếm Lead...'
+  },
   '/khach-hang': {
     nhan: 'Khách hàng',
+    nhan_mobile: 'Khách hàng',
     mo_ta: 'CRM — toàn bộ khách hàng và người liên hệ',
     icon: Building2,
     nut_them: 'Thêm khách hàng',
@@ -67,6 +90,7 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
   },
   '/ho-so-du-an': {
     nhan: 'Hồ sơ dự án',
+    nhan_mobile: 'Dự án',
     mo_ta: 'Theo dõi giai đoạn, giá trị và thời hạn dự án',
     icon: FolderKanban,
     nut_them: 'Tạo hồ sơ dự án',
@@ -75,6 +99,7 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
   },
   '/bao-cao-cong-viec': {
     nhan: 'Báo cáo công việc',
+    nhan_mobile: 'Báo cáo',
     mo_ta: 'Báo cáo hàng ngày nhân viên và lịch sử',
     icon: FileText,
     nut_them: 'Gửi báo cáo hôm nay',
@@ -83,6 +108,7 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
   },
   '/nhan-su': {
     nhan: 'Nhân sự',
+    nhan_mobile: 'Nhân sự',
     mo_ta: 'Quản lý tài khoản, vai trò và thông tin nhân viên',
     icon: Users,
     nut_them: 'Thêm nhân viên',
@@ -91,13 +117,15 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
   },
   '/bao-cao': {
     nhan: 'Báo cáo & Thống kê',
+    nhan_mobile: 'Thống kê',
     mo_ta: 'Bảng điều khiển tổng hợp số liệu và biểu đồ',
     icon: BarChart3,
     nut_them: 'Tải xuất',
     placeholder_tim: 'Tìm kiếm trong báo cáo...'
   },
   '/ke-hoach': {
-    nhan: 'Kế hoạch',
+    nhan: 'Kế hoạch Kinh doanh',
+    nhan_mobile: 'Kế hoạch',
     mo_ta: 'Kế hoạch Tháng và Kế hoạch Tuần',
     icon: Calendar,
     nut_them: 'Thêm kế hoạch',
@@ -106,6 +134,7 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
   },
   '/kho-tai-lieu': {
     nhan: 'Kho tài liệu',
+    nhan_mobile: 'Tài liệu',
     mo_ta: 'Thư viện liên kết, biểu mẫu và tài nguyên công ty & cá nhân',
     icon: BookOpen,
     nut_them: 'Thêm tài liệu',
@@ -114,6 +143,7 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
   },
   '/quan-tri': {
     nhan: 'Quản trị hệ thống',
+    nhan_mobile: 'Quản trị',
     mo_ta: 'Thiết lập chi nhánh, phòng ban, danh mục sản phẩm, dịch vụ và phân quyền',
     icon: Settings,
     nut_them: 'Làm mới',
@@ -122,6 +152,7 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
   },
   '/tai-khoan': {
     nhan: 'Tài khoản cá nhân',
+    nhan_mobile: 'Tài khoản',
     mo_ta: 'Quản lý thông tin cá nhân, ảnh đại diện và mật khẩu đăng nhập',
     icon: User,
     placeholder_tim: 'Tìm kiếm thiết lập...'
@@ -135,13 +166,14 @@ const timThongTinTrang = (pathname: string): { thongTin: ThongTinTrang; laChiTie
     return {
       thongTin: {
         nhan: 'Chi tiết khách hàng',
+        nhan_mobile: 'Khách hàng',
         mo_ta: 'Hồ sơ chi tiết và lịch sử tương tác',
         icon: Building2,
         placeholder_tim: '',
         parent: { nhan: 'Khách hàng', href: '/khach-hang', icon: Building2 }
       },
       laChiTiet: true,
-      tieuDeChiTiet: 'Chi tiết khách hàng'
+      tieuDeChiTiet: 'Chi tiết KH'
     };
   }
 
@@ -149,13 +181,14 @@ const timThongTinTrang = (pathname: string): { thongTin: ThongTinTrang; laChiTie
     return {
       thongTin: {
         nhan: 'Chi tiết dự án',
+        nhan_mobile: 'Chi tiết DA',
         mo_ta: 'Tiến độ, công việc và kho tài liệu',
         icon: FolderKanban,
         placeholder_tim: '',
         parent: { nhan: 'Hồ sơ dự án', href: '/ho-so-du-an', icon: FolderKanban }
       },
       laChiTiet: true,
-      tieuDeChiTiet: 'Chi tiết dự án'
+      tieuDeChiTiet: 'Chi tiết DA'
     };
   }
 
@@ -163,13 +196,14 @@ const timThongTinTrang = (pathname: string): { thongTin: ThongTinTrang; laChiTie
     return {
       thongTin: {
         nhan: 'Hồ sơ nhân viên',
+        nhan_mobile: 'Nhân sự',
         mo_ta: 'Thông tin cá nhân, phân quyền và lịch sử hoạt động',
         icon: Users,
         placeholder_tim: '',
         parent: { nhan: 'Nhân sự', href: '/nhan-su', icon: Users }
       },
       laChiTiet: true,
-      tieuDeChiTiet: 'Hồ sơ nhân viên'
+      tieuDeChiTiet: 'Nhân viên'
     };
   }
 
@@ -183,6 +217,8 @@ const timThongTinTrang = (pathname: string): { thongTin: ThongTinTrang; laChiTie
     };
   }
 
+  if (pathname.startsWith('/lich-cong-tac')) return { thongTin: MAP_TIEU_DE['/lich-cong-tac'], laChiTiet: false };
+  if (pathname.startsWith('/lead')) return { thongTin: MAP_TIEU_DE['/lead'], laChiTiet: false };
   if (pathname.startsWith('/kho-tai-lieu')) return { thongTin: MAP_TIEU_DE['/kho-tai-lieu'], laChiTiet: false };
   if (pathname.startsWith('/ke-hoach')) return { thongTin: MAP_TIEU_DE['/ke-hoach'], laChiTiet: false };
   if (pathname.startsWith('/quan-tri')) return { thongTin: MAP_TIEU_DE['/quan-tri'], laChiTiet: false };
@@ -209,12 +245,12 @@ export default function ThanhPhanTopbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 h-13 sm:h-[64px] shrink-0 bg-white/85 backdrop-blur-xl border-b border-slate-200/80 px-3.5 sm:px-6 md:px-8 flex items-center justify-between gap-3 sm:gap-5 min-w-0 w-full transition-colors">
+      <header className="sticky top-0 z-30 h-13 sm:h-[64px] shrink-0 bg-white/90 backdrop-blur-2xl border-b border-slate-200/70 px-3.5 sm:px-6 md:px-8 flex items-center justify-between gap-2 sm:gap-5 min-w-0 w-full transition-colors">
         <div className="min-w-0 flex-1 flex items-center gap-2">
           {laChiTiet && thongTin.parent && (
             <Link
               href={thongTin.parent.href}
-              className="size-8 rounded-xl bg-slate-100/90 hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0 transition-colors active:scale-95 border border-slate-200/60 shadow-2xs"
+              className="size-8 rounded-[14px] bg-slate-100/90 hover:bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 transition-colors active:scale-95 border border-slate-200/60"
               title={`Quay lại ${thongTin.parent.nhan}`}
             >
               <ChevronLeft className="size-4.5" strokeWidth={2.5} />
@@ -263,39 +299,44 @@ export default function ThanhPhanTopbar() {
             )}
           </nav>
 
-          {/* Tiêu đề thanh Topbar trên Mobile (chuẩn Mobile App tinh gọn) */}
-          <div className="sm:hidden flex items-center gap-2 min-w-0">
+          {/* Tiêu đề thanh Topbar trên Mobile (One UI 9 gọn gàng, không bị cắt chữ) */}
+          <div className="sm:hidden flex items-center gap-2.5 min-w-0">
             <button
               type="button"
               onClick={() => setMoMenuMobile(!moMenuMobile)}
-              className="size-8 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+              className="size-9 flex items-center justify-center rounded-[14px] bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 transition active:scale-95 shrink-0"
+              aria-label="Mở menu"
             >
-              <Menu className="size-4.5" strokeWidth={2.5} />
+              <Menu className="size-4.5" strokeWidth={2.4} />
             </button>
-            <span className="inline-flex items-center gap-1.5 font-bold text-slate-900 text-sm truncate tracking-tight">
-              <PageIcon className="size-4 text-[#107555] shrink-0" strokeWidth={2.2} />
-              <span className="truncate">{tieuDeChiTiet ?? thongTin.nhan}</span>
+            <span className="inline-flex items-center gap-1.5 font-extrabold text-slate-900 text-[15px] tracking-tight whitespace-nowrap">
+              <PageIcon className="size-4 text-[#107555] shrink-0" strokeWidth={2.3} />
+              <span>{tieuDeChiTiet ?? thongTin.nhan_mobile ?? thongTin.nhan}</span>
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Tên nhân sự trên Mobile/Desktop */}
-          <div className="flex items-center gap-2 pl-2 sm:pl-3 sm:border-l sm:border-slate-200/80">
-            <div className="flex flex-col items-end justify-center mr-1">
-              <span className="text-[13px] font-bold text-slate-900 leading-none">
-                <span className="hidden sm:inline">{nguoiDungHienTai?.ho_va_ten || 'Trang chủ'}</span>
+          <Link
+            href="/tai-khoan"
+            className="flex items-center gap-2 pl-2 sm:pl-3 sm:border-l sm:border-slate-200/80 py-1 rounded-full hover:bg-slate-50 transition"
+          >
+            <div className="flex flex-col items-end justify-center">
+              <span className="text-[12.5px] sm:text-[13px] font-bold text-slate-800 leading-none whitespace-nowrap">
+                <span className="hidden sm:inline">{nguoiDungHienTai?.ho_va_ten || 'Tài khoản'}</span>
                 <span className="sm:hidden">{getTenNgan(nguoiDungHienTai?.ho_va_ten)}</span>
               </span>
               <span className="hidden sm:block text-[11px] text-slate-500 font-medium mt-0.5">
                 {nguoiDungHienTai?.vai_tro === 'giam_doc' ? 'Giám đốc' : 
-                 nguoiDungHienTai?.vai_tro === 'truong_phong' ? 'Trưởng phòng' : 'Nhân viên'}
+                 nguoiDungHienTai?.vai_tro === 'truong_phong' ? 'Trưởng phòng' : 
+                 nguoiDungHienTai?.vai_tro === 'quan_tri_he_thong' ? 'Quản trị' : 'Nhân viên'}
               </span>
             </div>
-            <div className="size-8 sm:size-9 rounded-full bg-emerald-100 text-[#107555] flex items-center justify-center font-bold text-[13px] border border-emerald-200 shrink-0">
-              {nguoiDungHienTai?.ho_va_ten?.charAt(0)?.toUpperCase() || 'U'}
+            <div className="size-8 sm:size-9 rounded-[14px] bg-emerald-500/15 text-[#107555] flex items-center justify-center font-extrabold text-[13px] border border-emerald-500/20 shrink-0">
+              {getTenNgan(nguoiDungHienTai?.ho_va_ten).charAt(0).toUpperCase() || 'U'}
             </div>
-          </div>
+          </Link>
 
           <button
             type="button"
@@ -311,66 +352,96 @@ export default function ThanhPhanTopbar() {
               type="button"
               onClick={nhanNutThem}
               title={thongTin.nut_them}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold size-8.5 sm:w-auto sm:h-9.5 sm:px-3.5 shadow-sm shadow-emerald-900/10 transition-all shrink-0 active:scale-95"
+              className="hidden sm:inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold h-9.5 px-3.5 shadow-sm shadow-emerald-900/10 transition-all shrink-0 active:scale-95"
             >
               <Plus className="size-4" strokeWidth={2.5} />
-              <span className="hidden sm:inline">{thongTin.nut_them}</span>
+              <span>{thongTin.nut_them}</span>
             </button>
           )}
         </div>
       </header>
 
-      {/* Hamburger Menu Dropdown (Chỉ hiện trên Mobile) */}
+      {/* Hamburger Menu Dropdown (One UI 9 Squircle Card trên Mobile) */}
       {moMenuMobile && (
         <>
           <div 
-            className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-sm sm:hidden" 
+            className="fixed inset-0 z-40 bg-slate-900/25 backdrop-blur-xs sm:hidden" 
             onClick={() => setMoMenuMobile(false)} 
           />
-          <div className="fixed top-14 left-3 z-50 w-64 rounded-[22px] border border-slate-200/90 bg-white shadow-[0_10px_35px_rgba(0,0,0,0.12)] p-2 space-y-0.5 animate-in slide-in-from-top-2 fade-in duration-200 sm:hidden">
+          <div className="fixed top-15 left-3 z-50 w-68 rounded-[26px] border border-slate-200/90 bg-white/95 backdrop-blur-2xl shadow-[0_16px_40px_rgba(15,23,42,0.16)] p-2 space-y-1 animate-in slide-in-from-top-2 fade-in duration-200 sm:hidden">
             <Link
               href="/lead"
               onClick={() => setMoMenuMobile(false)}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-50 transition leading-relaxed active:scale-[0.98]"
+              className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
             >
-              <div className="size-9 rounded-[12px] bg-gradient-to-br from-[#007AFF] to-[#0055D4] text-white flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/20">
+              <div className="size-9 rounded-[14px] bg-blue-500/15 text-blue-600 flex items-center justify-center shrink-0">
                 <Sparkles className="size-[18px]" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-bold leading-snug">Lead</div>
+                <div className="font-bold leading-snug">Lead tiềm năng</div>
                 <div className="text-[11px] text-slate-400 leading-tight">Tiếp cận & khai thác</div>
               </div>
             </Link>
 
-            {(nguoiDungHienTai?.vai_tro === 'giam_doc' || nguoiDungHienTai?.vai_tro === 'quan_tri_he_thong') && (
-              <Link
-                href="/nhan-su"
-                onClick={() => setMoMenuMobile(false)}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-50 transition leading-relaxed active:scale-[0.98]"
-              >
-                <div className="size-9 rounded-[12px] bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-xs shadow-emerald-700/20">
-                  <UserCog className="size-[18px]" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold leading-snug">Nhân sự</div>
-                  <div className="text-[11px] text-slate-400 leading-tight">Hồ sơ & tài khoản</div>
-                </div>
-              </Link>
-            )}
+            <Link
+              href="/ke-hoach"
+              onClick={() => setMoMenuMobile(false)}
+              className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
+            >
+              <div className="size-9 rounded-[14px] bg-purple-500/15 text-purple-600 flex items-center justify-center shrink-0">
+                <Calendar className="size-[18px]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold leading-snug">Kế hoạch KD</div>
+                <div className="text-[11px] text-slate-400 leading-tight">Mục tiêu tuần & tháng</div>
+              </div>
+            </Link>
 
             <Link
               href="/kho-tai-lieu"
               onClick={() => setMoMenuMobile(false)}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-50 transition leading-relaxed active:scale-[0.98]"
+              className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
             >
-              <div className="size-9 rounded-[12px] bg-gradient-to-br from-[#FF9500] to-[#E07000] text-white flex items-center justify-center shrink-0 shadow-xs shadow-orange-500/20">
+              <div className="size-9 rounded-[14px] bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
                 <BookOpen className="size-[18px]" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-bold leading-snug">Kho tài liệu</div>
-                <div className="text-[11px] text-slate-400 leading-tight">Mẫu HĐ, Bảng giá</div>
+                <div className="text-[11px] text-slate-400 leading-tight">Biểu mẫu & Bảng giá</div>
               </div>
             </Link>
+
+            {(nguoiDungHienTai?.vai_tro === 'giam_doc' || nguoiDungHienTai?.vai_tro === 'quan_tri_he_thong' || nguoiDungHienTai?.vai_tro === 'truong_phong') && (
+              <Link
+                href="/nhan-su"
+                onClick={() => setMoMenuMobile(false)}
+                className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
+              >
+                <div className="size-9 rounded-[14px] bg-emerald-500/15 text-[#107555] flex items-center justify-center shrink-0">
+                  <UserCog className="size-[18px]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold leading-snug">Nhân sự</div>
+                  <div className="text-[11px] text-slate-400 leading-tight">Đội ngũ & tài khoản</div>
+                </div>
+              </Link>
+            )}
+
+            {(nguoiDungHienTai?.vai_tro === 'giam_doc' || nguoiDungHienTai?.vai_tro === 'quan_tri_he_thong') && (
+              <Link
+                href="/quan-tri"
+                onClick={() => setMoMenuMobile(false)}
+                className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
+              >
+                <div className="size-9 rounded-[14px] bg-slate-500/15 text-slate-700 flex items-center justify-center shrink-0">
+                  <Settings className="size-[18px]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold leading-snug">Quản trị hệ thống</div>
+                  <div className="text-[11px] text-slate-400 leading-tight">Cấu hình & phân quyền</div>
+                </div>
+              </Link>
+            )}
 
             <div className="h-px bg-slate-100 mx-2 my-1" />
             <button
@@ -379,9 +450,9 @@ export default function ThanhPhanTopbar() {
                 const ok = await thucHienDangXuat();
                 if (ok) window.location.href = '/dang-nhap';
               }}
-              className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#FF3B30] hover:bg-red-50 transition leading-relaxed active:scale-[0.98]"
+              className="w-full flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-[#FF3B30] hover:bg-red-50 transition active:scale-[0.98]"
             >
-              <div className="size-9 rounded-[12px] bg-red-100 text-[#FF3B30] flex items-center justify-center shrink-0">
+              <div className="size-9 rounded-[14px] bg-red-500/12 text-[#FF3B30] flex items-center justify-center shrink-0">
                 <LogOut className="size-[18px]" />
               </div>
               <div className="min-w-0 flex-1 text-left">

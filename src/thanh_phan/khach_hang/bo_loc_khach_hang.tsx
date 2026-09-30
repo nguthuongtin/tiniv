@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Filter, Search, XCircle, Building2, UserRound, Users, Calendar, ShieldCheck } from 'lucide-react';
+import { X, Filter, Search, XCircle, Building2, UserRound, Users, Calendar, ShieldCheck, ArrowUpDown } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { cn } from '../../thu_vien/utils/cn';
 import type { DieuKienLocKhachHang } from '../../dich_vu/khach_hang/dich_vu_khach_hang';
@@ -22,18 +22,24 @@ const CAC_TRANG_THAI: Array<{ gia_tri: DieuKienLocKhachHang['trang_thai']; nhan:
   { gia_tri: 'tat_ca', nhan: 'Tất cả trạng thái' }
 ];
 
+export type KieuSapXepKhachHang = 'moi_nhat' | 'cu_nhat' | 'ten_az';
+
 interface BoLocKhachHangProps {
   gia_tri_hien_tai: DieuKienLocKhachHang;
   khi_thay_doi: (gia_tri_moi: DieuKienLocKhachHang) => void;
   dsChiNhanh?: ChiNhanh[];
   dsNhanSu?: NhanSu[];
+  kieu_sap_xep?: KieuSapXepKhachHang;
+  khi_doi_sap_xep?: (kieu: KieuSapXepKhachHang) => void;
 }
 
 export default function BoLocKhachHang({
   gia_tri_hien_tai,
   khi_thay_doi,
   dsChiNhanh = [],
-  dsNhanSu = []
+  dsNhanSu = [],
+  kieu_sap_xep = 'moi_nhat',
+  khi_doi_sap_xep
 }: BoLocKhachHangProps) {
   const [moRong, setMoRong] = useState(false);
   const tuKhoa = gia_tri_hien_tai.tuKhoa ?? '';
@@ -66,28 +72,53 @@ export default function BoLocKhachHang({
   };
 
   return (
-    <div className="space-y-3">
+    <div>
       <div className="flex items-center gap-2">
         <div className="relative flex-1 min-w-0">
-          <Search className="size-4 pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="size-4 pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={tuKhoa}
             onChange={(e) => datGiaTri('tuKhoa', e.target.value)}
-            placeholder="Tìm kiếm tên, MST, SĐT, email khách hàng..."
-            className="w-full h-11 rounded-xl border border-slate-200/90 bg-white pl-10 pr-9 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition"
+            placeholder="Tìm tên, MST, SĐT khách hàng..."
+            className="w-full h-11 rounded-full sm:rounded-2xl border border-slate-200/90 bg-white pl-10 pr-9 text-[13px] sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition"
           />
           {tuKhoa && (
             <button
               type="button"
               onClick={() => datGiaTri('tuKhoa', '')}
               aria-label="Xóa từ khóa tìm kiếm"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
             >
               <X className="size-3.5" />
             </button>
           )}
         </div>
+
+        {/* Nút biểu tượng Sắp xếp kế nút Bộ lọc */}
+        {khi_doi_sap_xep && (
+          <div
+            title="Sắp xếp danh sách"
+            className={cn(
+              'relative size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0',
+              kieu_sap_xep !== 'moi_nhat'
+                ? 'bg-emerald-50 border-emerald-400 text-[#107555]'
+                : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_2px_8px_rgba(15,23,42,0.03)]'
+            )}
+          >
+            <ArrowUpDown className="size-[18px] pointer-events-none" />
+            <select
+              value={kieu_sap_xep}
+              onChange={(e) => khi_doi_sap_xep(e.target.value as KieuSapXepKhachHang)}
+              aria-label="Sắp xếp khách hàng"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            >
+              <option value="moi_nhat">Sắp xếp: Mới nhất</option>
+              <option value="cu_nhat">Sắp xếp: Cũ nhất</option>
+              <option value="ten_az">Sắp xếp: Tên A-Z</option>
+            </select>
+          </div>
+        )}
 
         {/* Nút biểu tượng Phễu lọc tinh gọn bên cạnh ô tìm kiếm */}
         <button
@@ -95,10 +126,10 @@ export default function BoLocKhachHang({
           onClick={() => setMoRong((m) => !m)}
           title={moRong ? 'Đóng bộ lọc' : 'Mở bộ lọc'}
           className={cn(
-            'relative size-11 rounded-xl border flex items-center justify-center transition active:scale-[0.96] shrink-0',
+            'relative size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0 cursor-pointer',
             moRong || soLuongDieuKienKhacMacDinh > 0
-              ? 'bg-[#107555] border-[#107555] text-white shadow-xs shadow-emerald-700/20'
-              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
+              ? 'bg-[#107555] border-[#107555] text-white shadow-sm shadow-emerald-700/20'
+              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_2px_8px_rgba(15,23,42,0.03)]'
           )}
         >
           <Filter className="size-[18px]" />
@@ -120,20 +151,15 @@ export default function BoLocKhachHang({
             type="button"
             onClick={xoaTatCa}
             title="Xóa tất cả điều kiện lọc"
-            className="size-11 rounded-xl border border-rose-200/80 bg-rose-50/60 flex items-center justify-center text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.96] shrink-0"
+            className="size-11 rounded-full sm:rounded-2xl border border-rose-200/80 bg-rose-50/60 flex items-center justify-center text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.95] shrink-0 cursor-pointer"
           >
             <XCircle className="size-5" />
           </button>
         )}
       </div>
 
-      <div
-        className={cn(
-          'grid gap-3 transition-all duration-200 overflow-hidden',
-          moRong ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'
-        )}
-      >
-        <div className="min-h-0 grid gap-3.5 md:grid-cols-2 lg:grid-cols-3 p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-slate-50/70 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+      {moRong && (
+        <div className="mt-2.5 grid gap-3.5 md:grid-cols-2 lg:grid-cols-3 p-4 sm:p-5 rounded-[24px] border border-slate-200/90 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
           <BoLocMuc label={<><Users className="size-3.5 text-slate-500" /> Loại khách hàng</>}>
             <select
               value={(gia_tri_hien_tai.loai_khach_hang as string) ?? 'tat_ca'}
@@ -218,7 +244,7 @@ export default function BoLocKhachHang({
             />
           </BoLocMuc>
         </div>
-      </div>
+      )}
     </div>
   );
 }

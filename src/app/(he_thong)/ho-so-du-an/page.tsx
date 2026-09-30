@@ -742,42 +742,39 @@ function TrangHoSoDuAn() {
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-6">
-      {/* Summary 2 dòng tinh gọn trên Mobile */}
-      <div className="sm:hidden bg-white rounded-[18px] p-3.5 border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)] space-y-2">
-        {/* Dòng 1 — quy mô dự án */}
-        <div className="flex items-center justify-between text-[13px] border-b border-slate-100 pb-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Tổng dự án</span>
-            <span className="font-extrabold text-slate-900 text-[15px] tabular-nums">{thongKe.tongSo}</span>
+      {/* One UI 9 Now Brief Summary trên Mobile */}
+      <div className="sm:hidden bg-gradient-to-br from-[#0e3e2d] via-[#13503b] to-[#185942] rounded-[26px] p-3.5 text-white shadow-[0_8px_24px_rgba(14,62,45,0.16)] space-y-2.5">
+        {/* Dòng 1 — Quy mô & Tổng giá trị */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-200/85">Dự án</span>
+            <span className="font-extrabold text-white text-[20px] tabular-nums leading-none">{thongKe.tongSo}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Giá trị</span>
-            <span className="font-extrabold text-[#107555] text-[15px] tabular-nums">
+          <div className="flex items-center gap-1.5 bg-white/12 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+            <Wallet className="size-3.5 text-amber-300 shrink-0" />
+            <span className="font-extrabold text-amber-300 text-[13px] tabular-nums">
               {laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(thongKe.tongGiaTri)}
             </span>
           </div>
         </div>
 
-        {/* Dòng 2 — tình trạng */}
-        <div className="flex items-center justify-between text-[11px] sm:text-[12px] pt-0.5">
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">Đang chạy</span>
-            <span className="font-bold text-[#34C759] text-[13px] tabular-nums">{thongKe.soDangThucHien}</span>
+        {/* Dòng 2 — 4 Thẻ trạng thái Squircle gọn trên 1 hàng */}
+        <div className="grid grid-cols-4 gap-1.5">
+          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
+            <div className="text-[14px] font-extrabold text-emerald-300 tabular-nums leading-tight">{thongKe.soDangThucHien}</div>
+            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Đang chạy</div>
           </div>
-          <span className="text-slate-200">│</span>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">Hoàn thành</span>
-            <span className="font-bold text-[#107555] text-[13px] tabular-nums">{thongKe.soHoanThanh}</span>
+          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
+            <div className="text-[14px] font-extrabold text-teal-200 tabular-nums leading-tight">{thongKe.soHoanThanh}</div>
+            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Hoàn thành</div>
           </div>
-          <span className="text-slate-200">│</span>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">Tạm dừng</span>
-            <span className="font-bold text-[#FF9500] text-[13px] tabular-nums">{thongKe.soTamDung}</span>
+          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
+            <div className="text-[14px] font-extrabold text-amber-300 tabular-nums leading-tight">{thongKe.soTamDung}</div>
+            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Tạm dừng</div>
           </div>
-          <span className="text-slate-200">│</span>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">Đã hủy</span>
-            <span className="font-bold text-rose-600 text-[13px] tabular-nums">{thongKe.soDaHuy}</span>
+          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
+            <div className="text-[14px] font-extrabold text-rose-300 tabular-nums leading-tight">{thongKe.soDaHuy}</div>
+            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Đã hủy</div>
           </div>
         </div>
       </div>
@@ -868,6 +865,8 @@ function TrangHoSoDuAn() {
         khi_thay_doi={setDieukien}
         ds_khach_hang={dsKhachHang}
         ds_nhan_su={dsNhanSu}
+        kieu_sap_xep={kieuSapXep}
+        khi_doi_sap_xep={setKieuSapXep}
       />
 
       {dangTai ? (
@@ -878,47 +877,34 @@ function TrangHoSoDuAn() {
       ) : danhSachDaSapXep.length === 0 ? (
         <EmptyState onThemMoi={moThemMoi} />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-          {/* Header danh sách chuẩn bảng mẫu */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-slate-200/80 bg-white">
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                Danh sách dự án
+        <div className="bg-white rounded-[26px] sm:rounded-2xl border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] overflow-hidden">
+          {/* Header danh sách: Gọn gàng trên 1 hàng cả Mobile & Desktop */}
+          <div className="flex items-center justify-between gap-2 px-3.5 sm:px-5 py-3 sm:py-4 border-b border-slate-100 sm:border-slate-200/80 bg-white">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+              <h2 className="text-[14px] sm:text-lg font-extrabold text-slate-900 tracking-tight truncate">
+                <span className="sm:hidden">Dự án</span>
+                <span className="hidden sm:inline">Danh sách dự án</span>
               </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+              <span className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-extrabold border border-emerald-200/80 tabular-nums shrink-0">
                 {danhSachDaSapXep.length}
               </span>
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <div className="relative">
-                <select
-                  value={kieuSapXep}
-                  onChange={(e) => setKieuSapXep(e.target.value as any)}
-                  aria-label="Sắp xếp danh sách dự án"
-                  className="appearance-none text-xs sm:text-[13px] font-semibold text-emerald-800 bg-white border border-slate-200 hover:border-emerald-300 rounded-xl px-3 py-2 pr-7 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
-                >
-                  <option value="moi_nhat">Mới nhất</option>
-                  <option value="cu_nhat">Cũ nhất</option>
-                  <option value="gia_tri_cao">Giá trị cao</option>
-                  <option value="ten_az">Tên A-Z</option>
-                </select>
-                <ChevronDown className="size-3.5 text-emerald-700 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
               <button
                 type="button"
                 onClick={() => {
                   setCheDoXuatMacDinh(dsDuAnDaChonIds.size > 0 ? 'da_chon' : undefined);
                   setMoModalXuatExcel(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-emerald-800 border border-slate-200 hover:border-emerald-300 text-xs sm:text-sm font-bold shadow-2xs transition cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full sm:rounded-xl bg-slate-100/80 sm:bg-white hover:bg-slate-100 text-emerald-800 border border-slate-200/80 hover:border-emerald-300 text-[12px] sm:text-sm font-bold transition cursor-pointer active:scale-95"
                 title="Xuất file Excel tiến độ dự án"
               >
-                <FileSpreadsheet className="size-4 text-emerald-700" />
-                <span>Xuất Excel</span>
+                <FileSpreadsheet className="size-4 text-emerald-700 shrink-0" />
+                <span className="sm:hidden">Xuất</span>
+                <span className="hidden sm:inline">Xuất Excel</span>
                 {dsDuAnDaChonIds.size > 0 && (
-                  <span className="size-5 rounded-full bg-emerald-700 text-white text-[11px] font-bold flex items-center justify-center -mr-1">
+                  <span className="size-4.5 rounded-full bg-emerald-700 text-white text-[10px] font-bold flex items-center justify-center">
                     {dsDuAnDaChonIds.size}
                   </span>
                 )}
@@ -927,10 +913,12 @@ function TrangHoSoDuAn() {
               <button
                 type="button"
                 onClick={moThemMoi}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+                title="Thêm dự án mới"
+                aria-label="Thêm dự án mới"
+                className="inline-flex items-center justify-center gap-1.5 size-8 sm:size-auto sm:px-3.5 sm:py-2 rounded-full sm:rounded-xl bg-[#107555] hover:bg-emerald-800 active:scale-95 text-white text-[12px] sm:text-sm font-bold shadow-xs transition cursor-pointer whitespace-nowrap"
               >
-                <Plus className="size-4" />
-                <span>Thêm dự án</span>
+                <Plus className="size-4 stroke-[2.5]" />
+                <span className="hidden sm:inline">Thêm dự án</span>
               </button>
             </div>
           </div>
@@ -1092,15 +1080,17 @@ function TrangHoSoDuAn() {
             </table>
           </div>
 
-          {/* 2. GIAO DIỆN DANH SÁCH DỄ ĐỌC TRÊN MOBILE (chỉ hiện trên màn hình nhỏ) */}
-          <div className="sm:hidden flex flex-col gap-2.5 p-3 bg-slate-50/50">
+          {/* 2. GIAO DIỆN THẺ MODULAR SQUIRCLE ONE UI 9 TRÊN MOBILE */}
+          <div className="sm:hidden flex flex-col gap-2.5 p-2.5 bg-slate-100/70">
             {danhSachTrangHienTai.map((hda, index) => {
-              const kh = hda.khach_hang_id ? dsKhachHang.find((k) => k.id === hda.khach_hang_id) ?? null : null;
               const gd = tenGiaiDoan[hda.giai_doan] ?? { nhan: String(hda.giai_doan) };
               const giaTri = laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong);
               const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
               const idLead = hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id;
               const nguoiLead = idLead ? dsNhanSu.find((n) => n.id === idLead) ?? null : null;
+              const tenLeadNgan = nguoiLead?.ho_va_ten
+                ? nguoiLead.ho_va_ten.trim().split(/\s+/).slice(-2).join(' ')
+                : null;
 
               const duocChon = dsDuAnDaChonIds.has(hda.id);
 
@@ -1108,81 +1098,70 @@ function TrangHoSoDuAn() {
                 <div
                   key={hda.id}
                   className={cn(
-                    "p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-colors relative",
+                    "p-3.5 bg-white rounded-[22px] border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition-all relative",
                     hda.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/50',
-                    duocChon && 'border-emerald-500 bg-emerald-50/20'
+                    duocChon && 'border-emerald-500 ring-2 ring-emerald-500/15 bg-emerald-50/20'
                   )}
                 >
-                    <div className="flex items-start gap-2.5 mb-2.5">
-                      {/* Checkbox và STT nằm gọn một bên */}
-                      <div className="flex flex-col items-center gap-2 pt-0.5 shrink-0">
-                        <input
-                          type="checkbox"
-                          aria-label={`Chọn dự án ${hda.ten_du_an}`}
-                          checked={duocChon}
-                          onChange={() => toggleChonDuAn(hda.id)}
-                          className="size-4.5 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500 cursor-pointer"
-                        />
-                        <span className="text-slate-400 text-xs font-bold">{stt}.</span>
-                      </div>
-                      
-                      {/* Nội dung chính */}
-                      <Link href={`/ho-so-du-an/${hda.id}`} className="flex-1 min-w-0 flex flex-col gap-1.5">
-                        <div className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 hover:text-emerald-700 pr-1 block">
+                  {/* Hàng 1: Checkbox + STT + Tên dự án + Tình trạng chìm ngay sau tên dự án */}
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      aria-label={`Chọn dự án ${hda.ten_du_an}`}
+                      checked={duocChon}
+                      onChange={() => toggleChonDuAn(hda.id)}
+                      className="size-4 mt-0.5 rounded-md border-slate-300 text-emerald-700 focus:ring-emerald-500 cursor-pointer shrink-0"
+                    />
+                    <span className="text-slate-400 text-[11.5px] font-extrabold tabular-nums mt-0.5 shrink-0">
+                      {stt}.
+                    </span>
+                    <Link href={`/ho-so-du-an/${hda.id}`} className="flex-1 min-w-0 group">
+                      <div className="text-[14.5px] leading-snug">
+                        <span className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
                           {hda.ten_du_an}
-                        </div>
-                        {kh && (
-                          <div className="flex items-start gap-1.5 text-[13px] text-slate-600">
-                            <Building2 className="size-3.5 mt-0.5 shrink-0 text-slate-400" />
-                            <span className="font-medium line-clamp-2">{kh.ten_khach_hang}</span>
-                          </div>
+                        </span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
+                          {gd.nhan}
+                        </span>
+                        {hda.trang_thai === 'da_xoa' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 uppercase ml-1.5 align-middle">
+                            Đã xóa
+                          </span>
                         )}
-                        {nguoiLead && (
-                          <div className="flex items-start gap-1.5 text-[13px] text-slate-600">
-                            <User className="size-3.5 mt-0.5 shrink-0 text-slate-400" />
-                            <span className="font-medium line-clamp-1">{nguoiLead.ho_va_ten}</span>
-                          </div>
-                        )}
-                        
-                        {/* Footer card */}
-                        <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
-                          <div className="flex items-center gap-1.5">
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wide">
-                              {gd.nhan}
-                            </span>
-                            {hda.trang_thai === 'da_xoa' && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 uppercase tracking-wide">
-                                Đã xóa
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-emerald-700 text-xs">
-                              {giaTri}
-                            </span>
-                            {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc && (
-                              <button
-                                type="button"
-                                disabled={dangXuLyKhac === hda.id}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  xuLyKhoiPhuc(hda);
-                                }}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-95 transition-all cursor-pointer"
-                              >
-                                {dangXuLyKhac === hda.id ? (
-                                  <Loader2 className="size-3 animate-spin" />
-                                ) : (
-                                  <RotateCcw className="size-3" strokeWidth={2.5} />
-                                )}
-                                <span>Khôi phục</span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </Link>
-                    </div>
+                      </div>
+                    </Link>
+
+                    {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc && (
+                      <button
+                        type="button"
+                        disabled={dangXuLyKhac === hda.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          xuLyKhoiPhuc(hda);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white active:scale-95 transition cursor-pointer shrink-0"
+                      >
+                        <RotateCcw className="size-3" strokeWidth={2.5} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Hàng 2 (Footer): Số tiền bên trái (vị trí tên KH cũ) & Người phụ trách bên phải */}
+                  <Link
+                    href={`/ho-so-du-an/${hda.id}`}
+                    className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-slate-100"
+                  >
+                    <span className="font-mono font-extrabold text-[#107555] text-[12.5px] bg-emerald-50/80 px-2.5 py-0.5 rounded-full border border-emerald-200/60">
+                      {giaTri}
+                    </span>
+                    {tenLeadNgan && (
+                      <div className="flex items-center gap-1 shrink-0 bg-slate-100 px-2 py-0.5 rounded-full text-[11px] font-semibold text-slate-700">
+                        <User className="size-3 text-slate-400" />
+                        <span>{tenLeadNgan}</span>
+                      </div>
+                    )}
+                  </Link>
                 </div>
               );
             })}

@@ -313,220 +313,206 @@ export default function TrangTongQuanLanhDao() {
   }
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* 1. Header tinh gọn */}
-      <div className="bg-[#185942] rounded-2xl p-4 sm:p-5 text-white shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 text-xs font-semibold mb-1">
-            <TrendingUp className="w-3.5 h-3.5" />
-            Phòng Kinh Doanh
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Tổng Quan Kinh Doanh</h1>
+    <div className="space-y-3.5 sm:space-y-5 pb-12">
+      {/* 1. One UI 9 Now Brief Bar: Gọn gàng trên Mobile, đầy đủ trên Desktop */}
+      <div className="bg-gradient-to-r from-[#144d39] via-[#185942] to-[#1d6b50] rounded-[26px] p-3.5 sm:px-5 sm:py-4 text-white shadow-[0_6px_24px_rgba(24,89,66,0.18)] flex items-center justify-between gap-2.5">
+        <div className="hidden sm:block">
+          <h1 className="text-lg sm:text-xl font-extrabold tracking-tight">Tổng Quan Kinh Doanh</h1>
         </div>
 
-        <div className="flex items-center gap-2.5 self-stretch md:self-auto">
-          <div className="flex items-center bg-white/10 rounded-xl px-3 py-2 border border-white/20 text-xs font-medium text-emerald-100">
-            <Calendar className="w-3.5 h-3.5 mr-2 shrink-0" />
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+          <div className="flex items-center bg-white/12 hover:bg-white/18 transition rounded-full px-3.5 py-1.5 border border-white/15 text-xs font-semibold text-white">
+            <Calendar className="w-3.5 h-3.5 mr-2 text-emerald-200 shrink-0" />
             <input
               type="date"
               value={ngayChon}
               onChange={(e) => setNgayChon(e.target.value)}
-              className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer text-xs"
+              className="bg-transparent text-white font-bold focus:outline-none cursor-pointer text-xs"
             />
           </div>
 
-          <Nut
+          <button
+            type="button"
             onClick={handleChayAIToanBo}
             disabled={dangChayAITatCa}
-            className="bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold text-xs shadow-xs py-2 px-3.5 justify-center"
+            className="inline-flex items-center justify-center rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-amber-950 font-extrabold text-xs shadow-xs py-1.5 px-4 transition cursor-pointer disabled:opacity-60 shrink-0"
           >
-            <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", dangChayAITatCa && "animate-spin")} />
-            {dangChayAITatCa ? 'Đang cập nhật...' : 'Đánh giá'}
-          </Nut>
+            <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', dangChayAITatCa && 'animate-spin')} />
+            <span>{dangChayAITatCa ? 'Đang chạy...' : 'Đánh giá'}</span>
+          </button>
         </div>
       </div>
 
-      {/* 2. Thẻ chỉ số tổng hợp (Thiết kế chuyên nghiệp, nhấp vào xem danh sách) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Thẻ 1: Số lượng Lead */}
+      {/* 2. Thẻ chỉ số Modular Squircle Cards (Không chú thích rườm rà, chạm mở chi tiết) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        {/* Thẻ 1: Lead */}
         <Link
           href="/lead"
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2 hover:border-blue-400 hover:shadow-xs transition-all cursor-pointer group block"
+          className="bg-white p-3.5 sm:p-4.5 rounded-[24px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] hover:border-blue-300 transition-all active:scale-[0.98] flex items-center justify-between gap-3 group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-700">
+          <div className="min-w-0">
+            <span className="text-[11px] sm:text-xs font-bold text-slate-500 block truncate">
               Số lượng Lead
             </span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/60 flex items-center justify-center text-blue-600 group-hover:scale-105 transition-transform">
-              <Target className="w-4 h-4" />
-            </div>
+            <p className="text-2xl sm:text-3xl font-black text-blue-600 tracking-tight tabular-nums mt-1 leading-none">
+              {thongKeLanhDao.tongLead}
+            </p>
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-blue-700 tracking-tight">
-            {thongKeLanhDao.tongLead}
-          </p>
-          <p className="text-xs text-slate-500 font-medium">
-            {thongKeLanhDao.leadMoiVaDangChamSoc} tiếp cận &amp; đang trao đổi
-          </p>
+          <div className="size-10 sm:size-11 rounded-[16px] bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Target className="size-5" />
+          </div>
         </Link>
 
-        {/* Thẻ 2: Dự án tiềm năng cao (Clickable) */}
-        <div
+        {/* Thẻ 2: Dự án tiềm năng cao */}
+        <button
+          type="button"
           onClick={() =>
             setDuAnModal({
               mo: true,
-              tieuDe: 'Dự án Tiềm năng cao (Toàn đội ngũ)',
-              moTaPhu: 'Các dự án có tiềm năng Cao & Rất cao',
+              tieuDe: 'Dự án Tiềm năng cao',
               danhSachDuAn: thongKeLanhDao.duAnTiemNangCao
             })
           }
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2 hover:border-amber-400 hover:shadow-xs transition-all cursor-pointer group"
+          className="bg-white p-3.5 sm:p-4.5 rounded-[24px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] hover:border-amber-300 transition-all active:scale-[0.98] flex items-center justify-between gap-3 text-left cursor-pointer group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
+          <div className="min-w-0">
+            <span className="text-[11px] sm:text-xs font-bold text-slate-500 block truncate">
               Tiềm năng cao
             </span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-600 group-hover:scale-105 transition-transform">
-              <Flame className="w-4 h-4" />
-            </div>
+            <p className="text-2xl sm:text-3xl font-black text-amber-600 tracking-tight tabular-nums mt-1 leading-none">
+              {thongKeLanhDao.tongTiemNangCao}
+            </p>
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-amber-700 tracking-tight">
-            {thongKeLanhDao.tongTiemNangCao}
-          </p>
-          <p className="text-xs text-slate-500 font-medium">
-            Khả năng chốt hợp đồng cao
-          </p>
-        </div>
+          <div className="size-10 sm:size-11 rounded-[16px] bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Flame className="size-5" />
+          </div>
+        </button>
 
-        {/* Thẻ 3: Dự án sắp ký hợp đồng (Clickable) */}
-        <div
+        {/* Thẻ 3: Sắp ký hợp đồng */}
+        <button
+          type="button"
           onClick={() =>
             setDuAnModal({
               mo: true,
-              tieuDe: 'Dự án Sắp ký hợp đồng (Toàn đội ngũ)',
-              moTaPhu: 'Giai đoạn Báo giá, Đàm phán, Ký HĐ',
+              tieuDe: 'Dự án Sắp ký hợp đồng',
               danhSachDuAn: thongKeLanhDao.duAnSapKyHD
             })
           }
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2 hover:border-purple-400 hover:shadow-xs transition-all cursor-pointer group"
+          className="bg-white p-3.5 sm:p-4.5 rounded-[24px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] hover:border-purple-300 transition-all active:scale-[0.98] flex items-center justify-between gap-3 text-left cursor-pointer group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-purple-700">
-              Sắp ký hợp đồng
+          <div className="min-w-0">
+            <span className="text-[11px] sm:text-xs font-bold text-slate-500 block truncate">
+              Sắp ký HĐ
             </span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-200/60 flex items-center justify-center text-purple-600 group-hover:scale-105 transition-transform">
-              <Award className="w-4 h-4" />
-            </div>
+            <p className="text-2xl sm:text-3xl font-black text-purple-600 tracking-tight tabular-nums mt-1 leading-none">
+              {thongKeLanhDao.tongSapKyHD}
+            </p>
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-purple-700 tracking-tight">
-            {thongKeLanhDao.tongSapKyHD}
-          </p>
-          <p className="text-xs text-slate-500 font-medium">
-            Giai đoạn đàm phán &amp; hoàn tất
-          </p>
-        </div>
+          <div className="size-10 sm:size-11 rounded-[16px] bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Award className="size-5" />
+          </div>
+        </button>
 
-        {/* Thẻ 4: Tổng giá trị dự kiến (Clickable) */}
-        <div
+        {/* Thẻ 4: Tổng giá trị dự kiến */}
+        <button
+          type="button"
           onClick={() =>
             setDuAnModal({
               mo: true,
-              tieuDe: 'Tất cả dự án đang chạy (Toàn đội ngũ)',
+              tieuDe: `Dự án đang chạy (${thongKeLanhDao.tongDuAnPhuTrach})`,
               danhSachDuAn: thongKeLanhDao.duAnPhuTrach
             })
           }
-          className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs space-y-2 hover:border-emerald-500 hover:shadow-xs transition-all cursor-pointer group"
+          className="bg-white p-3.5 sm:p-4.5 rounded-[24px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] hover:border-emerald-300 transition-all active:scale-[0.98] flex items-center justify-between gap-2 text-left cursor-pointer group"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Tổng giá trị dự kiến
+          <div className="min-w-0">
+            <span className="text-[11px] sm:text-xs font-bold text-slate-500 block truncate">
+              Tổng giá trị ({thongKeLanhDao.tongDuAnPhuTrach} DA)
             </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-[#185942] group-hover:scale-105 transition-transform">
-              <Layers className="w-4 h-4" />
-            </div>
+            <p className="text-lg sm:text-2xl font-black text-[#185942] truncate tracking-tight tabular-nums mt-1 leading-none">
+              {DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongGiaTri)}
+            </p>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-[#185942] truncate tracking-tight">
-            {DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongGiaTri)}
-          </p>
-          <p className="text-xs text-slate-500 font-medium">
-            Toàn bộ dự án đang theo dõi
-          </p>
-        </div>
+          <div className="size-10 sm:size-11 rounded-[16px] bg-emerald-500/10 text-[#185942] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <Layers className="size-5" />
+          </div>
+        </button>
       </div>
 
-      {/* 2.5. Thông báo Tổng kết Lịch Gặp Khách Hàng (Tuần / Tháng) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/70 text-[#185942] flex items-center justify-center shrink-0">
-              <Calendar className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-800 text-sm sm:text-base">
-                Tổng Kết Lịch Gặp Khách Hàng
-              </h3>
-            </div>
+      {/* 2.5. Thanh Lịch hẹn Now Nudge (1 dòng gọn gàng kiểu viên thuốc One UI 9) */}
+      <div className="bg-white rounded-[24px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] px-3.5 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="size-8 rounded-[12px] bg-emerald-500/12 text-[#185942] flex items-center justify-center shrink-0">
+            <Calendar className="size-4" />
           </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() =>
-                setLichGapModal({
-                  mo: true,
-                  tieuDe: 'Lịch gặp khách hàng trong Tuần',
-                  danhSachLich: thongKeLanhDao.lichTuanNay
-                })
-              }
-              className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200/80 text-xs font-bold text-purple-700 transition cursor-pointer"
-            >
-              Tuần này: <span className="font-black">{thongKeLanhDao.lichTuanNay.length}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setLichGapModal({
-                  mo: true,
-                  tieuDe: `Lịch gặp khách hàng trong Tháng ${ngayChon.slice(5, 7)}/${ngayChon.slice(0, 4)}`,
-                  danhSachLich: thongKeLanhDao.lichThangNay
-                })
-              }
-              className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 text-xs font-bold text-emerald-700 transition cursor-pointer"
-            >
-              Tháng {ngayChon.slice(5, 7)}: <span className="font-black">{thongKeLanhDao.lichThangNay.length}</span> (Đã gặp{' '}
-              {thongKeLanhDao.lichDaHoanThanhThang.length})
-            </button>
-
-            <Link
-              href="/lich-cong-tac"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#185942] hover:bg-emerald-900 text-white text-xs font-bold transition shadow-sm"
-            >
-              <span>Xem Calendar</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+          <span className="font-bold text-slate-800 text-xs sm:text-sm truncate">
+            <span className="sm:hidden">Lịch hẹn</span>
+            <span className="hidden sm:inline">Lịch gặp khách hàng</span>
+          </span>
         </div>
 
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() =>
+              setLichGapModal({
+                mo: true,
+                tieuDe: 'Lịch gặp khách hàng trong Tuần',
+                danhSachLich: thongKeLanhDao.lichTuanNay
+              })
+            }
+            className="px-2.5 sm:px-3 py-1.5 rounded-full bg-purple-500/10 hover:bg-purple-500/15 text-[11px] sm:text-xs font-bold text-purple-700 transition active:scale-95 cursor-pointer whitespace-nowrap"
+          >
+            Tuần này: <span className="font-black">{thongKeLanhDao.lichTuanNay.length}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setLichGapModal({
+                mo: true,
+                tieuDe: `Lịch gặp khách hàng Tháng ${ngayChon.slice(5, 7)}/${ngayChon.slice(0, 4)}`,
+                danhSachLich: thongKeLanhDao.lichThangNay
+              })
+            }
+            className="px-2.5 sm:px-3 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/15 text-[11px] sm:text-xs font-bold text-emerald-800 transition active:scale-95 cursor-pointer whitespace-nowrap"
+          >
+            Tháng {ngayChon.slice(5, 7)}: <span className="font-black">{thongKeLanhDao.lichThangNay.length}</span>
+          </button>
+
+          <Link
+            href="/lich-cong-tac"
+            className="inline-flex items-center gap-0.5 px-3 py-1.5 rounded-full bg-[#185942] hover:bg-emerald-900 !text-white text-[11px] sm:text-xs font-bold transition active:scale-95 whitespace-nowrap"
+          >
+            <span className="text-white">Xem lịch</span>
+            <ChevronRight className="size-3.5 text-white" />
+          </Link>
+        </div>
       </div>
 
       {/* 3. Danh sách Đội Ngũ Kinh Doanh */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Users className="w-5 h-5 text-[#185942]" />
-            <h3 className="font-bold text-slate-800 text-base sm:text-lg">
-              Đội Ngũ Kinh Doanh ({dsNhanSuHienThi.length})
+      <div className="bg-white rounded-[28px] border border-slate-200/80 shadow-[0_2px_14px_rgba(15,23,42,0.03)] overflow-hidden">
+        <div className="px-4 py-3.5 sm:px-5 sm:py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="size-8 rounded-[12px] bg-emerald-500/12 text-[#185942] flex items-center justify-center">
+              <Users className="size-4" />
+            </div>
+            <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
+              Đội ngũ Kinh doanh
             </h3>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-[#185942] font-extrabold border border-emerald-200/60">
+              {dsNhanSuHienThi.length}
+            </span>
           </div>
         </div>
 
         {dangTai ? (
-          <div className="py-16 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
+          <div className="py-14 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
             <Loader2 className="w-6 h-6 animate-spin text-[#185942]" />
-            <span>Đang tải danh sách nhân viên &amp; dự án...</span>
+            <span>Đang tải dữ liệu...</span>
           </div>
         ) : dsNhanSuHienThi.length === 0 ? (
-          <div className="py-16 text-center text-slate-400 text-sm">
+          <div className="py-14 text-center text-slate-400 text-sm">
             Chưa có dữ liệu nhân viên kinh doanh.
           </div>
         ) : (
@@ -536,16 +522,13 @@ export default function TrangTongQuanLanhDao() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/80 text-slate-500 font-bold uppercase tracking-wider text-xs border-b border-slate-200/80">
-                    <th className="py-3.5 px-4 w-[200px]">Nhân viên</th>
-                    <th className="py-3.5 px-2 text-center w-[65px]">Lead</th>
-                    <th className="py-3.5 px-2 text-center w-[65px]">Dự án</th>
-                    <th className="py-3.5 px-2 text-center w-[85px]">Tiềm năng</th>
-                    <th className="py-3.5 px-2 text-center w-[85px]">Sắp ký HĐ</th>
-                    <th className="py-3.5 px-3 text-right w-[125px]">Giá trị dự kiến</th>
-                    <th className="py-3.5 px-3 text-center w-[120px]">Tổng hợp KH tuần</th>
-                    <th className="py-3.5 px-3 text-center w-[130px]">KH tháng tổng hợp</th>
-                    <th className="py-3.5 px-2 text-center w-[85px]">Điểm</th>
-                    <th className="py-3.5 px-4">Hành động cần làm</th>
+                    <th className="py-3.5 px-5">Nhân viên</th>
+                    <th className="py-3.5 px-3 text-center">Điểm</th>
+                    <th className="py-3.5 px-3 text-center">Lead</th>
+                    <th className="py-3.5 px-3 text-center">Dự án</th>
+                    <th className="py-3.5 px-3 text-center">Tiềm năng</th>
+                    <th className="py-3.5 px-3 text-center">Sắp ký HĐ</th>
+                    <th className="py-3.5 px-5 text-right">Doanh số dự kiến</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -564,21 +547,13 @@ export default function TrangTongQuanLanhDao() {
                     );
                     const aiRecord = dsDanhGiaAI.find((d) => d.nhan_vien_id === ns.id);
 
-                    // Kế hoạch tuần & tháng
-                    const khTuan = dsKeHoachTuan.find((k) => k.nhan_vien_id === ns.id);
-                    const dsTacChien = khTuan?.danh_sach_tac_chien || [];
-                    const soTuanXong = dsTacChien.filter((x) => x.da_hoan_thanh).length;
-
-                    const khThang = dsKeHoachThang.find((k) => k.nhan_vien_id === ns.id);
-                    const dsDiaBan = khThang?.danh_sach_dia_ban || [];
-
                     return (
                       <tr
                         key={ns.id}
                         className="hover:bg-slate-50/90 transition-colors group"
                       >
                         {/* Cột 1: Nhân viên */}
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-5">
                           <div className="flex items-center gap-3">
                             <DaiDien
                               anh={ns.url_anh_dai_dien || ''}
@@ -596,8 +571,32 @@ export default function TrangTongQuanLanhDao() {
                           </div>
                         </td>
 
-                        {/* Cột 2: Lead */}
-                        <td className="py-3.5 px-2 text-center">
+                        {/* Cột 2: Điểm */}
+                        <td className="py-3.5 px-3 text-center">
+                          {aiRecord ? (
+                            <button
+                              type="button"
+                              onClick={() => setNhanSuDangChon(ns)}
+                              className={cn(
+                                'px-2.5 py-1 rounded-full text-xs font-black transition-all cursor-pointer border hover:scale-105',
+                                aiRecord.muc_do_tong_the === 'tot' &&
+                                  'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100',
+                                aiRecord.muc_do_tong_the === 'canh_bao' &&
+                                  'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100',
+                                aiRecord.muc_do_tong_the === 'rui_ro' &&
+                                  'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                              )}
+                              title="Bấm để xem thông tin đánh giá"
+                            >
+                              {aiRecord.diem_hieu_suat}/100
+                            </button>
+                          ) : (
+                            <span className="text-slate-300 text-xs italic">—</span>
+                          )}
+                        </td>
+
+                        {/* Cột 3: Lead */}
+                        <td className="py-3.5 px-3 text-center">
                           <Link
                             href="/lead"
                             className={cn(
@@ -612,8 +611,8 @@ export default function TrangTongQuanLanhDao() {
                           </Link>
                         </td>
 
-                        {/* Cột 2: Dự án phụ trách */}
-                        <td className="py-3.5 px-2 text-center">
+                        {/* Cột 4: Dự án phụ trách */}
+                        <td className="py-3.5 px-3 text-center">
                           <button
                             type="button"
                             onClick={() => {
@@ -630,8 +629,8 @@ export default function TrangTongQuanLanhDao() {
                           </button>
                         </td>
 
-                        {/* Cột 3: Tiềm năng cao */}
-                        <td className="py-3.5 px-2 text-center">
+                        {/* Cột 5: Tiềm năng cao */}
+                        <td className="py-3.5 px-3 text-center">
                           <button
                             type="button"
                             onClick={() => {
@@ -654,8 +653,8 @@ export default function TrangTongQuanLanhDao() {
                           </button>
                         </td>
 
-                        {/* Cột 4: Sắp ký HĐ */}
-                        <td className="py-3.5 px-2 text-center">
+                        {/* Cột 6: Sắp ký HĐ */}
+                        <td className="py-3.5 px-3 text-center">
                           <button
                             type="button"
                             onClick={() => {
@@ -678,99 +677,11 @@ export default function TrangTongQuanLanhDao() {
                           </button>
                         </td>
 
-                        {/* Cột 5: Giá trị dự kiến */}
-                        <td className="py-3.5 px-3 text-right font-bold text-xs sm:text-sm text-emerald-700">
-                          {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
-                        </td>
-
-                        {/* Cột 6: Tổng hợp KH tuần */}
-                        <td className="py-3.5 px-3 text-center">
-                          {dsTacChien.length > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setKeHoachModal({
-                                  mo: true,
-                                  loai: 'tuan',
-                                  tieuDe: `Kế hoạch tuần ${layTuanFromDateISO(ngayChon)}`,
-                                  nhanVienTen: ns.ho_va_ten,
-                                  keHoachTuan: khTuan
-                                });
-                              }}
-                              className={cn(
-                                'px-2.5 py-1 rounded-xl text-xs font-bold transition-colors cursor-pointer inline-flex items-center gap-1',
-                                soTuanXong === dsTacChien.length
-                                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
-                                  : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
-                              )}
-                              title="Bấm để xem chi tiết kế hoạch tuần"
-                            >
-                              <Calendar className="w-3 h-3" />
-                              <span>{soTuanXong}/{dsTacChien.length} việc</span>
-                            </button>
-                          ) : (
-                            <span className="text-slate-400 text-xs italic">Chưa lập</span>
-                          )}
-                        </td>
-
-                        {/* Cột 7: KH tháng tổng hợp */}
-                        <td className="py-3.5 px-3 text-center">
-                          {dsDiaBan.length > 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setKeHoachModal({
-                                  mo: true,
-                                  loai: 'thang',
-                                  tieuDe: `Kế hoạch tháng ${ngayChon.slice(0, 7)}`,
-                                  nhanVienTen: ns.ho_va_ten,
-                                  keHoachThang: khThang
-                                });
-                              }}
-                              className="px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer inline-flex items-center gap-1"
-                              title="Bấm để xem chi tiết kế hoạch tháng"
-                            >
-                              <Target className="w-3 h-3" />
-                              <span>{dsDiaBan.length} mục tiêu</span>
-                            </button>
-                          ) : (
-                            <span className="text-slate-400 text-xs italic">Chưa lập</span>
-                          )}
-                        </td>
-
-                        {/* Cột 8: Điểm (Dạng 50/100, bấm vào ra thông tin đánh giá) */}
-                        <td className="py-3.5 px-2 text-center">
-                          {aiRecord ? (
-                            <button
-                              type="button"
-                              onClick={() => setNhanSuDangChon(ns)}
-                              className={cn(
-                                'px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer border hover:scale-105',
-                                aiRecord.muc_do_tong_the === 'tot' &&
-                                  'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100',
-                                aiRecord.muc_do_tong_the === 'canh_bao' &&
-                                  'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100',
-                                aiRecord.muc_do_tong_the === 'rui_ro' &&
-                                  'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
-                              )}
-                              title="Bấm để xem thông tin đánh giá"
-                            >
-                              {aiRecord.diem_hieu_suat}/100
-                            </button>
-                          ) : (
-                            <span className="text-slate-300 text-xs italic">—</span>
-                          )}
-                        </td>
-
-                        {/* Cột 9: 1 câu tóm ngắn gọn hành động cần làm */}
-                        <td className="py-3.5 px-4">
-                          {aiRecord ? (
-                            <p className="text-slate-700 text-xs sm:text-sm font-medium line-clamp-2 leading-relaxed">
-                              {aiRecord.de_xuat_cho_quan_ly || aiRecord.nhan_dinh_chung}
-                            </p>
-                          ) : (
-                            <span className="text-slate-400 italic text-xs">Chưa có hành động đề xuất</span>
-                          )}
+                        {/* Cột 7: Doanh số dự kiến nổi bật */}
+                        <td className="py-3.5 px-5 text-right">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full font-mono font-extrabold text-xs bg-emerald-50 text-[#107555] border border-emerald-200/80">
+                            {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
+                          </span>
                         </td>
                       </tr>
                     );
@@ -779,8 +690,8 @@ export default function TrangTongQuanLanhDao() {
               </table>
             </div>
 
-            {/* GIAO DIỆN THẺ TRÊN TABLET & MOBILE (Responsive Cards) */}
-            <div className="xl:hidden divide-y divide-slate-100">
+            {/* GIAO DIỆN MOBILE/TABLET: Tách từng thẻ nhân viên trên nền xám nhạt giống trang Dự án */}
+            <div className="xl:hidden flex flex-col gap-2.5 p-2.5 bg-slate-100/70">
               {dsNhanSuHienThi.map((ns) => {
                 const leadCuaNS = dsLead.filter((l) => l.nguoi_phu_trach_id === ns.id);
                 const duAnCuaNS = dsDuAn.filter((da) => da.nguoi_phu_trach_id === ns.id);
@@ -796,197 +707,126 @@ export default function TrangTongQuanLanhDao() {
                 );
                 const aiRecord = dsDanhGiaAI.find((d) => d.nhan_vien_id === ns.id);
 
-                const khTuan = dsKeHoachTuan.find((k) => k.nhan_vien_id === ns.id);
-                const dsTacChien = khTuan?.danh_sach_tac_chien || [];
-                const soTuanXong = dsTacChien.filter((x) => x.da_hoan_thanh).length;
-
-                const khThang = dsKeHoachThang.find((k) => k.nhan_vien_id === ns.id);
-                const dsDiaBan = khThang?.danh_sach_dia_ban || [];
-
                 return (
                   <div
                     key={ns.id}
-                    className="p-4 hover:bg-slate-50/90 transition-all space-y-3"
+                    className="p-3.5 bg-white rounded-[22px] border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] space-y-2.5"
                   >
-                    {/* Hàng 1: Avatar, Tên & Điểm đánh giá (bấm ô điểm ra thông tin đánh giá) */}
+                    {/* Hàng 1: Avatar + Tên + Điểm số (Trái) | Doanh số nổi bật (Phải) */}
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         <DaiDien
                           anh={ns.url_anh_dai_dien || ''}
                           ten={ns.ho_va_ten || 'NV'}
-                          className="w-11 h-11 text-sm font-semibold ring-1 ring-slate-200 shrink-0"
+                          className="size-10 text-xs font-bold ring-1 ring-slate-200 shrink-0"
                         />
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-base text-slate-900 truncate">
-                              {ns.ho_va_ten}
-                            </span>
-                            <span className="text-xs font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 shrink-0">
-                              {ns.ma_nhan_vien || ns.id.slice(0, 5)}
-                            </span>
-                          </div>
-                          <p className="text-xs font-bold text-emerald-700 mt-0.5">
-                            {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
-                          </p>
+                          <span className="font-bold text-[14.5px] text-slate-900 truncate block leading-tight">
+                            {ns.ho_va_ten}
+                          </span>
+                          {aiRecord ? (
+                            <button
+                              type="button"
+                              onClick={() => setNhanSuDangChon(ns)}
+                              className={cn(
+                                'mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-extrabold border transition-transform active:scale-95 cursor-pointer',
+                                aiRecord.muc_do_tong_the === 'tot' &&
+                                  'bg-emerald-50 text-emerald-800 border-emerald-200',
+                                aiRecord.muc_do_tong_the === 'canh_bao' &&
+                                  'bg-amber-50 text-amber-800 border-amber-200',
+                                aiRecord.muc_do_tong_the === 'rui_ro' &&
+                                  'bg-rose-50 text-rose-800 border-rose-200'
+                              )}
+                            >
+                              Điểm: {aiRecord.diem_hieu_suat}/100
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-medium">Chưa chấm điểm</span>
+                          )}
                         </div>
                       </div>
 
-                      {/* Điểm dạng 50/100 */}
-                      {aiRecord ? (
-                        <button
-                          type="button"
-                          onClick={() => setNhanSuDangChon(ns)}
-                          className={cn(
-                            'px-2.5 py-1 rounded-lg text-xs font-black border transition-transform active:scale-95 shrink-0',
-                            aiRecord.muc_do_tong_the === 'tot' &&
-                              'bg-emerald-50 text-emerald-800 border-emerald-200',
-                            aiRecord.muc_do_tong_the === 'canh_bao' &&
-                              'bg-amber-50 text-amber-800 border-amber-200',
-                            aiRecord.muc_do_tong_the === 'rui_ro' &&
-                              'bg-rose-50 text-rose-800 border-rose-200'
-                          )}
-                          title="Bấm để xem thông tin đánh giá"
-                        >
-                          {aiRecord.diem_hieu_suat}/100
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg font-medium shrink-0">
-                          Chưa có nhận định
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Hàng 2: Các nút chỉ số nhấp được (Lead, Dự án, Tiềm năng, Sắp ký, KH tuần, KH tháng) */}
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                      <Link
-                        href="/lead"
-                        className="bg-blue-50/70 border border-blue-200/60 px-2 py-1.5 rounded-xl text-center hover:bg-blue-100 transition-colors block"
-                      >
-                        <p className="text-[10px] uppercase font-bold text-blue-600">Lead</p>
-                        <p className="text-sm font-black text-blue-800">{leadCuaNS.length}</p>
-                      </Link>
+                      {/* Doanh số nổi bật bên phải */}
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={() =>
                           setDuAnModal({
                             mo: true,
                             tieuDe: `Dự án phụ trách • ${ns.ho_va_ten}`,
                             danhSachDuAn: duAnCuaNS
-                          });
-                        }}
-                        className="bg-slate-50 border border-slate-200/80 px-2 py-1.5 rounded-xl text-center hover:bg-slate-100 transition-colors"
+                          })
+                        }
+                        className="font-mono font-extrabold text-[#107555] text-[13px] bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200/80 shadow-2xs shrink-0 active:scale-95 transition cursor-pointer"
                       >
-                        <p className="text-[10px] uppercase font-bold text-slate-400">Dự án</p>
-                        <p className="text-sm font-black text-slate-800">{duAnCuaNS.length}</p>
+                        {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
+                      </button>
+                    </div>
+
+                    {/* Hàng 2: 4 chỉ số trọng tâm (Lead, Dự án, Tiềm năng, Sắp ký) */}
+                    <div className="grid grid-cols-4 gap-2">
+                      <Link
+                        href="/lead"
+                        className="bg-blue-500/8 border border-blue-200/50 py-1.5 px-1.5 rounded-[14px] text-center active:scale-95 transition"
+                      >
+                        <p className="text-[10px] font-bold text-blue-600 truncate">Lead</p>
+                        <p className="text-xs font-black text-blue-900 tabular-nums mt-0.5">{leadCuaNS.length}</p>
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDuAnModal({
+                            mo: true,
+                            tieuDe: `Dự án phụ trách • ${ns.ho_va_ten}`,
+                            danhSachDuAn: duAnCuaNS
+                          })
+                        }
+                        className="bg-slate-100/80 border border-slate-200/60 py-1.5 px-1.5 rounded-[14px] text-center active:scale-95 transition cursor-pointer"
+                      >
+                        <p className="text-[10px] font-bold text-slate-500 truncate">Dự án</p>
+                        <p className="text-xs font-black text-slate-800 tabular-nums mt-0.5">{duAnCuaNS.length}</p>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={() =>
                           setDuAnModal({
                             mo: true,
                             tieuDe: `Dự án tiềm năng cao • ${ns.ho_va_ten}`,
                             danhSachDuAn: dsTiemNangCuaNS
-                          });
-                        }}
+                          })
+                        }
                         className={cn(
-                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
+                          'border py-1.5 px-1.5 rounded-[14px] text-center active:scale-95 transition cursor-pointer',
                           dsTiemNangCuaNS.length > 0
-                            ? 'bg-amber-50/70 border-amber-200/80 text-amber-800 hover:bg-amber-100'
-                            : 'bg-slate-50 border-slate-200/80 text-slate-400'
+                            ? 'bg-amber-500/10 border-amber-200/70 text-amber-800'
+                            : 'bg-slate-50 border-slate-200/50 text-slate-400'
                         )}
                       >
-                        <p className="text-[10px] uppercase font-bold text-amber-600">Tiềm năng</p>
-                        <p className="text-sm font-black text-amber-700">{dsTiemNangCuaNS.length}</p>
+                        <p className="text-[10px] font-bold text-amber-600 truncate">Tiềm năng</p>
+                        <p className="text-xs font-black text-amber-800 tabular-nums mt-0.5">{dsTiemNangCuaNS.length}</p>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={() =>
                           setDuAnModal({
                             mo: true,
                             tieuDe: `Dự án sắp ký hợp đồng • ${ns.ho_va_ten}`,
                             danhSachDuAn: dsSapKyCuaNS
-                          });
-                        }}
+                          })
+                        }
                         className={cn(
-                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
+                          'border py-1.5 px-1.5 rounded-[14px] text-center active:scale-95 transition cursor-pointer',
                           dsSapKyCuaNS.length > 0
-                            ? 'bg-purple-50/70 border-purple-200/80 text-purple-800 hover:bg-purple-100'
-                            : 'bg-slate-50 border-slate-200/80 text-slate-400'
+                            ? 'bg-purple-500/10 border-purple-200/70 text-purple-800'
+                            : 'bg-slate-50 border-slate-200/50 text-slate-400'
                         )}
                       >
-                        <p className="text-[10px] uppercase font-bold text-purple-600">Sắp ký HĐ</p>
-                        <p className="text-sm font-black text-purple-700">{dsSapKyCuaNS.length}</p>
-                      </button>
-
-                      {/* KH tuần mobile */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (dsTacChien.length === 0) return;
-                          setKeHoachModal({
-                            mo: true,
-                            loai: 'tuan',
-                            tieuDe: `Kế hoạch tuần ${layTuanFromDateISO(ngayChon)}`,
-                            nhanVienTen: ns.ho_va_ten,
-                            keHoachTuan: khTuan
-                          });
-                        }}
-                        className={cn(
-                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
-                          dsTacChien.length > 0
-                            ? 'bg-blue-50/70 border-blue-200/80 text-blue-800 hover:bg-blue-100'
-                            : 'bg-slate-50 border-slate-200/80 text-slate-400'
-                        )}
-                      >
-                        <p className="text-[10px] uppercase font-bold text-blue-600">KH tuần</p>
-                        <p className="text-sm font-black text-blue-800">
-                          {dsTacChien.length > 0 ? `${soTuanXong}/${dsTacChien.length}` : '—'}
-                        </p>
-                      </button>
-
-                      {/* KH tháng mobile */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (dsDiaBan.length === 0) return;
-                          setKeHoachModal({
-                            mo: true,
-                            loai: 'thang',
-                            tieuDe: `Kế hoạch tháng ${ngayChon.slice(0, 7)}`,
-                            nhanVienTen: ns.ho_va_ten,
-                            keHoachThang: khThang
-                          });
-                        }}
-                        className={cn(
-                          'border px-2 py-1.5 rounded-xl text-center transition-colors',
-                          dsDiaBan.length > 0
-                            ? 'bg-indigo-50/70 border-indigo-200/80 text-indigo-800 hover:bg-indigo-100'
-                            : 'bg-slate-50 border-slate-200/80 text-slate-400'
-                        )}
-                      >
-                        <p className="text-[10px] uppercase font-bold text-indigo-600 flex items-center justify-center gap-0.5">
-                          <Target className="w-2.5 h-2.5" />
-                          <span>KH tháng</span>
-                        </p>
-                        <p className="text-sm font-black text-indigo-800">
-                          {dsDiaBan.length}
-                        </p>
+                        <p className="text-[10px] font-bold text-purple-600 truncate">Sắp ký</p>
+                        <p className="text-xs font-black text-purple-800 tabular-nums mt-0.5">{dsSapKyCuaNS.length}</p>
                       </button>
                     </div>
-
-                    {/* Hàng 3: 1 câu tóm ngắn gọn hành động cần làm */}
-                    {aiRecord && (
-                      <div className="bg-slate-50/90 p-2.5 rounded-xl border border-slate-100 space-y-0.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          Hành động cần làm:
-                        </span>
-                        <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
-                          {aiRecord.de_xuat_cho_quan_ly || aiRecord.nhan_dinh_chung}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -1044,7 +884,7 @@ export default function TrangTongQuanLanhDao() {
       {/* 7. Modal Drill-down hiển thị chi tiết Lịch gặp khách hàng */}
       {lichGapModal?.mo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[85vh] flex flex-col">
+          <div className="bg-white w-full max-w-2xl rounded-[26px] shadow-2xl border border-slate-200 overflow-hidden max-h-[85vh] flex flex-col">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">
@@ -1054,7 +894,7 @@ export default function TrangTongQuanLanhDao() {
               <button
                 type="button"
                 onClick={() => setLichGapModal(null)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-200/70 hover:bg-slate-200 transition cursor-pointer"
+                className="px-3.5 py-1.5 rounded-full text-xs font-bold text-slate-600 bg-slate-200/70 hover:bg-slate-200 transition cursor-pointer"
               >
                 Đóng
               </button>
@@ -1113,10 +953,10 @@ export default function TrangTongQuanLanhDao() {
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/70 flex items-center justify-end">
               <Link
                 href="/lich-cong-tac"
-                className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-[#185942] hover:bg-emerald-900 text-white text-xs font-bold transition"
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-[#185942] hover:bg-emerald-900 !text-white text-xs font-bold transition shadow-xs"
               >
-                <span>Mở Lịch Công Tác (Google Calendar)</span>
-                <ChevronRight className="w-3.5 h-3.5" />
+                <span className="text-white">Mở Lịch Công Tác (Google Calendar)</span>
+                <ChevronRight className="w-3.5 h-3.5 text-white" />
               </Link>
             </div>
           </div>

@@ -656,8 +656,50 @@ export default function TrangBaoCaoCongViec() {
   };
 
   return (
-    <Bo_Cuc_Trang khoang_cach_trong="space-y-4 sm:space-y-8">
-      {/* Header Bar - Hidden on mobile because Topbar already contains title and Add button */}
+    <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-6">
+      {/* 1. ONE UI 9 NOW BRIEF SUMMARY TRÊN MOBILE */}
+      <div className="sm:hidden bg-gradient-to-br from-[#0e3e2d] via-[#13503b] to-[#185942] rounded-[26px] p-3.5 text-white shadow-[0_8px_24px_rgba(14,62,45,0.16)] space-y-2.5">
+        <div className="flex items-center justify-between px-0.5">
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="size-4 text-emerald-300" />
+            <span className="text-[13px] font-extrabold text-white tracking-tight">
+              Báo cáo {formatNgay(ngayChonTongHop)}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => moTaoMoi()}
+            title="Tạo báo cáo hôm nay"
+            aria-label="Tạo báo cáo hôm nay"
+            className="inline-flex items-center justify-center size-8 rounded-full bg-white text-[#0e3e2d] font-extrabold shadow-xs active:scale-95 transition cursor-pointer"
+          >
+            <Plus className="size-4 stroke-[2.5]" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1.5">
+          <div className="bg-white/12 rounded-[16px] py-1.5 px-1 text-center border border-white/10">
+            <div className="text-[15px] font-extrabold text-emerald-300 tabular-nums leading-tight">
+              {thongKeNgayTongHop.daGui.length}/{thongKeNgayTongHop.tong}
+            </div>
+            <div className="text-[10px] font-medium text-emerald-100/85 whitespace-nowrap mt-0.5">Đã gửi</div>
+          </div>
+          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
+            <div className="text-[15px] font-extrabold text-amber-300 tabular-nums leading-tight">
+              {thongKeNgayTongHop.tamLuu.length}
+            </div>
+            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Tạm lưu</div>
+          </div>
+          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
+            <div className="text-[15px] font-extrabold text-rose-300 tabular-nums leading-tight">
+              {thongKeNgayTongHop.chuaNop.length}
+            </div>
+            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Chưa nộp</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Header Bar Desktop */}
       <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
           <div className="flex items-center gap-2.5">
@@ -668,11 +710,6 @@ export default function TrangBaoCaoCongViec() {
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {laQuanLy
-              ? 'Theo dõi, tổng hợp và giám sát tiến độ công việc hàng ngày của đội ngũ nhân viên'
-              : 'Ghi nhận và báo cáo tiến độ công việc hàng ngày của bạn'}
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -710,21 +747,21 @@ export default function TrangBaoCaoCongViec() {
         </div>
       </div>
 
-      {/* Chế độ xem Tabs Bar - Compact and horizontally scrollable on mobile */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 bg-muted/40 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-border">
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 shrink-0">
+      {/* Chế độ xem Tabs Bar - One UI 9 Squircle trên Mobile */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 bg-white sm:bg-muted/40 p-2 sm:p-1.5 rounded-[24px] sm:rounded-2xl border border-slate-200/80 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
+        <div className="flex items-center gap-1 bg-slate-100/80 sm:bg-transparent p-1 sm:p-0 rounded-full sm:rounded-none overflow-x-auto no-scrollbar shrink-0">
           {laQuanLy && (
             <button
               type="button"
               onClick={() => setCheDoXem('bang_tong_hop')}
               className={cn(
-                'px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap',
+                'px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full sm:rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer flex-1 sm:flex-none whitespace-nowrap',
                 cheDoXem === 'bang_tong_hop'
-                  ? 'bg-background text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
               )}
             >
-              <LayoutGrid className="size-3.5 sm:size-4 text-primary" />
+              <LayoutGrid className="size-3.5 sm:size-4 text-primary shrink-0" />
               <span className="sm:hidden">Tổng hợp</span>
               <span className="hidden sm:inline">Bảng Tổng Hợp Ngày</span>
             </button>
@@ -734,14 +771,14 @@ export default function TrangBaoCaoCongViec() {
             type="button"
             onClick={() => setCheDoXem('lich')}
             className={cn(
-              'px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap',
+              'px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full sm:rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer flex-1 sm:flex-none whitespace-nowrap',
               cheDoXem === 'lich'
-                ? 'bg-background text-foreground shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-900'
             )}
           >
-            <CalendarIcon className="size-3.5 sm:size-4 text-purple-600" />
-            <span className="sm:hidden">Lịch cá nhân</span>
+            <CalendarIcon className="size-3.5 sm:size-4 text-purple-600 shrink-0" />
+            <span className="sm:hidden">Lịch của tôi</span>
             <span className="hidden sm:inline">{laQuanLy ? 'Lịch Cá Nhân Của Tôi' : 'Lịch Báo Cáo Của Tôi'}</span>
           </button>
 
@@ -750,14 +787,14 @@ export default function TrangBaoCaoCongViec() {
               type="button"
               onClick={() => setCheDoXem('ma_tran_tuan')}
               className={cn(
-                'px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap',
+                'px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full sm:rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer flex-1 sm:flex-none whitespace-nowrap',
                 cheDoXem === 'ma_tran_tuan'
-                  ? 'bg-background text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
               )}
             >
-              <Users className="size-3.5 sm:size-4 text-emerald-600" />
-              <span className="sm:hidden">Ma trận tuần</span>
+              <Users className="size-3.5 sm:size-4 text-emerald-600 shrink-0" />
+              <span className="sm:hidden">Ma trận</span>
               <span className="hidden sm:inline">Ma Trận Tuần Đội Ngũ</span>
             </button>
           )}
@@ -766,25 +803,25 @@ export default function TrangBaoCaoCongViec() {
             type="button"
             onClick={() => setCheDoXem('danh_sach')}
             className={cn(
-              'px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap',
+              'px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full sm:rounded-xl text-[11px] sm:text-xs font-bold transition flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer flex-1 sm:flex-none whitespace-nowrap',
               cheDoXem === 'danh_sach'
-                ? 'bg-background text-foreground shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-900'
             )}
           >
-            <List className="size-3.5 sm:size-4 text-amber-600" />
+            <List className="size-3.5 sm:size-4 text-amber-600 shrink-0" />
             <span className="sm:hidden">Tất cả</span>
             <span className="hidden sm:inline">Danh Sách Tất Cả</span>
           </button>
         </div>
 
-        {/* Bộ lọc phạm vi phòng ban (cho Quản lý) & Nút xuất file Excel trên Mobile */}
+        {/* Bộ lọc phạm vi phòng ban (cho Quản lý) & Nút xuất file trên Mobile */}
         {laQuanLy && cheDoXem !== 'lich' && (
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
             <select
               value={phongBanFilter}
               onChange={(e) => setPhongBanFilter(e.target.value)}
-              className="h-8 sm:h-9 px-2 sm:px-3 text-[11px] sm:text-xs rounded-lg sm:rounded-xl bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium flex-1 sm:flex-none"
+              className="h-8.5 sm:h-9 px-3 text-[11px] sm:text-xs rounded-full sm:rounded-xl bg-slate-100/80 sm:bg-background border border-slate-200/80 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold flex-1 sm:flex-none min-w-0"
             >
               <option value="tat_ca">Tất cả phòng ban</option>
               {dsPhongBanDuocXem.map((pb) => (
@@ -799,7 +836,7 @@ export default function TrangBaoCaoCongViec() {
                   type="button"
                   disabled={dangXuatDoc}
                   onClick={xuatWordTongHopNgay}
-                  className="md:hidden inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-emerald-600/30 bg-emerald-600/10 text-emerald-700 shrink-0"
+                  className="md:hidden inline-flex items-center gap-1 px-3 h-8.5 text-[11px] font-bold rounded-full border border-slate-200/80 bg-slate-100/80 text-emerald-800 shrink-0 active:scale-95 transition"
                   title="Xuất file Word (.doc)"
                 >
                   <span>Xuất Word</span>
@@ -807,10 +844,10 @@ export default function TrangBaoCaoCongViec() {
                 <button
                   type="button"
                   onClick={xuLyXuatCSV}
-                  className="md:hidden inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-success/30 bg-success/10 text-success shrink-0"
+                  className="md:hidden inline-flex items-center gap-1 px-3 h-8.5 text-[11px] font-bold rounded-full border border-slate-200/80 bg-slate-100/80 text-emerald-800 shrink-0 active:scale-95 transition"
                   title="Xuất file Excel"
                 >
-                  <span>Xuất Excel</span>
+                  <span>Xuất</span>
                 </button>
               </>
             )}
@@ -819,12 +856,12 @@ export default function TrangBaoCaoCongViec() {
 
         {/* Nút xuất file khi không phải Quản lý trên Mobile */}
         {(!laQuanLy || cheDoXem === 'lich') && coQuyenXuatFile && (
-          <div className="flex md:hidden items-center justify-end gap-2 w-full">
+          <div className="flex md:hidden items-center justify-end gap-1.5 w-full">
             <button
               type="button"
               disabled={dangXuatDoc}
               onClick={xuatWordTongHopNgay}
-              className="inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-emerald-600/30 bg-emerald-600/10 text-emerald-700"
+              className="inline-flex items-center gap-1 px-3 h-8 text-[11px] font-bold rounded-full border border-slate-200/80 bg-slate-100/80 text-emerald-800"
               title="Xuất file Word (.doc)"
             >
               <span>Xuất Word</span>
@@ -832,10 +869,10 @@ export default function TrangBaoCaoCongViec() {
             <button
               type="button"
               onClick={xuLyXuatCSV}
-              className="inline-flex items-center gap-1 px-2.5 h-8 text-[11px] font-bold rounded-lg border border-success/30 bg-success/10 text-success"
+              className="inline-flex items-center gap-1 px-3 h-8 text-[11px] font-bold rounded-full border border-slate-200/80 bg-slate-100/80 text-emerald-800"
               title="Xuất file Excel"
             >
-              <span>Xuất Excel</span>
+              <span>Xuất</span>
             </button>
           </div>
         )}
@@ -855,25 +892,28 @@ export default function TrangBaoCaoCongViec() {
           {cheDoXem === 'bang_tong_hop' && (
             <div className="space-y-3 sm:space-y-6">
               {/* Thanh chọn ngày & KPI tiến độ nộp của đội ngũ */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-                {/* Hộp chọn ngày có Tờ Lịch Nổi Bật */}
-                <div className="p-3 sm:p-4 rounded-2xl border border-border bg-card flex items-center gap-3">
-                  <ToLichNgay ngayStr={ngayChonTongHop} kichThuoc="sm" noiBat />
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-4">
+                {/* Hộp chọn ngày gọn 1 hàng trên Mobile, 1 cột trên Desktop */}
+                <div className="p-2.5 sm:p-4 rounded-[22px] sm:rounded-2xl border border-slate-200/80 bg-white flex items-center justify-between sm:justify-start gap-2.5 shadow-[0_2px_8px_rgba(15,23,42,0.02)]">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <ToLichNgay ngayStr={ngayChonTongHop} kichThuoc="sm" noiBat />
+                    <span className="text-xs font-extrabold text-slate-700 sm:hidden">Ngày xem</span>
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+                    <div className="hidden sm:block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
                       Chọn ngày xem
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-end sm:justify-start gap-1.5">
                       <input
                         type="date"
                         value={ngayChonTongHop}
                         onChange={(e) => setNgayChonTongHop(e.target.value)}
-                        className="h-8 px-2 text-xs font-bold rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 flex-1 min-w-0"
+                        className="h-8.5 px-2.5 text-xs font-bold rounded-full sm:rounded-lg border border-slate-200 bg-slate-50 sm:bg-background text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-0"
                       />
                       <button
                         type="button"
                         onClick={() => setNgayChonTongHop(NGAY_HOM_NAY)}
-                        className="h-8 px-2 text-[10px] sm:text-xs font-bold rounded-lg border border-border bg-muted hover:bg-muted/80 text-foreground transition shrink-0"
+                        className="h-8.5 px-2.5 text-[11px] font-bold rounded-full sm:rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition shrink-0 cursor-pointer"
                       >
                         Hôm nay
                       </button>
@@ -881,56 +921,60 @@ export default function TrangBaoCaoCongViec() {
                   </div>
                 </div>
 
-                {/* KPI 1: Đã Gửi */}
-                <div className="p-3 sm:p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 flex items-center gap-3">
-                  <div className="size-9 sm:size-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                    <UserCheck className="size-4 sm:size-5" />
+                {/* KPI 1-3 chỉ hiện trên Desktop vì Mobile đã có trên Now Brief */}
+                <div className="hidden sm:flex p-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/60 items-center gap-3">
+                  <div className="size-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <UserCheck className="size-5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[9px] sm:text-[11px] font-bold text-emerald-800 uppercase tracking-wider truncate">Đã Gửi Báo Cáo</div>
-                    <div className="text-base sm:text-xl font-black text-emerald-900 mt-0.5 tabular-nums">
-                      {thongKeNgayTongHop.daGui.length}{' '}
-                      <span className="text-[10px] sm:text-xs font-normal text-emerald-700 truncate">
-                        / {thongKeNgayTongHop.tong} ({thongKeNgayTongHop.tong > 0 ? Math.round((thongKeNgayTongHop.daGui.length / thongKeNgayTongHop.tong) * 100) : 0}%)
+                    <div className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider truncate">
+                      Đã Gửi Báo Cáo
+                    </div>
+                    <div className="text-xl font-black text-emerald-900 mt-0.5 tabular-nums leading-tight">
+                      {thongKeNgayTongHop.daGui.length}
+                      <span className="text-xs font-semibold text-emerald-700/80">
+                        /{thongKeNgayTongHop.tong}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* KPI 2: Tạm lưu (Bản nháp) */}
-                <div className="p-3 sm:p-4 rounded-2xl border border-amber-200 bg-amber-50/50 flex items-center gap-3">
-                  <div className="size-9 sm:size-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                    <Pencil className="size-4 sm:size-5" />
+                <div className="hidden sm:flex p-4 rounded-2xl border border-amber-200/80 bg-amber-50/60 items-center gap-3">
+                  <div className="size-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                    <Pencil className="size-5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[9px] sm:text-[11px] font-bold text-amber-800 uppercase tracking-wider truncate">Đang Tạm Lưu</div>
-                    <div className="text-base sm:text-xl font-black text-amber-900 mt-0.5 tabular-nums">
-                      {thongKeNgayTongHop.tamLuu.length}{' '}
-                      <span className="text-[10px] sm:text-xs font-normal text-amber-700">bản nháp</span>
+                    <div className="text-[11px] font-bold text-amber-800 uppercase tracking-wider truncate">
+                      Đang Tạm Lưu
+                    </div>
+                    <div className="text-xl font-black text-amber-900 mt-0.5 tabular-nums leading-tight">
+                      {thongKeNgayTongHop.tamLuu.length}
+                      <span className="text-xs font-normal text-amber-700 ml-1">bản nháp</span>
                     </div>
                   </div>
                 </div>
 
-                {/* KPI 3: Chưa Nộp */}
-                <div className="p-3 sm:p-4 rounded-2xl border border-rose-200 bg-rose-50/50 flex items-center gap-3">
-                  <div className="size-9 sm:size-11 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                    <UserX className="size-4 sm:size-5" />
+                <div className="hidden sm:flex p-4 rounded-2xl border border-rose-200/80 bg-rose-50/60 items-center gap-3">
+                  <div className="size-11 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                    <UserX className="size-5" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[9px] sm:text-[11px] font-bold text-rose-800 uppercase tracking-wider truncate">Chưa Có Báo Cáo</div>
-                    <div className="text-base sm:text-xl font-black text-rose-900 mt-0.5 tabular-nums">
-                      {thongKeNgayTongHop.chuaNop.length}{' '}
-                      <span className="text-[10px] sm:text-xs font-normal text-rose-700">nhân sự</span>
+                    <div className="text-[11px] font-bold text-rose-800 uppercase tracking-wider truncate">
+                      Chưa Có Báo Cáo
+                    </div>
+                    <div className="text-xl font-black text-rose-900 mt-0.5 tabular-nums leading-tight">
+                      {thongKeNgayTongHop.chuaNop.length}
+                      <span className="text-xs font-normal text-rose-700 ml-1">nhân sự</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Danh sách nhân viên và tình trạng báo cáo */}
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <h3 className="text-sm font-bold text-foreground">
-                    Chi tiết báo cáo ngày {formatNgay(ngayChonTongHop)} ({thongKeNgayTongHop.tong} nhân viên)
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-[13px] sm:text-sm font-extrabold text-slate-900">
+                    Ngày {formatNgay(ngayChonTongHop)} ({thongKeNgayTongHop.tong} nhân sự)
                   </h3>
                   <div className="flex items-center gap-2 flex-wrap">
                     {coQuyenXuatFile && (
@@ -938,7 +982,7 @@ export default function TrangBaoCaoCongViec() {
                         type="button"
                         disabled={dangXuatDoc}
                         onClick={xuatWordTongHopNgay}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-emerald-600/30 bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20 transition cursor-pointer self-start sm:self-auto disabled:opacity-50"
+                        className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-emerald-600/30 bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20 transition cursor-pointer disabled:opacity-50"
                         title="Xuất báo cáo tổng hợp ngày của tất cả mọi người ra file Word (.doc)"
                       >
                         {dangXuatDoc && <Loader2 className="size-3.5 animate-spin" />}
@@ -949,11 +993,11 @@ export default function TrangBaoCaoCongViec() {
                       <button
                         type="button"
                         onClick={saoChepTongHopNgay}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition cursor-pointer self-start sm:self-auto"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-full sm:rounded-xl border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition cursor-pointer"
                         title="Sao chép toàn bộ danh sách công việc đã làm của đội ngũ hôm nay"
                       >
                         <Copy className="size-3.5" />
-                        <span>Sao chép tổng hợp hôm nay</span>
+                        <span>Sao chép</span>
                       </button>
                     )}
                   </div>
@@ -961,154 +1005,128 @@ export default function TrangBaoCaoCongViec() {
 
                 <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
                   {/* Cột 1: Danh sách ĐÃ GHI NHẬN (Đã gửi + Tạm lưu) */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-border text-xs font-bold text-emerald-700">
-                      <span>ĐÃ BÁO CÁO / GHI NHẬN ({thongKeNgayTongHop.daNop.length})</span>
+                  <div className="bg-white rounded-[26px] sm:rounded-2xl border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 text-xs font-extrabold text-emerald-800 bg-white">
+                      <span>ĐÃ BÁO CÁO ({thongKeNgayTongHop.daNop.length})</span>
                       {thongKeNgayTongHop.tamLuu.length > 0 && (
                         <span className="text-[11px] font-semibold text-amber-700">
-                          (gồm {thongKeNgayTongHop.tamLuu.length} bản tạm lưu)
+                          {thongKeNgayTongHop.tamLuu.length} tạm lưu
                         </span>
                       )}
                     </div>
                     {thongKeNgayTongHop.daNop.length === 0 ? (
-                      <div className="p-8 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl">
+                      <div className="p-8 text-center text-xs text-muted-foreground">
                         Chưa có nhân viên nào nộp hoặc lưu báo cáo trong ngày này.
                       </div>
                     ) : (
-                      thongKeNgayTongHop.daNop.map((ns) => {
-                        const bccv = thongKeNgayTongHop.dsBaoCao.find((b) => b.nhan_vien_id === ns.id);
-                        if (!bccv) return null;
-                        const laTamLuu = bccv.trang_thai === 'tam_luu';
-                        const dsChiTiet = layDanhSachChiTiet(bccv);
-                        const pb = dsPhongBan.find((x) => x.id === ns.phong_ban_id)?.ten_phong_ban || 'Phòng ban';
+                      <div className="p-2.5 bg-slate-100/70 space-y-2.5">
+                        {thongKeNgayTongHop.daNop.map((ns, indexNs) => {
+                          const bccv = thongKeNgayTongHop.dsBaoCao.find((b) => b.nhan_vien_id === ns.id);
+                          if (!bccv) return null;
+                          const laTamLuu = bccv.trang_thai === 'tam_luu';
+                          const dsChiTiet = layDanhSachChiTiet(bccv);
+                          const pb = dsPhongBan.find((x) => x.id === ns.phong_ban_id)?.ten_phong_ban || 'Phòng ban';
 
-                        return (
-                          <div
-                            key={ns.id}
-                            className={cn(
-                              'p-4 rounded-xl border bg-card hover:shadow-sm transition space-y-3',
-                              laTamLuu ? 'border-amber-300/80 bg-amber-50/10' : 'border-emerald-200'
-                            )}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className={cn(
-                                  'size-9 rounded-xl font-bold text-xs flex items-center justify-center shrink-0',
-                                  laTamLuu ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-                                )}>
-                                  {ns.ho_va_ten.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="font-bold text-sm text-foreground truncate">{ns.ho_va_ten}</div>
-                                  <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                                    <span>{ns.ma_nhan_vien}</span>
-                                    <span>•</span>
-                                    <span className="text-primary font-medium">{pb}</span>
-                                    {ns.chuc_vu && (
-                                      <>
-                                        <span>•</span>
-                                        <span>{ns.chuc_vu}</span>
-                                      </>
-                                    )}
+                          return (
+                            <div
+                              key={ns.id}
+                              className="p-3.5 rounded-[22px] border border-slate-200/80 bg-white shadow-[0_2px_8px_rgba(15,23,42,0.03)] space-y-2.5"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2 min-w-0 flex-1">
+                                  <span className="text-slate-400 text-[11.5px] font-extrabold tabular-nums mt-0.5 shrink-0">
+                                    {indexNs + 1}.
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-[14px] leading-snug">
+                                      <span className="font-bold text-slate-900">{ns.ho_va_ten}</span>
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
+                                        {laTamLuu ? `Tạm lưu • ${dsChiTiet.length} việc` : `Đã gửi • ${dsChiTiet.length} việc`}
+                                      </span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-400 mt-0.5 truncate">
+                                      {pb} {ns.chuc_vu ? `• ${ns.chuc_vu}` : ''}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {laTamLuu ? (
-                                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 flex items-center gap-1 border border-amber-200">
-                                    <Pencil className="size-3" /> Tạm lưu ({dsChiTiet.length} việc)
-                                  </span>
-                                ) : (
-                                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
-                                    <Check className="size-3" /> Đã gửi ({dsChiTiet.length} việc)
-                                  </span>
-                                )}
+
                                 <button
                                   type="button"
                                   onClick={() => saoChepBaoCaoNhanVien(ns, bccv)}
-                                  className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center justify-center transition cursor-pointer"
+                                  className="size-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 inline-flex items-center justify-center transition cursor-pointer shrink-0"
                                   title="Sao chép nội dung báo cáo này"
                                 >
                                   <Copy className="size-3.5" />
                                 </button>
                               </div>
-                            </div>
 
-                            {/* Các công việc đã làm - Mỗi việc 1 dòng rõ ràng */}
-                            <div className="space-y-1.5 text-xs text-foreground bg-muted/30 p-2.5 rounded-lg border border-border/40">
-                              {dsChiTiet.map((ct, idx) => (
-                                <div key={idx} className="flex items-start gap-2">
-                                  <span className={cn(
-                                    'size-4 rounded-full font-bold text-[10px] inline-flex items-center justify-center shrink-0 mt-0.5',
-                                    laTamLuu ? 'bg-amber-500/15 text-amber-700' : 'bg-emerald-500/15 text-emerald-700'
-                                  )}>
-                                    {idx + 1}
-                                  </span>
-                                  <span className="leading-relaxed font-medium flex-1">{ct.noi_dung}</span>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Kế hoạch tiếp theo */}
-                            {bccv.ke_hoach_ngay_mai && (
-                              <div className="text-xs text-muted-foreground border-t border-border/40 pt-2">
-                                <span className="font-semibold text-foreground">Kế hoạch ngày mai:</span>{' '}
-                                {bccv.ke_hoach_ngay_mai}
+                              {/* Các công việc đã làm */}
+                              <div className="space-y-1.5 text-xs text-slate-700 bg-slate-50/80 p-2.5 rounded-2xl border border-slate-100">
+                                {dsChiTiet.map((ct, idx) => (
+                                  <div key={idx} className="flex items-start gap-2">
+                                    <span className="text-slate-400 font-bold text-[11px] tabular-nums shrink-0">
+                                      {idx + 1}.
+                                    </span>
+                                    <span className="leading-relaxed font-medium flex-1">{ct.noi_dung}</span>
+                                  </div>
+                                ))}
                               </div>
-                            )}
 
-                            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
-                              <span className="flex items-center gap-1">
-                                <Clock className="size-3" /> Cập nhật lúc {bccv.ngay_cap_nhat?.slice(11, 16) || 'Trong ngày'}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => moChinhSua(bccv)}
-                                className="font-semibold text-primary hover:underline cursor-pointer"
-                              >
-                                Xem / Sửa chi tiết
-                              </button>
+                              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-100">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="size-3" /> {bccv.ngay_cap_nhat?.slice(11, 16) || 'Trong ngày'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => moChinhSua(bccv)}
+                                  className="font-bold text-[#107555] hover:underline cursor-pointer"
+                                >
+                                  Chi tiết
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
 
                   {/* Cột 2: Danh sách CHƯA NỘP */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-border text-xs font-bold text-rose-700">
+                  <div className="bg-white rounded-[26px] sm:rounded-2xl border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] overflow-hidden h-fit">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 text-xs font-extrabold text-rose-700 bg-white">
                       <span>CHƯA BÁO CÁO ({thongKeNgayTongHop.chuaNop.length})</span>
                     </div>
                     {thongKeNgayTongHop.chuaNop.length === 0 ? (
-                      <div className="p-8 text-center text-xs text-emerald-600 border border-dashed border-emerald-200 rounded-xl bg-emerald-50/20 font-medium">
-                        🎉 Tuyệt vời! 100% nhân viên trong phạm vi quản lý đã nộp / lưu báo cáo.
+                      <div className="p-8 text-center text-xs text-emerald-600 font-medium">
+                        100% nhân viên trong phạm vi đã nộp báo cáo.
                       </div>
                     ) : (
-                      thongKeNgayTongHop.chuaNop.map((ns) => {
-                        const pb = dsPhongBan.find((x) => x.id === ns.phong_ban_id)?.ten_phong_ban || 'Chưa phân phòng';
-                        return (
-                          <div
-                            key={ns.id}
-                            className="p-3.5 rounded-xl border border-rose-200/80 bg-rose-50/20 flex items-center justify-between gap-3 text-xs"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="size-8 rounded-xl bg-rose-100 text-rose-700 font-bold flex items-center justify-center shrink-0">
-                                {ns.ho_va_ten.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="font-bold text-foreground truncate">{ns.ho_va_ten}</div>
-                                <div className="text-[11px] text-muted-foreground">
-                                  {ns.ma_nhan_vien} • {pb} {ns.chuc_vu && `• ${ns.chuc_vu}`}
+                      <div className="p-2.5 bg-slate-100/70 space-y-2">
+                        {thongKeNgayTongHop.chuaNop.map((ns, idxNs) => {
+                          const pb = dsPhongBan.find((x) => x.id === ns.phong_ban_id)?.ten_phong_ban || 'Chưa phân phòng';
+                          return (
+                            <div
+                              key={ns.id}
+                              className="p-3 rounded-[20px] border border-slate-200/80 bg-white flex items-center justify-between gap-2 text-xs shadow-[0_2px_6px_rgba(15,23,42,0.02)]"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-slate-400 text-[11px] font-extrabold tabular-nums shrink-0">
+                                  {idxNs + 1}.
+                                </span>
+                                <div className="min-w-0">
+                                  <div className="font-bold text-slate-900 truncate">{ns.ho_va_ten}</div>
+                                  <div className="text-[11px] text-slate-400 truncate">
+                                    {pb} {ns.chuc_vu && `• ${ns.chuc_vu}`}
+                                  </div>
                                 </div>
                               </div>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 shrink-0">
+                                Chưa nộp
+                              </span>
                             </div>
-                            <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-rose-100 text-rose-700 shrink-0">
-                              Chưa có
-                            </span>
-                          </div>
-                        );
-                      })
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>
