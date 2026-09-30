@@ -27,7 +27,7 @@ import {
   Menu
 } from 'lucide-react';
 
-function getTenNgan(hoVaTen?: string) {
+function getTenNgan(hoVaTen?: string | null) {
   if (!hoVaTen) return 'Trang chủ';
   const parts = hoVaTen.trim().split(' ');
   if (parts.length <= 2) return hoVaTen;
