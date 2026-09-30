@@ -493,13 +493,13 @@ export default function TrangTongQuanLanhDao() {
               }
               className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 text-xs font-bold text-emerald-700 transition cursor-pointer"
             >
-              Tháng này: <span className="font-black">{thongKeLanhDao.lichThangNay.length}</span> (Đã gặp{' '}
+              Tháng {ngayChon.slice(5, 7)}: <span className="font-black">{thongKeLanhDao.lichThangNay.length}</span> (Đã gặp{' '}
               {thongKeLanhDao.lichDaHoanThanhThang.length})
             </button>
 
             <Link
               href="/lich-cong-tac"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#185942] hover:bg-emerald-900 text-white text-xs font-bold transition shadow-sm"
             >
               <span>Xem Calendar</span>
               <ChevronRight className="w-3.5 h-3.5" />
