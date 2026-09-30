@@ -473,20 +473,6 @@ export default function TrangTongQuanLanhDao() {
               onClick={() =>
                 setLichGapModal({
                   mo: true,
-                  tieuDe: `Lịch gặp khách hàng • Ngày ${formatNgay(ngayChon)}`,
-                  danhSachLich: thongKeLanhDao.lichHomNay
-                })
-              }
-              className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200/80 text-xs font-bold text-blue-700 transition cursor-pointer"
-            >
-              Hôm nay: <span className="font-black">{thongKeLanhDao.lichHomNay.length}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setLichGapModal({
-                  mo: true,
                   tieuDe: 'Lịch gặp khách hàng trong Tuần',
                   danhSachLich: thongKeLanhDao.lichTuanNay
                 })
@@ -521,48 +507,6 @@ export default function TrangTongQuanLanhDao() {
           </div>
         </div>
 
-        {/* Danh sách rút gọn các lịch hẹn trong tuần */}
-        {thongKeLanhDao.lichTuanNay.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-2 border-t border-slate-100">
-            {thongKeLanhDao.lichTuanNay.slice(0, 3).map((lich) => {
-              const ns = dsNhanSu.find((x) => x.id === lich.nguoi_phu_trach_id);
-              const ttObj = DANH_SACH_TRANG_THAI_LICH_GAP.find((t) => t.key === lich.trang_thai);
-              return (
-                <Link
-                  key={lich.id}
-                  href="/lich-cong-tac"
-                  className="p-2.5 rounded-xl bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/70 flex items-center justify-between gap-2 transition"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700">
-                      <span>{formatNgay(lich.ngay)}</span>
-                      <span>•</span>
-                      <span>
-                        {lich.gio_bat_dau} - {lich.gio_ket_thuc}
-                      </span>
-                    </div>
-                    <div className="text-xs font-bold text-slate-900 truncate mt-0.5">
-                      {lich.ten_khach_hang}
-                    </div>
-                    <div className="text-[11px] text-slate-500 truncate">
-                      Phụ trách: {ns?.ho_va_ten || 'Chưa gán'}
-                    </div>
-                  </div>
-                  {ttObj && (
-                    <span
-                      className={cn(
-                        'shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border',
-                        ttObj.mauBadge
-                      )}
-                    >
-                      {ttObj.tieu_de}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* 3. Danh sách Đội Ngũ Kinh Doanh */}
