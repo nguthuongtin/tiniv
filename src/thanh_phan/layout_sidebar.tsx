@@ -18,6 +18,7 @@ import {
   BarChart3,
   Settings2,
   CalendarRange,
+  CalendarCheck,
   BookOpen,
   TrendingUp,
   Sparkles
@@ -45,6 +46,7 @@ const DANH_MUC_SIDEBAR: MucSidebar[] = [
     quyen: 'lanh_dao.xem'
   },
   { href: '/lead', icon: Sparkles, nhan: 'Lead', nhom: 'Module' },
+  { href: '/lich-cong-tac', icon: CalendarCheck, nhan: 'Lịch công tác', nhom: 'Module' },
   { href: '/khach-hang', icon: Building2, nhan: 'Khách hàng', nhom: 'Module' },
   { href: '/ho-so-du-an', icon: FolderKanban, nhan: 'Hồ sơ dự án', nhom: 'Module', quyen: 'du_an.xem' },
   { href: '/ke-hoach', icon: CalendarRange, nhan: 'Kế hoạch', nhom: 'Module', quyen: 'ke_hoach.xem' },

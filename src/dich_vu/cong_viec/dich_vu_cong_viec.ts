@@ -23,7 +23,7 @@ import {
 } from '../../thu_vien/firebase/client_firebase';
 
 const TEN_COLLECTION = 'cong_viec' as const;
-const GIOI_HAN_MAC_DINH = 100;
+const GIOI_HAN_MAC_DINH = 2000;
 
 export interface DieuKienLocCongViec {
   tuKhoa?: string | null;
@@ -105,10 +105,12 @@ export const danhSachCongViec = async (
     const snapshot = await getDocs(q);
     const resultsRaw: CongViec[] = [];
     for (const d of snapshot.docs) {
-      resultsRaw.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+      const data = d.data();
+      if (data?.loai_ban_ghi === 'lich_gap_kh') continue;
+      resultsRaw.push(chuyenDoiDocThanhDoiTuong(d.id, data));
     }
     resultsRaw.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
-    return { mang: sapXepVaLocThem(resultsRaw, loc), tong_so: snapshot.size };
+    return { mang: sapXepVaLocThem(resultsRaw, loc), tong_so: resultsRaw.length };
   } catch (err) {
     console.warn('[dich_vu_cong_viec] danhSachCongViec catch:', err);
     return { mang: [], tong_so: 0 };

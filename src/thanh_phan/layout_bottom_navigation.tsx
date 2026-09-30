@@ -12,7 +12,8 @@ import {
   Shield,
   LogOut,
   BarChart3,
-  Sparkles
+  Sparkles,
+  CalendarCheck
 } from 'lucide-react';
 import { cn } from '../thu_vien/utils/cn';
 import useStoreXacThuc from '../thu_vien/zustand/store_xac_thuc';
@@ -61,6 +62,19 @@ export default function ThanhDieuHuongDuoi() {
             <div className="min-w-0 flex-1">
               <div className="font-bold leading-snug">Lead</div>
               <div className="text-[11px] text-slate-400 leading-tight">Tiếp cận & khai thác</div>
+            </div>
+          </Link>
+
+          <Link
+            href="/lich-cong-tac"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-50 transition leading-relaxed active:scale-[0.98]"
+          >
+            <div className="size-9 rounded-[12px] bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-purple-500/20">
+              <CalendarCheck className="size-[18px]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold leading-snug">Lịch công tác</div>
+              <div className="text-[11px] text-slate-400 leading-tight">Lịch hẹn gặp khách hàng</div>
             </div>
           </Link>
 

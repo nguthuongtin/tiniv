@@ -30,6 +30,7 @@ import { cn } from '../../../thu_vien/utils/cn';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
 import { useStoreXacThuc } from '../../../thu_vien/zustand/store_xac_thuc';
 import type { Lead, TrangThaiLead } from '../../../thu_vien/types/lead';
+import type { LichGapKH } from '../../../thu_vien/types/lich_gap_kh';
 import type { KhachHang, NguoiLienHe } from '../../../thu_vien/types/khach_hang';
 import type { NhanSu, ChiNhanh } from '../../../thu_vien/types/nhan_su';
 import {
@@ -42,6 +43,11 @@ import {
   type CapNhatLeadDTO
 } from '../../../dich_vu/lead/dich_vu_lead';
 import {
+  danhSachLichGapKH,
+  taoLichGapKHMoi,
+  type TaoMoiLichGapDTO
+} from '../../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
+import {
   danhSachKhachHang,
   taoKhachHangMoi,
   type TaoMoiKhachHangDTO
@@ -51,6 +57,7 @@ import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
 import { taoHoSoDuAnMoi } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import FormLeadModal from '../../../thanh_phan/lead/form_lead_modal';
+import FormLichGapModal from '../../../thanh_phan/lich_gap_kh/form_lich_gap_modal';
 import FormKhachHangDrawer from '../../../thanh_phan/khach_hang/form_khach_hang_drawer';
 import FormHoSoDuAnDrawer from '../../../thanh_phan/ho_so_du_an/form_ho_so_du_an_drawer';
 import { Bo_Cuc_Trang, Nut, DaiDien } from '../../../thanh_phan/ui';
@@ -94,6 +101,7 @@ export default function TrangLead() {
 
   // State danh sách
   const [dsLead, setDsLead] = useState<Lead[]>([]);
+  const [dsLichGap, setDsLichGap] = useState<LichGapKH[]>([]);
   const [dsKhachHang, setDsKhachHang] = useState<KhachHang[]>([]);
   const [dsNguoiLienHe, setDsNguoiLienHe] = useState<NguoiLienHe[]>([]);
   const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>([]);
@@ -114,23 +122,27 @@ export default function TrangLead() {
   const [moDrawerKhachHang, setMoDrawerKhachHang] = useState(false);
   const [moDrawerDuAn, setMoDrawerDuAn] = useState(false);
   const [leadChuyenDoi, setLeadChuyenDoi] = useState<Lead | null>(null);
+  const [leadDatLich, setLeadDatLich] = useState<Lead | null>(null);
+  const [dangLuuLich, setDangLuuLich] = useState(false);
 
   // Fetch initial data
   const taiDuLieu = useCallback(async () => {
     setDangTai(true);
     try {
-      const [leads, khs, nlhs, nss, cns] = await Promise.all([
+      const [leads, khs, nlhs, nss, cns, lichs] = await Promise.all([
         danhSachLead(),
         danhSachKhachHang(),
         danhSachNguoiLienHe(),
         danhSachNhanSu(),
-        danhSachChiNhanh()
+        danhSachChiNhanh(),
+        danhSachLichGapKH().catch(() => [])
       ]);
       setDsLead(leads);
       setDsKhachHang(Array.isArray(khs) ? khs : (khs as any).mang || []);
       setDsNguoiLienHe(Array.isArray(nlhs) ? nlhs : (nlhs as any).mang || []);
       setDsNhanSu(Array.isArray(nss) ? nss : (nss as any).mang || []);
       setDsChiNhanh(Array.isArray(cns) ? cns : (cns as any).mang || []);
+      setDsLichGap(Array.isArray(lichs) ? lichs : []);
     } catch (e) {
       console.error('Lỗi tải dữ liệu Lead:', e);
     } finally {
@@ -255,8 +267,32 @@ export default function TrangLead() {
     try {
       await doiTrangThaiLead(id, ttMoi);
       setDsLead(prev => prev.map(x => (x.id === id ? { ...x, trang_thai: ttMoi } : x)));
+      if (ttMoi === 'da_hen_gap') {
+        const found = dsLead.find(x => x.id === id);
+        if (found) setLeadDatLich(found);
+      }
     } catch (e) {
       console.error('Lỗi đổi trạng thái:', e);
+    }
+  };
+
+  // Lưu lịch hẹn gặp KH từ Lead
+  const handleLuuLichTuLead = async (dto: any) => {
+    if (!leadDatLich) return;
+    setDangLuuLich(true);
+    try {
+      await taoLichGapKHMoi(dto as TaoMoiLichGapDTO);
+      await capNhatLead(leadDatLich.id, {
+        trang_thai: 'da_hen_gap',
+        ngay_hen_lai: dto.ngay
+      });
+      setLeadDatLich(null);
+      await taiDuLieu();
+    } catch (e) {
+      console.error('Lỗi đặt lịch từ Lead:', e);
+      alert('Không thể đăng ký lịch gặp. Vui lòng thử lại!');
+    } finally {
+      setDangLuuLich(false);
     }
   };
 
@@ -699,15 +735,26 @@ export default function TrangLead() {
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1 justify-end">
                           {lead.trang_thai !== 'da_chuyen_doi' && lead.trang_thai !== 'that_bai' && (
-                            <button
-                              type="button"
-                              onClick={() => handleBatDauLenDuAn(lead)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/80 transition cursor-pointer"
-                              title="Tạo dự án từ Lead này"
-                            >
-                              <FolderKanban className="size-3.5" />
-                              <span>Lên DA</span>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setLeadDatLich(lead)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/80 transition cursor-pointer"
+                                title="Đăng ký lịch hẹn gặp vào Lịch công tác"
+                              >
+                                <CalendarCheck className="size-3.5" />
+                                <span>Đặt lịch</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleBatDauLenDuAn(lead)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/80 transition cursor-pointer"
+                                title="Tạo dự án từ Lead này"
+                              >
+                                <FolderKanban className="size-3.5" />
+                                <span>Lên DA</span>
+                              </button>
+                            </>
                           )}
                           <button
                             type="button"
@@ -822,16 +869,26 @@ export default function TrangLead() {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {lead.trang_thai !== 'da_chuyen_doi' && lead.trang_thai !== 'that_bai' && (
-                        <button
-                          type="button"
-                          onClick={() => handleBatDauLenDuAn(lead)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-2xs hover:bg-emerald-700 active:scale-95 transition"
-                        >
-                          <FolderKanban className="size-3" />
-                          <span>Lên DA</span>
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setLeadDatLich(lead)}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200 active:scale-95 transition"
+                          >
+                            <CalendarCheck className="size-3" />
+                            <span>Đặt lịch</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBatDauLenDuAn(lead)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white shadow-2xs hover:bg-emerald-700 active:scale-95 transition"
+                          >
+                            <FolderKanban className="size-3" />
+                            <span>Lên DA</span>
+                          </button>
+                        </>
                       )}
 
                       <button
@@ -876,6 +933,37 @@ export default function TrangLead() {
         onMoModalTaoKH={() => setMoDrawerKhachHang(true)}
         khi_luu={handleLuuLead}
         dang_xu_ly={dangXuLyLuu}
+      />
+
+      {/* Modal Đăng ký Lịch gặp KH từ Lead */}
+      <FormLichGapModal
+        mo={Boolean(leadDatLich)}
+        khi_dong={() => setLeadDatLich(null)}
+        dang_sua={null}
+        gia_tri_mac_dinh={
+          leadDatLich
+            ? {
+                khach_hang_id: leadDatLich.khach_hang_id,
+                ten_khach_hang: leadDatLich.ten_khach_hang,
+                nguoi_lien_he_id: leadDatLich.nguoi_lien_he_id,
+                ten_nguoi_lien_he: leadDatLich.ten_nguoi_lien_he,
+                so_dien_thoai: leadDatLich.so_dien_thoai,
+                nguoi_phu_trach_id: leadDatLich.nguoi_phu_trach_id,
+                chi_nhanh_id: leadDatLich.chi_nhanh_id,
+                ngay: leadDatLich.ngay_hen_lai || undefined,
+                noi_dung: leadDatLich.ghi_chu,
+                nguon_lead_id: leadDatLich.id
+              }
+            : null
+        }
+        dsLichHienCo={dsLichGap}
+        dsKhachHang={dsKhachHang}
+        dsNguoiLienHe={dsNguoiLienHe}
+        dsNhanSu={dsNhanSu}
+        nguoiDungId={nguoiDungHienTai?.id}
+        chiNhanhMacDinhId={nguoiDungHienTai?.chi_nhanh_id}
+        khi_luu={handleLuuLichTuLead}
+        dang_xu_ly={dangLuuLich}
       />
 
       {/* Drawer Khách Hàng */}

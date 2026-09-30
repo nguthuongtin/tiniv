@@ -21,7 +21,7 @@ import {
 } from '../../thu_vien/firebase/client_firebase';
 
 const TEN_COLLECTION = 'bao_cao_cong_viec' as const;
-const GIOI_HAN_MAC_DINH = 100;
+const GIOI_HAN_MAC_DINH = 5000;
 
 export interface DieuKienLocBaoCaoCongViec {
   tuKhoa?: string | null;

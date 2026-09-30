@@ -25,7 +25,7 @@ import {
 } from '../../thu_vien/firebase/client_firebase';
 
 const TEN_COLLECTION = 'khach_hang' as const;
-const GIOI_HAN_MAC_DINH = 50;
+const GIOI_HAN_MAC_DINH = 2000;
 
 export interface DieuKienLocKhachHang {
   tuKhoa?: string | null;

@@ -33,13 +33,17 @@ import { DaiDien } from '../../../thanh_phan/ui/dai_dien';
 import { Nut } from '../../../thanh_phan/ui';
 import { cn } from '../../../thu_vien/utils/cn';
 import { DINH_DANG_TIEN_NGAN_GON } from '../../../thu_vien/utils/format_tien';
+import { formatNgay } from '../../../thu_vien/utils/format_ngay';
 import type { NhanSu, ChiNhanh, PhongBan } from '../../../thu_vien/types/nhan_su';
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
 import type { Lead } from '../../../thu_vien/types/lead';
+import type { LichGapKH } from '../../../thu_vien/types/lich_gap_kh';
+import { DANH_SACH_TRANG_THAI_LICH_GAP } from '../../../thu_vien/types/lich_gap_kh';
 import type { AIDanhGiaNhanSu, MucDoDanhGiaAI } from '../../../thu_vien/types/ai_danh_gia';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachHoSoDuAn } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import { danhSachLead } from '../../../dich_vu/lead/dich_vu_lead';
+import { danhSachLichGapKH } from '../../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
 import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
 import { danhSachPhongBan } from '../../../dich_vu/co_cau_to_chuc/dich_vu_phong_ban';
 import {
@@ -65,6 +69,7 @@ export default function TrangTongQuanLanhDao() {
   const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>([]);
   const [dsDuAn, setDsDuAn] = useState<HoSoDuAn[]>([]);
   const [dsLead, setDsLead] = useState<Lead[]>([]);
+  const [dsLichGap, setDsLichGap] = useState<LichGapKH[]>([]);
   const [dsChiNhanh, setDsChiNhanh] = useState<ChiNhanh[]>([]);
   const [dsPhongBan, setDsPhongBan] = useState<PhongBan[]>([]);
   const [dsDanhGiaAI, setDsDanhGiaAI] = useState<AIDanhGiaNhanSu[]>([]);
@@ -92,6 +97,11 @@ export default function TrangTongQuanLanhDao() {
     nhanVienTen: string;
     keHoachTuan?: KeHoachTuan | null;
     keHoachThang?: KeHoachThang | null;
+  } | null>(null);
+  const [lichGapModal, setLichGapModal] = useState<{
+    mo: boolean;
+    tieuDe: string;
+    danhSachLich: LichGapKH[];
   } | null>(null);
 
   // 1. Kiểm tra phân quyền truy cập
@@ -124,7 +134,7 @@ export default function TrangTongQuanLanhDao() {
       const tuanHienTai = layTuanFromDateISO(ngayChon);
       const thangHienTai = ngayChon.slice(0, 7);
 
-      const [resNS, resDA, resCN, resPB, resAI, resKHTuan, resKHThang, resLead] = await Promise.all([
+      const [resNS, resDA, resCN, resPB, resAI, resKHTuan, resKHThang, resLead, resLichGap] = await Promise.all([
         danhSachNhanSu(),
         danhSachHoSoDuAn(),
         danhSachChiNhanh(),
@@ -132,7 +142,8 @@ export default function TrangTongQuanLanhDao() {
         danhSachAIDanhGia(ngayChon),
         danhSachKeHoachTuanTheoFilter(tuanHienTai),
         danhSachKeHoachThangTheoFilter(thangHienTai),
-        danhSachLead().catch(() => [])
+        danhSachLead().catch(() => []),
+        danhSachLichGapKH().catch(() => [])
       ]);
 
       const mangNS = Array.isArray(resNS) ? resNS : resNS?.mang || [];
@@ -140,6 +151,7 @@ export default function TrangTongQuanLanhDao() {
       const mangCN = Array.isArray(resCN) ? resCN : resCN?.mang || [];
       const mangPB = Array.isArray(resPB) ? resPB : resPB?.mang || [];
       const mangLead = Array.isArray(resLead) ? resLead : (resLead as any)?.mang || resLead || [];
+      const mangLichGap = Array.isArray(resLichGap) ? resLichGap : [];
 
       setDsNhanSu(mangNS.filter((ns: NhanSu) => ns.trang_thai_du_lieu !== 'da_xoa' && ns.trang_thai === true));
       setDsDuAn(mangDA.filter((da: HoSoDuAn) => da.trang_thai !== 'da_xoa' && (da as any).trang_thai_du_lieu !== 'da_xoa'));
@@ -149,6 +161,7 @@ export default function TrangTongQuanLanhDao() {
       setDsKeHoachTuan(resKHTuan || []);
       setDsKeHoachThang(resKHThang || []);
       setDsLead(mangLead);
+      setDsLichGap(mangLichGap);
     } catch (e) {
       console.error('Lỗi khi tải dữ liệu lãnh đạo:', e);
     } finally {
@@ -214,6 +227,25 @@ export default function TrangTongQuanLanhDao() {
       ['moi_tiep_can', 'da_lien_he', 'da_hen_gap'].includes(l.trang_thai)
     ).length;
 
+    // Tính tuần (Thứ 2 -> Chủ Nhật) của ngayChon
+    const [y, m, d] = ngayChon.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const dayOfWeek = dateObj.getDay();
+    const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const mon = new Date(y, m - 1, d + diffToMon);
+    const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+    const fmt = (dt: Date) =>
+      `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    const dauTuanISO = fmt(mon);
+    const cuoiTuanISO = fmt(sun);
+    const thangISO = ngayChon.slice(0, 7);
+
+    const lichHopLe = dsLichGap.filter((l) => l.trang_thai !== 'huy');
+    const lichHomNay = lichHopLe.filter((l) => l.ngay === ngayChon);
+    const lichTuanNay = lichHopLe.filter((l) => l.ngay >= dauTuanISO && l.ngay <= cuoiTuanISO);
+    const lichThangNay = lichHopLe.filter((l) => l.ngay.startsWith(thangISO));
+    const lichDaHoanThanhThang = lichThangNay.filter((l) => l.trang_thai === 'da_hoan_thanh');
+
     // AI health count
     let soTot = 0;
     let soCanhBao = 0;
@@ -237,11 +269,15 @@ export default function TrangTongQuanLanhDao() {
       tongSapKyHD: duAnSapKyHD.length,
       duAnSapKyHD,
       tongGiaTri,
+      lichHomNay,
+      lichTuanNay,
+      lichThangNay,
+      lichDaHoanThanhThang,
       soTot,
       soCanhBao,
       soRuiRo
     };
-  }, [dsNhanSuHienThi, dsDuAn, dsLead, dsDanhGiaAI]);
+  }, [dsNhanSuHienThi, dsDuAn, dsLead, dsLichGap, ngayChon, dsDanhGiaAI]);
 
   // 6. Xử lý chạy AI toàn bộ nhân sự
   const handleChayAIToanBo = async () => {
@@ -415,6 +451,118 @@ export default function TrangTongQuanLanhDao() {
             Toàn bộ dự án đang theo dõi
           </p>
         </div>
+      </div>
+
+      {/* 2.5. Thông báo Tổng kết Lịch Gặp Khách Hàng (Tuần / Tháng) */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-4 sm:p-5 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/70 text-[#185942] flex items-center justify-center shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800 text-sm sm:text-base">
+                Tổng Kết Lịch Gặp Khách Hàng
+              </h3>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() =>
+                setLichGapModal({
+                  mo: true,
+                  tieuDe: `Lịch gặp khách hàng • Ngày ${formatNgay(ngayChon)}`,
+                  danhSachLich: thongKeLanhDao.lichHomNay
+                })
+              }
+              className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200/80 text-xs font-bold text-blue-700 transition cursor-pointer"
+            >
+              Hôm nay: <span className="font-black">{thongKeLanhDao.lichHomNay.length}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setLichGapModal({
+                  mo: true,
+                  tieuDe: 'Lịch gặp khách hàng trong Tuần',
+                  danhSachLich: thongKeLanhDao.lichTuanNay
+                })
+              }
+              className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200/80 text-xs font-bold text-purple-700 transition cursor-pointer"
+            >
+              Tuần này: <span className="font-black">{thongKeLanhDao.lichTuanNay.length}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setLichGapModal({
+                  mo: true,
+                  tieuDe: `Lịch gặp khách hàng trong Tháng ${ngayChon.slice(5, 7)}/${ngayChon.slice(0, 4)}`,
+                  danhSachLich: thongKeLanhDao.lichThangNay
+                })
+              }
+              className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 text-xs font-bold text-emerald-700 transition cursor-pointer"
+            >
+              Tháng này: <span className="font-black">{thongKeLanhDao.lichThangNay.length}</span> (Đã gặp{' '}
+              {thongKeLanhDao.lichDaHoanThanhThang.length})
+            </button>
+
+            <Link
+              href="/lich-cong-tac"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition"
+            >
+              <span>Xem Calendar</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Danh sách rút gọn các lịch hẹn trong tuần */}
+        {thongKeLanhDao.lichTuanNay.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-2 border-t border-slate-100">
+            {thongKeLanhDao.lichTuanNay.slice(0, 3).map((lich) => {
+              const ns = dsNhanSu.find((x) => x.id === lich.nguoi_phu_trach_id);
+              const ttObj = DANH_SACH_TRANG_THAI_LICH_GAP.find((t) => t.key === lich.trang_thai);
+              return (
+                <Link
+                  key={lich.id}
+                  href="/lich-cong-tac"
+                  className="p-2.5 rounded-xl bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/70 flex items-center justify-between gap-2 transition"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700">
+                      <span>{formatNgay(lich.ngay)}</span>
+                      <span>•</span>
+                      <span>
+                        {lich.gio_bat_dau} - {lich.gio_ket_thuc}
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold text-slate-900 truncate mt-0.5">
+                      {lich.ten_khach_hang}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      Phụ trách: {ns?.ho_va_ten || 'Chưa gán'}
+                    </div>
+                  </div>
+                  {ttObj && (
+                    <span
+                      className={cn(
+                        'shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border',
+                        ttObj.mauBadge
+                      )}
+                    >
+                      {ttObj.tieu_de}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 3. Danh sách Đội Ngũ Kinh Doanh */}
@@ -947,6 +1095,88 @@ export default function TrangTongQuanLanhDao() {
           keHoachThang={keHoachModal.keHoachThang}
           onDong={() => setKeHoachModal(null)}
         />
+      )}
+
+      {/* 7. Modal Drill-down hiển thị chi tiết Lịch gặp khách hàng */}
+      {lichGapModal?.mo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[85vh] flex flex-col">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">
+                  {lichGapModal.tieuDe} ({lichGapModal.danhSachLich.length})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLichGapModal(null)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-200/70 hover:bg-slate-200 transition cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto divide-y divide-slate-100 flex-1">
+              {lichGapModal.danhSachLich.length === 0 ? (
+                <div className="py-12 text-center text-sm text-slate-400">
+                  Chưa có lịch gặp khách hàng trong kỳ này.
+                </div>
+              ) : (
+                lichGapModal.danhSachLich.map((lich) => {
+                  const ns = dsNhanSu.find((x) => x.id === lich.nguoi_phu_trach_id);
+                  const ttObj = DANH_SACH_TRANG_THAI_LICH_GAP.find((t) => t.key === lich.trang_thai);
+                  return (
+                    <div
+                      key={lich.id}
+                      className="py-3 first:pt-0 last:pb-0 flex items-start justify-between gap-3"
+                    >
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-xs font-extrabold tabular-nums">
+                            {formatNgay(lich.ngay)} • {lich.gio_bat_dau} - {lich.gio_ket_thuc}
+                          </span>
+                          <span className="font-bold text-slate-900 text-sm">
+                            {lich.ten_khach_hang}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-600 flex items-center gap-3 flex-wrap">
+                          <span>
+                            Phụ trách: <strong className="text-slate-800">{ns?.ho_va_ten || 'Chưa gán'}</strong>
+                          </span>
+                          {lich.dia_diem && <span>• Địa điểm: {lich.dia_diem}</span>}
+                        </div>
+                        {lich.noi_dung && (
+                          <p className="text-xs text-slate-500 line-clamp-2">{lich.noi_dung}</p>
+                        )}
+                      </div>
+
+                      {ttObj && (
+                        <span
+                          className={cn(
+                            'shrink-0 text-[11px] font-bold px-2.5 py-0.5 rounded-full border',
+                            ttObj.mauBadge
+                          )}
+                        >
+                          {ttObj.tieu_de}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/70 flex items-center justify-end">
+              <Link
+                href="/lich-cong-tac"
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-[#185942] hover:bg-emerald-900 text-white text-xs font-bold transition"
+              >
+                <span>Mở Lịch Công Tác (Google Calendar)</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

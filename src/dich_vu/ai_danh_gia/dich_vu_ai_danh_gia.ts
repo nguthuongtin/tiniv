@@ -43,36 +43,30 @@ export const danhSachAIDanhGia = async (
       id: docSnap.id,
       ...docSnap.data()
     })) as AIDanhGiaNhanSu[];
-  } catch (error) {
-    console.error('Lỗi khi lấy danh sách AI đánh giá:', error);
+  } catch {
     return [];
   }
 };
 
 /**
- * Lắng nghe realtime danh sách đánh giá AI
+ * Lắng nghe danh sách đánh giá AI
  */
 export const langNgheThayDoiAIDanhGia = (
   ngay: string,
   callback: (duLieu: AIDanhGiaNhanSu[]) => void
 ): Unsubscribe => {
-  const colRef = collection(csdl, COLLECTION_NAME);
-  const q = query(colRef, where('ngay_danh_gia', '==', ngay));
+  let active = true;
+  danhSachAIDanhGia(ngay)
+    .then((items) => {
+      if (active) callback(items);
+    })
+    .catch(() => {
+      if (active) callback([]);
+    });
 
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      const items = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      })) as AIDanhGiaNhanSu[];
-      callback(items);
-    },
-    (error) => {
-      console.error('Lỗi lắng nghe AI đánh giá:', error);
-      callback([]);
-    }
-  );
+  return () => {
+    active = false;
+  };
 };
 
 /**
@@ -84,7 +78,6 @@ export const layLichSuDanhGiaNhanVien = async (
 ): Promise<AIDanhGiaNhanSu[]> => {
   try {
     const colRef = collection(csdl, COLLECTION_NAME);
-    // Truy vấn theo nhan_vien_id và sắp xếp trong bộ nhớ để không cần tạo Firestore Composite Index
     const q = query(
       colRef,
       where('nhan_vien_id', '==', nhanVienId)
@@ -98,8 +91,7 @@ export const layLichSuDanhGiaNhanVien = async (
     return items
       .sort((a, b) => (b.ngay_danh_gia || '').localeCompare(a.ngay_danh_gia || ''))
       .slice(0, soLuong);
-  } catch (error) {
-    console.error('Lỗi lấy lịch sử đánh giá nhân viên:', error);
+  } catch {
     return [];
   }
 };

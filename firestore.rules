@@ -295,6 +295,26 @@ service cloud.firestore {
       allow delete: if (laNhanVien() && resource.data.nguoi_tao_id == request.auth.uid)
         || laQuanTriHeThong();
     }
+
+    // ========== 25. Collection: lich_gap_kh ==========
+    match /lich_gap_kh/{lichId} {
+      allow read: if daXacThucVaHoatDong();
+      allow create: if laNhanVien()
+        && request.resource.data.nguoi_tao_id == request.auth.uid;
+      allow update: if (
+        laGiamDoc()
+        || laTruongPhong()
+        || (laNhanVien() && (
+          resource.data.nguoi_tao_id == request.auth.uid
+          || resource.data.nguoi_phu_trach_id == request.auth.uid
+        ))
+      ) && (
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['nguoi_tao_id'])
+        || request.resource.data.nguoi_tao_id == resource.data.nguoi_tao_id
+      );
+      allow delete: if (laNhanVien() && resource.data.nguoi_tao_id == request.auth.uid)
+        || laQuanTriHeThong();
+    }
   }
 }
 
