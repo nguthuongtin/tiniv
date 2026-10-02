@@ -83,7 +83,7 @@ export const danhSachKhachHang = async (
   if (loc?.loai_khach_hang && loc.loai_khach_hang !== 'tat_ca') {
     mangRangBuoc.unshift(where('loai_khach_hang', '==', loc.loai_khach_hang));
   }
-  if (loc?.trang_thai === 'da_xoa' || loc?.trang_thai === 'tam_dung') {
+  if (loc?.trang_thai && loc.trang_thai !== 'tat_ca') {
     mangRangBuoc.unshift(where('trang_thai', '==', loc.trang_thai));
   }
   if (loc?.nguoi_phu_trach_id) {
@@ -96,12 +96,17 @@ export const danhSachKhachHang = async (
     const results: KhachHang[] = [];
     for (const d of snapshot.docs) {
       const kh = chuyenDoiDocThanhDoiTuong(d.id, d.data());
-      // Lọc trạng thái (tự động ẩn đã xóa khi mặc định/hoat_dong)
+      // Lọc trạng thái
       if (loc?.trang_thai === 'da_xoa') {
         if (kh.trang_thai !== 'da_xoa') continue;
       } else if (loc?.trang_thai === 'tam_dung') {
         if (kh.trang_thai !== 'tam_dung') continue;
-      } else if (loc?.trang_thai === 'hoat_dong' || !loc?.trang_thai) {
+      } else if (loc?.trang_thai === 'hoat_dong') {
+        if (kh.trang_thai !== 'hoat_dong') continue;
+      } else if (loc?.trang_thai === 'tat_ca') {
+        // Hien thi tat ca
+      } else {
+        // Mac dinh an khach hang da xoa
         if (kh.trang_thai === 'da_xoa') continue;
       }
       if (tuKhoaLower) {
@@ -364,7 +369,7 @@ export const langNgheThayDoiDanhSachKhachHang = (
   if (loc?.loai_khach_hang && loc.loai_khach_hang !== 'tat_ca') {
     mangRangBuoc.unshift(where('loai_khach_hang', '==', loc.loai_khach_hang));
   }
-  if (loc?.trang_thai === 'da_xoa' || loc?.trang_thai === 'tam_dung') {
+  if (loc?.trang_thai && loc.trang_thai !== 'tat_ca') {
     mangRangBuoc.unshift(where('trang_thai', '==', loc.trang_thai));
   }
   if (loc?.nguoi_phu_trach_id) {
@@ -376,12 +381,17 @@ export const langNgheThayDoiDanhSachKhachHang = (
     const tuKhoa = loc?.tuKhoa?.trim().toLowerCase() ?? '';
     snap.forEach((d) => {
       const kh = chuyenDoiDocThanhDoiTuong(d.id, d.data());
-      // Lọc trạng thái (tự động ẩn đã xóa khi mặc định/hoat_dong)
+      // Lọc trạng thái
       if (loc?.trang_thai === 'da_xoa') {
         if (kh.trang_thai !== 'da_xoa') return;
       } else if (loc?.trang_thai === 'tam_dung') {
         if (kh.trang_thai !== 'tam_dung') return;
-      } else if (loc?.trang_thai === 'hoat_dong' || !loc?.trang_thai) {
+      } else if (loc?.trang_thai === 'hoat_dong') {
+        if (kh.trang_thai !== 'hoat_dong') return;
+      } else if (loc?.trang_thai === 'tat_ca') {
+        // Hien thi tat ca
+      } else {
+        // Mac dinh an khach hang da xoa
         if (kh.trang_thai === 'da_xoa') return;
       }
       if (tuKhoa) {

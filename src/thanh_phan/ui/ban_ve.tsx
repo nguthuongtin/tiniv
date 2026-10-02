@@ -68,7 +68,7 @@ export const Ban_Ve: React.FC<BanVeProps> = ({
       <div
         className={cn(
           'relative z-10 w-full bg-background flex flex-col overflow-hidden border border-border shadow-[var(--shadow-pop)]',
-          'max-h-[92vh] rounded-t-[var(--radius-pop)] animate-in slide-in-from-bottom-6 duration-[var(--animate-duration-250)]',
+          'max-h-[88dvh] rounded-t-[var(--radius-pop)] animate-in slide-in-from-bottom-6 duration-[var(--animate-duration-250)]',
           MAP_KICH_THUOC[kich_thuoc],
           'md:mx-auto md:max-h-[88vh] md:rounded-[var(--radius-pop)] md:animate-in md:fade-in md:zoom-in-[0.97] md:duration-[var(--animate-duration-200)]'
         )}
@@ -91,10 +91,10 @@ function renderBody(
   return (
     <>
       {(tieu_de || phu_de) && (
-        <div className="flex items-start justify-between gap-4 px-5 md:px-6 py-4 md:py-5 shrink-0 border-b border-border">
+        <div className="flex items-start justify-between gap-4 px-5 md:px-6 py-3.5 md:py-4 shrink-0 border-b border-border bg-white">
           <div className="min-w-0 flex-1 space-y-1">
           {tieu_de ? (
-            <h2 className="text-lg md:text-xl font-bold tracking-tight text-foreground">
+            <h2 className="text-base md:text-lg font-bold tracking-tight text-foreground">
               {tieu_de}
             </h2>
           ) : null}
@@ -105,18 +105,18 @@ function renderBody(
         <button
           type="button"
           onClick={onDong}
-          className="size-9 rounded-[var(--radius-button)] border border-border bg-background hover:bg-muted text-muted-foreground shrink-0 inline-flex items-center justify-center transition"
+          className="size-8.5 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 shrink-0 inline-flex items-center justify-center transition cursor-pointer"
           aria-label="Dong"
         >
           <X className="size-4" />
         </button>
       </div>
     )}
-    <div className={cn('flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-5 md:py-6', className)}>
+    <div className={cn('flex-1 min-h-0 overflow-y-auto px-5 md:px-6 py-4 md:py-5', className)}>
       {children}
     </div>
     {cuoi ? (
-      <div className="shrink-0 px-5 md:px-6 py-4 border-t border-border bg-muted/40 flex flex-col-reverse sm:flex-row sm:justify-end sm:items-center gap-2 sm:gap-3">
+      <div className="shrink-0 px-5 md:px-6 pt-3.5 pb-[calc(0.875rem+env(safe-area-inset-bottom,0px))] md:py-4 border-t border-slate-200/80 bg-slate-50/80 flex flex-col-reverse sm:flex-row sm:justify-end sm:items-center gap-2 sm:gap-3">
         {cuoi}
       </div>
     ) : null}
