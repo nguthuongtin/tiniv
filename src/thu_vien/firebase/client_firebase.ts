@@ -11,7 +11,10 @@ import {
   type Firestore,
   type CollectionReference,
   type DocumentReference,
-  getFirestore
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'firebase/firestore';
 import { ref, type FirebaseStorage, getStorage } from 'firebase/storage';
 import type { NhatKyHoatDong, HanhDongNhatKy } from '../types';
@@ -68,7 +71,18 @@ const khoiTaoFirebase = (): {
   }
 
   if (!luuTruChinhFirebase) {
-    luuTruChinhFirebase = getFirestore(appFirebase);
+    if (typeof window !== 'undefined') {
+      try {
+        luuTruChinhFirebase = initializeFirestore(appFirebase, {
+          localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
+      } catch (error) {
+        console.warn('Lỗi khởi tạo Firestore cache, sử dụng getFirestore:', error);
+        luuTruChinhFirebase = getFirestore(appFirebase);
+      }
+    } else {
+      luuTruChinhFirebase = getFirestore(appFirebase);
+    }
   }
 
   if (!luuTruFileFirebase) {
