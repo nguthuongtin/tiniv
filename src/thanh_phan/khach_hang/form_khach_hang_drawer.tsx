@@ -94,11 +94,12 @@ export default function FormKhachHangDrawer({
   const [moModalQuyChuan, setMoModalQuyChuan] = useState(false);
 
   useEffect(() => {
+    if (!mo || dsDiaGioi.length > 0) return;
     void (async () => {
       const list = await layDanhSachDiaGioiHanhChinh();
       setDsDiaGioi(list);
     })();
-  }, []);
+  }, [mo, dsDiaGioi.length]);
 
   const form = useForm<GiaTriForm>({
     resolver: zodResolver(SCHEMA_KHACH_HANG),

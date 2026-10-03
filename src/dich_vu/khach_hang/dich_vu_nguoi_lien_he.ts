@@ -39,10 +39,22 @@ const chuyenDoiDocThanhDoiTuong = (id: string, raw: DocumentData | RawNLH | unde
   };
 };
 
+import {
+  layCacheNguoiLienHeDongBo,
+  dongBoThemHoacCapNhatCacheNLH,
+  dongBoXoaCacheNLH
+} from '../nguoi_lien_he/dich_vu_nguoi_lien_he';
+
 export const layDanhSachNguoiLienHeTheoKhachHang = async (
   khach_hang_id: string
 ): Promise<NguoiLienHe[]> => {
   if (!khach_hang_id) return [];
+  const cached = layCacheNguoiLienHeDongBo({ khach_hang_id });
+  if (cached) {
+    const mang = [...cached.mang];
+    mang.sort((a, b) => (b.ngay_tao ?? '').localeCompare(a.ngay_tao ?? ''));
+    return mang;
+  }
   const q = query(
     thamChieuCollection(TEN_COLLECTION),
     where('khach_hang_id', '==', khach_hang_id)
@@ -97,7 +109,8 @@ export const taoNguoiLienHeMoi = async (
   };
   const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), raw as any);
   const moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, raw);
-  await ghiNhatKyHoatDong(
+  dongBoThemHoacCapNhatCacheNLH(moi);
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'nguoi_lien_he',
     'tao_moi',
@@ -131,7 +144,8 @@ export const capNhatNguoiLienHe = async (
   });
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patch as any, { merge: true });
   const moi = { ...hienTai, ...patch } as NguoiLienHe;
-  await ghiNhatKyHoatDong(
+  dongBoThemHoacCapNhatCacheNLH(moi);
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'nguoi_lien_he',
     'cap_nhat',
@@ -147,7 +161,8 @@ export const xoaNguoiLienHe = async (
   hoVaTenCu?: string | null
 ): Promise<void> => {
   await deleteDoc(thamChieuBanGhi(TEN_COLLECTION, id));
-  await ghiNhatKyHoatDong(
+  dongBoXoaCacheNLH(id);
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'nguoi_lien_he',
     'xoa',

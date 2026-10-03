@@ -217,35 +217,56 @@ const sapXepVaLocThem = (mang: NhanSu[], loc?: DieuKienLocNhanSu): NhanSu[] => {
   });
 };
 
+let _rawCacheNS: { mang: NhanSu[]; ts: number } | null = null;
+let _dangTaiNSPromise: Promise<NhanSu[]> | null = null;
+const CACHE_TTL_NS = 10 * 60 * 1000; // 10 phút
+
+export const layCacheNhanSuDongBo = (
+  loc?: DieuKienLocNhanSu
+): { mang: NhanSu[]; tong_so: number } | null => {
+  if (!_rawCacheNS) return null;
+  const mangDaLoc = sapXepVaLocThem(_rawCacheNS.mang, loc);
+  return { mang: mangDaLoc, tong_so: mangDaLoc.length };
+};
+
+export const xoaCacheNhanSu = () => {
+  _rawCacheNS = null;
+};
+
+const dongBoThemHoacCapNhatCacheNS = (ns: NhanSu) => {
+  if (!_rawCacheNS) return;
+  const idx = _rawCacheNS.mang.findIndex((x) => x.id === ns.id);
+  const mangMoi = [..._rawCacheNS.mang];
+  if (idx >= 0) mangMoi[idx] = ns;
+  else mangMoi.unshift(ns);
+  _rawCacheNS = { mang: mangMoi, ts: Date.now() };
+};
+
 export const danhSachNhanSu = async (
   loc?: DieuKienLocNhanSu
 ): Promise<{ mang: NhanSu[]; tong_so?: number }> => {
-  const mangRangBuoc: QueryConstraint[] = [
-    limit(GIOI_HAN_MAC_DINH)
-  ];
-  if (loc?.vai_tro && loc.vai_tro !== 'tat_ca') {
-    mangRangBuoc.unshift(where('vai_tro', '==', loc.vai_tro));
-  }
-  if (loc?.chi_nhanh_id) {
-    mangRangBuoc.unshift(where('chi_nhanh_id', '==', loc.chi_nhanh_id));
-  }
-  if (loc?.trang_thai_du_lieu && loc.trang_thai_du_lieu !== 'tat_ca') {
-    mangRangBuoc.unshift(where('trang_thai_du_lieu', '==', loc.trang_thai_du_lieu));
-  }
-  if (loc?.trang_thai_hoat_dong === 'hoat_dong') {
-    mangRangBuoc.unshift(where('trang_thai', '==', true));
-  }
-  if (loc?.trang_thai_hoat_dong === 'khoa') {
-    mangRangBuoc.unshift(where('trang_thai', '==', false));
+  if (_rawCacheNS && Date.now() - _rawCacheNS.ts < CACHE_TTL_NS) {
+    const mangDaLoc = sapXepVaLocThem(_rawCacheNS.mang, loc);
+    return { mang: mangDaLoc, tong_so: mangDaLoc.length };
   }
 
   try {
-    const snap = await getDocs(query(thamChieuCollection(TEN_COLLECTION), ...mangRangBuoc));
-    const mangDaLoc = sapXepVaLocThem(
-      snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data())),
-      loc
-    );
-    mangDaLoc.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
+    if (!_dangTaiNSPromise) {
+      _dangTaiNSPromise = (async () => {
+        try {
+          const snap = await getDocs(query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH)));
+          const mangRaw = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+          mangRaw.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
+          _rawCacheNS = { mang: mangRaw, ts: Date.now() };
+          return mangRaw;
+        } finally {
+          _dangTaiNSPromise = null;
+        }
+      })();
+    }
+
+    const rawAll = await _dangTaiNSPromise;
+    const mangDaLoc = sapXepVaLocThem(rawAll, loc);
     return { mang: mangDaLoc, tong_so: mangDaLoc.length };
   } catch (err) {
     console.warn('[dich_vu_nhan_su] danhSachNhanSu catch:', err);
@@ -254,9 +275,15 @@ export const danhSachNhanSu = async (
 };
 
 export const layChiTietNhanSu = async (id: string): Promise<NhanSu | null> => {
+  if (_rawCacheNS) {
+    const found = _rawCacheNS.mang.find((n) => n.id === id);
+    if (found) return found;
+  }
   const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, id));
   if (!snap.exists()) return null;
-  return chuyenDoiDocThanhDoiTuong(snap.id, snap.data());
+  const ns = chuyenDoiDocThanhDoiTuong(snap.id, snap.data());
+  dongBoThemHoacCapNhatCacheNS(ns);
+  return ns;
 };
 
 export const taoMaNhanVienTuDong = async (): Promise<string> => {
@@ -332,7 +359,9 @@ export const taoNhanSuMoi = async (
 
       const kq = await res.json();
       if (res.ok && kq.thanh_cong && kq.du_lieu) {
-        return chuyenDoiDocThanhDoiTuong(kq.du_lieu.id, kq.du_lieu);
+        const nsMoi = chuyenDoiDocThanhDoiTuong(kq.du_lieu.id, kq.du_lieu);
+        dongBoThemHoacCapNhatCacheNS(nsMoi);
+        return nsMoi;
       }
       if (!res.ok || !kq.thanh_cong) {
         throw new Error(kq.thong_diep || 'Không thể tạo tài khoản nhân sự.');
@@ -445,7 +474,7 @@ export const taoNhanSuMoi = async (
     // Ghi nhật ký hoạt động
     try {
       if (idNguoiTao) {
-        await ghiNhatKyHoatDong(
+        void ghiNhatKyHoatDong(
           idNguoiTao,
           'nhan_su',
           'tao_moi',
@@ -458,6 +487,7 @@ export const taoNhanSuMoi = async (
     }
 
     const moi = chuyenDoiDocThanhDoiTuong(idDinhDanh, duLieuRaw);
+    dongBoThemHoacCapNhatCacheNS(moi);
     return moi;
   } finally {
     // Dọn dẹp secondary app
@@ -526,14 +556,16 @@ export const capNhatNhanSu = async (
     trang_thai_du_lieu: dto.trang_thai_du_lieu ?? hienTai.trang_thai_du_lieu
   });
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, id), duLieuMoi as any, { merge: true });
-  await ghiNhatKyHoatDong(
+  void ghiNhatKyHoatDong(
     idNguoiThucHien,
     'nhan_su',
     'cap_nhat',
     id,
     `Cap nhat thong tin nhan su "${duLieuMoi.ho_va_ten}"`
   );
-  return chuyenDoiDocThanhDoiTuong(id, duLieuMoi);
+  const daCapNhat = chuyenDoiDocThanhDoiTuong(id, duLieuMoi);
+  dongBoThemHoacCapNhatCacheNS(daCapNhat);
+  return daCapNhat;
 };
 
 export const khoaHoacMoTaiKhoan = async (

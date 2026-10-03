@@ -66,68 +66,105 @@ const chuyenDoiDocThanhDoiTuong = (
   };
 };
 
-let _cacheDanhSachKH: { locStr: string; kq: { mang: KhachHang[]; tong_so?: number }; ts: number } | null = null;
-const CACHE_TTL_KH = 30000; // 30 seconds
+let _rawCacheKH: { mang: KhachHang[]; ts: number } | null = null;
+let _dangTaiKHPromise: Promise<KhachHang[]> | null = null;
+const CACHE_TTL_KH = 10 * 60 * 1000; // 10 phút trên RAM, mọi thao tác Thêm/Sửa/Xóa cập nhật trực tiếp in-place
+
+export const locDanhSachKhachHangTrenRam = (
+  rawList: KhachHang[],
+  loc?: DieuKienLocKhachHang
+): KhachHang[] => {
+  const tuKhoaLower = loc?.tuKhoa?.trim().toLowerCase() ?? '';
+  const results: KhachHang[] = [];
+
+  for (const kh of rawList) {
+    if (loc?.loai_khach_hang && loc.loai_khach_hang !== 'tat_ca' && kh.loai_khach_hang !== loc.loai_khach_hang) {
+      continue;
+    }
+    if (loc?.nguoi_phu_trach_id && loc.nguoi_phu_trach_id !== 'tat_ca' && kh.nguoi_phu_trach_id !== loc.nguoi_phu_trach_id) {
+      continue;
+    }
+    // Lọc trạng thái
+    if (loc?.trang_thai === 'da_xoa') {
+      if (kh.trang_thai !== 'da_xoa') continue;
+    } else if (loc?.trang_thai === 'tam_dung') {
+      if (kh.trang_thai !== 'tam_dung') continue;
+    } else if (loc?.trang_thai === 'hoat_dong') {
+      if (kh.trang_thai !== 'hoat_dong') continue;
+    } else if (loc?.trang_thai === 'tat_ca') {
+      // Hiển thị tất cả
+    } else {
+      // Mặc định ẩn khách hàng đã xóa
+      if (kh.trang_thai === 'da_xoa') continue;
+    }
+
+    if (tuKhoaLower) {
+      const khop =
+        kh.ten_khach_hang.toLowerCase().includes(tuKhoaLower) ||
+        (kh.ma_so_thue ?? '').toLowerCase().includes(tuKhoaLower) ||
+        (kh.so_dien_thoai ?? '').includes(tuKhoaLower) ||
+        (kh.email ?? '').toLowerCase().includes(tuKhoaLower) ||
+        (kh.dia_chi ?? '').toLowerCase().includes(tuKhoaLower);
+      if (!khop) continue;
+    }
+    if (loc?.chi_nhanh_id && loc.chi_nhanh_id !== 'tat_ca' && kh.chi_nhanh_id !== loc.chi_nhanh_id) continue;
+    if (loc?.ngay_tao_tu_ngay && kh.ngay_tao < loc.ngay_tao_tu_ngay) continue;
+    if (loc?.ngay_tao_den_ngay && kh.ngay_tao > loc.ngay_tao_den_ngay + 'T23:59:59.999Z') continue;
+    results.push(kh);
+  }
+
+  return results;
+};
+
+/**
+ * Lấy ngay dữ liệu khách hàng từ RAM cache (nếu đã nạp trước đó) mà không cần chờ Promise (0ms)
+ */
+export const layCacheKhachHangDongBo = (
+  loc?: DieuKienLocKhachHang
+): { mang: KhachHang[]; tong_so: number } | null => {
+  if (!_rawCacheKH) return null;
+  const mang = locDanhSachKhachHangTrenRam(_rawCacheKH.mang, loc);
+  return { mang, tong_so: _rawCacheKH.mang.length };
+};
+
+export const xoaCacheKhachHang = () => {
+  _rawCacheKH = null;
+};
+
+const napRawDanhSachKhachHang = async (forceRefresh = false): Promise<KhachHang[]> => {
+  if (!forceRefresh && _rawCacheKH && Date.now() - _rawCacheKH.ts < CACHE_TTL_KH) {
+    return _rawCacheKH.mang;
+  }
+  if (!forceRefresh && _dangTaiKHPromise) {
+    return _dangTaiKHPromise;
+  }
+
+  _dangTaiKHPromise = (async () => {
+    try {
+      const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
+      const snapshot = await getDocs(q);
+      const rawResults: KhachHang[] = [];
+      for (const d of snapshot.docs) {
+        rawResults.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+      }
+      rawResults.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
+      _rawCacheKH = { mang: rawResults, ts: Date.now() };
+      return rawResults;
+    } finally {
+      _dangTaiKHPromise = null;
+    }
+  })();
+
+  return _dangTaiKHPromise;
+};
 
 export const danhSachKhachHang = async (
   loc?: DieuKienLocKhachHang
 ): Promise<{ mang: KhachHang[]; tong_so?: number }> => {
-  const locStr = JSON.stringify(loc || {});
-  if (_cacheDanhSachKH && _cacheDanhSachKH.locStr === locStr && Date.now() - _cacheDanhSachKH.ts < CACHE_TTL_KH) {
-    return _cacheDanhSachKH.kq;
-  }
-
-  const mangRangBuoc: QueryConstraint[] = [
-    limit(GIOI_HAN_MAC_DINH)
-  ];
-  if (loc?.loai_khach_hang && loc.loai_khach_hang !== 'tat_ca') {
-    mangRangBuoc.unshift(where('loai_khach_hang', '==', loc.loai_khach_hang));
-  }
-  if (loc?.trang_thai && loc.trang_thai !== 'tat_ca') {
-    mangRangBuoc.unshift(where('trang_thai', '==', loc.trang_thai));
-  }
-  if (loc?.nguoi_phu_trach_id) {
-    mangRangBuoc.unshift(where('nguoi_phu_trach_id', '==', loc.nguoi_phu_trach_id));
-  }
   try {
-    const q = query(thamChieuCollection(TEN_COLLECTION), ...mangRangBuoc);
-    const snapshot = await getDocs(q);
-    const tuKhoaLower = loc?.tuKhoa?.trim().toLowerCase() ?? '';
-    const results: KhachHang[] = [];
-    for (const d of snapshot.docs) {
-      const kh = chuyenDoiDocThanhDoiTuong(d.id, d.data());
-      // Lọc trạng thái
-      if (loc?.trang_thai === 'da_xoa') {
-        if (kh.trang_thai !== 'da_xoa') continue;
-      } else if (loc?.trang_thai === 'tam_dung') {
-        if (kh.trang_thai !== 'tam_dung') continue;
-      } else if (loc?.trang_thai === 'hoat_dong') {
-        if (kh.trang_thai !== 'hoat_dong') continue;
-      } else if (loc?.trang_thai === 'tat_ca') {
-        // Hien thi tat ca
-      } else {
-        // Mac dinh an khach hang da xoa
-        if (kh.trang_thai === 'da_xoa') continue;
-      }
-      if (tuKhoaLower) {
-        const khop =
-          kh.ten_khach_hang.toLowerCase().includes(tuKhoaLower) ||
-          (kh.ma_so_thue ?? '').toLowerCase().includes(tuKhoaLower) ||
-          (kh.so_dien_thoai ?? '').includes(tuKhoaLower) ||
-          (kh.email ?? '').toLowerCase().includes(tuKhoaLower) ||
-          (kh.dia_chi ?? '').toLowerCase().includes(tuKhoaLower);
-        if (!khop) continue;
-      }
-      if (loc?.chi_nhanh_id && loc.chi_nhanh_id !== 'tat_ca' && kh.chi_nhanh_id !== loc.chi_nhanh_id) continue;
-      if (loc?.ngay_tao_tu_ngay && kh.ngay_tao < loc.ngay_tao_tu_ngay) continue;
-      if (loc?.ngay_tao_den_ngay && kh.ngay_tao > loc.ngay_tao_den_ngay + 'T23:59:59.999Z') continue;
-      results.push(kh);
-    }
-    results.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
-    
-    const kq = { mang: results, tong_so: snapshot.size };
-    _cacheDanhSachKH = { locStr, kq, ts: Date.now() };
-    return kq;
+    const rawResults = await napRawDanhSachKhachHang();
+    const filtered = locDanhSachKhachHangTrenRam(rawResults, loc);
+    return { mang: filtered, tong_so: rawResults.length };
   } catch (err) {
     console.warn('[dich_vu_khach_hang] danhSachKhachHang catch:', err);
     return { mang: [], tong_so: 0 };
@@ -135,9 +172,19 @@ export const danhSachKhachHang = async (
 };
 
 export const layChiTietKhachHang = async (id: string): Promise<KhachHang | null> => {
+  if (_rawCacheKH) {
+    const cached = _rawCacheKH.mang.find((k) => k.id === id);
+    if (cached) return cached;
+  }
   const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, id));
   if (!snap.exists()) return null;
-  return chuyenDoiDocThanhDoiTuong(snap.id, snap.data());
+  const kh = chuyenDoiDocThanhDoiTuong(snap.id, snap.data());
+  if (_rawCacheKH) {
+    const idx = _rawCacheKH.mang.findIndex((k) => k.id === id);
+    if (idx >= 0) _rawCacheKH.mang[idx] = kh;
+    else _rawCacheKH.mang.unshift(kh);
+  }
+  return kh;
 };
 
 export const kiemTraTrungKhachHang = async (thamSo: {
@@ -148,6 +195,26 @@ export const kiemTraTrungKhachHang = async (thamSo: {
   const mstClean = thamSo.ma_so_thue?.trim();
   const sdtClean = thamSo.so_dien_thoai?.trim();
   if (!mstClean && !sdtClean) return null;
+
+  // Nếu đã có sẵn danh sách khách hàng trên RAM, kiểm tra trùng trực tiếp trong 0ms không cần gọi mạng
+  if (_rawCacheKH && Date.now() - _rawCacheKH.ts < CACHE_TTL_KH) {
+    let trungMst: KhachHang | undefined;
+    let trungSdt: KhachHang | undefined;
+    for (const kh of _rawCacheKH.mang) {
+      if (kh.id === thamSo.id_bo_qua || kh.trang_thai === 'da_xoa') continue;
+      if (mstClean && !trungMst && kh.ma_so_thue?.trim() === mstClean) {
+        trungMst = kh;
+      }
+      if (sdtClean && !trungSdt && kh.so_dien_thoai?.trim() === sdtClean) {
+        trungSdt = kh;
+      }
+      if ((!mstClean || trungMst) && (!sdtClean || trungSdt)) break;
+    }
+    if (trungMst || trungSdt) {
+      return { trung_mst: trungMst, trung_sdt: trungSdt };
+    }
+    return null;
+  }
 
   let trungMst: KhachHang | undefined;
   let trungSdt: KhachHang | undefined;
@@ -253,14 +320,20 @@ export const taoKhachHangMoi = async (
   };
   const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
   const moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
-  await ghiNhatKyHoatDong(
+  // Cập nhật trực tiếp vào RAM cache mà không cần xóa cache bắt tải lại toàn bộ
+  if (_rawCacheKH) {
+    _rawCacheKH = {
+      mang: [moi, ..._rawCacheKH.mang.filter((k) => k.id !== moi.id)],
+      ts: Date.now()
+    };
+  }
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'khach_hang',
     'tao_moi',
     moi.id,
     `Tạo khách hàng "${moi.ten_khach_hang}"`
   );
-  _cacheDanhSachKH = null;
   return moi;
 };
 
@@ -312,14 +385,21 @@ export const capNhatKhachHang = async (
   patchRaw.ngay_cap_nhat = now;
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
   const moi = { ...hienTai, ...patchRaw } as KhachHang;
-  await ghiNhatKyHoatDong(
+  // Cập nhật trực tiếp vào RAM cache mà không cần xóa cache bắt tải lại toàn bộ
+  if (_rawCacheKH) {
+    const idx = _rawCacheKH.mang.findIndex((k) => k.id === moi.id);
+    const mangMoi = [..._rawCacheKH.mang];
+    if (idx >= 0) mangMoi[idx] = moi;
+    else mangMoi.unshift(moi);
+    _rawCacheKH = { mang: mangMoi, ts: Date.now() };
+  }
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'khach_hang',
     'cap_nhat',
     moi.id,
     `Cập nhật khách hàng "${moi.ten_khach_hang}"`
   );
-  _cacheDanhSachKH = null;
   return moi;
 };
 

@@ -80,19 +80,45 @@ const sapXepVaLocThem = (mang: ChiNhanh[], loc?: DieuKienLocChiNhanh): ChiNhanh[
   });
 };
 
+let _rawCacheCN: { mang: ChiNhanh[]; ts: number } | null = null;
+let _dangTaiCNPromise: Promise<ChiNhanh[]> | null = null;
+const CACHE_TTL_CN = 10 * 60 * 1000; // 10 phút
+
+export const layCacheChiNhanhDongBo = (
+  loc?: DieuKienLocChiNhanh
+): { mang: ChiNhanh[]; tong_so: number } | null => {
+  if (!_rawCacheCN) return null;
+  const ttDuLieu = loc?.trang_thai_du_lieu ?? 'hoat_dong';
+  const mangDaLoc = sapXepVaLocThem(_rawCacheCN.mang, { ...loc, trang_thai_du_lieu: ttDuLieu });
+  return { mang: mangDaLoc, tong_so: mangDaLoc.length };
+};
+
 export const danhSachChiNhanh = async (
   loc?: DieuKienLocChiNhanh
 ): Promise<{ mang: ChiNhanh[]; tong_so?: number }> => {
-  const mangRangBuoc: QueryConstraint[] = [limit(GIOI_HAN_MAC_DINH)];
-  const ttDuLieu = loc?.trang_thai_du_lieu && loc.trang_thai_du_lieu !== 'tat_ca'
-    ? loc.trang_thai_du_lieu
-    : 'hoat_dong';
-  mangRangBuoc.unshift(where('trang_thai_du_lieu', '==', ttDuLieu));
+  const ttDuLieu = loc?.trang_thai_du_lieu ?? 'hoat_dong';
+  if (_rawCacheCN && Date.now() - _rawCacheCN.ts < CACHE_TTL_CN) {
+    const mangDaLoc = sapXepVaLocThem(_rawCacheCN.mang, { ...loc, trang_thai_du_lieu: ttDuLieu });
+    return { mang: mangDaLoc, tong_so: mangDaLoc.length };
+  }
+
   try {
-    const snap = await getDocs(query(thamChieuCollection(TEN_COLLECTION), ...mangRangBuoc));
-    const mangRaw = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
-    const mangDaLoc = sapXepVaLocThem(mangRaw, loc);
-    mangDaLoc.sort((a, b) => (a.ten_chi_nhanh ?? '').localeCompare(b.ten_chi_nhanh ?? '', 'vi'));
+    if (!_dangTaiCNPromise) {
+      _dangTaiCNPromise = (async () => {
+        try {
+          const snap = await getDocs(query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH)));
+          const mangRaw = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+          mangRaw.sort((a, b) => (a.ten_chi_nhanh ?? '').localeCompare(b.ten_chi_nhanh ?? '', 'vi'));
+          _rawCacheCN = { mang: mangRaw, ts: Date.now() };
+          return mangRaw;
+        } finally {
+          _dangTaiCNPromise = null;
+        }
+      })();
+    }
+
+    const rawAll = await _dangTaiCNPromise;
+    const mangDaLoc = sapXepVaLocThem(rawAll, { ...loc, trang_thai_du_lieu: ttDuLieu });
     return { mang: mangDaLoc, tong_so: mangDaLoc.length };
   } catch {
     return { mang: [], tong_so: 0 };
@@ -100,6 +126,10 @@ export const danhSachChiNhanh = async (
 };
 
 export const layChiTietChiNhanh = async (id: string): Promise<ChiNhanh | null> => {
+  if (_rawCacheCN) {
+    const found = _rawCacheCN.mang.find((c) => c.id === id);
+    if (found) return found;
+  }
   try {
     const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, id));
     if (!snap.exists()) return null;
@@ -130,7 +160,15 @@ export const taoChiNhanhMoi = async (
   };
   const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
   const moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
-  await ghiNhatKyHoatDong(
+  if (_rawCacheCN) {
+    _rawCacheCN = {
+      mang: [..._rawCacheCN.mang.filter((c) => c.id !== moi.id), moi].sort((a, b) =>
+        (a.ten_chi_nhanh ?? '').localeCompare(b.ten_chi_nhanh ?? '', 'vi')
+      ),
+      ts: Date.now()
+    };
+  }
+  void ghiNhatKyHoatDong(
     idNguoiThucHien,
     'chi_nhanh',
     'tao_moi',
@@ -161,7 +199,15 @@ export const capNhatChiNhanh = async (
   patchRaw.ngay_cap_nhat = now;
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
   const moi = { ...hienTai, ...patchRaw } as ChiNhanh;
-  await ghiNhatKyHoatDong(
+  if (_rawCacheCN) {
+    const idx = _rawCacheCN.mang.findIndex((c) => c.id === moi.id);
+    const mangMoi = [..._rawCacheCN.mang];
+    if (idx >= 0) mangMoi[idx] = moi;
+    else mangMoi.push(moi);
+    mangMoi.sort((a, b) => (a.ten_chi_nhanh ?? '').localeCompare(b.ten_chi_nhanh ?? '', 'vi'));
+    _rawCacheCN = { mang: mangMoi, ts: Date.now() };
+  }
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'chi_nhanh',
     'cap_nhat',

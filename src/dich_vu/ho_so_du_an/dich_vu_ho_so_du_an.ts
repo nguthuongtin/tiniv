@@ -94,8 +94,14 @@ const sapXepVaLocThem = (mang: HoSoDuAn[], loc?: DieuKienLocHoSoDuAn): HoSoDuAn[
       if (hda.trang_thai === 'da_xoa') return false;
     }
 
+    if (loc?.khach_hang_id && hda.khach_hang_id !== loc.khach_hang_id) return false;
     if (loc?.chi_nhanh_id && hda.chi_nhanh_id !== loc.chi_nhanh_id) return false;
     if (loc?.phong_ban_id && hda.phong_ban_id !== loc.phong_ban_id) return false;
+    if (loc?.giai_doan && loc.giai_doan !== 'tat_ca' && hda.giai_doan !== loc.giai_doan) return false;
+    if (loc?.muc_do_tiem_nang && loc.muc_do_tiem_nang !== 'tat_ca' && hda.muc_do_tiem_nang !== loc.muc_do_tiem_nang) return false;
+    if (loc?.nguoi_quan_ly_id && hda.nguoi_quan_ly_id !== loc.nguoi_quan_ly_id) return false;
+    if (loc?.nguoi_phu_trach_id && hda.nguoi_phu_trach_id !== loc.nguoi_phu_trach_id) return false;
+
     if (tuKhoaLower) {
       const khop =
         hda.ma_ho_so.toLowerCase().includes(tuKhoaLower) ||
@@ -116,56 +122,50 @@ const sapXepVaLocThem = (mang: HoSoDuAn[], loc?: DieuKienLocHoSoDuAn): HoSoDuAn[
   });
 };
 
-let _cacheDanhSachHDA: { locStr: string; kq: { mang: HoSoDuAn[]; tong_so?: number }; ts: number } | null = null;
-const CACHE_TTL_HDA = 30000; // 30 seconds
+let _rawCacheHDA: { mang: HoSoDuAn[]; ts: number } | null = null;
+let _dangTaiHDAPromise: Promise<HoSoDuAn[]> | null = null;
+const CACHE_TTL_HDA = 10 * 60 * 1000; // 10 phút
+
+export const layCacheHoSoDuAnDongBo = (
+  loc?: DieuKienLocHoSoDuAn
+): { mang: HoSoDuAn[]; tong_so: number } | null => {
+  if (!_rawCacheHDA) return null;
+  const mang = sapXepVaLocThem(_rawCacheHDA.mang, loc);
+  return { mang, tong_so: _rawCacheHDA.mang.length };
+};
+
+export const xoaCacheHoSoDuAn = () => {
+  _rawCacheHDA = null;
+};
 
 export const danhSachHoSoDuAn = async (
   loc?: DieuKienLocHoSoDuAn
 ): Promise<{ mang: HoSoDuAn[]; tong_so?: number }> => {
-  const locStr = JSON.stringify(loc || {});
-  if (_cacheDanhSachHDA && _cacheDanhSachHDA.locStr === locStr && Date.now() - _cacheDanhSachHDA.ts < CACHE_TTL_HDA) {
-    return _cacheDanhSachHDA.kq;
+  if (_rawCacheHDA && Date.now() - _rawCacheHDA.ts < CACHE_TTL_HDA) {
+    return { mang: sapXepVaLocThem(_rawCacheHDA.mang, loc), tong_so: _rawCacheHDA.mang.length };
   }
 
-  const mangRangBuoc: QueryConstraint[] = [
-    limit(GIOI_HAN_MAC_DINH)
-  ];
-  if (loc?.khach_hang_id) {
-    mangRangBuoc.unshift(where('khach_hang_id', '==', loc.khach_hang_id));
-  }
-  if (loc?.chi_nhanh_id) {
-    mangRangBuoc.unshift(where('chi_nhanh_id', '==', loc.chi_nhanh_id));
-  }
-  if (loc?.phong_ban_id) {
-    mangRangBuoc.unshift(where('phong_ban_id', '==', loc.phong_ban_id));
-  }
-  if (loc?.giai_doan && loc.giai_doan !== 'tat_ca') {
-    mangRangBuoc.unshift(where('giai_doan', '==', loc.giai_doan));
-  }
-  if (loc?.muc_do_tiem_nang && loc.muc_do_tiem_nang !== 'tat_ca') {
-    mangRangBuoc.unshift(where('muc_do_tiem_nang', '==', loc.muc_do_tiem_nang));
-  }
-  if (loc?.nguoi_quan_ly_id) {
-    mangRangBuoc.unshift(where('nguoi_quan_ly_id', '==', loc.nguoi_quan_ly_id));
-  }
-  if (loc?.nguoi_phu_trach_id) {
-    mangRangBuoc.unshift(where('nguoi_phu_trach_id', '==', loc.nguoi_phu_trach_id));
-  }
-  if (loc?.trang_thai && loc.trang_thai !== 'tat_ca') {
-    mangRangBuoc.unshift(where('trang_thai', '==', loc.trang_thai));
-  }
   try {
-    const q = query(thamChieuCollection(TEN_COLLECTION), ...mangRangBuoc);
-    const snapshot = await getDocs(q);
-    const resultsRaw: HoSoDuAn[] = [];
-    for (const d of snapshot.docs) {
-      resultsRaw.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+    if (!_dangTaiHDAPromise) {
+      _dangTaiHDAPromise = (async () => {
+        try {
+          const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
+          const snapshot = await getDocs(q);
+          const resultsRaw: HoSoDuAn[] = [];
+          for (const d of snapshot.docs) {
+            resultsRaw.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+          }
+          resultsRaw.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
+          _rawCacheHDA = { mang: resultsRaw, ts: Date.now() };
+          return resultsRaw;
+        } finally {
+          _dangTaiHDAPromise = null;
+        }
+      })();
     }
-    resultsRaw.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
-    
-    const kq = { mang: sapXepVaLocThem(resultsRaw, loc), tong_so: snapshot.size };
-    _cacheDanhSachHDA = { locStr, kq, ts: Date.now() };
-    return kq;
+
+    const rawAll = await _dangTaiHDAPromise;
+    return { mang: sapXepVaLocThem(rawAll, loc), tong_so: rawAll.length };
   } catch (err) {
     console.warn('[dich_vu_ho_so_du_an] danhSachHoSoDuAn catch:', err);
     return { mang: [], tong_so: 0 };
@@ -173,9 +173,19 @@ export const danhSachHoSoDuAn = async (
 };
 
 export const layChiTietHoSoDuAn = async (id: string): Promise<HoSoDuAn | null> => {
+  if (_rawCacheHDA) {
+    const cached = _rawCacheHDA.mang.find((x) => x.id === id);
+    if (cached) return cached;
+  }
   const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, id));
   if (!snap.exists()) return null;
-  return chuyenDoiDocThanhDoiTuong(snap.id, snap.data());
+  const hda = chuyenDoiDocThanhDoiTuong(snap.id, snap.data());
+  if (_rawCacheHDA) {
+    const idx = _rawCacheHDA.mang.findIndex((x) => x.id === id);
+    if (idx >= 0) _rawCacheHDA.mang[idx] = hda;
+    else _rawCacheHDA.mang.unshift(hda);
+  }
+  return hda;
 };
 
 export interface TaoMoiHoSoDuAnDTO {
@@ -246,18 +256,23 @@ export const taoHoSoDuAnMoi = async (
   };
   const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
   const moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
+  if (_rawCacheHDA) {
+    _rawCacheHDA = {
+      mang: [moi, ..._rawCacheHDA.mang.filter((x) => x.id !== moi.id)],
+      ts: Date.now()
+    };
+  }
   const logThem = [
     moi.san_pham_dich_vu_id ? `SP/DV: ${moi.san_pham_dich_vu_id}` : null,
     moi.san_pham_khac_mo_ta ? `SP Khac: ${moi.san_pham_khac_mo_ta}` : null
   ].filter(Boolean).join(' | ');
-  await ghiNhatKyHoatDong(
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'ho_so_du_an',
     'tao_moi',
     moi.id,
     `Tao ho so du an "${moi.ten_du_an}"${logThem ? ` (${logThem})` : ''}`
   );
-  _cacheDanhSachHDA = null;
   return moi;
 };
 
@@ -300,18 +315,24 @@ export const capNhatHoSoDuAn = async (
   patchRaw.ngay_cap_nhat = now;
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
   const moi = { ...hienTai, ...patchRaw } as HoSoDuAn;
+  if (_rawCacheHDA) {
+    const idx = _rawCacheHDA.mang.findIndex((x) => x.id === moi.id);
+    const mangMoi = [..._rawCacheHDA.mang];
+    if (idx >= 0) mangMoi[idx] = moi;
+    else mangMoi.unshift(moi);
+    _rawCacheHDA = { mang: mangMoi, ts: Date.now() };
+  }
   const logThem = [
     moi.san_pham_dich_vu_id ? `SP/DV: ${moi.san_pham_dich_vu_id}` : null,
     moi.san_pham_khac_mo_ta ? `SP Khac: ${moi.san_pham_khac_mo_ta}` : null
   ].filter(Boolean).join(' | ');
-  await ghiNhatKyHoatDong(
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'ho_so_du_an',
     'cap_nhat',
     moi.id,
     `Cap nhat ho so du an "${moi.ten_du_an}"${logThem ? ` (${logThem})` : ''}`
   );
-  _cacheDanhSachHDA = null;
   return moi;
 };
 

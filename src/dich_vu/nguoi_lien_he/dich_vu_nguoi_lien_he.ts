@@ -56,6 +56,7 @@ const chuyenDoiDocThanhDoiTuong = (
 const sapXepVaLocThem = (mang: NguoiLienHe[], loc?: DieuKienLocNguoiLienHe): NguoiLienHe[] => {
   const tuKhoaLower = loc?.tuKhoa?.trim().toLowerCase() ?? '';
   return mang.filter((nlh) => {
+    if (loc?.khach_hang_id && nlh.khach_hang_id !== loc.khach_hang_id) return false;
     if (tuKhoaLower) {
       const khop =
         nlh.ho_va_ten.toLowerCase().includes(tuKhoaLower) ||
@@ -70,34 +71,86 @@ const sapXepVaLocThem = (mang: NguoiLienHe[], loc?: DieuKienLocNguoiLienHe): Ngu
   });
 };
 
-let _cacheDanhSachNLH: { locStr: string; kq: { mang: NguoiLienHe[]; tong_so?: number }; ts: number } | null = null;
-const CACHE_TTL_NLH = 30000; // 30 seconds
+let _rawCacheNLH: { mang: NguoiLienHe[]; ts: number } | null = null;
+let _dangTaiNLHPromise: Promise<NguoiLienHe[]> | null = null;
+const CACHE_TTL_NLH = 10 * 60 * 1000; // 10 phút
+
+export const layCacheNguoiLienHeDongBo = (
+  loc?: DieuKienLocNguoiLienHe
+): { mang: NguoiLienHe[]; tong_so: number } | null => {
+  if (!_rawCacheNLH) return null;
+  const mang = sapXepVaLocThem(_rawCacheNLH.mang, loc);
+  return { mang, tong_so: _rawCacheNLH.mang.length };
+};
+
+export const xoaCacheNguoiLienHe = () => {
+  _rawCacheNLH = null;
+};
+
+export const dongBoThemHoacCapNhatCacheNLH = (nlh: NguoiLienHe) => {
+  if (!_rawCacheNLH) return;
+  const idx = _rawCacheNLH.mang.findIndex((x) => x.id === nlh.id);
+  const mangMoi = [..._rawCacheNLH.mang];
+  if (idx >= 0) mangMoi[idx] = nlh;
+  else mangMoi.unshift(nlh);
+  _rawCacheNLH = { mang: mangMoi, ts: Date.now() };
+};
+
+export const dongBoXoaCacheNLH = (id: string) => {
+  if (!_rawCacheNLH) return;
+  _rawCacheNLH = {
+    mang: _rawCacheNLH.mang.filter((x) => x.id !== id),
+    ts: Date.now()
+  };
+};
 
 export const danhSachNguoiLienHe = async (
   loc?: DieuKienLocNguoiLienHe
 ): Promise<{ mang: NguoiLienHe[]; tong_so?: number }> => {
-  const locStr = JSON.stringify(loc || {});
-  if (_cacheDanhSachNLH && _cacheDanhSachNLH.locStr === locStr && Date.now() - _cacheDanhSachNLH.ts < CACHE_TTL_NLH) {
-    return _cacheDanhSachNLH.kq;
+  if (_rawCacheNLH && Date.now() - _rawCacheNLH.ts < CACHE_TTL_NLH) {
+    return { mang: sapXepVaLocThem(_rawCacheNLH.mang, loc), tong_so: _rawCacheNLH.mang.length };
   }
 
-  const mangRangBuoc: QueryConstraint[] = [limit(GIOI_HAN_MAC_DINH)];
-  if (loc?.khach_hang_id) {
-    mangRangBuoc.unshift(where('khach_hang_id', '==', loc.khach_hang_id));
+  // Nếu chỉ truy vấn riêng 1 khách hàng mà chưa có toàn bộ cache
+  if (loc?.khach_hang_id && !_dangTaiNLHPromise) {
+    const qKh = query(
+      thamChieuCollection(TEN_COLLECTION),
+      where('khach_hang_id', '==', loc.khach_hang_id),
+      limit(GIOI_HAN_MAC_DINH)
+    );
+    const snapKh = await getDocs(qKh);
+    const dsKh = snapKh.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+    dsKh.sort((a, b) => a.ho_va_ten.localeCompare(b.ho_va_ten, 'vi'));
+    return { mang: sapXepVaLocThem(dsKh, loc), tong_so: dsKh.length };
   }
-  const q = query(thamChieuCollection(TEN_COLLECTION), ...mangRangBuoc);
-  const snapshot = await getDocs(q);
-  const resultsRaw: NguoiLienHe[] = [];
-  for (const d of snapshot.docs) {
-    resultsRaw.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+
+  if (!_dangTaiNLHPromise) {
+    _dangTaiNLHPromise = (async () => {
+      try {
+        const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
+        const snapshot = await getDocs(q);
+        const resultsRaw: NguoiLienHe[] = [];
+        for (const d of snapshot.docs) {
+          resultsRaw.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+        }
+        resultsRaw.sort((a, b) => a.ho_va_ten.localeCompare(b.ho_va_ten, 'vi'));
+        _rawCacheNLH = { mang: resultsRaw, ts: Date.now() };
+        return resultsRaw;
+      } finally {
+        _dangTaiNLHPromise = null;
+      }
+    })();
   }
-  resultsRaw.sort((a, b) => a.ho_va_ten.localeCompare(b.ho_va_ten, 'vi'));
-  const kq = { mang: sapXepVaLocThem(resultsRaw, loc), tong_so: snapshot.size };
-  _cacheDanhSachNLH = { locStr, kq, ts: Date.now() };
-  return kq;
+
+  const rawAll = await _dangTaiNLHPromise;
+  return { mang: sapXepVaLocThem(rawAll, loc), tong_so: rawAll.length };
 };
 
 export const layChiTietNguoiLienHe = async (id: string): Promise<NguoiLienHe | null> => {
+  if (_rawCacheNLH) {
+    const found = _rawCacheNLH.mang.find((x) => x.id === id);
+    if (found) return found;
+  }
   const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, id));
   if (!snap.exists()) return null;
   return chuyenDoiDocThanhDoiTuong(snap.id, snap.data());
@@ -134,14 +187,14 @@ export const taoNguoiLienHeMoi = async (
   };
   const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
   const moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
-  await ghiNhatKyHoatDong(
+  dongBoThemHoacCapNhatCacheNLH(moi);
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'khach_hang',
     'tao_moi',
     moi.khach_hang_id,
     `Thêm liên hệ "${moi.ho_va_ten}" cho khách hàng`
   );
-  _cacheDanhSachNLH = null;
   return moi;
 };
 
@@ -155,7 +208,6 @@ export const capNhatNguoiLienHe = async (
 ): Promise<NguoiLienHe> => {
   const hienTai = await layChiTietNguoiLienHe(dto.id);
   if (!hienTai) throw new Error(`Không tồn tại liên hệ id = ${dto.id}`);
-  const now = new Date().toISOString();
   const patchRaw: Partial<RawBanGhiNLH> = {};
   (Object.keys(dto) as (keyof CapNhatNguoiLienHeDTO)[]).forEach((k) => {
     if (k === 'id') return;
@@ -167,14 +219,14 @@ export const capNhatNguoiLienHe = async (
   });
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
   const moi = { ...hienTai, ...patchRaw } as NguoiLienHe;
-  await ghiNhatKyHoatDong(
+  dongBoThemHoacCapNhatCacheNLH(moi);
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'khach_hang',
     'cap_nhat',
     moi.khach_hang_id,
     `Cập nhật liên hệ "${moi.ho_va_ten}"`
   );
-  _cacheDanhSachNLH = null;
   return moi;
 };
 
@@ -185,14 +237,14 @@ export const xoaNguoiLienHe = async (
   const hienTai = await layChiTietNguoiLienHe(id);
   if (!hienTai) return;
   await deleteDoc(thamChieuBanGhi(TEN_COLLECTION, id));
-  await ghiNhatKyHoatDong(
+  dongBoXoaCacheNLH(id);
+  void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'khach_hang',
     'xoa',
     hienTai.khach_hang_id,
     `Xóa liên hệ "${hienTai.ho_va_ten}"`
   );
-  _cacheDanhSachNLH = null;
 };
 
 export const langNgheThayDoiDanhSachNguoiLienHe = (

@@ -216,38 +216,64 @@ export const DS_DIA_GIOI_MAC_DINH: Omit<DiaGioiHanhChinh, 'id'>[] = [
   { tinh_thanh: 'Hậu Giang', xa_phuong: 'Thị trấn Ngã Sáu', loai: 'thi_trai', trang_thai: 'hoat_dong' }
 ];
 
+let _cacheDiaGioi: { mang: DiaGioiHanhChinh[]; ts: number } | null = null;
+let _dangTaiDiaGioiPromise: Promise<DiaGioiHanhChinh[]> | null = null;
+const CACHE_TTL_DIA_GIOI = 30 * 60 * 1000; // 30 phút
+
+export const xoaCacheDiaGioiHanhChinh = () => {
+  _cacheDiaGioi = null;
+};
+
 export const layDanhSachDiaGioiHanhChinh = async (): Promise<DiaGioiHanhChinh[]> => {
-  try {
-    const q = query(
-      thamChieuCollection(COLLECTION_NAME),
-      limit(10000)
-    );
-    const snap = await getDocs(q);
-    const rawList: DiaGioiHanhChinh[] = snap.docs
-      .map((d) => ({ id: d.id, ...(d.data() as Omit<DiaGioiHanhChinh, 'id'>) }))
-      .filter((x) => x.trang_thai === 'hoat_dong' || !x.trang_thai);
-
-    if (rawList.length === 0) {
-      return [];
-    }
-
-    // Khử trùng lặp tên xã theo tỉnh
-    const mapUnique = new Map<string, DiaGioiHanhChinh>();
-    for (const item of rawList) {
-      const key = `${item.tinh_thanh.trim()}__${item.xa_phuong.trim()}`.toLowerCase();
-      if (!mapUnique.has(key)) {
-        mapUnique.set(key, item);
-      }
-    }
-
-    return Array.from(mapUnique.values());
-  } catch (err) {
-    console.warn('[dich_vu_dia_gioi_hanh_chinh] Catch fallback local:', err);
-    return DS_DIA_GIOI_MAC_DINH.map((item, index) => ({
-      id: `default_${index + 1}`,
-      ...item
-    }));
+  if (_cacheDiaGioi && Date.now() - _cacheDiaGioi.ts < CACHE_TTL_DIA_GIOI) {
+    return _cacheDiaGioi.mang;
   }
+  if (_dangTaiDiaGioiPromise) {
+    return _dangTaiDiaGioiPromise;
+  }
+
+  _dangTaiDiaGioiPromise = (async () => {
+    try {
+      const q = query(
+        thamChieuCollection(COLLECTION_NAME),
+        limit(10000)
+      );
+      const snap = await getDocs(q);
+      const rawList: DiaGioiHanhChinh[] = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as Omit<DiaGioiHanhChinh, 'id'>) }))
+        .filter((x) => x.trang_thai === 'hoat_dong' || !x.trang_thai);
+
+      if (rawList.length === 0) {
+        _cacheDiaGioi = { mang: [], ts: Date.now() };
+        return [];
+      }
+
+      // Khử trùng lặp tên xã theo tỉnh
+      const mapUnique = new Map<string, DiaGioiHanhChinh>();
+      for (const item of rawList) {
+        const key = `${item.tinh_thanh.trim()}__${item.xa_phuong.trim()}`.toLowerCase();
+        if (!mapUnique.has(key)) {
+          mapUnique.set(key, item);
+        }
+      }
+
+      const kq = Array.from(mapUnique.values());
+      _cacheDiaGioi = { mang: kq, ts: Date.now() };
+      return kq;
+    } catch (err) {
+      console.warn('[dich_vu_dia_gioi_hanh_chinh] Catch fallback local:', err);
+      const fallback = DS_DIA_GIOI_MAC_DINH.map((item, index) => ({
+        id: `default_${index + 1}`,
+        ...item
+      }));
+      _cacheDiaGioi = { mang: fallback, ts: Date.now() };
+      return fallback;
+    } finally {
+      _dangTaiDiaGioiPromise = null;
+    }
+  })();
+
+  return _dangTaiDiaGioiPromise;
 };
 
 const tuDongKhoiTaoNeuChuaCo = async () => {
@@ -289,6 +315,7 @@ export const napDuLieuMauMienTay = async (): Promise<number> => {
         dem++;
       }
     }
+    _cacheDiaGioi = null;
   } catch (err) {
     console.warn('Lỗi nạp dữ liệu mẫu Miền Tây:', err);
   }
@@ -312,6 +339,7 @@ export const taoDiaGioiHanhChinh = async (
 
   try {
     const ref = await addDoc(thamChieuCollection(COLLECTION_NAME), raw);
+    _cacheDiaGioi = null;
     return { id: ref.id, ...raw };
   } catch (err) {
     console.warn('Lỗi tạo địa giới hành chính Firestore:', err);
@@ -330,6 +358,7 @@ export const capNhatDiaGioiHanhChinh = async (
       { ...data, ngay_cap_nhat: now },
       { merge: true }
     );
+    _cacheDiaGioi = null;
   } catch (err) {
     console.warn('Lỗi cập nhật địa giới hành chính Firestore:', err);
   }
@@ -342,6 +371,7 @@ export const xoaDiaGioiHanhChinh = async (id: string): Promise<void> => {
       { trang_thai: 'da_xoa', ngay_cap_nhat: new Date().toISOString() },
       { merge: true }
     );
+    _cacheDiaGioi = null;
   } catch (err) {
     console.warn('Lỗi xóa địa giới hành chính Firestore:', err);
   }
@@ -452,6 +482,7 @@ export const nhapHangLoatDiaGioiHanhChinh = async (
     }
   }
 
+  _cacheDiaGioi = null;
   return {
     tongSoFile: danhSach.length,
     tongHopLe,
@@ -485,6 +516,7 @@ export const xoaToanBoDiaGioiHanhChinh = async (): Promise<number> => {
       daXoa += chunk.length;
     }
 
+    _cacheDiaGioi = null;
     return daXoa;
   } catch (err) {
     console.warn('Lỗi khi xóa toàn bộ địa giới hành chính:', err);

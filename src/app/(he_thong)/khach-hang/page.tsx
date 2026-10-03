@@ -11,22 +11,18 @@ import {
   Trash2,
   Phone,
   Mail,
-  MapPin,
-  Globe2,
   Loader2,
   AlertTriangle,
   CheckCircle2,
   Eye,
-  UserRound,
+  ChevronLeft,
   ChevronRight,
-  ChevronDown,
   RotateCcw,
   FolderKanban
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { cn } from '../../../thu_vien/utils/cn';
-import { formatNgay } from '../../../thu_vien/utils/format_ngay';
 import useStoreXacThuc from '../../../thu_vien/zustand/store_xac_thuc';
 import type { KhachHang, NguoiLienHe } from '../../../thu_vien/types/khach_hang';
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
@@ -38,25 +34,28 @@ import type {
 } from '../../../dich_vu/khach_hang/dich_vu_khach_hang';
 import {
   danhSachKhachHang,
+  layCacheKhachHangDongBo,
+  locDanhSachKhachHangTrenRam,
   taoKhachHangMoi,
   capNhatKhachHang,
   doiTrangThaiKhachHang,
+  xoaMemKhachHang,
   khoiPhucKhachHang
 } from '../../../dich_vu/khach_hang/dich_vu_khach_hang';
-import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
-import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
-import { danhSachHoSoDuAn } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
-import { danhSachNguoiLienHe } from '../../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
+import { danhSachChiNhanh, layCacheChiNhanhDongBo } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
+import { danhSachNhanSu, layCacheNhanSuDongBo } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
+import { danhSachHoSoDuAn, layCacheHoSoDuAnDongBo } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
+import { danhSachNguoiLienHe, layCacheNguoiLienHeDongBo } from '../../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import { duocXemKhachHang, duocXemHoSoDuAn } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import BoLocKhachHang from '../../../thanh_phan/khach_hang/bo_loc_khach_hang';
 import FormKhachHangDrawer from '../../../thanh_phan/khach_hang/form_khach_hang_drawer';
 import {
   Nut,
-  Hieu,
   Rong,
-  DaiDien,
   Bo_Cuc_Trang
 } from '../../../thanh_phan/ui';
+
+const SO_BAN_GHI_MOI_TRANG = 20;
 
 const BO_LOC_MAC_DINH: DieuKienLocKhachHang = {
   tuKhoa: null,
@@ -79,13 +78,27 @@ export default function TrangKhachHang() {
   const { nguoiDungHienTai } = useStoreXacThuc();
   const nguoi_dung_hien_tai = nguoiDungHienTai;
 
-  const [dang_tai, set_dang_tai] = useState<boolean>(true);
-  const [danh_sach, set_danh_sach] = useState<KhachHang[]>([]);
-  const [dsChiNhanh, setDsChiNhanh] = useState<ChiNhanh[]>([]);
-  const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>([]);
-  const [dsDuAn, setDsDuAn] = useState<HoSoDuAn[]>([]);
-  const [dsNguoiLienHe, setDsNguoiLienHe] = useState<NguoiLienHe[]>([]);
+  // Khởi tạo tức thì từ RAM cache (0ms, không chớp màn hình loading nếu đã nạp dữ liệu trong phiên)
+  const [danh_sach_goc, set_danh_sach_goc] = useState<KhachHang[]>(
+    () => layCacheKhachHangDongBo({ trang_thai: 'tat_ca' })?.mang ?? []
+  );
+  const [dang_tai, set_dang_tai] = useState<boolean>(
+    () => layCacheKhachHangDongBo({ trang_thai: 'tat_ca' }) === null
+  );
+  const [dsChiNhanh, setDsChiNhanh] = useState<ChiNhanh[]>(
+    () => layCacheChiNhanhDongBo({ trang_thai_du_lieu: 'hoat_dong' })?.mang ?? []
+  );
+  const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>(
+    () => layCacheNhanSuDongBo({ trang_thai_du_lieu: 'hoat_dong' })?.mang ?? []
+  );
+  const [dsDuAn, setDsDuAn] = useState<HoSoDuAn[]>(
+    () => layCacheHoSoDuAnDongBo({ trang_thai: 'tat_ca' })?.mang ?? []
+  );
+  const [dsNguoiLienHe, setDsNguoiLienHe] = useState<NguoiLienHe[]>(
+    () => layCacheNguoiLienHeDongBo()?.mang ?? []
+  );
   const [dieu_kien, set_dieu_kien] = useState<DieuKienLocKhachHang>(BO_LOC_MAC_DINH);
+  const [trangHienTai, setTrangHienTai] = useState<number>(1);
 
   const [mo_drawer, set_mo_drawer] = useState(false);
   const [dang_sua, set_dang_sua] = useState<KhachHang | null>(null);
@@ -103,90 +116,46 @@ export default function TrangKhachHang() {
     }, 3000);
   }, []);
 
-  const tai_lai_du_lieu = useCallback(async () => {
-    set_dang_tai(true);
-    try {
-      const vaiTroKey = String(nguoi_dung_hien_tai?.vai_tro || '');
-      const laQuanLy = vaiTroKey === 'quan_tri_he_thong' || vaiTroKey === 'giam_doc' || vaiTroKey === 'truong_phong';
-
-      const [resKh, resHda, resNlh] = await Promise.all([
-        danhSachKhachHang(dieu_kien),
-        danhSachHoSoDuAn({ trang_thai: 'tat_ca' }).catch(() => ({ mang: [] })),
-        danhSachNguoiLienHe().catch(() => ({ mang: [] }))
-      ]);
-
-      const dsDuAnCuaToi = laQuanLy ? resHda.mang : resHda.mang.filter((hda) => duocXemHoSoDuAn(nguoi_dung_hien_tai, hda));
-      const dsKhachHangIdsCoDuAn = new Set(dsDuAnCuaToi.map((hda) => hda.khach_hang_id).filter(Boolean) as string[]);
-
-      const dsLoc = resKh.mang.filter((kh) =>
-        duocXemKhachHang(nguoi_dung_hien_tai, kh, undefined, dsKhachHangIdsCoDuAn)
-      );
-
-      set_danh_sach(dsLoc);
-      setDsDuAn(resHda.mang);
-      setDsNguoiLienHe(resNlh.mang);
-    } catch (err: any) {
-      them_thong_bao('loi', 'Không thể tải danh sách khách hàng: ' + (err?.message ?? 'lỗi mạng'));
-      set_danh_sach([]);
-    } finally {
-      set_dang_tai(false);
-    }
-  }, [dieu_kien, nguoi_dung_hien_tai, them_thong_bao]);
-
+  // Chỉ tải dữ liệu gốc 1 lần khi vào trang (và tận dụng RAM cache), KHÔNG gọi lại khi gõ tìm kiếm hay đổi bộ lọc!
   useEffect(() => {
-    let mounted = true;
+    let huy = false;
+    const daCoCacheKH = layCacheKhachHangDongBo({ trang_thai: 'tat_ca' }) !== null;
+    if (!daCoCacheKH) {
+      set_dang_tai(true);
+    }
+
     (async () => {
       try {
-        const [resCN, resNS] = await Promise.allSettled([
+        // Ưu tiên mở khóa danh sách khách hàng ngay khi danhSachKhachHang xong
+        const resKh = await danhSachKhachHang({ trang_thai: 'tat_ca' });
+        if (huy) return;
+        set_danh_sach_goc(resKh.mang);
+        set_dang_tai(false);
+
+        // Các dữ liệu phụ trợ (Dự án, Liên hệ, Chi nhánh, Nhân sự) nạp song song không chặn giao diện
+        const [resHda, resNlh, resCN, resNS] = await Promise.allSettled([
+          danhSachHoSoDuAn({ trang_thai: 'tat_ca' }),
+          danhSachNguoiLienHe(),
           danhSachChiNhanh({ trang_thai_du_lieu: 'hoat_dong' }),
-          danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong' } as any)
+          danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong' })
         ]);
-        if (!mounted) return;
+        if (huy) return;
+        if (resHda.status === 'fulfilled') setDsDuAn(resHda.value.mang);
+        if (resNlh.status === 'fulfilled') setDsNguoiLienHe(resNlh.value.mang);
         if (resCN.status === 'fulfilled') setDsChiNhanh(resCN.value.mang);
         if (resNS.status === 'fulfilled') setDsNhanSu(resNS.value.mang);
-      } catch {}
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let huy_effect = false;
-    (async () => {
-      set_dang_tai(true);
-      try {
-        const vaiTroKey = String(nguoi_dung_hien_tai?.vai_tro || '');
-        const laQuanLy = vaiTroKey === 'quan_tri_he_thong' || vaiTroKey === 'giam_doc' || vaiTroKey === 'truong_phong';
-
-        const [resKh, resHda, resNlh] = await Promise.all([
-          danhSachKhachHang(dieu_kien),
-          danhSachHoSoDuAn({ trang_thai: 'tat_ca' }).catch(() => ({ mang: [] })),
-          danhSachNguoiLienHe().catch(() => ({ mang: [] }))
-        ]);
-
-        if (huy_effect) return;
-
-        const dsDuAnCuaToi = laQuanLy ? resHda.mang : resHda.mang.filter((hda) => duocXemHoSoDuAn(nguoi_dung_hien_tai, hda));
-        const dsKhachHangIdsCoDuAn = new Set(dsDuAnCuaToi.map((hda) => hda.khach_hang_id).filter(Boolean) as string[]);
-
-        const dsLoc = resKh.mang.filter((kh) =>
-          duocXemKhachHang(nguoi_dung_hien_tai, kh, undefined, dsKhachHangIdsCoDuAn)
-        );
-
-        set_danh_sach(dsLoc);
-        setDsDuAn(resHda.mang);
-        setDsNguoiLienHe(resNlh.mang);
       } catch (err: any) {
-        if (!huy_effect) them_thong_bao('loi', 'Tải danh sách khách hàng lỗi: ' + (err?.message ?? ''));
-      } finally {
-        if (!huy_effect) set_dang_tai(false);
+        if (!huy) {
+          them_thong_bao('loi', 'Tải danh sách khách hàng lỗi: ' + (err?.message ?? ''));
+          set_dang_tai(false);
+        }
       }
     })();
+
     return () => {
-      huy_effect = true;
+      huy = true;
     };
-  }, [dieu_kien, nguoi_dung_hien_tai, them_thong_bao]);
+  }, [them_thong_bao]);
 
   useEffect(() => {
     const xu_ly = () => {
@@ -210,18 +179,29 @@ export default function TrangKhachHang() {
     set_mo_drawer(true);
   };
 
+  const capNhatBanGhiTrongState = useCallback((khCapNhat: KhachHang) => {
+    set_danh_sach_goc((prev) => {
+      const idx = prev.findIndex((item) => item.id === khCapNhat.id);
+      if (idx === -1) return [khCapNhat, ...prev];
+      const next = [...prev];
+      next[idx] = khCapNhat;
+      return next;
+    });
+  }, []);
+
   const xu_ly_luu_form = async (dto: TaoMoiKhachHangDTO | CapNhatKhachHangDTO) => {
     set_dang_xu_ly_form(true);
     set_loi_form(null);
     try {
       if ('id' in dto) {
-        await capNhatKhachHang(dto as CapNhatKhachHangDTO, nguoi_dung_hien_tai ?? null);
-        them_thong_bao('thanh_cong', `Đã cập nhật khách hàng "${(dto as CapNhatKhachHangDTO).ten_khach_hang ?? dang_sua?.ten_khach_hang ?? ''}"`);
+        const daCapNhat = await capNhatKhachHang(dto as CapNhatKhachHangDTO, nguoi_dung_hien_tai ?? null);
+        capNhatBanGhiTrongState(daCapNhat);
+        them_thong_bao('thanh_cong', `Đã cập nhật khách hàng "${daCapNhat.ten_khach_hang}"`);
         set_mo_drawer(false);
         set_dang_sua(null);
-        await tai_lai_du_lieu();
       } else {
         const moi = await taoKhachHangMoi(dto as TaoMoiKhachHangDTO, nguoi_dung_hien_tai ?? null);
+        capNhatBanGhiTrongState(moi);
         them_thong_bao('thanh_cong', `Đã tạo khách hàng "${moi.ten_khach_hang}"`);
         set_mo_drawer(false);
         set_dang_sua(null);
@@ -241,12 +221,12 @@ export default function TrangKhachHang() {
     set_dang_xu_ly_khac((o) => ({ ...o, [key]: true }));
     try {
       const trang_thai_moi: KhachHang['trang_thai'] = kh.trang_thai === 'hoat_dong' ? 'tam_dung' : 'hoat_dong';
-      await doiTrangThaiKhachHang(kh.id, trang_thai_moi, nguoi_dung_hien_tai ?? null);
+      const daCapNhat = await doiTrangThaiKhachHang(kh.id, trang_thai_moi, nguoi_dung_hien_tai ?? null);
+      capNhatBanGhiTrongState(daCapNhat);
       them_thong_bao(
         'thanh_cong',
         `Đã ${trang_thai_moi === 'hoat_dong' ? 'mở khóa' : 'khóa'} khách hàng "${kh.ten_khach_hang}"`
       );
-      await tai_lai_du_lieu();
     } catch (err: any) {
       them_thong_bao('loi', 'Không thể đổi trạng thái: ' + (err?.message ?? ''));
     } finally {
@@ -258,9 +238,9 @@ export default function TrangKhachHang() {
     const key = `xoa_${kh.id}`;
     set_dang_xu_ly_khac((o) => ({ ...o, [key]: true }));
     try {
-      await doiTrangThaiKhachHang(kh.id, 'da_xoa', nguoi_dung_hien_tai ?? null);
-      them_thong_bao('thanh_cong', `Đã xóa khách hàng "${kh.ten_khach_hang}"`);
-      await tai_lai_du_lieu();
+      const daXoa = await xoaMemKhachHang(kh.id, nguoi_dung_hien_tai ?? null);
+      capNhatBanGhiTrongState(daXoa);
+      them_thong_bao('thanh_cong', `Đã chuyển khách hàng "${kh.ten_khach_hang}" vào thùng rác`);
     } catch (err: any) {
       them_thong_bao('loi', 'Không thể xóa: ' + (err?.message ?? ''));
     } finally {
@@ -272,9 +252,9 @@ export default function TrangKhachHang() {
     const key = `khoi_phuc_${kh.id}`;
     set_dang_xu_ly_khac((o) => ({ ...o, [key]: true }));
     try {
-      await khoiPhucKhachHang(kh.id, nguoi_dung_hien_tai ?? null);
+      const daKhoiPhuc = await khoiPhucKhachHang(kh.id, nguoi_dung_hien_tai ?? null);
+      capNhatBanGhiTrongState(daKhoiPhuc);
       them_thong_bao('thanh_cong', `Đã khôi phục khách hàng "${kh.ten_khach_hang}"`);
-      await tai_lai_du_lieu();
     } catch (err: any) {
       them_thong_bao('loi', 'Không thể khôi phục: ' + (err?.message ?? ''));
     } finally {
@@ -283,6 +263,49 @@ export default function TrangKhachHang() {
   };
 
   const [kieuSapXep, setKieuSapXep] = useState<'moi_nhat' | 'cu_nhat' | 'ten_az'>('moi_nhat');
+
+  // Reset về trang 1 khi thay đổi bộ lọc hoặc kiểu sắp xếp
+  useEffect(() => {
+    setTrangHienTai(1);
+  }, [dieu_kien, kieuSapXep]);
+
+  // Bước 1: Lọc theo phân quyền người dùng trên RAM
+  const danhSachDuocQuyenXem = useMemo(() => {
+    const vaiTroKey = String(nguoi_dung_hien_tai?.vai_tro || '');
+    const laQuanLy = vaiTroKey === 'quan_tri_he_thong' || vaiTroKey === 'giam_doc' || vaiTroKey === 'truong_phong';
+    const dsDuAnCuaToi = laQuanLy ? dsDuAn : dsDuAn.filter((hda) => duocXemHoSoDuAn(nguoi_dung_hien_tai, hda));
+    const dsKhachHangIdsCoDuAn = new Set(dsDuAnCuaToi.map((hda) => hda.khach_hang_id).filter(Boolean) as string[]);
+
+    return danh_sach_goc.filter((kh) =>
+      duocXemKhachHang(nguoi_dung_hien_tai, kh, undefined, dsKhachHangIdsCoDuAn)
+    );
+  }, [danh_sach_goc, dsDuAn, nguoi_dung_hien_tai]);
+
+  // Bước 2: Thống kê số lượng theo trạng thái (dựa trên các điều kiện lọc khác ngoài trạng thái)
+  const so_luong_theo_trang_thai = useMemo(() => {
+    const dsTheoBoLocKhac = locDanhSachKhachHangTrenRam(danhSachDuocQuyenXem, {
+      ...dieu_kien,
+      trang_thai: 'tat_ca'
+    });
+    const r = { hoat_dong: 0, tam_dung: 0, da_xoa: 0, tong: 0 };
+    for (const k of dsTheoBoLocKhac) {
+      if (k.trang_thai === 'hoat_dong') {
+        r.hoat_dong++;
+        r.tong++;
+      } else if (k.trang_thai === 'tam_dung') {
+        r.tam_dung++;
+        r.tong++;
+      } else {
+        r.da_xoa++;
+      }
+    }
+    return r;
+  }, [danhSachDuocQuyenXem, dieu_kien]);
+
+  // Bước 3: Lọc tức thì trên RAM (< 1ms) khi gõ từ khóa hoặc đổi dropdown lọc
+  const danh_sach = useMemo(() => {
+    return locDanhSachKhachHangTrenRam(danhSachDuocQuyenXem, dieu_kien);
+  }, [danhSachDuocQuyenXem, dieu_kien]);
 
   const mapNhanSu = useMemo(() => {
     const map = new Map<string, NhanSu>();
@@ -302,7 +325,6 @@ export default function TrangKhachHang() {
 
   const mapNguoiLienHeTheoKhachHang = useMemo(() => {
     const map = new Map<string, NguoiLienHe>();
-    // Since dsNguoiLienHe is sorted or in order, first one encountered per khach_hang_id is considered primary
     dsNguoiLienHe.forEach((nlh) => {
       if (nlh.khach_hang_id && !map.has(nlh.khach_hang_id)) {
         map.set(nlh.khach_hang_id, nlh);
@@ -318,50 +340,82 @@ export default function TrangKhachHang() {
     } else if (kieuSapXep === 'cu_nhat') {
       ds.sort((a, b) => (a.ngay_tao ?? '').localeCompare(b.ngay_tao ?? ''));
     } else if (kieuSapXep === 'ten_az') {
-      ds.sort((a, b) => (a.ten_khach_hang || '').localeCompare(b.ten_khach_hang || ''));
+      ds.sort((a, b) => (a.ten_khach_hang || '').localeCompare(b.ten_khach_hang || '', 'vi'));
     }
     return ds;
   }, [danh_sach, kieuSapXep]);
 
-  const so_luong_theo_trang_thai = useMemo(() => {
-    const r = { hoat_dong: 0, tam_dung: 0, da_xoa: 0, tong: 0 };
-    for (const k of danh_sach) {
-      r.tong++;
-      if (k.trang_thai === 'hoat_dong') r.hoat_dong++;
-      else if (k.trang_thai === 'tam_dung') r.tam_dung++;
-      else r.da_xoa++;
-    }
-    return r;
-  }, [danh_sach]);
+  const tongSoTrang = Math.max(1, Math.ceil(danhSachDaSapXep.length / SO_BAN_GHI_MOI_TRANG));
+  const danhSachTrangHienTai = useMemo(() => {
+    const batDau = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG;
+    return danhSachDaSapXep.slice(batDau, batDau + SO_BAN_GHI_MOI_TRANG);
+  }, [danhSachDaSapXep, trangHienTai]);
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-6">
-      {/* One UI 9 Now Brief Summary trên Mobile */}
+      {/* One UI 9 Now Brief Summary trên Mobile (Hỗ trợ nhấp chọn nhanh trạng thái) */}
       <div className="sm:hidden bg-gradient-to-br from-[#0e3e2d] via-[#13503b] to-[#185942] rounded-[26px] p-3.5 text-white shadow-[0_8px_24px_rgba(14,62,45,0.16)]">
         <div className="grid grid-cols-4 gap-1.5">
-          <div className="bg-white/12 rounded-[16px] py-2 px-1 text-center border border-white/10">
+          <button
+            type="button"
+            onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'tat_ca' }))}
+            className={cn(
+              'rounded-[16px] py-2 px-1 text-center border transition active:scale-95 cursor-pointer',
+              dieu_kien.trang_thai === 'tat_ca' ? 'bg-white/20 border-white/40' : 'bg-white/12 border-white/10'
+            )}
+          >
             <div className="text-[16px] font-extrabold text-white tabular-nums leading-tight">{so_luong_theo_trang_thai.tong}</div>
             <div className="text-[10px] font-medium text-emerald-100/85 whitespace-nowrap mt-0.5">Tổng KH</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-2 px-1 text-center border border-white/5">
+          </button>
+          <button
+            type="button"
+            onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'hoat_dong' }))}
+            className={cn(
+              'rounded-[16px] py-2 px-1 text-center border transition active:scale-95 cursor-pointer',
+              dieu_kien.trang_thai === 'hoat_dong' ? 'bg-white/20 border-emerald-300/50' : 'bg-white/10 border-white/5'
+            )}
+          >
             <div className="text-[16px] font-extrabold text-emerald-300 tabular-nums leading-tight">{so_luong_theo_trang_thai.hoat_dong}</div>
             <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Hợp tác</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-2 px-1 text-center border border-white/5">
+          </button>
+          <button
+            type="button"
+            onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'tam_dung' }))}
+            className={cn(
+              'rounded-[16px] py-2 px-1 text-center border transition active:scale-95 cursor-pointer',
+              dieu_kien.trang_thai === 'tam_dung' ? 'bg-white/20 border-amber-300/50' : 'bg-white/10 border-white/5'
+            )}
+          >
             <div className="text-[16px] font-extrabold text-amber-300 tabular-nums leading-tight">{so_luong_theo_trang_thai.tam_dung}</div>
             <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Tạm dừng</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-2 px-1 text-center border border-white/5">
+          </button>
+          <button
+            type="button"
+            onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'da_xoa' }))}
+            className={cn(
+              'rounded-[16px] py-2 px-1 text-center border transition active:scale-95 cursor-pointer',
+              dieu_kien.trang_thai === 'da_xoa' ? 'bg-white/20 border-rose-300/50' : 'bg-white/10 border-white/5'
+            )}
+          >
             <div className="text-[16px] font-extrabold text-rose-300 tabular-nums leading-tight">{so_luong_theo_trang_thai.da_xoa}</div>
             <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Đã xóa</div>
-          </div>
+          </button>
         </div>
       </div>
 
-      {/* Bảng số liệu điều hành chuẩn Forest Green Banner trên Desktop (ảnh mẫu) */}
+      {/* Bảng số liệu điều hành chuẩn Forest Green Banner trên Desktop (hỗ trợ nhấp lọc nhanh) */}
       <div className="hidden sm:grid sm:grid-cols-4 bg-[#0e3e2d] rounded-2xl p-3.5 gap-3 shadow-sm border border-emerald-950/20">
         {/* 1. Tổng khách hàng */}
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'tat_ca' }))}
+          className={cn(
+            'rounded-xl p-3.5 flex items-center gap-3 text-left transition cursor-pointer border',
+            dieu_kien.trang_thai === 'tat_ca'
+              ? 'bg-[#1f6e52] border-emerald-300/40 shadow-xs'
+              : 'bg-[#185942] border-transparent hover:bg-[#1c644b]'
+          )}
+        >
           <div className="size-10 rounded-xl bg-white/10 text-emerald-200 flex items-center justify-center shrink-0 border border-white/10">
             <Building2 className="size-5" strokeWidth={2.2} />
           </div>
@@ -373,10 +427,19 @@ export default function TrangKhachHang() {
               {so_luong_theo_trang_thai.tong}
             </div>
           </div>
-        </div>
+        </button>
 
         {/* 2. Đang hợp tác */}
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'hoat_dong' }))}
+          className={cn(
+            'rounded-xl p-3.5 flex items-center gap-3 text-left transition cursor-pointer border',
+            dieu_kien.trang_thai === 'hoat_dong'
+              ? 'bg-[#1f6e52] border-emerald-300/40 shadow-xs'
+              : 'bg-[#185942] border-transparent hover:bg-[#1c644b]'
+          )}
+        >
           <div className="size-10 rounded-xl bg-emerald-400/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/20">
             <CheckCircle2 className="size-5" strokeWidth={2.2} />
           </div>
@@ -388,10 +451,19 @@ export default function TrangKhachHang() {
               {so_luong_theo_trang_thai.hoat_dong}
             </div>
           </div>
-        </div>
+        </button>
 
         {/* 3. Tạm dừng */}
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'tam_dung' }))}
+          className={cn(
+            'rounded-xl p-3.5 flex items-center gap-3 text-left transition cursor-pointer border',
+            dieu_kien.trang_thai === 'tam_dung'
+              ? 'bg-[#1f6e52] border-amber-300/40 shadow-xs'
+              : 'bg-[#185942] border-transparent hover:bg-[#1c644b]'
+          )}
+        >
           <div className="size-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 border border-amber-400/20">
             <AlertTriangle className="size-5" strokeWidth={2.2} />
           </div>
@@ -403,10 +475,19 @@ export default function TrangKhachHang() {
               {so_luong_theo_trang_thai.tam_dung}
             </div>
           </div>
-        </div>
+        </button>
 
         {/* 4. Đã xóa */}
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'da_xoa' }))}
+          className={cn(
+            'rounded-xl p-3.5 flex items-center gap-3 text-left transition cursor-pointer border',
+            dieu_kien.trang_thai === 'da_xoa'
+              ? 'bg-[#1f6e52] border-rose-300/40 shadow-xs'
+              : 'bg-[#185942] border-transparent hover:bg-[#1c644b]'
+          )}
+        >
           <div className="size-10 rounded-xl bg-rose-400/20 text-rose-300 flex items-center justify-center shrink-0 border border-rose-400/20">
             <Trash2 className="size-5" strokeWidth={2.2} />
           </div>
@@ -418,7 +499,7 @@ export default function TrangKhachHang() {
               {so_luong_theo_trang_thai.da_xoa}
             </div>
           </div>
-        </div>
+        </button>
       </div>
 
       <BoLocKhachHang
@@ -479,7 +560,8 @@ export default function TrangKhachHang() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
-                {danhSachDaSapXep.map((kh, index) => {
+                {danhSachTrangHienTai.map((kh, index) => {
+                  const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
                   const soLuongDa = mapSoLuongDuAnTheoKhachHang.get(kh.id) || 0;
                   const nguoiPhuTrach = kh.nguoi_phu_trach_id ? mapNhanSu.get(kh.nguoi_phu_trach_id) : null;
                   const lienHeChinh = mapNguoiLienHeTheoKhachHang.get(kh.id);
@@ -493,8 +575,8 @@ export default function TrangKhachHang() {
                       )}
                     >
                       {/* 0. STT */}
-                      <td className="py-3.5 px-4 text-center font-semibold text-slate-400 text-xs">
-                        {index + 1}
+                      <td className="py-3.5 px-4 text-center font-semibold text-slate-400 text-xs tabular-nums">
+                        {stt}
                       </td>
 
                       {/* 1. THÔNG TIN KHÁCH HÀNG */}
@@ -658,7 +740,8 @@ export default function TrangKhachHang() {
 
           {/* 2. GIAO DIỆN THẺ SQUIRCLE ONE UI 9 TRÊN MOBILE */}
           <div className="sm:hidden flex flex-col gap-2.5 p-2.5 bg-slate-100/70">
-            {danhSachDaSapXep.map((kh, index) => {
+            {danhSachTrangHienTai.map((kh, index) => {
+              const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
               const soLuongDa = mapSoLuongDuAnTheoKhachHang.get(kh.id) || 0;
               const nguoiPhuTrach = kh.nguoi_phu_trach_id ? mapNhanSu.get(kh.nguoi_phu_trach_id) : null;
               const tenPhuTrachNgan = nguoiPhuTrach?.ho_va_ten
@@ -677,7 +760,7 @@ export default function TrangKhachHang() {
                   {/* Hàng 1: STT + Tên khách hàng + Phân loại chìm ngay sau tên */}
                   <div className="flex items-start gap-2">
                     <span className="text-slate-400 text-[11.5px] font-extrabold tabular-nums mt-0.5 shrink-0">
-                      {index + 1}.
+                      {stt}.
                     </span>
                     <Link href={`/khach-hang/${kh.id}`} className="flex-1 min-w-0 group">
                       <div className="text-[14.5px] leading-snug">
@@ -738,6 +821,35 @@ export default function TrangKhachHang() {
               );
             })}
           </div>
+
+          {/* Thanh phân trang */}
+          {tongSoTrang > 1 && (
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-slate-200/80 bg-white">
+              <div className="text-xs font-semibold text-slate-500 tabular-nums">
+                Trang <span className="text-slate-900 font-bold">{trangHienTai}</span> / {tongSoTrang} ({danhSachDaSapXep.length} khách hàng)
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={trangHienTai <= 1}
+                  onClick={() => setTrangHienTai((p) => Math.max(1, p - 1))}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
+                >
+                  <ChevronLeft className="size-3.5" />
+                  <span>Trước</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={trangHienTai >= tongSoTrang}
+                  onClick={() => setTrangHienTai((p) => Math.min(tongSoTrang, p + 1))}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
+                >
+                  <span>Sau</span>
+                  <ChevronRight className="size-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

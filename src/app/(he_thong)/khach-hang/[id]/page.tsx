@@ -35,6 +35,7 @@ import type { HoSoDuAn } from '../../../../thu_vien/types/du_an';
 import type { ChiNhanh, NhanSu } from '../../../../thu_vien/types/nhan_su';
 import {
   layChiTietKhachHang,
+  layCacheKhachHangDongBo,
   capNhatKhachHang,
   doiTrangThaiKhachHang
 } from '../../../../dich_vu/khach_hang/dich_vu_khach_hang';
@@ -42,13 +43,15 @@ import {
   layDanhSachNguoiLienHeTheoKhachHang,
   xoaNguoiLienHe
 } from '../../../../dich_vu/khach_hang/dich_vu_nguoi_lien_he';
+import { layCacheNguoiLienHeDongBo } from '../../../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import {
   danhSachHoSoDuAn,
+  layCacheHoSoDuAnDongBo,
   taoHoSoDuAnMoi,
   type TaoMoiHoSoDuAnDTO
 } from '../../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
-import { danhSachChiNhanh } from '../../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
-import { danhSachNhanSu } from '../../../../dich_vu/nhan_su/dich_vu_nhan_su';
+import { danhSachChiNhanh, layCacheChiNhanhDongBo } from '../../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
+import { danhSachNhanSu, layCacheNhanSuDongBo } from '../../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import {
   layDanhSachDiaGioiHanhChinh,
   DANH_SACH_TINH_MIEN_TAY
@@ -100,24 +103,44 @@ export default function TrangChiTietKhachHang() {
   const id = typeof params?.id === 'string' ? params.id : null;
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
 
-  const [kh, setKh] = useState<KhachHang | null>(null);
-  const [danhSachNLH, setDanhSachNLH] = useState<NguoiLienHe[]>([]);
-  const [danhSachHDA, setDanhSachHDA] = useState<HoSoDuAn[]>([]);
-  const [dsChiNhanh, setDsChiNhanh] = useState<ChiNhanh[]>([]);
-  const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>([]);
-  const [dangTai, setDangTai] = useState(true);
+  const [kh, setKh] = useState<KhachHang | null>(() => {
+    if (!id) return null;
+    return layCacheKhachHangDongBo({ trang_thai: 'tat_ca' })?.mang.find((k) => k.id === id) ?? null;
+  });
+  const [danhSachNLH, setDanhSachNLH] = useState<NguoiLienHe[]>(() => {
+    if (!id) return [];
+    return layCacheNguoiLienHeDongBo({ khach_hang_id: id })?.mang ?? [];
+  });
+  const [danhSachHDA, setDanhSachHDA] = useState<HoSoDuAn[]>(() => {
+    if (!id) return [];
+    return layCacheHoSoDuAnDongBo({ khach_hang_id: id })?.mang ?? [];
+  });
+  const [dsChiNhanh, setDsChiNhanh] = useState<ChiNhanh[]>(
+    () => layCacheChiNhanhDongBo()?.mang ?? []
+  );
+  const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>(
+    () => layCacheNhanSuDongBo({ trang_thai_du_lieu: 'hoat_dong' })?.mang ?? []
+  );
+  const [dangTai, setDangTai] = useState<boolean>(() => {
+    if (!id) return true;
+    return !layCacheKhachHangDongBo({ trang_thai: 'tat_ca' })?.mang.some((k) => k.id === id);
+  });
   const [errTai, setErrTai] = useState<string | null>(null);
   const [tabHienTai, setTabHienTai] = useState<TenTab>('ho_so_du_an');
 
   // Administrative units state
   const [dsDiaGioi, setDsDiaGioi] = useState<DiaGioiHanhChinh[]>([]);
 
+  // Inline edit state
+  const [dangChinhSua, setDangChinhSua] = useState(false);
+
   useEffect(() => {
+    if (!dangChinhSua || dsDiaGioi.length > 0) return;
     void (async () => {
       const dg = await layDanhSachDiaGioiHanhChinh();
       setDsDiaGioi(dg);
     })();
-  }, []);
+  }, [dangChinhSua, dsDiaGioi.length]);
 
   const danhSachTinh = useMemo(() => {
     const set = new Set<string>();
@@ -126,9 +149,6 @@ export default function TrangChiTietKhachHang() {
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
   }, [dsDiaGioi]);
-
-  // Inline edit state
-  const [dangChinhSua, setDangChinhSua] = useState(false);
   const [dangXuLyLuuKh, setDangXuLyLuuKh] = useState(false);
   const [loiFormKh, setLoiFormKh] = useState<string | null>(null);
   const [moModalQuyChuan, setMoModalQuyChuan] = useState(false);
@@ -193,9 +213,12 @@ export default function TrangChiTietKhachHang() {
   const [dangSuaNLH, setDangSuaNLH] = useState<NguoiLienHe | null>(null);
   const [dangXuLyTacVu, setDangXuLyTacVu] = useState<Record<string, boolean>>({});
 
-  const taiLai = useCallback(async () => {
+  const taiLai = useCallback(async (imLang = false) => {
     if (!id) return;
-    setDangTai(true);
+    const daCoSan = Boolean(layCacheKhachHangDongBo({ trang_thai: 'tat_ca' })?.mang.some((k) => k.id === id));
+    if (!imLang && !daCoSan) {
+      setDangTai(true);
+    }
     setErrTai(null);
     try {
       const [kq1, kq2, kq3, kqCn, kqNs] = await Promise.all([
@@ -262,7 +285,7 @@ export default function TrangChiTietKhachHang() {
     setDangXuLyLuuKh(true);
     setLoiFormKh(null);
     try {
-      await capNhatKhachHang(
+      const daCapNhat = await capNhatKhachHang(
         {
           id: kh.id,
           ten_khach_hang: ten,
@@ -280,8 +303,8 @@ export default function TrangChiTietKhachHang() {
         },
         nguoiDungHienTai ?? null
       );
+      setKh(daCapNhat);
       setDangChinhSua(false);
-      await taiLai();
     } catch (err: any) {
       setLoiFormKh(err?.message ?? 'Lưu khách hàng thất bại');
     } finally {
@@ -309,8 +332,8 @@ export default function TrangChiTietKhachHang() {
     setDangXuLyTacVu((o) => ({ ...o, [key]: true }));
     try {
       const ttMoi = kh.trang_thai === 'hoat_dong' ? 'tam_dung' : 'hoat_dong';
-      await doiTrangThaiKhachHang(kh.id, ttMoi, nguoiDungHienTai ?? null);
-      await taiLai();
+      const daCapNhat = await doiTrangThaiKhachHang(kh.id, ttMoi, nguoiDungHienTai ?? null);
+      setKh(daCapNhat);
     } catch (err: any) {
       alert('Không thể cập nhật trạng thái: ' + (err?.message ?? ''));
     } finally {
@@ -346,7 +369,7 @@ export default function TrangChiTietKhachHang() {
     if (!confirm(`Bạn có chắc chắn muốn xóa người liên hệ "${nlh.ho_va_ten}"?`)) return;
     try {
       await xoaNguoiLienHe(nlh.id, null, nlh.ho_va_ten);
-      await taiLai();
+      setDanhSachNLH((prev) => prev.filter((x) => x.id !== nlh.id));
     } catch (err: any) {
       alert('Không thể xóa: ' + (err?.message ?? ''));
     }
