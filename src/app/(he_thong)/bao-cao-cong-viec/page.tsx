@@ -53,7 +53,7 @@ import {
 } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
 import FormBaoCaoCongViecDrawer from '../../../thanh_phan/bao_cao_cong_viec/form_bao_cao_cong_viec_drawer';
-import { Nut, Rong, Bo_Cuc_Trang, ToLichNgay } from '../../../thanh_phan/ui';
+import { Nut, Rong, Bo_Cuc_Trang, ToLichNgay, ThanhSoLieu } from '../../../thanh_phan/ui';
 
 interface ThongBaoToast {
   id: number;
@@ -656,96 +656,43 @@ export default function TrangBaoCaoCongViec() {
   };
 
   return (
-    <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-6">
-      {/* 1. ONE UI 9 NOW BRIEF SUMMARY TRÊN MOBILE */}
-      <div className="sm:hidden bg-gradient-to-br from-[#0e3e2d] via-[#13503b] to-[#185942] rounded-[26px] p-3.5 text-white shadow-[0_8px_24px_rgba(14,62,45,0.16)] space-y-2.5">
-        <div className="flex items-center justify-between px-0.5">
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="size-4 text-emerald-300" />
-            <span className="text-[13px] font-extrabold text-white tracking-tight">
-              Báo cáo {formatNgay(ngayChonTongHop)}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => moTaoMoi()}
-            title="Tạo báo cáo hôm nay"
-            aria-label="Tạo báo cáo hôm nay"
-            className="inline-flex items-center justify-center size-8 rounded-full bg-white text-[#0e3e2d] font-extrabold shadow-xs active:scale-95 transition cursor-pointer"
-          >
-            <Plus className="size-4 stroke-[2.5]" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-3 gap-1.5">
-          <div className="bg-white/12 rounded-[16px] py-1.5 px-1 text-center border border-white/10">
-            <div className="text-[15px] font-extrabold text-emerald-300 tabular-nums leading-tight">
-              {thongKeNgayTongHop.daGui.length}/{thongKeNgayTongHop.tong}
-            </div>
-            <div className="text-[10px] font-medium text-emerald-100/85 whitespace-nowrap mt-0.5">Đã gửi</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[15px] font-extrabold text-amber-300 tabular-nums leading-tight">
-              {thongKeNgayTongHop.tamLuu.length}
-            </div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Tạm lưu</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[15px] font-extrabold text-rose-300 tabular-nums leading-tight">
-              {thongKeNgayTongHop.chuaNop.length}
-            </div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Chưa nộp</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Header Bar Desktop */}
-      <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-black text-foreground tracking-tight">Báo Cáo Công Việc Hàng Ngày</h1>
-            {laQuanLy && (
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                {coQuyenXemToanCongTy ? 'Quản trị / Ban Giám Đốc' : 'Trưởng phòng / Quản lý'}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {coQuyenXuatFile && (
-            <>
-              <Nut
-                kieu="outline"
-                kich_thuoc="sm"
-                onClick={xuatWordTongHopNgay}
-                disabled={dangXuatDoc}
-                className="font-semibold text-xs border-emerald-600/40 text-emerald-700 hover:bg-emerald-50 cursor-pointer"
-              >
-                {dangXuatDoc ? 'Đang xuất Word...' : 'Xuất Word Báo Cáo Ngày'}
-              </Nut>
-              <Nut
-                kieu="outline"
-                kich_thuoc="sm"
-                onClick={xuLyXuatCSV}
-                className="font-semibold text-xs border-success/40 text-success hover:bg-success/10 cursor-pointer"
-              >
-                Xuất Excel
-              </Nut>
-            </>
-          )}
-
-          <Nut
-            kieu="primary"
-            kich_thuoc="sm"
-            icon_trai={Plus}
-            onClick={() => moTaoMoi()}
-            className="font-bold text-xs"
-          >
-            Tạo báo cáo hôm nay
-          </Nut>
-        </div>
-      </div>
+    <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-5">
+      <ThanhSoLieu
+        items={[
+          {
+            id: 'tong_nhan_su',
+            nhan: 'Nhân sự trong phạm vi',
+            nhan_ngan: 'Nhân sự',
+            so_lieu: thongKeNgayTongHop.tong,
+            icon: Users,
+            mau_so: 'trang',
+          },
+          {
+            id: 'da_gui',
+            nhan: 'Đã gửi báo cáo',
+            nhan_ngan: 'Đã gửi',
+            so_lieu: `${thongKeNgayTongHop.daGui.length}/${thongKeNgayTongHop.tong}`,
+            icon: UserCheck,
+            mau_so: 'xanh_la',
+          },
+          {
+            id: 'tam_luu',
+            nhan: 'Đang tạm lưu',
+            nhan_ngan: 'Tạm lưu',
+            so_lieu: thongKeNgayTongHop.tamLuu.length,
+            icon: Pencil,
+            mau_so: 'vang',
+          },
+          {
+            id: 'chua_nop',
+            nhan: 'Chưa có báo cáo',
+            nhan_ngan: 'Chưa nộp',
+            so_lieu: thongKeNgayTongHop.chuaNop.length,
+            icon: UserX,
+            mau_so: 'do',
+          },
+        ]}
+      />
 
       {/* Chế độ xem Tabs Bar - One UI 9 Squircle trên Mobile */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 bg-white sm:bg-muted/40 p-2 sm:p-1.5 rounded-[24px] sm:rounded-2xl border border-slate-200/80 shadow-[0_2px_10px_rgba(15,23,42,0.03)]">
@@ -815,13 +762,13 @@ export default function TrangBaoCaoCongViec() {
           </button>
         </div>
 
-        {/* Bộ lọc phạm vi phòng ban (cho Quản lý) & Nút xuất file trên Mobile */}
-        {laQuanLy && cheDoXem !== 'lich' && (
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+        {/* Bộ lọc phạm vi phòng ban & các nút hành động */}
+        <div className="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto">
+          {laQuanLy && cheDoXem !== 'lich' && (
             <select
               value={phongBanFilter}
               onChange={(e) => setPhongBanFilter(e.target.value)}
-              className="h-8.5 sm:h-9 px-3 text-[11px] sm:text-xs rounded-full sm:rounded-xl bg-slate-100/80 sm:bg-background border border-slate-200/80 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 font-bold flex-1 sm:flex-none min-w-0"
+              className="h-8.5 sm:h-9 px-3 text-phu rounded-full sm:rounded-xl bg-slate-100/80 sm:bg-background border border-slate-200/80 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 font-semibold flex-1 sm:flex-none min-w-0"
             >
               <option value="tat_ca">Tất cả phòng ban</option>
               {dsPhongBanDuocXem.map((pb) => (
@@ -830,59 +777,38 @@ export default function TrangBaoCaoCongViec() {
                 </option>
               ))}
             </select>
-            {coQuyenXuatFile && (
-              <>
-                <button
-                  type="button"
-                  disabled={dangXuatDoc}
-                  onClick={xuatWordTongHopNgay}
-                  className="md:hidden inline-flex items-center gap-1 px-3 h-8.5 text-[11px] font-bold rounded-full border border-slate-200/80 bg-slate-100/80 text-emerald-800 shrink-0 active:scale-95 transition"
-                  title="Xuất file Word (.doc)"
-                >
-                  <span>Xuất Word</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={xuLyXuatCSV}
-                  className="md:hidden inline-flex items-center gap-1 px-3 h-8.5 text-[11px] font-bold rounded-full border border-slate-200/80 bg-slate-100/80 text-emerald-800 shrink-0 active:scale-95 transition"
-                  title="Xuất file Excel"
-                >
-                  <span>Xuất</span>
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Nút xuất file khi không phải Quản lý trên Mobile */}
-        {(!laQuanLy || cheDoXem === 'lich') && coQuyenXuatFile && (
-          <div className="flex md:hidden items-center justify-end gap-1.5 w-full">
-            <button
-              type="button"
-              disabled={dangXuatDoc}
-              onClick={xuatWordTongHopNgay}
-              className="inline-flex items-center gap-1 px-3 h-8 text-[11px] font-bold rounded-full border border-slate-200/80 bg-slate-100/80 text-emerald-800"
-              title="Xuất file Word (.doc)"
-            >
-              <span>Xuất Word</span>
-            </button>
-            <button
-              type="button"
-              onClick={xuLyXuatCSV}
-              className="inline-flex items-center gap-1 px-3 h-8 text-[11px] font-bold rounded-full border border-slate-200/80 bg-slate-100/80 text-emerald-800"
-              title="Xuất file Excel"
-            >
-              <span>Xuất</span>
-            </button>
-          </div>
-        )}
+          )}
+          {coQuyenXuatFile && (
+            <>
+              <Nut
+                kieu="outline"
+                kich_thuoc="sm"
+                disabled={dangXuatDoc}
+                onClick={xuatWordTongHopNgay}
+              >
+                <span>{dangXuatDoc ? 'Đang xuất...' : 'Xuất Word'}</span>
+              </Nut>
+              <Nut kieu="outline" kich_thuoc="sm" onClick={xuLyXuatCSV}>
+                <span>Xuất Excel</span>
+              </Nut>
+            </>
+          )}
+          <Nut
+            kieu="primary"
+            kich_thuoc="sm"
+            icon_trai={Plus}
+            onClick={() => moTaoMoi()}
+          >
+            <span className="hidden sm:inline">Tạo báo cáo</span>
+          </Nut>
+        </div>
       </div>
 
       {/* Loading state */}
       {dangTai ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 text-muted-foreground">
           <Loader2 className="size-6 animate-spin text-primary" />
-          <span className="text-sm font-medium">Đang tải dữ liệu báo cáo công việc...</span>
+          <span className="text-noi-dung font-medium">Đang tải dữ liệu báo cáo công việc...</span>
         </div>
       ) : (
         <>
@@ -890,83 +816,34 @@ export default function TrangBaoCaoCongViec() {
           {/* 1. CHẾ ĐỘ XEM: BẢNG TỔNG HỢP THEO NGÀY (DÀNH CHO QUẢN LÝ) */}
           {/* ========================================================================= */}
           {cheDoXem === 'bang_tong_hop' && (
-            <div className="space-y-3 sm:space-y-6">
-              {/* Thanh chọn ngày & KPI tiến độ nộp của đội ngũ */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-4">
-                {/* Hộp chọn ngày gọn 1 hàng trên Mobile, 1 cột trên Desktop */}
-                <div className="p-2.5 sm:p-4 rounded-[22px] sm:rounded-2xl border border-slate-200/80 bg-white flex items-center justify-between sm:justify-start gap-2.5 shadow-[0_2px_8px_rgba(15,23,42,0.02)]">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <ToLichNgay ngayStr={ngayChonTongHop} kichThuoc="sm" noiBat />
-                    <span className="text-xs font-extrabold text-slate-700 sm:hidden">Ngày xem</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="hidden sm:block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                      Chọn ngày xem
+            <div className="space-y-3 sm:space-y-4">
+              {/* Thanh chọn ngày xem gọn gàng */}
+              <div className="p-2.5 sm:p-3.5 rounded-[var(--radius-card)] border border-slate-200/80 bg-white flex flex-wrap items-center justify-between gap-2.5 shadow-nhe">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <ToLichNgay ngayStr={ngayChonTongHop} kichThuoc="sm" noiBat />
+                  <div>
+                    <div className="text-noi-dung font-bold text-slate-900">
+                      Ngày {formatNgay(ngayChonTongHop)}
                     </div>
-                    <div className="flex items-center justify-end sm:justify-start gap-1.5">
-                      <input
-                        type="date"
-                        value={ngayChonTongHop}
-                        onChange={(e) => setNgayChonTongHop(e.target.value)}
-                        className="h-8.5 px-2.5 text-xs font-bold rounded-full sm:rounded-lg border border-slate-200 bg-slate-50 sm:bg-background text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-0"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setNgayChonTongHop(NGAY_HOM_NAY)}
-                        className="h-8.5 px-2.5 text-[11px] font-bold rounded-full sm:rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition shrink-0 cursor-pointer"
-                      >
-                        Hôm nay
-                      </button>
+                    <div className="text-phu text-slate-500">
+                      {thongKeNgayTongHop.daNop.length}/{thongKeNgayTongHop.tong} nhân sự đã báo cáo
                     </div>
                   </div>
                 </div>
-
-                {/* KPI 1-3 chỉ hiện trên Desktop vì Mobile đã có trên Now Brief */}
-                <div className="hidden sm:flex p-4 rounded-2xl border border-emerald-200/80 bg-emerald-50/60 items-center gap-3">
-                  <div className="size-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                    <UserCheck className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider truncate">
-                      Đã Gửi Báo Cáo
-                    </div>
-                    <div className="text-xl font-black text-emerald-900 mt-0.5 tabular-nums leading-tight">
-                      {thongKeNgayTongHop.daGui.length}
-                      <span className="text-xs font-semibold text-emerald-700/80">
-                        /{thongKeNgayTongHop.tong}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="hidden sm:flex p-4 rounded-2xl border border-amber-200/80 bg-amber-50/60 items-center gap-3">
-                  <div className="size-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                    <Pencil className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-bold text-amber-800 uppercase tracking-wider truncate">
-                      Đang Tạm Lưu
-                    </div>
-                    <div className="text-xl font-black text-amber-900 mt-0.5 tabular-nums leading-tight">
-                      {thongKeNgayTongHop.tamLuu.length}
-                      <span className="text-xs font-normal text-amber-700 ml-1">bản nháp</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="hidden sm:flex p-4 rounded-2xl border border-rose-200/80 bg-rose-50/60 items-center gap-3">
-                  <div className="size-11 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                    <UserX className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-bold text-rose-800 uppercase tracking-wider truncate">
-                      Chưa Có Báo Cáo
-                    </div>
-                    <div className="text-xl font-black text-rose-900 mt-0.5 tabular-nums leading-tight">
-                      {thongKeNgayTongHop.chuaNop.length}
-                      <span className="text-xs font-normal text-rose-700 ml-1">nhân sự</span>
-                    </div>
-                  </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={ngayChonTongHop}
+                    onChange={(e) => setNgayChonTongHop(e.target.value)}
+                    className="h-8.5 px-2.5 text-phu font-semibold rounded-full sm:rounded-lg border border-slate-200 bg-slate-50 sm:bg-background text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-0"
+                  />
+                  <Nut
+                    kieu="outline"
+                    kich_thuoc="sm"
+                    onClick={() => setNgayChonTongHop(NGAY_HOM_NAY)}
+                  >
+                    Hôm nay
+                  </Nut>
                 </div>
               </div>
 

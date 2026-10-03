@@ -62,8 +62,25 @@ import { danhSachVaiTro } from '../../../dich_vu/nhan_su/dich_vu_vai_tro';
 import { danhSachChucVu } from '../../../dich_vu/nhan_su/dich_vu_chuc_vu';
 import BoLocNhanSu from '../../../thanh_phan/nhan_su/bo_loc_nhan_su';
 import FormNhanSuDrawer from '../../../thanh_phan/nhan_su/form_nhan_su_drawer';
-import Bo_Cuc_Trang from '../../../thanh_phan/ui/bo_cuc_trang';
-import { Nut, Hieu, Rong, DaiDien, Nhan } from '../../../thanh_phan/ui';
+import {
+  Bo_Cuc_Trang,
+  Nut,
+  Hieu,
+  Rong,
+  DaiDien,
+  Nhan,
+  ThanhSoLieu,
+  KhungDanhSach,
+  DanhSachTheMobile,
+  TheMobile,
+  NutIcon,
+  Bang,
+  ChuDeBang,
+  ThanBang,
+  HangBang,
+  ODauBang,
+  OBang
+} from '../../../thanh_phan/ui';
 
 const BO_LOC_MAC_DINH: DieuKienLocNhanSu = {
   tuKhoa: null,
@@ -454,97 +471,55 @@ export default function TrangNhanSu() {
   }
 
   return (
-    <Bo_Cuc_Trang khoang_cach_trong="space-y-3.5 sm:space-y-6">
-      {/* Summary 2 dòng tinh gọn trên Mobile */}
-      <div className="sm:hidden bg-white rounded-[18px] p-3.5 border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)] space-y-2">
-        {/* Dòng 1 — quy mô nhân sự */}
-        <div className="flex items-center justify-between text-[13px] border-b border-slate-100 pb-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Tổng số NV</span>
-            <span className="font-extrabold text-slate-900 text-[15px] tabular-nums">{danhSach.length}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 font-medium">Đang hoạt động</span>
-            <span className="font-extrabold text-[#34C759] text-[15px] tabular-nums">
-              {danhSach.filter((x) => x.trang_thai).length}
-            </span>
-          </div>
-        </div>
-
-        {/* Dòng 2 — tình trạng / phân bổ */}
-        <div className="flex items-center justify-between text-[12px] pt-0.5">
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">Đã khóa</span>
-            <span className="font-bold text-[#FF3B30] text-[13px] tabular-nums">
-              {danhSach.filter((x) => !x.trang_thai).length}
-            </span>
-          </div>
-          <span className="text-slate-200">│</span>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">Phòng ban</span>
-            <span className="font-bold text-[#107555] text-[13px] tabular-nums">{dsPhongBan.length}</span>
-          </div>
-          <span className="text-slate-200">│</span>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">Chưa phân PB</span>
-            <span className="font-bold text-[#FF9500] text-[13px] tabular-nums">
-              {danhSach.filter((x) => !x.phong_ban_id).length}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Cards đầy đủ trên Desktop */}
-      <div className="hidden sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3.5 mb-2">
-        {CARD_THONG_KE_PB.map((c) => {
-          const Icon = c.icon;
-          const dangChon =
-            (c.key === 'tong' && !dieukien.phong_ban_id) ||
-            (c.key !== 'tong' && dieukien.phong_ban_id === c.key);
-          return (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => {
-                if (c.key === 'tong') {
-                  setDieuKien((prev) => ({ ...prev, phong_ban_id: null }));
-                } else if (c.key === 'chua_phan') {
-                  setDieuKien((prev) => ({
-                    ...prev,
-                    phong_ban_id: prev.phong_ban_id === 'chua_phan' ? null : ('chua_phan' as any)
-                  }));
-                } else {
-                  setDieuKien((prev) => ({
-                    ...prev,
-                    phong_ban_id: prev.phong_ban_id === c.key ? null : c.key
-                  }));
-                }
-              }}
-              className={cn(
-                'text-left rounded-[20px] border bg-white p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-all duration-200 cursor-pointer active:scale-[0.98]',
-                dangChon
-                  ? 'border-[#107555] ring-2 ring-emerald-500/20 bg-emerald-50/20'
-                  : 'border-slate-200/90 hover:border-slate-300 hover:shadow-md'
-              )}
-            >
-              <div
-                className={cn(
-                  'size-8 rounded-[11px] flex items-center justify-center shrink-0',
-                  dangChon ? 'bg-[#107555] text-white' : c.mau_icon
-                )}
-              >
-                <Icon className="size-4" strokeWidth={2.2} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[11.5px] font-semibold text-slate-500 truncate">{c.label}</div>
-                <div className="text-[18px] sm:text-[20px] font-extrabold text-slate-900 leading-tight tabular-nums">
-                  {c.gia_tri}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+    <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-5">
+      <ThanhSoLieu
+        muc={[
+          {
+            khoa: 'tong',
+            nhan: 'Tổng nhân sự',
+            nhan_ngan: 'Tổng NV',
+            gia_tri: danhSach.length,
+            icon: UsersRound,
+            dang_chon: dieukien.trang_thai_hoat_dong === 'tat_ca' && !dieukien.phong_ban_id,
+            khi_bam: () =>
+              setDieuKien((d) => ({ ...d, trang_thai_hoat_dong: 'tat_ca', phong_ban_id: null }))
+          },
+          {
+            khoa: 'hoat_dong',
+            nhan: 'Đang hoạt động',
+            nhan_ngan: 'Hoạt động',
+            gia_tri: danhSach.filter((x) => x.trang_thai).length,
+            icon: CheckCircle2,
+            mau: 'thanh_cong',
+            dang_chon: dieukien.trang_thai_hoat_dong === 'hoat_dong',
+            khi_bam: () =>
+              setDieuKien((d) => ({
+                ...d,
+                trang_thai_hoat_dong: d.trang_thai_hoat_dong === 'hoat_dong' ? 'tat_ca' : 'hoat_dong'
+              }))
+          },
+          {
+            khoa: 'da_khoa',
+            nhan: 'Đã khóa',
+            gia_tri: danhSach.filter((x) => !x.trang_thai).length,
+            icon: Lock,
+            mau: 'loi',
+            dang_chon: dieukien.trang_thai_hoat_dong === 'khoa',
+            khi_bam: () =>
+              setDieuKien((d) => ({
+                ...d,
+                trang_thai_hoat_dong: d.trang_thai_hoat_dong === 'khoa' ? 'tat_ca' : 'khoa'
+              }))
+          },
+          {
+            khoa: 'phong_ban',
+            nhan: 'Phòng ban',
+            gia_tri: dsPhongBan.length,
+            icon: Building2,
+            mau: 'thong_tin'
+          }
+        ]}
+      />
 
       <BoLocNhanSu
         boLocHienTai={dieukien}
@@ -558,7 +533,7 @@ export default function TrangNhanSu() {
       {dangTai ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground gap-3">
           <Loader2 className="size-5 animate-spin" strokeWidth={2.25} />
-          <span className="font-semibold">Đang tải danh sách nhân sự...</span>
+          <span className="font-semibold text-noi-dung">Đang tải danh sách nhân sự...</span>
         </div>
       ) : danhSachDaSapXep.length === 0 ? (
         <Rong
@@ -574,25 +549,18 @@ export default function TrangNhanSu() {
           }
         />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-          {/* Header danh sách chuẩn bảng mẫu */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-slate-200/80 bg-white">
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                Danh sách nhân sự
-              </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
-                {danhSachDaSapXep.length}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2.5">
+        <KhungDanhSach
+          tieu_de="Danh sách nhân sự"
+          tieu_de_ngan="Nhân sự"
+          so_luong={danhSachDaSapXep.length}
+          hanh_dong={
+            <>
               <div className="relative">
                 <select
                   value={kieuSapXep}
                   onChange={(e) => setKieuSapXep(e.target.value as any)}
                   aria-label="Sắp xếp danh sách nhân sự"
-                  className="appearance-none text-xs sm:text-[13px] font-semibold text-emerald-800 bg-white border border-slate-200 hover:border-emerald-300 rounded-xl px-3 py-2 pr-7 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
+                  className="appearance-none text-phu font-semibold text-emerald-800 bg-white border border-slate-200 hover:border-emerald-300 rounded-xl px-3 py-2 pr-7 shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
                 >
                   <option value="moi_nhat">Mới nhất</option>
                   <option value="cu_nhat">Cũ nhất</option>
@@ -602,32 +570,32 @@ export default function TrangNhanSu() {
               </div>
 
               {duocQuanLyNhanSu && (
-                <button
-                  type="button"
+                <Nut
+                  kich_thuoc="sm"
+                  icon_trai={Plus}
                   onClick={moTaoMoi}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+                  title="Thêm nhân viên"
+                  aria-label="Thêm nhân viên"
                 >
-                  <Plus className="size-4" />
-                  <span>Thêm nhân viên</span>
-                </button>
+                  <span className="hidden sm:inline">Thêm nhân viên</span>
+                </Nut>
               )}
-            </div>
-          </div>
-
-          {/* Bảng dữ liệu chuẩn mẫu (Desktop) */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4 w-[50px] text-center">STT</th>
-                  <th className="py-3 px-4 min-w-[240px]">HỌ VÀ TÊN & TÀI KHOẢN</th>
-                  <th className="py-3 px-4 min-w-[180px]">PHÒNG BAN & CHI NHÁNH</th>
-                  <th className="py-3 px-4 min-w-[130px]">VAI TRÒ</th>
-                  <th className="py-3 px-4 w-[120px]">TRẠNG THÁI</th>
-                  <th className="py-3 px-4 w-[120px] text-right">THAO TÁC</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+            </>
+          }
+        >
+          <div className="hidden sm:block">
+            <Bang>
+              <ChuDeBang>
+                <HangBang className="border-slate-200/80 hover:bg-transparent">
+                  <ODauBang className="w-14 px-4 text-center">STT</ODauBang>
+                  <ODauBang className="min-w-[240px] px-4">Họ và tên & tài khoản</ODauBang>
+                  <ODauBang className="min-w-[180px] px-4">Phòng ban & chi nhánh</ODauBang>
+                  <ODauBang className="min-w-[130px] px-4">Vai trò</ODauBang>
+                  <ODauBang className="w-32 px-4">Trạng thái</ODauBang>
+                  <ODauBang className="w-32 px-4 text-right">Thao tác</ODauBang>
+                </HangBang>
+              </ChuDeBang>
+              <ThanBang>
                 {danhSachDaSapXep.map((ns, index) => {
                   const thongTinVt = chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS);
                   const biKhoa = !ns.trang_thai;
@@ -635,20 +603,15 @@ export default function TrangNhanSu() {
                   const cnStr = tenChiNhanh(ns.chi_nhanh_id);
 
                   return (
-                    <tr
+                    <HangBang
                       key={ns.id}
-                      className={cn(
-                        'hover:bg-slate-50/70 transition-colors',
-                        biKhoa && 'opacity-60 bg-slate-50/30'
-                      )}
+                      className={cn(biKhoa && 'opacity-60 bg-slate-50/30')}
                     >
-                      {/* 0. STT */}
-                      <td className="py-3.5 px-4 text-center font-semibold text-slate-400 text-xs">
+                      <OBang className="px-4 py-3.5 text-center font-semibold text-slate-400 text-phu tabular-nums">
                         {index + 1}
-                      </td>
+                      </OBang>
 
-                      {/* 1. HỌ VÀ TÊN & TÀI KHOẢN */}
-                      <td className="py-3.5 px-4">
+                      <OBang className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
                           <DaiDien
                             anh={ns.url_anh_dai_dien ?? undefined}
@@ -659,11 +622,11 @@ export default function TrangNhanSu() {
                           <div className="min-w-0">
                             <Link
                               href={`/nhan-su/${ns.id}`}
-                              className="font-bold text-slate-900 text-sm hover:text-emerald-700 transition-colors line-clamp-1"
+                              className="font-bold text-slate-900 text-noi-dung hover:text-emerald-700 transition-colors line-clamp-1"
                             >
                               {ns.ho_va_ten}
                             </Link>
-                            <div className="flex items-center gap-2.5 text-xs text-slate-400 font-normal mt-0.5 flex-wrap">
+                            <div className="flex items-center gap-2.5 text-phu text-slate-400 font-normal mt-0.5 flex-wrap">
                               <span className="inline-flex items-center gap-1 text-slate-500">
                                 <Mail className="size-3 text-slate-400" />
                                 {ns.email}
@@ -677,32 +640,29 @@ export default function TrangNhanSu() {
                             </div>
                           </div>
                         </div>
-                      </td>
+                      </OBang>
 
-                      {/* 2. PHÒNG BAN & CHI NHÁNH */}
-                      <td className="py-3.5 px-4">
-                        <div className="text-xs font-semibold text-slate-700">
+                      <OBang className="px-4 py-3.5">
+                        <div className="text-phu font-semibold text-slate-700">
                           {[pb, cnStr].filter(Boolean).join(' • ') || 'Chưa phân'}
                         </div>
                         {ns.chuc_vu && (
-                          <div className="text-[11px] text-slate-400 mt-0.5">
+                          <div className="text-nhan text-slate-400 mt-0.5">
                             {ns.chuc_vu}
                           </div>
                         )}
-                      </td>
+                      </OBang>
 
-                      {/* 3. VAI TRÒ */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                      <OBang className="px-4 py-3.5 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-phu font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
                           {thongTinVt.nhan}
                         </span>
-                      </td>
+                      </OBang>
 
-                      {/* 4. TRẠNG THÁI */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <OBang className="px-4 py-3.5 whitespace-nowrap">
                         <span
                           className={cn(
-                            'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border',
+                            'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-phu font-semibold border',
                             biKhoa
                               ? 'bg-rose-50 text-rose-700 border-rose-200/80'
                               : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
@@ -711,153 +671,148 @@ export default function TrangNhanSu() {
                           <span
                             className={cn(
                               'size-1.5 rounded-full shrink-0',
-                              biKhoa ? 'bg-rose-500' : 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+                              biKhoa ? 'bg-rose-500' : 'bg-emerald-500'
                             )}
                           />
                           {biKhoa ? 'Đã khóa' : 'Hoạt động'}
                         </span>
-                      </td>
+                      </OBang>
 
-                      {/* 5. THAO TÁC */}
-                      <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                      <OBang className="px-4 py-3.5 whitespace-nowrap text-right">
                         <div className="inline-flex items-center gap-1 justify-end">
-                          <Link
-                            href={`/nhan-su/${ns.id}`}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
-                            title="Xem chi tiết"
-                          >
-                            <Eye className="size-4" />
-                          </Link>
+                          <NutIcon href={`/nhan-su/${ns.id}`} icon={Eye} nhan="Xem chi tiết" sac="primary" />
                           {duocQuanLyNhanSu && (
                             <>
                               {ns.trang_thai_du_lieu === 'da_xoa' ? (
-                                <button
-                                  type="button"
+                                <NutIcon
+                                  icon={RotateCcw}
+                                  nhan="Khôi phục nhân sự"
+                                  sac="primary"
                                   disabled={Boolean(dangXuLyKhac[`khoi_phuc_${ns.id}`])}
                                   onClick={() => xuLyKhoiPhuc(ns)}
-                                  className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition cursor-pointer disabled:opacity-50"
-                                  title="Khôi phục nhân sự"
-                                >
-                                  <RotateCcw className="size-4" />
-                                </button>
+                                />
                               ) : (
                                 <>
-                                  <button
-                                    type="button"
+                                  <NutIcon
+                                    icon={Pencil}
+                                    nhan="Chỉnh sửa"
                                     onClick={() => {
                                       setDangSua(ns);
                                       setLoiForm(null);
                                       setMoDrawer(true);
                                     }}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                                    title="Chỉnh sửa"
-                                  >
-                                    <Pencil className="size-4" />
-                                  </button>
-                                  <button
-                                    type="button"
+                                  />
+                                  <NutIcon
+                                    icon={KeyRound}
+                                    nhan="Đổi mật khẩu"
+                                    sac="canh_bao"
                                     onClick={() => {
                                       setLoiMk(null);
                                       setMkMoiModal('');
                                       setNhapLaiMkModal('');
                                       setMoModalDoiMk(ns);
                                     }}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition cursor-pointer"
-                                    title="Đổi mật khẩu"
-                                  >
-                                    <KeyRound className="size-4" />
-                                  </button>
-                                  <button
-                                    type="button"
+                                  />
+                                  <NutIcon
+                                    icon={Trash2}
+                                    nhan="Xóa vào thùng rác"
+                                    sac="loi"
                                     disabled={Boolean(dangXuLyKhac[`xoa_${ns.id}`])}
                                     onClick={() => xuLyXoa(ns)}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
-                                    title="Xóa vào thùng rác"
-                                  >
-                                    <Trash2 className="size-4" />
-                                  </button>
+                                  />
                                 </>
                               )}
                             </>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </OBang>
+                    </HangBang>
                   );
                 })}
-              </tbody>
-            </table>
+              </ThanBang>
+            </Bang>
           </div>
 
-          {/* 2. GIAO DIỆN DANH SÁCH DỄ ĐỌC TRÊN MOBILE (chỉ hiện trên màn hình nhỏ) */}
-          <div className="sm:hidden flex flex-col gap-2.5 p-3 bg-slate-50/50">
+          <DanhSachTheMobile>
             {danhSachDaSapXep.map((ns, index) => {
               const biKhoa = !ns.trang_thai;
               const daXoa = ns.trang_thai_du_lieu === 'da_xoa';
               const pb = tenPhongBan(ns.phong_ban_id);
+              const thongTinVt = chonThongTinVaiTro(String(ns.vai_tro), dsVaiTroNS);
 
               return (
-                <div
-                  key={ns.id}
-                  className={cn(
-                    "p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-colors relative",
-                    daXoa ? 'opacity-70 bg-slate-50/50' : biKhoa ? 'opacity-60 bg-slate-50/50' : ''
-                  )}
-                >
+                <TheMobile key={ns.id} mo_di={daXoa || biKhoa}>
                   <div className="flex items-start gap-2.5">
-                    <div className="pt-0.5 shrink-0">
-                      <span className="text-slate-400 text-xs font-bold">{index + 1}.</span>
-                    </div>
-                    
+                    <span className="text-slate-400 text-nhan font-extrabold tabular-nums mt-0.5 shrink-0">
+                      {index + 1}.
+                    </span>
+
                     <div className="flex-1 min-w-0 flex items-start gap-3">
                       <DaiDien
                         anh={ns.url_anh_dai_dien ?? undefined}
                         ten={ns.ho_va_ten}
                         kich_thuoc="sm"
-                        className="size-11 rounded-full shrink-0 border border-slate-200 shadow-2xs"
+                        className="size-10 rounded-full shrink-0 border border-slate-200"
                       />
-                      <div className="min-w-0 flex-1 flex flex-col gap-1">
-                        <Link href={`/nhan-su/${ns.id}`} className="font-bold text-slate-900 text-[15px] leading-snug line-clamp-2 hover:text-emerald-700 block">
-                          {ns.ho_va_ten}
-                        </Link>
-                        <div className="text-[13px] font-medium text-slate-500 truncate">
-                          {pb || 'Chưa phân PB'}
-                        </div>
-                        
-                        <div className="flex items-center justify-between gap-2 mt-1 pt-2 border-t border-slate-100">
-                          <span
-                            className={cn(
-                              'inline-flex items-center px-1.5 py-0.5 rounded-[4px] text-[10px] font-bold border shrink-0 uppercase tracking-wide',
-                              daXoa
-                                ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                : biKhoa
-                                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            )}
+                      <div className="min-w-0 flex-1">
+                        <div className="text-noi-dung leading-snug">
+                          <Link
+                            href={`/nhan-su/${ns.id}`}
+                            className="font-bold text-slate-900 hover:text-emerald-700"
                           >
-                            {daXoa ? 'ĐÃ XÓA' : biKhoa ? 'ĐÃ KHÓA' : 'HOẠT ĐỘNG'}
+                            {ns.ho_va_ten}
+                          </Link>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-nhan font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
+                            {thongTinVt.nhan}
                           </span>
-
-                          {daXoa && duocQuanLyNhanSu && (
-                            <button
-                              type="button"
-                              disabled={Boolean(dangXuLyKhac[`khoi_phuc_${ns.id}`])}
-                              onClick={() => xuLyKhoiPhuc(ns)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-95 transition-all cursor-pointer"
-                            >
-                              <RotateCcw className="size-3" strokeWidth={2.5} />
-                              <span>Khôi phục</span>
-                            </button>
-                          )}
+                        </div>
+                        <div className="text-phu text-slate-500 truncate mt-0.5">
+                          {pb || 'Chưa phân PB'}
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
+
+                  <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className={cn(
+                          'inline-flex items-center px-2 py-0.5 rounded-full text-nhan font-bold border shrink-0',
+                          daXoa
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : biKhoa
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        )}
+                      >
+                        {daXoa ? 'Đã xóa' : biKhoa ? 'Đã khóa' : 'Hoạt động'}
+                      </span>
+                      {ns.so_dien_thoai && (
+                        <a
+                          href={`tel:${ns.so_dien_thoai}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200/70 text-slate-600 text-nhan font-semibold hover:bg-emerald-50 hover:text-emerald-700 truncate"
+                        >
+                          <Phone className="size-2.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{ns.so_dien_thoai}</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {daXoa && duocQuanLyNhanSu && (
+                      <NutIcon
+                        icon={RotateCcw}
+                        nhan="Khôi phục"
+                        sac="primary"
+                        disabled={Boolean(dangXuLyKhac[`khoi_phuc_${ns.id}`])}
+                        onClick={() => xuLyKhoiPhuc(ns)}
+                      />
+                    )}
+                  </div>
+                </TheMobile>
               );
             })}
-          </div>
-        </div>
+          </DanhSachTheMobile>
+        </KhungDanhSach>
       )}
 
       <FormNhanSuDrawer

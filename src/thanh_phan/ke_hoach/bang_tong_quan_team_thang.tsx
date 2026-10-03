@@ -20,7 +20,7 @@ import type { BaoCaoKeHoachThang } from '../../thu_vien/types/bao_cao_ke_hoach';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
 import type { KhachHang } from '../../thu_vien/types/khach_hang';
-import { Nut } from '../ui';
+import { Nut, ThanhSoLieu } from '../ui';
 import { DINH_DANG_TIEN_NGAN_GON } from '../../thu_vien/utils/format_tien';
 import { cn } from '../../thu_vien/utils/cn';
 
@@ -221,104 +221,78 @@ export default function BangTongQuanTeamThang({
   };
 
   return (
-    <div className="space-y-5">
-      {/* Tiêu đề & Thao tác in */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="font-extrabold text-lg text-foreground flex items-center gap-2">
-            <Users className="size-5 text-primary" />
-            Kế hoạch & Mục tiêu tháng chung
-          </h2>
-          <span className="text-xs text-muted-foreground block mt-0.5">
-            Tổng hợp chỉ tiêu, dự án và doanh thu của toàn bộ đội ngũ kinh doanh ({thang})
-          </span>
-        </div>
-        <Nut kieu="outline" icon_trai={Printer} onClick={xuLyInTongHop} className="print:hidden">
-          In / Xuất PDF
-        </Nut>
-      </div>
+    <div className="space-y-4">
+      <ThanhSoLieu
+        items={[
+          {
+            id: 'nhan_su_kh',
+            nhan: 'Nhân sự lập KH',
+            nhan_ngan: 'Lập KH',
+            so_lieu: `${soNVLapKeHoach}/${tongSoNV}`,
+            icon: Users,
+            mau_so: 'trang',
+          },
+          {
+            id: 'chi_tieu_dt',
+            nhan: 'Chỉ tiêu doanh thu',
+            nhan_ngan: 'Chỉ tiêu',
+            so_lieu: DINH_DANG_TIEN_NGAN_GON(tongDuKienThuTeam),
+            icon: DollarSign,
+            mau_so: 'xanh_la',
+          },
+          {
+            id: 'thuc_te_dt',
+            nhan: `Thực tế thu (${tyLeDatTeam}%)`,
+            nhan_ngan: 'Thực tế',
+            so_lieu: DINH_DANG_TIEN_NGAN_GON(tongThucTeThuTeam),
+            icon: CheckCircle2,
+            mau_so: 'xanh_duong',
+          },
+          {
+            id: 'da_nop_bc',
+            nhan: 'Đã nộp báo cáo',
+            nhan_ngan: 'Đã nộp BC',
+            so_lieu: `${soNVNopBaoCao}/${soNVLapKeHoach || tongSoNV}`,
+            icon: UserCheck,
+            mau_so: 'vang',
+          },
+        ]}
+      />
 
-      {/* 4 Thẻ KPI tóm tắt */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-border/80 bg-card p-4 shadow-xs">
-          <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-            Nhân sự có KH
-          </span>
-          <span className="text-2xl font-black text-foreground mt-1 block">
-            {soNVLapKeHoach} / {tongSoNV}
-          </span>
-          <span className="text-[10px] text-muted-foreground mt-1 block">
-            {tongSoNV > 0 ? Math.round((soNVLapKeHoach / tongSoNV) * 100) : 0}% thành viên
-          </span>
-        </div>
-
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 shadow-xs">
-          <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
-            Chỉ tiêu Doanh thu team
-          </span>
-          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-300 mt-1 block">
-            {DINH_DANG_TIEN_NGAN_GON(tongDuKienThuTeam)}
-          </span>
-          <span className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 mt-1 block font-mono">
-            Tổng HĐ: {DINH_DANG_TIEN_NGAN_GON(tongGiaTriHdTeam)}
-          </span>
-        </div>
-
-        <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 shadow-xs">
-          <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider block">
-            Doanh thu thực tế đã thu
-          </span>
-          <span className="text-2xl font-black text-blue-600 dark:text-blue-300 mt-1 block">
-            {DINH_DANG_TIEN_NGAN_GON(tongThucTeThuTeam)}
-          </span>
-          <span className="text-[10px] text-blue-700/80 dark:text-blue-400/80 mt-1 block font-bold font-mono">
-            Đạt {tyLeDatTeam}% chỉ tiêu doanh thu
-          </span>
-        </div>
-
-        <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 shadow-xs">
-          <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400 uppercase tracking-wider block">
-            Đã nộp báo cáo
-          </span>
-          <span className="text-2xl font-black text-purple-600 dark:text-purple-300 mt-1 block">
-            {soNVNopBaoCao} / {soNVLapKeHoach || tongSoNV}
-          </span>
-          <span className="text-[10px] text-purple-700/80 dark:text-purple-400/80 mt-1 block">
-            Báo cáo tổng kết tháng
-          </span>
-        </div>
-      </div>
-
-      {/* Chuyển đổi chế độ xem */}
-      <div className="flex items-center justify-between gap-3 border-b border-border pb-2 flex-wrap">
+      {/* Chuyển đổi chế độ xem & In PDF */}
+      <div className="flex items-center justify-between gap-2.5 border-b border-border pb-2 flex-wrap">
         <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl">
           <button
             type="button"
             onClick={() => setCheDoXem('ke_hoach_gom')}
             className={cn(
-              'h-8 px-3.5 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5',
+              'h-8 px-3 rounded-lg text-phu font-bold transition-all inline-flex items-center gap-1.5',
               cheDoXem === 'ke_hoach_gom'
                 ? 'bg-background text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <ListOrdered className="size-3.5" />
-            Tất cả mục tiêu đã gom ({tatCaMucTieu.length})
+            <span>Mục tiêu đã gom ({tatCaMucTieu.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setCheDoXem('theo_nhan_su')}
             className={cn(
-              'h-8 px-3.5 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1.5',
+              'h-8 px-3 rounded-lg text-phu font-bold transition-all inline-flex items-center gap-1.5',
               cheDoXem === 'theo_nhan_su'
                 ? 'bg-background text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <UserCheck className="size-3.5" />
-            Tổng hợp theo thành viên ({danhSachNhanSu.length})
+            <span>Theo thành viên ({danhSachNhanSu.length})</span>
           </button>
         </div>
+
+        <Nut kieu="outline" kich_thuoc="sm" icon_trai={Printer} onClick={xuLyInTongHop} className="print:hidden">
+          In / Xuất PDF
+        </Nut>
 
         {cheDoXem === 'ke_hoach_gom' && locNhanSuId !== 'tat_ca' && (
           <div className="inline-flex items-center gap-1.5 text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-lg font-semibold">

@@ -37,6 +37,13 @@ import {
 import { useStoreXacThuc } from '../../thu_vien/zustand/store_xac_thuc';
 import { cn } from '../../thu_vien/utils/cn';
 import { DaiDien } from '../../thanh_phan/ui/dai_dien';
+import {
+  Bo_Cuc_Trang,
+  ThanhSoLieu,
+  KhungDanhSach,
+  DanhSachTheMobile,
+  TheMobile
+} from '../../thanh_phan/ui';
 import { DINH_DANG_TIEN_NGAN_GON } from '../../thu_vien/utils/format_tien';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
 import type { BaoCaoCongViec } from '../../thu_vien/types/bao_cao_cong_viec';
@@ -966,255 +973,119 @@ export default function TrangChu() {
   }
 
   return (
-    <div className="w-full max-w-none space-y-3.5 sm:space-y-6">
-      {/* 1. HEADER DESKTOP: Hero Card tinh gọn (Ẩn trên Mobile vì Topbar đã hiển thị) */}
-      <section className="hidden sm:flex sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-700 rounded-2xl p-4 sm:p-5 text-white shadow-sm border border-emerald-900/20">
-        <div>
-          <h1 className="text-lg font-bold text-white tracking-tight">
-            Tổng quan hệ thống
-          </h1>
-          <p className="text-[13px] text-emerald-100/80 mt-0.5 flex items-center gap-2">
-            <Calendar className="size-3.5 text-emerald-200" />
-            <span>{chuoiNgayHienTai}</span>
-            <span className="text-emerald-300/50">·</span>
-            <span>Quản lý điều hành & dự án</span>
-          </p>
-        </div>
+    <Bo_Cuc_Trang>
+      {/* 1. THƯỚC ĐO ĐIỀU HÀNH ĐỒNG BỘ (ThanhSoLieu) */}
+      <ThanhSoLieu
+        muc={[
+          {
+            khoa: 'tong_da',
+            nhan: 'Tổng dự án',
+            nhan_ngan: 'Tổng DA',
+            gia_tri: dangTai ? '-' : dsDuAnLienQuan.length,
+            icon: FolderKanban,
+            mau: 'mac_dinh',
+            khi_bam: () => router.push('/ho-so-du-an'),
+          },
+          {
+            khoa: 'dang_chay',
+            nhan: 'Đang chạy',
+            gia_tri: dangTai ? '-' : soDangChay,
+            icon: TrendingUp,
+            mau: 'thanh_cong',
+            khi_bam: () => router.push('/ho-so-du-an'),
+          },
+          {
+            khoa: 'khach_hang',
+            nhan: 'Khách hàng',
+            gia_tri: dangTai ? '-' : dsKhachHangLienQuan.length,
+            icon: UsersRound,
+            mau: 'thong_tin',
+            khi_bam: () => router.push('/khach-hang'),
+          },
+          {
+            khoa: 'tong_gia_tri',
+            nhan: 'Tổng giá trị',
+            nhan_ngan: 'Giá trị',
+            gia_tri: laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(tongGiaTri),
+            icon: Wallet,
+            mau: 'canh_bao',
+            khi_bam: () => router.push('/ho-so-du-an'),
+          },
+        ]}
+      />
 
-        {/* Quick Action Capsules trên Desktop */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href="/ho-so-du-an"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-emerald-900 hover:bg-emerald-50 text-xs sm:text-sm font-bold shadow-sm transition-all active:scale-95"
-          >
-            <FolderPlus className="size-4 text-emerald-700" />
-            <span>+ Dự án mới</span>
-          </Link>
-          <Link
-            href="/khach-hang"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-900/40 hover:bg-emerald-900/60 text-white border border-white/20 text-xs sm:text-sm font-semibold transition-all active:scale-95"
-          >
-            <UserPlus className="size-4 text-emerald-200" />
-            <span>+ Khách hàng</span>
-          </Link>
-          <Link
-            href="/bao-cao-cong-viec"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-900/40 hover:bg-emerald-900/60 text-white border border-white/20 text-xs sm:text-sm font-semibold transition-all active:scale-95"
-          >
-            <FileText className="size-4 text-emerald-200" />
-            <span>Báo cáo</span>
-          </Link>
-        </div>
-      </section>
-
-      {/* 2. THƯỚC ĐO ĐIỀU HÀNH TỔNG QUAN */}
-      {/* 2A. Mobile View: One UI 9 Now Brief Squircle Widget */}
-      <section className="sm:hidden bg-gradient-to-br from-[#0e3e2d] via-[#13503b] to-[#185942] rounded-[26px] p-3.5 text-white shadow-[0_8px_24px_rgba(14,62,45,0.16)] space-y-2.5">
-        {/* Dòng 1 — Báo cáo hôm nay & Tổng giá trị */}
-        <div className="flex items-center justify-between gap-2 px-0.5">
+      {/* 2. THANH TRẠNG THÁI BÁO CÁO & THAO TÁC NHANH */}
+      <section className="bg-white rounded-2xl border border-slate-200/80 p-3 sm:px-4 sm:py-3 shadow-[var(--shadow-nhe)] flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2.5 min-w-0">
           <Link
             href="/bao-cao-cong-viec"
             className={cn(
-              'px-2.5 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1.5 shrink-0 transition-transform active:scale-95',
+              'px-3 py-1.5 rounded-xl text-phu font-bold border flex items-center gap-1.5 shrink-0 transition-transform active:scale-95',
               !bccvHomNay
-                ? 'bg-amber-400/20 text-amber-200 border-amber-300/30'
+                ? 'bg-amber-50 text-amber-800 border-amber-200'
                 : bccvHomNay.trang_thai === 'tam_luu'
-                ? 'bg-indigo-400/20 text-indigo-200 border-indigo-300/30'
-                : 'bg-emerald-400/20 text-emerald-200 border-emerald-300/30'
+                ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
             )}
           >
             {!bccvHomNay ? (
               <>
-                <Clock className="size-3 text-amber-300" />
-                <span>Báo cáo: Chưa nộp</span>
+                <Clock className="size-3.5 text-amber-600" />
+                <span>Báo cáo hôm nay: Chưa nộp</span>
               </>
             ) : bccvHomNay.trang_thai === 'tam_luu' ? (
               <>
-                <Clock className="size-3 text-indigo-300" />
-                <span>Báo cáo: Lưu tạm</span>
+                <Clock className="size-3.5 text-indigo-600" />
+                <span>Báo cáo hôm nay: Lưu tạm ({bccvHomNay.danh_sach_chi_tiet?.length || 0})</span>
               </>
             ) : (
               <>
-                <CheckCircle2 className="size-3 text-emerald-300" />
-                <span>Báo cáo: Đã nộp</span>
+                <CheckCircle2 className="size-3.5 text-emerald-600" />
+                <span>Báo cáo hôm nay: Đã nộp</span>
               </>
             )}
           </Link>
-
-          <div className="flex items-center gap-1.5 bg-white/12 px-3 py-1 rounded-full border border-white/10">
-            <Wallet className="size-3.5 text-amber-300 shrink-0" />
-            <span className="font-extrabold text-amber-300 text-[13px] tabular-nums">
-              {laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(tongGiaTri)}
-            </span>
-          </div>
+          <span className="hidden md:inline-flex items-center gap-1.5 text-phu text-slate-500 font-medium">
+            <Calendar className="size-3.5 text-slate-400" />
+            <span>{chuoiNgayHienTai}</span>
+          </span>
         </div>
 
-        {/* Dòng 2 — 4 Thẻ trạng thái Squircle */}
-        <div className="grid grid-cols-4 gap-1.5">
-          <Link href="/ho-so-du-an" className="bg-white/12 rounded-[16px] py-1.5 px-1 text-center border border-white/10">
-            <div className="text-[15px] font-extrabold text-white tabular-nums leading-tight">
-              {dangTai ? '-' : dsDuAnLienQuan.length}
-            </div>
-            <div className="text-[10px] font-medium text-emerald-100/85 whitespace-nowrap mt-0.5">Tổng DA</div>
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+          <Link
+            href="/ho-so-du-an"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-white hover:bg-primary-dam text-phu font-bold shadow-xs transition-all active:scale-95"
+          >
+            <FolderPlus className="size-3.5" />
+            <span>+ Dự án mới</span>
           </Link>
-          <Link href="/ho-so-du-an" className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[15px] font-extrabold text-emerald-300 tabular-nums leading-tight">{soDangChay}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Đang chạy</div>
-          </Link>
-          <Link href="/ho-so-du-an" className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[15px] font-extrabold text-teal-200 tabular-nums leading-tight">{soHoanThanh}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Hoàn thành</div>
-          </Link>
-          <Link href="/khach-hang" className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[15px] font-extrabold text-amber-300 tabular-nums leading-tight">
-              {dangTai ? '-' : dsKhachHangLienQuan.length}
-            </div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Khách hàng</div>
+          <Link
+            href="/khach-hang"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-phu font-semibold transition-all active:scale-95"
+          >
+            <UserPlus className="size-3.5 text-slate-500" />
+            <span>+ Khách hàng</span>
           </Link>
         </div>
-      </section>
-
-      {/* 2B. Desktop View: 5 khối thống kê chuẩn dạng Thẻ Trắng tinh tế (ảnh mẫu 1) */}
-      <section className="hidden sm:grid sm:grid-cols-5 gap-3.5">
-        {/* 1. Tổng dự án */}
-        <Link
-          href="/ho-so-du-an"
-          className="group bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Tổng dự án</span>
-            <div className="size-8.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <FolderKanban className="size-4.5" strokeWidth={2.2} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
-              {dangTai ? '-' : dsDuAnLienQuan.length}
-            </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-0.5">
-              Hồ sơ quản lý
-            </div>
-          </div>
-        </Link>
-
-        {/* 2. Khách hàng */}
-        <Link
-          href="/khach-hang"
-          className="group bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm hover:shadow-md hover:border-teal-300 transition-all flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Khách hàng</span>
-            <div className="size-8.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <UsersRound className="size-4.5" strokeWidth={2.2} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
-              {dangTai ? '-' : dsKhachHangLienQuan.length}
-            </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-0.5">
-              Doanh nghiệp & đối tác
-            </div>
-          </div>
-        </Link>
-
-        {/* 3. Tổng giá trị */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Tổng giá trị</span>
-            <div className="size-8.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-100 flex items-center justify-center shrink-0">
-              <Wallet className="size-4.5" strokeWidth={2.2} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl font-bold text-amber-700 tabular-nums tracking-tight truncate">
-              {laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(tongGiaTri)}
-            </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-0.5">
-              Quy mô ngân sách
-            </div>
-          </div>
-        </div>
-
-        {/* 4. Tiến độ chung */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Tiến độ chung</span>
-            <div className="size-8.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 flex items-center justify-center shrink-0">
-              <TrendingUp className="size-4.5" strokeWidth={2.2} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-slate-900 tabular-nums tracking-tight">
-                {tileHoanThanh}%
-              </span>
-              <span className="text-[11px] text-emerald-600 font-bold">
-                {soDangChay} đang chạy
-              </span>
-            </div>
-            <div className="mt-2 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all duration-500"
-                style={{ width: `${tileHoanThanh}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 5. Báo cáo hôm nay */}
-        <Link
-          href="/bao-cao-cong-viec"
-          className="group bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all flex flex-col justify-between"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Báo cáo ngày</span>
-            <div className="size-8.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <FileText className="size-4.5" strokeWidth={2.2} />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div>
-              {dangTai ? (
-                <span className="text-xs text-slate-400">Đang tải...</span>
-              ) : !bccvHomNay ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold">
-                  <Clock className="size-3" /> Chưa nộp
-                </span>
-              ) : bccvHomNay.trang_thai === 'tam_luu' ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold">
-                  <Clock className="size-3" /> Lưu tạm ({bccvHomNay.danh_sach_chi_tiet?.length || 0})
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
-                  <CheckCircle2 className="size-3" /> Đã nộp
-                </span>
-              )}
-            </div>
-            <div className="text-[11px] text-slate-400 font-medium mt-1">
-              Báo cáo tiến độ
-            </div>
-          </div>
-        </Link>
       </section>
 
       {/* 3. DÒNG CHẢY 12 GIAI ĐOẠN DỰ ÁN (CHỈ HIỂN THỊ TRÊN DESKTOP ĐỂ TRÁNH RỐI TRÊN MOBILE) */}
-      <section className="hidden sm:block bg-white rounded-[22px] border border-slate-200/80 p-3.5 sm:p-4 shadow-[0_2px_10px_rgba(0,0,0,0.02)] space-y-3">
+      <section className="hidden sm:block bg-white rounded-2xl border border-slate-200/80 p-3.5 sm:p-4 shadow-[var(--shadow-nhe)] space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="size-7 rounded-xl bg-[#5856D6]/10 text-[#5856D6] flex items-center justify-center">
               <Layers className="size-3.5" />
             </div>
-            <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight">
+            <h2 className="text-noi-dung font-bold text-slate-900 tracking-tight">
               Dòng chảy 12 giai đoạn dự án
             </h2>
-            <span className="text-[11px] font-medium text-slate-400">
+            <span className="text-nhan font-medium text-slate-400">
               ({dsDuAnLienQuan.length} dự án)
             </span>
           </div>
           <Link
             href="/ho-so-du-an"
-            className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-[#107555] hover:underline"
+            className="inline-flex items-center gap-1 text-phu font-semibold text-primary hover:underline"
           >
             Hồ sơ chi tiết
             <ArrowUpRight className="size-3" />
@@ -1239,12 +1110,12 @@ export default function TrangChu() {
                 )}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[9px] font-mono font-bold text-slate-400">
+                  <span className="text-nhan font-mono font-bold text-slate-400">
                     {String(gd.stt).padStart(2, '0')}
                   </span>
                   <span
                     className={cn(
-                      'text-sm font-extrabold tabular-nums leading-none',
+                      'text-noi-dung font-extrabold tabular-nums leading-none',
                       coDuAn ? gd.mauSac.text : 'text-slate-400'
                     )}
                   >
@@ -1253,7 +1124,7 @@ export default function TrangChu() {
                 </div>
                 <div
                   className={cn(
-                    'text-[11px] font-bold truncate leading-tight',
+                    'text-nhan font-bold truncate leading-tight',
                     coDuAn ? 'text-slate-800' : 'text-slate-500'
                   )}
                   title={gd.nhan}
@@ -1266,13 +1137,13 @@ export default function TrangChu() {
         </div>
       </section>
 
-      {/* 4. CHUYỂN TAB TRÊN MOBILE (GIÚP MOBILE CỰC KỲ GỌN GÀNG, TẬP TRUNG, KHÔNG RỐI) */}
+      {/* 4. CHUYỂN TAB TRÊN MOBILE */}
       <div className="sm:hidden flex items-center p-1 bg-slate-200/60 rounded-2xl">
         <button
           type="button"
           onClick={() => setTabMobile('cap_nhat')}
           className={cn(
-            'flex-1 py-2 text-xs font-bold rounded-xl transition-all text-center',
+            'flex-1 py-2 text-phu font-bold rounded-xl transition-all text-center',
             tabMobile === 'cap_nhat'
               ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
@@ -1284,7 +1155,7 @@ export default function TrangChu() {
           type="button"
           onClick={() => setTabMobile('du_an')}
           className={cn(
-            'flex-1 py-2 text-xs font-bold rounded-xl transition-all text-center',
+            'flex-1 py-2 text-phu font-bold rounded-xl transition-all text-center',
             tabMobile === 'du_an'
               ? 'bg-white text-slate-900 shadow-xs'
               : 'text-slate-500 hover:text-slate-800'
@@ -1299,20 +1170,18 @@ export default function TrangChu() {
         {/* CỘT 1: DÒNG CẬP NHẬT TIẾN ĐỘ & TÀI LIỆU */}
         <section
           className={cn(
-            'lg:col-span-7 xl:col-span-8 rounded-[24px] border border-slate-200/90 bg-white p-4 sm:p-5 shadow-[0_2px_14px_rgba(0,0,0,0.03)] space-y-4',
+            'lg:col-span-7 xl:col-span-8 rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-[var(--shadow-nhe)] space-y-4',
             tabMobile !== 'cap_nhat' && 'hidden sm:block'
           )}
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
-              <div className="size-8 sm:size-9.5 rounded-2xl bg-emerald-50 text-[#107555] flex items-center justify-center shrink-0">
-                <Activity className="size-4 sm:size-4.5" />
+              <div className="size-8 rounded-xl bg-emerald-50 text-primary flex items-center justify-center shrink-0">
+                <Activity className="size-4" />
               </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                  <span>Cập nhật tiến độ & tài liệu</span>
-                </h2>
-              </div>
+              <h2 className="text-tieu-de font-bold text-slate-900 tracking-tight">
+                Cập nhật tiến độ & tài liệu
+              </h2>
             </div>
 
             {/* Filter Tabs Capsule */}
@@ -1328,7 +1197,7 @@ export default function TrangChu() {
                   type="button"
                   onClick={() => setLocHoatDong(tab.key as any)}
                   className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5',
+                    'px-2.5 py-1 rounded-lg text-phu font-semibold transition-all whitespace-nowrap flex items-center gap-1.5',
                     locHoatDong === tab.key
                       ? 'bg-white text-slate-900 shadow-xs font-bold'
                       : 'text-slate-500 hover:text-slate-800'
@@ -1337,7 +1206,7 @@ export default function TrangChu() {
                   <span>{tab.label}</span>
                   <span
                     className={cn(
-                      'text-[10px] px-1.5 py-0.2 rounded-full font-bold tabular-nums',
+                      'text-nhan px-1.5 py-0.2 rounded-full font-bold tabular-nums',
                       locHoatDong === tab.key
                         ? 'bg-slate-100 text-slate-700'
                         : 'bg-transparent text-slate-400'
@@ -1352,19 +1221,16 @@ export default function TrangChu() {
 
           {dangTai ? (
             <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2.5">
-              <Loader2 className="size-6 animate-spin text-[#107555]" />
-              <span className="text-xs font-medium">Đang đồng bộ cập nhật mới nhất...</span>
+              <Loader2 className="size-6 animate-spin text-primary" />
+              <span className="text-phu font-medium">Đang tải...</span>
             </div>
           ) : dsCapNhatLoc.length === 0 ? (
             <div className="py-16 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
               <History className="size-9 text-slate-300 stroke-1" />
-              <p className="text-xs font-semibold text-slate-600">Chưa có dữ liệu cập nhật</p>
-              <p className="text-[11px] text-slate-400 max-w-sm">
-                Các ghi chú tiến độ, báo cáo giai đoạn và tài liệu tải lên sẽ xuất hiện tại đây.
-              </p>
+              <p className="text-phu font-semibold text-slate-600">Chưa có dữ liệu cập nhật</p>
             </div>
           ) : (
-            <div className="space-y-3.5 sm:space-y-4">
+            <div className="space-y-3 sm:space-y-3.5">
               {dsCapNhatLoc.map((cnItem) => {
                 const badgeClass = layBadgeGiaiDoanClass(cnItem.giaiDoan);
                 const tenGD = layTenGiaiDoan(cnItem.giaiDoan);
@@ -1375,13 +1241,13 @@ export default function TrangChu() {
                   <div
                     key={cnItem.id}
                     className={cn(
-                      'group relative rounded-2xl border bg-white p-3.5 sm:p-4.5 space-y-2.5 transition-all duration-200',
-                      'shadow-[0_2px_8px_rgba(15,23,42,0.03)] hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)]',
+                      'group relative rounded-2xl border bg-white p-3.5 sm:p-4 space-y-2.5 transition-all duration-200',
+                      'shadow-[var(--shadow-nhe)] hover:shadow-md',
                       laTaiLieu
                         ? 'border-slate-200/90 border-l-[4px] border-l-indigo-500 hover:border-indigo-300'
                         : laChuyenGiaiDoan
                         ? 'border-slate-200/90 border-l-[4px] border-l-emerald-500 hover:border-emerald-300'
-                        : 'border-slate-200/90 border-l-[4px] border-l-[#107555] hover:border-emerald-300'
+                        : 'border-slate-200/90 border-l-[4px] border-l-primary hover:border-emerald-300'
                     )}
                   >
                     {/* HÀNG 1: Avatar + Tên người cập nhật + Badge hành động + Thời gian */}
@@ -1394,60 +1260,60 @@ export default function TrangChu() {
                           className="size-7.5 sm:size-8 rounded-full shrink-0 ring-1 ring-slate-200/80 shadow-2xs"
                         />
                         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                          <span className="text-xs sm:text-[13.5px] font-bold text-slate-900 truncate">
+                          <span className="text-noi-dung font-bold text-slate-900 truncate">
                             {cnItem.nguoiThucHien}
                           </span>
-                          <span className="text-slate-300 text-xs">·</span>
+                          <span className="text-slate-300 text-phu">·</span>
                           {laTaiLieu ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60 shrink-0">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-nhan font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60 shrink-0">
                               <Paperclip className="size-2.5" /> Tài liệu mới
                             </span>
                           ) : laChuyenGiaiDoan ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 shrink-0">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-nhan font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 shrink-0">
                               <ArrowRightCircle className="size-2.5" /> Giai đoạn
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-[#107555] border border-emerald-200/60 shrink-0">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-nhan font-bold bg-emerald-50 text-primary border border-emerald-200/60 shrink-0">
                               <TrendingUp className="size-2.5" /> Tiến độ
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <span className="text-[11px] sm:text-xs font-medium text-slate-400 flex items-center gap-1 shrink-0 tabular-nums whitespace-nowrap">
+                      <span className="text-nhan font-medium text-slate-400 flex items-center gap-1 shrink-0 tabular-nums whitespace-nowrap">
                         <Clock className="size-3" />
                         {dinhDangThoiGian(cnItem.thoiGian)}
                       </span>
                     </div>
 
-                    {/* HÀNG 2: Khung dự án & giai đoạn nổi bật, tách biệt hoàn toàn */}
+                    {/* HÀNG 2: Khung dự án & giai đoạn nổi bật */}
                     <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50/90 border border-slate-200/70">
                       <div className="min-w-0 flex-1 flex items-center gap-1.5">
                         {cnItem.maDuAn && (
-                          <span className="font-mono text-[10px] sm:text-[10.5px] font-bold text-[#107555] px-1.5 py-0.5 rounded-md bg-white border border-[#107555]/25 shrink-0 shadow-2xs">
+                          <span className="font-mono text-nhan font-bold text-primary px-1.5 py-0.5 rounded-md bg-white border border-primary/25 shrink-0 shadow-2xs">
                             {cnItem.maDuAn}
                           </span>
                         )}
                         <Link
                           href={`/ho-so-du-an/${cnItem.duAnId}`}
-                          className="text-xs sm:text-[13px] font-bold text-slate-900 hover:text-[#107555] transition-colors truncate"
+                          className="text-phu sm:text-noi-dung font-bold text-slate-900 hover:text-primary transition-colors truncate"
                         >
                           {cnItem.tenDuAn}
                         </Link>
                         {cnItem.tenKhachHang && cnItem.tenKhachHang !== 'Chưa gắn khách hàng' && (
-                          <span className="text-[11px] text-slate-400 font-medium truncate hidden md:inline">
+                          <span className="text-nhan text-slate-400 font-medium truncate hidden md:inline">
                             • KH: {cnItem.tenKhachHang}
                           </span>
                         )}
                       </div>
-                      <span className={cn('text-[9.5px] sm:text-[10px] px-2.5 py-0.5 rounded-full font-bold border shrink-0', badgeClass)}>
+                      <span className={cn('text-nhan px-2.5 py-0.5 rounded-full font-bold border shrink-0', badgeClass)}>
                         {tenGD}
                       </span>
                     </div>
 
                     {/* HÀNG 3: Nội dung chi tiết */}
                     {laChuyenGiaiDoan ? (
-                      <div className="rounded-xl bg-emerald-50/70 border border-emerald-200/70 p-3 flex items-center gap-2.5 text-xs sm:text-[13px] text-slate-900">
+                      <div className="rounded-xl bg-emerald-50/70 border border-emerald-200/70 p-3 flex items-center gap-2.5 text-phu sm:text-noi-dung text-slate-900">
                         <ArrowRightCircle className="size-4 text-emerald-600 shrink-0" />
                         <span>
                           Dự án chuyển sang: <b className="text-emerald-800 font-bold">{cnItem.chiTietNoiBat || tenGD}</b>
@@ -1456,19 +1322,18 @@ export default function TrangChu() {
                     ) : (
                       <div className="space-y-2">
                         {cnItem.chiTietNoiBat && (
-                          <p className="text-xs sm:text-[13.5px] text-slate-800 font-normal leading-relaxed whitespace-pre-wrap pl-1">
+                          <p className="text-phu sm:text-noi-dung text-slate-800 font-normal leading-relaxed whitespace-pre-wrap pl-1">
                             {cnItem.chiTietNoiBat}
                           </p>
                         )}
 
-                        {/* File đính kèm pill / card */}
                         {cnItem.tepDinhKem && cnItem.tepDinhKem.url && (
                           <a
                             href={cnItem.tepDinhKem.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="flex items-center justify-between gap-3 p-2.5 sm:p-3 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100/90 text-xs text-slate-800 transition-all group/file shadow-2xs"
+                            className="flex items-center justify-between gap-3 p-2.5 sm:p-3 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100/90 text-phu text-slate-800 transition-all group/file shadow-2xs"
                             title="Bấm để mở tài liệu đính kèm"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
@@ -1476,15 +1341,15 @@ export default function TrangChu() {
                                 <Paperclip className="size-3.5 sm:size-4" />
                               </div>
                               <div className="min-w-0">
-                                <span className="truncate font-semibold text-slate-800 group-hover/file:text-indigo-600 block text-xs sm:text-[13px]">
+                                <span className="truncate font-semibold text-slate-800 group-hover/file:text-indigo-600 block text-phu sm:text-noi-dung">
                                   {cnItem.tepDinhKem.ten}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-medium">
+                                <span className="text-nhan text-slate-400 font-medium">
                                   Tài liệu đính kèm
                                 </span>
                               </div>
                             </div>
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 shrink-0 bg-white px-2.5 py-1 rounded-lg border border-indigo-200/60 shadow-2xs group-hover/file:bg-indigo-600 group-hover/file:text-white transition-colors">
+                            <span className="inline-flex items-center gap-1 text-nhan font-bold text-indigo-600 shrink-0 bg-white px-2.5 py-1 rounded-lg border border-indigo-200/60 shadow-2xs group-hover/file:bg-indigo-600 group-hover/file:text-white transition-colors">
                               Mở tệp <ExternalLink className="size-3" />
                             </span>
                           </a>
@@ -1493,13 +1358,13 @@ export default function TrangChu() {
                     )}
 
                     {/* HÀNG 4: Footer điều hướng sang chi tiết dự án */}
-                    <div className="flex items-center justify-between gap-2 pt-1.5 text-[11px] text-slate-400">
-                      <span className="text-[11px] text-slate-500 truncate md:hidden">
+                    <div className="flex items-center justify-between gap-2 pt-1.5 text-nhan text-slate-400">
+                      <span className="text-nhan text-slate-500 truncate md:hidden">
                         KH: <b className="text-slate-700 font-medium">{cnItem.tenKhachHang}</b>
                       </span>
                       <Link
                         href={`/ho-so-du-an/${cnItem.duAnId}`}
-                        className="text-[11.5px] text-[#107555] font-bold hover:underline inline-flex items-center gap-0.5 shrink-0 ml-auto group/link"
+                        className="text-phu text-primary font-bold hover:underline inline-flex items-center gap-0.5 shrink-0 ml-auto group/link"
                       >
                         <span>Xem hồ sơ dự án</span>
                         <ChevronRight className="size-3 transition-transform group-hover/link:translate-x-0.5" />
@@ -1519,37 +1384,30 @@ export default function TrangChu() {
             tabMobile !== 'du_an' && 'hidden sm:block'
           )}
         >
-          {/* THẺ 1: DỰ ÁN ĐANG TRIỂN KHAI TRỌNG TÂM */}
-          <section className="rounded-[26px] sm:rounded-[22px] border border-slate-200/80 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.02)] overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 sm:p-4 border-b border-slate-100 bg-white">
-              <div className="flex items-center gap-2">
-                <div className="size-8 rounded-[12px] bg-emerald-50 text-[#107555] flex items-center justify-center shrink-0">
-                  <FolderKanban className="size-4" />
-                </div>
-                <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
-                  Dự án đang chạy
-                </h2>
-              </div>
+          <KhungDanhSach
+            tieu_de="Dự án đang chạy"
+            so_luong={soDangChay}
+            hanh_dong_phu={
               <Link
                 href="/ho-so-du-an"
-                className="text-xs font-bold text-[#107555] hover:underline inline-flex items-center gap-1"
+                className="text-phu font-bold text-primary hover:underline inline-flex items-center gap-1"
               >
-                Tất cả ({soDangChay})
+                Tất cả
                 <ChevronRight className="size-3.5" />
               </Link>
-            </div>
-
+            }
+          >
             {dangTai ? (
-              <div className="py-8 text-center text-xs text-slate-400">
-                <Loader2 className="size-4 animate-spin inline mr-1.5 text-[#107555]" />
-                Đang tải dự án...
+              <div className="py-8 text-center text-phu text-slate-400">
+                <Loader2 className="size-4 animate-spin inline mr-1.5 text-primary" />
+                Đang tải...
               </div>
             ) : dsDuAnTieuBieu.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400">
+              <div className="py-8 text-center text-phu text-slate-400">
                 Hiện không có dự án nào đang chạy
               </div>
             ) : (
-              <div className="p-2.5 bg-slate-100/70 space-y-2.5">
+              <DanhSachTheMobile className="lg:flex">
                 {dsDuAnTieuBieu.map((da, idxDa) => {
                   const tenGD = layTenGiaiDoan(da.giai_doan);
                   const tenPhuTrach = layTenNhanSu(da.nguoi_phu_trach_id);
@@ -1561,52 +1419,50 @@ export default function TrangChu() {
                     : DINH_DANG_TIEN_NGAN_GON(Number(da.gia_tri_du_kien || da.gia_tri_hop_dong || 0));
 
                   return (
-                    <Link
+                    <TheMobile
                       key={da.id}
-                      href={`/ho-so-du-an/${da.id}`}
-                      className="group block rounded-[22px] border border-slate-200/80 bg-white p-3.5 shadow-[0_2px_8px_rgba(15,23,42,0.03)] hover:border-slate-300 transition-all active:scale-[0.99]"
+                      onClick={() => router.push(`/ho-so-du-an/${da.id}`)}
+                      className="group space-y-2.5"
                     >
-                      {/* Hàng 1: STT + Tên dự án + Giai đoạn chìm ngay sau tên */}
                       <div className="flex items-start gap-2">
-                        <span className="text-slate-400 text-[11.5px] font-extrabold tabular-nums mt-0.5 shrink-0">
+                        <span className="text-slate-400 text-phu font-extrabold tabular-nums mt-0.5 shrink-0">
                           {idxDa + 1}.
                         </span>
-                        <div className="flex-1 min-w-0 text-[14px] leading-snug">
-                          <span className="font-bold text-slate-900 group-hover:text-[#107555] transition-colors">
+                        <div className="flex-1 min-w-0 text-noi-dung leading-snug">
+                          <span className="font-bold text-slate-900 group-hover:text-primary transition-colors">
                             {da.ten_du_an}
                           </span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-nhan font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
                             {tenGD}
                           </span>
                         </div>
                       </div>
 
-                      {/* Hàng 2 (Footer): Số tiền bên trái & Người phụ trách bên phải */}
-                      <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-slate-100">
-                        <span className="font-mono font-extrabold text-[#107555] text-[12.5px] bg-emerald-50/80 px-2.5 py-0.5 rounded-full border border-emerald-200/60">
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                        <span className="font-mono font-extrabold text-primary text-phu bg-emerald-50/80 px-2.5 py-0.5 rounded-full border border-emerald-200/60">
                           {giaTri}
                         </span>
                         {tenPhuTrachNgan && (
-                          <div className="flex items-center gap-1 shrink-0 bg-slate-100 px-2 py-0.5 rounded-full text-[11px] font-semibold text-slate-700">
+                          <div className="flex items-center gap-1 shrink-0 bg-slate-100 px-2 py-0.5 rounded-full text-nhan font-semibold text-slate-700">
                             <User className="size-3 text-slate-400" />
                             <span>{tenPhuTrachNgan}</span>
                           </div>
                         )}
                       </div>
-                    </Link>
+                    </TheMobile>
                   );
                 })}
-              </div>
+              </DanhSachTheMobile>
             )}
-          </section>
+          </KhungDanhSach>
 
           {/* THẺ 2: WIDGET BÁO CÁO CÔNG VIỆC HÔM NAY (CHỈ HIỂN THỊ TRÊN DESKTOP) */}
-          <section className="hidden sm:block rounded-[22px] border border-slate-200/80 bg-white p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-3">
+          <section className="hidden sm:block rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-[var(--shadow-nhe)] space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div
                   className={cn(
-                    'size-8 rounded-[12px] flex items-center justify-center text-white shrink-0',
+                    'size-8 rounded-xl flex items-center justify-center text-white shrink-0',
                     !bccvHomNay
                       ? 'bg-amber-500'
                       : bccvHomNay.trang_thai === 'tam_luu'
@@ -1617,59 +1473,50 @@ export default function TrangChu() {
                   <FileCheck className="size-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                  <h2 className="text-noi-dung font-bold text-slate-900 tracking-tight">
                     Báo cáo công việc
                   </h2>
-                  <p className="text-[11px] text-slate-400">Hôm nay: {ngayLocal}</p>
+                  <p className="text-nhan text-slate-400">Hôm nay: {ngayLocal}</p>
                 </div>
               </div>
             </div>
 
             {!bccvHomNay ? (
-              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/70 space-y-2">
-                <div className="flex items-center gap-2 text-amber-800 text-xs font-semibold">
+              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/70 space-y-2.5">
+                <div className="flex items-center gap-2 text-amber-800 text-phu font-semibold">
                   <AlertCircle className="size-4 text-amber-600 shrink-0" />
-                  <span>Bạn chưa nộp báo cáo công việc hôm nay</span>
+                  <span>Chưa nộp báo cáo công việc hôm nay</span>
                 </div>
-                <p className="text-[11px] text-amber-700 leading-relaxed">
-                  Hãy ghi nhận các hạng mục công việc đã hoàn thành để ban điều hành nắm bắt tiến độ kịp thời.
-                </p>
                 <Link
                   href="/bao-cao-cong-viec"
-                  className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-2xs transition-all active:scale-98 mt-1"
+                  className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-phu font-bold shadow-2xs transition-all active:scale-98"
                 >
                   <Plus className="size-3.5" />
                   Tạo báo cáo ngay
                 </Link>
               </div>
             ) : bccvHomNay.trang_thai === 'tam_luu' ? (
-              <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200/70 space-y-2">
-                <div className="flex items-center gap-2 text-indigo-800 text-xs font-semibold">
+              <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200/70 space-y-2.5">
+                <div className="flex items-center gap-2 text-indigo-800 text-phu font-semibold">
                   <Clock className="size-4 text-indigo-600 shrink-0" />
-                  <span>Báo cáo đang ở trạng thái Lưu tạm</span>
+                  <span>Báo cáo đang Lưu tạm ({bccvHomNay.danh_sach_chi_tiet?.length || 0} mục)</span>
                 </div>
-                <p className="text-[11px] text-indigo-700">
-                  Đã ghi nhận {bccvHomNay.danh_sach_chi_tiet?.length || 0} công việc. Vui lòng kiểm tra và bấm nộp chính thức.
-                </p>
                 <Link
                   href="/bao-cao-cong-viec"
-                  className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-2xs transition-all active:scale-98 mt-1"
+                  className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-phu font-bold shadow-2xs transition-all active:scale-98"
                 >
                   Tiếp tục chỉnh sửa & Nộp
                 </Link>
               </div>
             ) : (
-              <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/70 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+              <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/70 space-y-2.5">
+                <div className="flex items-center gap-2 text-emerald-800 text-phu font-bold">
                   <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
-                  <span>Đã nộp báo cáo công việc hôm nay</span>
+                  <span>Đã nộp báo cáo hôm nay ({bccvHomNay.danh_sach_chi_tiet?.length || 0} mục)</span>
                 </div>
-                <p className="text-[11px] text-emerald-700">
-                  Tổng cộng: {bccvHomNay.danh_sach_chi_tiet?.length || 0} mục công việc đã được gửi lên hệ thống.
-                </p>
                 <Link
                   href="/bao-cao-cong-viec"
-                  className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-white hover:bg-slate-50 text-emerald-700 border border-emerald-200 text-xs font-bold shadow-2xs transition-all active:scale-98"
+                  className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-white hover:bg-slate-50 text-emerald-700 border border-emerald-200 text-phu font-bold shadow-2xs transition-all active:scale-98"
                 >
                   Xem lại báo cáo
                 </Link>
@@ -1679,10 +1526,10 @@ export default function TrangChu() {
         </div>
       </div>
 
-      <footer className="pt-2 text-center text-[11px] text-slate-400">
+      <footer className="pt-2 text-center text-nhan text-slate-400">
         © {new Date().getFullYear()} TiniPMS — Hệ thống Quản trị Doanh nghiệp & Dự án
       </footer>
-    </div>
+    </Bo_Cuc_Trang>
   );
 }
 

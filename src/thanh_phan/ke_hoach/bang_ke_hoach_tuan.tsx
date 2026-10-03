@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import type { KeHoachTuan, ItemKeHoachTuan, ItemKeHoachThang, LoaiMucTieuThang } from '../../thu_vien/types/ke_hoach';
 import type { BaoCaoKeHoachTuan } from '../../thu_vien/types/bao_cao_ke_hoach';
+import { ThanhSoLieu } from '../ui';
 
 interface Props {
   keHoach: KeHoachTuan | null;
@@ -41,26 +42,26 @@ const renderBadgeLoai = (loai?: LoaiMucTieuThang) => {
   switch (loai) {
     case 'tai_chinh':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
           <DollarSign className="size-3" /> Thu tiền
         </span>
       );
     case 'khach_hang':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-purple-500/10 text-purple-700 border border-purple-500/20">
           <Users className="size-3" /> Khách hàng
         </span>
       );
     case 'khac':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-500/10 text-slate-700 dark:text-slate-300 border border-slate-500/20">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-slate-500/10 text-slate-700 border border-slate-500/20">
           <Target className="size-3" /> Khác
         </span>
       );
     case 'thi_truong':
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-amber-500/10 text-amber-700 border border-amber-500/20">
           <MapPin className="size-3" /> Thị trường
         </span>
       );
@@ -84,25 +85,63 @@ export default function BangKeHoachTuan({
 
   const soDaHoanThanh = ds.filter((x) => x.da_hoan_thanh || (x as any).trang_thai_vat_chung === 'da_lay').length;
   const soPhaiHoTro = ds.filter((x) => (x.can_ho_tro ?? x.nguoi_ho_tro ?? '').trim().length > 0).length;
+  const tyLeHoanThanh = ds.length > 0 ? Math.round((soDaHoanThanh / ds.length) * 100) : 0;
 
   return (
     <div className="space-y-4">
+      <ThanhSoLieu
+        items={[
+          {
+            id: 'tong_viec',
+            nhan: 'Công việc tuần',
+            nhan_ngan: 'Tổng việc',
+            so_lieu: ds.length,
+            icon: Target,
+            mau_so: 'trang',
+          },
+          {
+            id: 'hoan_thanh',
+            nhan: 'Đã hoàn thành',
+            nhan_ngan: 'Hoàn thành',
+            so_lieu: `${soDaHoanThanh}/${ds.length}`,
+            icon: CheckCircle2,
+            mau_so: 'xanh_la',
+          },
+          {
+            id: 'ty_le',
+            nhan: 'Tỷ lệ đạt',
+            nhan_ngan: 'Tỷ lệ',
+            so_lieu: `${tyLeHoanThanh}%`,
+            icon: Calendar,
+            mau_so: 'xanh_duong',
+          },
+          {
+            id: 'can_ho_tro',
+            nhan: 'Cần hỗ trợ',
+            nhan_ngan: 'Hỗ trợ',
+            so_lieu: soPhaiHoTro,
+            icon: HelpCircle,
+            mau_so: 'vang',
+          },
+        ]}
+      />
+
       {/* Banner trạng thái báo cáo tuần nếu có */}
       {baoCao && (
         <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 flex-wrap ${
           baoCao.trang_thai === 'da_gui'
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-300'
-            : 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-300'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900'
+            : 'bg-amber-500/10 border-amber-500/30 text-amber-900'
         }`}>
           <div className="flex items-center gap-2">
             <FileCheck2 className="size-5 shrink-0" />
             <div>
-              <span className="text-xs font-bold block">
+              <span className="text-phu font-bold block">
                 {baoCao.trang_thai === 'da_gui'
-                  ? 'Báo cáo tổng kết tuần này đã nộp cho Sếp'
+                  ? 'Báo cáo tổng kết tuần này đã nộp'
                   : 'Báo cáo tổng kết tuần này đang lưu nháp'}
               </span>
-              <span className="text-[11px] opacity-80 block">
+              <span className="text-nhan opacity-80 block">
                 Hoàn thành: {baoCao.so_hoan_thanh}/{baoCao.tong_muc_tieu} ({baoCao.ty_le_hoan_thanh}%)
                 {baoCao.ngay_cap_nhat && ` • Cập nhật: ${new Date(baoCao.ngay_cap_nhat).toLocaleDateString('vi-VN')}`}
               </span>
@@ -111,57 +150,12 @@ export default function BangKeHoachTuan({
           <button
             type="button"
             onClick={onMoDrawerTongKet}
-            className="h-7.5 px-3 rounded-lg bg-background border border-border hover:bg-muted text-xs font-bold transition-colors shadow-xs"
+            className="h-7.5 px-3 rounded-lg bg-background border border-border hover:bg-muted text-phu font-bold transition-colors shadow-xs"
           >
             Xem & Xuất báo cáo
           </button>
         </div>
       )}
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="rounded-xl border border-border/80 bg-card p-4 flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
-              Tổng số công việc tuần
-            </span>
-            <span className="text-2xl font-extrabold text-foreground mt-1 block">
-              {ds.length} <span className="text-xs font-normal text-muted-foreground">việc</span>
-            </span>
-          </div>
-          <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
-            🎯
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">
-              Đã hoàn thành
-            </span>
-            <span className="text-2xl font-black text-emerald-600 mt-1 block">
-              {soDaHoanThanh} / {ds.length}
-            </span>
-          </div>
-          <div className="size-10 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center font-bold">
-            <CheckCircle2 className="size-5" />
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">
-              Cần hỗ trợ
-            </span>
-            <span className="text-2xl font-black text-amber-600 mt-1 block">
-              {soPhaiHoTro}
-            </span>
-          </div>
-          <div className="size-10 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center font-bold">
-            <HelpCircle className="size-5" />
-          </div>
-        </div>
-      </div>
 
       {/* Main Table */}
       <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs">

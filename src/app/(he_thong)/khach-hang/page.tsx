@@ -52,7 +52,20 @@ import FormKhachHangDrawer from '../../../thanh_phan/khach_hang/form_khach_hang_
 import {
   Nut,
   Rong,
-  Bo_Cuc_Trang
+  Bo_Cuc_Trang,
+  DaiDien,
+  ThanhSoLieu,
+  KhungDanhSach,
+  DanhSachTheMobile,
+  TheMobile,
+  PhanTrang,
+  NutIcon,
+  Bang,
+  ChuDeBang,
+  ThanBang,
+  HangBang,
+  ODauBang,
+  OBang
 } from '../../../thanh_phan/ui';
 
 const SO_BAN_GHI_MOI_TRANG = 20;
@@ -353,154 +366,47 @@ export default function TrangKhachHang() {
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-6">
-      {/* One UI 9 Now Brief Summary trên Mobile (Hỗ trợ nhấp chọn nhanh trạng thái) */}
-      <div className="sm:hidden bg-gradient-to-br from-[#0e3e2d] via-[#13503b] to-[#185942] rounded-[26px] p-3.5 text-white shadow-[0_8px_24px_rgba(14,62,45,0.16)]">
-        <div className="grid grid-cols-4 gap-1.5">
-          <button
-            type="button"
-            onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'tat_ca' }))}
-            className={cn(
-              'rounded-[16px] py-2 px-1 text-center border transition active:scale-95 cursor-pointer',
-              dieu_kien.trang_thai === 'tat_ca' ? 'bg-white/20 border-white/40' : 'bg-white/12 border-white/10'
-            )}
-          >
-            <div className="text-[16px] font-extrabold text-white tabular-nums leading-tight">{so_luong_theo_trang_thai.tong}</div>
-            <div className="text-[10px] font-medium text-emerald-100/85 whitespace-nowrap mt-0.5">Tổng KH</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'hoat_dong' }))}
-            className={cn(
-              'rounded-[16px] py-2 px-1 text-center border transition active:scale-95 cursor-pointer',
-              dieu_kien.trang_thai === 'hoat_dong' ? 'bg-white/20 border-emerald-300/50' : 'bg-white/10 border-white/5'
-            )}
-          >
-            <div className="text-[16px] font-extrabold text-emerald-300 tabular-nums leading-tight">{so_luong_theo_trang_thai.hoat_dong}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Hợp tác</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'tam_dung' }))}
-            className={cn(
-              'rounded-[16px] py-2 px-1 text-center border transition active:scale-95 cursor-pointer',
-              dieu_kien.trang_thai === 'tam_dung' ? 'bg-white/20 border-amber-300/50' : 'bg-white/10 border-white/5'
-            )}
-          >
-            <div className="text-[16px] font-extrabold text-amber-300 tabular-nums leading-tight">{so_luong_theo_trang_thai.tam_dung}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Tạm dừng</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'da_xoa' }))}
-            className={cn(
-              'rounded-[16px] py-2 px-1 text-center border transition active:scale-95 cursor-pointer',
-              dieu_kien.trang_thai === 'da_xoa' ? 'bg-white/20 border-rose-300/50' : 'bg-white/10 border-white/5'
-            )}
-          >
-            <div className="text-[16px] font-extrabold text-rose-300 tabular-nums leading-tight">{so_luong_theo_trang_thai.da_xoa}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Đã xóa</div>
-          </button>
-        </div>
-      </div>
-
-      {/* Bảng số liệu điều hành chuẩn Forest Green Banner trên Desktop (hỗ trợ nhấp lọc nhanh) */}
-      <div className="hidden sm:grid sm:grid-cols-4 bg-[#0e3e2d] rounded-2xl p-3.5 gap-3 shadow-sm border border-emerald-950/20">
-        {/* 1. Tổng khách hàng */}
-        <button
-          type="button"
-          onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'tat_ca' }))}
-          className={cn(
-            'rounded-xl p-3.5 flex items-center gap-3 text-left transition cursor-pointer border',
-            dieu_kien.trang_thai === 'tat_ca'
-              ? 'bg-[#1f6e52] border-emerald-300/40 shadow-xs'
-              : 'bg-[#185942] border-transparent hover:bg-[#1c644b]'
-          )}
-        >
-          <div className="size-10 rounded-xl bg-white/10 text-emerald-200 flex items-center justify-center shrink-0 border border-white/10">
-            <Building2 className="size-5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
-              Tổng khách hàng
-            </div>
-            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
-              {so_luong_theo_trang_thai.tong}
-            </div>
-          </div>
-        </button>
-
-        {/* 2. Đang hợp tác */}
-        <button
-          type="button"
-          onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'hoat_dong' }))}
-          className={cn(
-            'rounded-xl p-3.5 flex items-center gap-3 text-left transition cursor-pointer border',
-            dieu_kien.trang_thai === 'hoat_dong'
-              ? 'bg-[#1f6e52] border-emerald-300/40 shadow-xs'
-              : 'bg-[#185942] border-transparent hover:bg-[#1c644b]'
-          )}
-        >
-          <div className="size-10 rounded-xl bg-emerald-400/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/20">
-            <CheckCircle2 className="size-5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
-              Đang hợp tác
-            </div>
-            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
-              {so_luong_theo_trang_thai.hoat_dong}
-            </div>
-          </div>
-        </button>
-
-        {/* 3. Tạm dừng */}
-        <button
-          type="button"
-          onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'tam_dung' }))}
-          className={cn(
-            'rounded-xl p-3.5 flex items-center gap-3 text-left transition cursor-pointer border',
-            dieu_kien.trang_thai === 'tam_dung'
-              ? 'bg-[#1f6e52] border-amber-300/40 shadow-xs'
-              : 'bg-[#185942] border-transparent hover:bg-[#1c644b]'
-          )}
-        >
-          <div className="size-10 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 border border-amber-400/20">
-            <AlertTriangle className="size-5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
-              Tạm dừng
-            </div>
-            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
-              {so_luong_theo_trang_thai.tam_dung}
-            </div>
-          </div>
-        </button>
-
-        {/* 4. Đã xóa */}
-        <button
-          type="button"
-          onClick={() => set_dieu_kien((d) => ({ ...d, trang_thai: 'da_xoa' }))}
-          className={cn(
-            'rounded-xl p-3.5 flex items-center gap-3 text-left transition cursor-pointer border',
-            dieu_kien.trang_thai === 'da_xoa'
-              ? 'bg-[#1f6e52] border-rose-300/40 shadow-xs'
-              : 'bg-[#185942] border-transparent hover:bg-[#1c644b]'
-          )}
-        >
-          <div className="size-10 rounded-xl bg-rose-400/20 text-rose-300 flex items-center justify-center shrink-0 border border-rose-400/20">
-            <Trash2 className="size-5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
-              Đã xóa
-            </div>
-            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
-              {so_luong_theo_trang_thai.da_xoa}
-            </div>
-          </div>
-        </button>
-      </div>
+      <ThanhSoLieu
+        muc={[
+          {
+            khoa: 'tat_ca',
+            nhan: 'Tổng khách hàng',
+            nhan_ngan: 'Tổng KH',
+            gia_tri: so_luong_theo_trang_thai.tong,
+            icon: Building2,
+            dang_chon: dieu_kien.trang_thai === 'tat_ca',
+            khi_bam: () => set_dieu_kien((d) => ({ ...d, trang_thai: 'tat_ca' }))
+          },
+          {
+            khoa: 'hoat_dong',
+            nhan: 'Đang hợp tác',
+            nhan_ngan: 'Hợp tác',
+            gia_tri: so_luong_theo_trang_thai.hoat_dong,
+            icon: CheckCircle2,
+            mau: 'thanh_cong',
+            dang_chon: dieu_kien.trang_thai === 'hoat_dong',
+            khi_bam: () => set_dieu_kien((d) => ({ ...d, trang_thai: 'hoat_dong' }))
+          },
+          {
+            khoa: 'tam_dung',
+            nhan: 'Tạm dừng',
+            gia_tri: so_luong_theo_trang_thai.tam_dung,
+            icon: AlertTriangle,
+            mau: 'canh_bao',
+            dang_chon: dieu_kien.trang_thai === 'tam_dung',
+            khi_bam: () => set_dieu_kien((d) => ({ ...d, trang_thai: 'tam_dung' }))
+          },
+          {
+            khoa: 'da_xoa',
+            nhan: 'Đã xóa',
+            gia_tri: so_luong_theo_trang_thai.da_xoa,
+            icon: Trash2,
+            mau: 'loi',
+            dang_chon: dieu_kien.trang_thai === 'da_xoa',
+            khi_bam: () => set_dieu_kien((d) => ({ ...d, trang_thai: 'da_xoa' }))
+          }
+        ]}
+      />
 
       <BoLocKhachHang
         gia_tri_hien_tai={dieu_kien}
@@ -519,47 +425,44 @@ export default function TrangKhachHang() {
       ) : danhSachDaSapXep.length === 0 ? (
         <KhongCoDuLieu onThemMoi={mo_them_moi} />
       ) : (
-        <div className="bg-white rounded-[26px] sm:rounded-2xl border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] overflow-hidden">
-          {/* Header danh sách: Gọn gàng trên 1 hàng cả Mobile & Desktop */}
-          <div className="flex items-center justify-between gap-2 px-3.5 sm:px-5 py-3 sm:py-4 border-b border-slate-100 sm:border-slate-200/80 bg-white">
-            <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
-              <h2 className="text-[14px] sm:text-lg font-extrabold text-slate-900 tracking-tight truncate">
-                <span className="sm:hidden">Khách hàng</span>
-                <span className="hidden sm:inline">Danh sách khách hàng</span>
-              </h2>
-              <span className="text-[11px] sm:text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-extrabold border border-emerald-200/80 tabular-nums shrink-0">
-                {danhSachDaSapXep.length}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={mo_them_moi}
-                title="Thêm khách hàng mới"
-                aria-label="Thêm khách hàng mới"
-                className="inline-flex items-center justify-center gap-1.5 size-8 sm:size-auto sm:px-3.5 sm:py-2 rounded-full sm:rounded-xl bg-[#107555] hover:bg-emerald-800 active:scale-95 text-white text-[12px] sm:text-sm font-bold shadow-xs transition cursor-pointer whitespace-nowrap"
-              >
-                <Plus className="size-4 stroke-[2.5]" />
-                <span className="hidden sm:inline">Thêm khách hàng</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 1. GIAO DIỆN BẢNG TRÊN DESKTOP / TABLET (ẩn trên mobile) */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4 w-[50px] text-center">STT</th>
-                  <th className="py-3 px-4 min-w-[240px]">THÔNG TIN KHÁCH HÀNG</th>
-                  <th className="py-3 px-4 w-[110px] text-center">DỰ ÁN</th>
-                  <th className="py-3 px-4 min-w-[180px]">PHỤ TRÁCH</th>
-                  <th className="py-3 px-4 min-w-[200px]">NGƯỜI LIÊN HỆ</th>
-                  <th className="py-3 px-4 w-[110px] text-right">THAO TÁC</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+        <KhungDanhSach
+          tieu_de="Danh sách khách hàng"
+          tieu_de_ngan="Khách hàng"
+          so_luong={danhSachDaSapXep.length}
+          hanh_dong={
+            <Nut
+              kich_thuoc="sm"
+              icon_trai={Plus}
+              onClick={mo_them_moi}
+              title="Thêm khách hàng mới"
+              aria-label="Thêm khách hàng mới"
+            >
+              <span className="hidden sm:inline">Thêm khách hàng</span>
+            </Nut>
+          }
+          chan={
+            <PhanTrang
+              trang={trangHienTai}
+              tong_trang={tongSoTrang}
+              tong_ban_ghi={danhSachDaSapXep.length}
+              don_vi="khách hàng"
+              khi_doi={setTrangHienTai}
+            />
+          }
+        >
+          <div className="hidden sm:block">
+            <Bang>
+              <ChuDeBang>
+                <HangBang className="border-slate-200/80 hover:bg-transparent">
+                  <ODauBang className="w-14 px-4 text-center">STT</ODauBang>
+                  <ODauBang className="min-w-[240px] px-4">Thông tin khách hàng</ODauBang>
+                  <ODauBang className="w-28 px-4 text-center">Dự án</ODauBang>
+                  <ODauBang className="min-w-[180px] px-4">Phụ trách</ODauBang>
+                  <ODauBang className="min-w-[200px] px-4">Người liên hệ</ODauBang>
+                  <ODauBang className="w-28 px-4 text-right">Thao tác</ODauBang>
+                </HangBang>
+              </ChuDeBang>
+              <ThanBang>
                 {danhSachTrangHienTai.map((kh, index) => {
                   const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
                   const soLuongDa = mapSoLuongDuAnTheoKhachHang.get(kh.id) || 0;
@@ -567,96 +470,79 @@ export default function TrangKhachHang() {
                   const lienHeChinh = mapNguoiLienHeTheoKhachHang.get(kh.id);
 
                   return (
-                    <tr
-                      key={kh.id}
-                      className={cn(
-                        'hover:bg-slate-50/70 transition-colors',
-                        kh.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/30'
-                      )}
-                    >
-                      {/* 0. STT */}
-                      <td className="py-3.5 px-4 text-center font-semibold text-slate-400 text-xs tabular-nums">
+                    <HangBang key={kh.id} className={cn(kh.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/30')}>
+                      <OBang className="px-4 py-3.5 text-center font-semibold text-slate-400 text-phu tabular-nums">
                         {stt}
-                      </td>
+                      </OBang>
 
-                      {/* 1. THÔNG TIN KHÁCH HÀNG */}
-                      <td className="py-3.5 px-4">
+                      <OBang className="px-4 py-3.5">
                         <Link
                           href={`/khach-hang/${kh.id}`}
-                          className="font-bold text-slate-900 text-sm hover:text-emerald-700 transition-colors line-clamp-1"
+                          className="font-bold text-slate-900 text-noi-dung hover:text-emerald-700 transition-colors line-clamp-1"
                         >
                           {kh.ten_khach_hang}
                         </Link>
-                        <div className="flex items-center gap-3 text-xs text-slate-400 font-normal mt-0.5 flex-wrap">
-                          {kh.ma_so_thue && (
-                            <span className="font-mono text-slate-500">MST: {kh.ma_so_thue}</span>
-                          )}
+                        <div className="flex items-center gap-3 text-phu text-slate-500 mt-0.5 flex-wrap">
+                          {kh.ma_so_thue && <span className="font-mono">MST: {kh.ma_so_thue}</span>}
                           {kh.so_dien_thoai && (
-                            <span className="inline-flex items-center gap-1 text-slate-500">
+                            <span className="inline-flex items-center gap-1">
                               <Phone className="size-3 text-slate-400" />
                               {kh.so_dien_thoai}
                             </span>
                           )}
                           {kh.email && (
-                            <span className="inline-flex items-center gap-1 text-slate-500">
+                            <span className="inline-flex items-center gap-1">
                               <Mail className="size-3 text-slate-400" />
                               {kh.email}
                             </span>
                           )}
                         </div>
-                      </td>
+                      </OBang>
 
-                      {/* 2. DỰ ÁN */}
-                      <td className="py-3.5 px-4 text-center">
+                      <OBang className="px-4 py-3.5 text-center">
                         <Link
                           href={`/khach-hang/${kh.id}#du-an`}
-                          className={cn(
-                            'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all',
-                            soLuongDa > 0
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 hover:bg-emerald-100 hover:text-emerald-800'
-                              : 'bg-slate-100 text-slate-400 border border-slate-200 hover:bg-slate-200/60'
-                          )}
                           title={`${soLuongDa} dự án`}
+                          className={cn(
+                            'inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-phu font-bold transition-all border',
+                            soLuongDa > 0
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200/60'
+                          )}
                         >
                           <FolderKanban className="size-3.5" />
                           <span>{soLuongDa}</span>
                         </Link>
-                      </td>
+                      </OBang>
 
-                      {/* 3. PHỤ TRÁCH */}
-                      <td className="py-3.5 px-4">
+                      <OBang className="px-4 py-3.5">
                         {nguoiPhuTrach ? (
                           <div className="flex items-center gap-2">
-                            <div className="size-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] font-bold shrink-0">
-                              {nguoiPhuTrach.ho_va_ten?.charAt(0) || 'N'}
-                            </div>
+                            <DaiDien ten={nguoiPhuTrach.ho_va_ten} kich_thuoc="xs" className="size-6 text-nhan" />
                             <div className="min-w-0">
-                              <div className="text-xs font-semibold text-slate-900 truncate">
+                              <div className="text-phu font-semibold text-slate-900 truncate">
                                 {nguoiPhuTrach.ho_va_ten}
                               </div>
                               {nguoiPhuTrach.chuc_vu && (
-                                <div className="text-[11px] text-slate-400 truncate">
-                                  {nguoiPhuTrach.chuc_vu}
-                                </div>
+                                <div className="text-nhan text-slate-400 truncate">{nguoiPhuTrach.chuc_vu}</div>
                               )}
                             </div>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-400 italic">Chưa phân công</span>
+                          <span className="text-phu text-slate-400">Chưa phân công</span>
                         )}
-                      </td>
+                      </OBang>
 
-                      {/* 4. NGƯỜI LIÊN HỆ */}
-                      <td className="py-3.5 px-4">
+                      <OBang className="px-4 py-3.5">
                         {lienHeChinh ? (
                           <div className="min-w-0">
-                            <div className="text-xs font-semibold text-slate-900 truncate flex items-center gap-1.5">
+                            <div className="text-phu font-semibold text-slate-900 truncate flex items-center gap-1.5">
                               <span>{lienHeChinh.ho_va_ten}</span>
                               {lienHeChinh.chuc_vu && (
-                                <span className="text-[11px] text-slate-500 font-normal">({lienHeChinh.chuc_vu})</span>
+                                <span className="text-nhan text-slate-500 font-normal">({lienHeChinh.chuc_vu})</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5 flex-wrap">
+                            <div className="flex items-center gap-2 text-nhan text-slate-500 mt-0.5 flex-wrap">
                               {lienHeChinh.so_dien_thoai && (
                                 <a
                                   href={`tel:${lienHeChinh.so_dien_thoai}`}
@@ -675,71 +561,50 @@ export default function TrangKhachHang() {
                             </div>
                           </div>
                         ) : (
-                          <span className="text-xs text-slate-400 italic">Chưa có liên hệ</span>
+                          <span className="text-phu text-slate-400">Chưa có liên hệ</span>
                         )}
-                      </td>
+                      </OBang>
 
-                      {/* 5. THAO TÁC */}
-                      <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                      <OBang className="px-4 py-3.5 whitespace-nowrap text-right">
                         <div className="inline-flex items-center gap-1 justify-end">
-                          <Link
-                            href={`/khach-hang/${kh.id}`}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
-                            title="Xem chi tiết"
-                          >
-                            <Eye className="size-4" />
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => mo_chinh_sua(kh)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                            title="Chỉnh sửa"
-                          >
-                            <Pencil className="size-4" />
-                          </button>
+                          <NutIcon href={`/khach-hang/${kh.id}`} icon={Eye} nhan="Xem chi tiết" sac="primary" />
+                          <NutIcon icon={Pencil} nhan="Chỉnh sửa" onClick={() => mo_chinh_sua(kh)} />
                           {kh.trang_thai === 'da_xoa' ? (
-                            <button
-                              type="button"
+                            <NutIcon
+                              icon={RotateCcw}
+                              nhan="Khôi phục khách hàng"
+                              sac="primary"
                               disabled={Boolean(dang_xu_ly_khac[`khoi_phuc_${kh.id}`])}
                               onClick={() => xu_ly_khoi_phuc(kh)}
-                              className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50 cursor-pointer"
-                              title="Khôi phục khách hàng"
-                            >
-                              <RotateCcw className="size-4" />
-                            </button>
+                            />
                           ) : (
                             <>
-                              <button
-                                type="button"
+                              <NutIcon
+                                icon={kh.trang_thai === 'hoat_dong' ? Lock : Unlock}
+                                nhan={kh.trang_thai === 'hoat_dong' ? 'Tạm dừng' : 'Kích hoạt'}
+                                sac="canh_bao"
                                 disabled={Boolean(dang_xu_ly_khac[`doi_tt_${kh.id}`])}
                                 onClick={() => xu_ly_doi_trang_thai(kh)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition disabled:opacity-50 cursor-pointer"
-                                title={kh.trang_thai === 'hoat_dong' ? 'Tạm dừng' : 'Kích hoạt'}
-                              >
-                                {kh.trang_thai === 'hoat_dong' ? <Lock className="size-4" /> : <Unlock className="size-4" />}
-                              </button>
-                              <button
-                                type="button"
+                              />
+                              <NutIcon
+                                icon={Trash2}
+                                nhan="Xóa vào thùng rác"
+                                sac="loi"
                                 disabled={Boolean(dang_xu_ly_khac[`xoa_${kh.id}`])}
                                 onClick={() => xu_ly_xoa_mem(kh)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition disabled:opacity-50 cursor-pointer"
-                                title="Xóa vào thùng rác"
-                              >
-                                <Trash2 className="size-4" />
-                              </button>
+                              />
                             </>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </OBang>
+                    </HangBang>
                   );
                 })}
-              </tbody>
-            </table>
+              </ThanBang>
+            </Bang>
           </div>
 
-          {/* 2. GIAO DIỆN THẺ SQUIRCLE ONE UI 9 TRÊN MOBILE */}
-          <div className="sm:hidden flex flex-col gap-2.5 p-2.5 bg-slate-100/70">
+          <DanhSachTheMobile>
             {danhSachTrangHienTai.map((kh, index) => {
               const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
               const soLuongDa = mapSoLuongDuAnTheoKhachHang.get(kh.id) || 0;
@@ -750,51 +615,41 @@ export default function TrangKhachHang() {
               const loaiKhNhan = TEN_LOAI_KH[kh.loai_khach_hang]?.nhan || 'Khách hàng';
 
               return (
-                <div
-                  key={kh.id}
-                  className={cn(
-                    "p-3.5 bg-white rounded-[22px] border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition-colors relative",
-                    kh.trang_thai === 'da_xoa' && 'opacity-70 bg-slate-50/50'
-                  )}
-                >
-                  {/* Hàng 1: STT + Tên khách hàng + Phân loại chìm ngay sau tên */}
+                <TheMobile key={kh.id} mo_di={kh.trang_thai === 'da_xoa'}>
                   <div className="flex items-start gap-2">
-                    <span className="text-slate-400 text-[11.5px] font-extrabold tabular-nums mt-0.5 shrink-0">
+                    <span className="text-slate-400 text-nhan font-extrabold tabular-nums mt-0.5 shrink-0">
                       {stt}.
                     </span>
-                    <Link href={`/khach-hang/${kh.id}`} className="flex-1 min-w-0 group">
-                      <div className="text-[14.5px] leading-snug">
-                        <span className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                          {kh.ten_khach_hang}
-                        </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
+                    <Link href={`/khach-hang/${kh.id}`} className="flex-1 min-w-0">
+                      <div className="text-noi-dung leading-snug">
+                        <span className="font-bold text-slate-900">{kh.ten_khach_hang}</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-nhan font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
                           {loaiKhNhan}
                         </span>
                       </div>
                     </Link>
 
                     {kh.trang_thai === 'da_xoa' && (
-                      <button
-                        type="button"
+                      <NutIcon
+                        icon={RotateCcw}
+                        nhan="Khôi phục khách hàng"
+                        sac="primary"
+                        className="shrink-0 -my-1"
                         disabled={Boolean(dang_xu_ly_khac[`khoi_phuc_${kh.id}`])}
                         onClick={() => xu_ly_khoi_phuc(kh)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white active:scale-95 transition cursor-pointer shrink-0"
-                      >
-                        <RotateCcw className="size-3" strokeWidth={2.5} />
-                      </button>
+                      />
                     )}
                   </div>
 
-                  {/* Hàng 2 (Footer): Số dự án + SĐT bên trái | Người phụ trách bên phải */}
                   <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-slate-100">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <Link
                         href={`/khach-hang/${kh.id}#du-an`}
                         className={cn(
-                          'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[12px] font-extrabold shrink-0',
+                          'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-phu font-extrabold shrink-0 border',
                           soLuongDa > 0
-                            ? 'bg-emerald-50/80 text-[#107555] border border-emerald-200/60'
-                            : 'bg-slate-100 text-slate-500 border border-slate-200/60'
+                            ? 'bg-emerald-50/80 text-primary border-emerald-200/60'
+                            : 'bg-slate-100 text-slate-500 border-slate-200/60'
                         )}
                       >
                         <FolderKanban className="size-3" />
@@ -803,7 +658,7 @@ export default function TrangKhachHang() {
                       {kh.so_dien_thoai && (
                         <a
                           href={`tel:${kh.so_dien_thoai}`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200/70 text-slate-600 text-[11.5px] font-semibold hover:bg-emerald-50 hover:text-emerald-700 truncate"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200/70 text-slate-600 text-nhan font-semibold hover:bg-emerald-50 hover:text-emerald-700 truncate"
                         >
                           <Phone className="size-2.5 text-slate-400 shrink-0" />
                           <span className="truncate">{kh.so_dien_thoai}</span>
@@ -812,45 +667,16 @@ export default function TrangKhachHang() {
                     </div>
 
                     {tenPhuTrachNgan && (
-                      <span className="bg-slate-100 px-2 py-0.5 rounded-full text-[11px] font-semibold text-slate-700 shrink-0">
+                      <span className="bg-slate-100 px-2 py-0.5 rounded-full text-nhan font-semibold text-slate-700 shrink-0">
                         {tenPhuTrachNgan}
                       </span>
                     )}
                   </div>
-                </div>
+                </TheMobile>
               );
             })}
-          </div>
-
-          {/* Thanh phân trang */}
-          {tongSoTrang > 1 && (
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-slate-200/80 bg-white">
-              <div className="text-xs font-semibold text-slate-500 tabular-nums">
-                Trang <span className="text-slate-900 font-bold">{trangHienTai}</span> / {tongSoTrang} ({danhSachDaSapXep.length} khách hàng)
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={trangHienTai <= 1}
-                  onClick={() => setTrangHienTai((p) => Math.max(1, p - 1))}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
-                >
-                  <ChevronLeft className="size-3.5" />
-                  <span>Trước</span>
-                </button>
-                <button
-                  type="button"
-                  disabled={trangHienTai >= tongSoTrang}
-                  onClick={() => setTrangHienTai((p) => Math.min(tongSoTrang, p + 1))}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
-                >
-                  <span>Sau</span>
-                  <ChevronRight className="size-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+          </DanhSachTheMobile>
+        </KhungDanhSach>
       )}
 
       <FormKhachHangDrawer

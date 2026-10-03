@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   TrendingUp,
   Sparkles,
@@ -30,7 +31,20 @@ import {
 import { useStoreXacThuc } from '../../../thu_vien/zustand/store_xac_thuc';
 import { coQuyen, layPhamViPhongBan } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import { DaiDien } from '../../../thanh_phan/ui/dai_dien';
-import { Nut } from '../../../thanh_phan/ui';
+import {
+  Nut,
+  Bo_Cuc_Trang,
+  ThanhSoLieu,
+  KhungDanhSach,
+  Bang,
+  ChuDeBang,
+  HangBang,
+  ODauBang,
+  ThanBang,
+  OBang,
+  DanhSachTheMobile,
+  TheMobile
+} from '../../../thanh_phan/ui';
 import { cn } from '../../../thu_vien/utils/cn';
 import { DINH_DANG_TIEN_NGAN_GON } from '../../../thu_vien/utils/format_tien';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
@@ -62,6 +76,7 @@ import ModalDanhSachDuAn from '../../../thanh_phan/tong_quan_lanh_dao/modal_danh
 import ModalChiTietKeHoach from '../../../thanh_phan/tong_quan_lanh_dao/modal_chi_tiet_ke_hoach';
 
 export default function TrangTongQuanLanhDao() {
+  const router = useRouter();
   const { nguoiDungHienTai } = useStoreXacThuc();
 
   // State dữ liệu
@@ -313,145 +328,74 @@ export default function TrangTongQuanLanhDao() {
   }
 
   return (
-    <div className="space-y-3.5 sm:space-y-5 pb-12">
-      {/* 1. One UI 9 Now Brief Bar: Gọn gàng trên Mobile, đầy đủ trên Desktop */}
-      <div className="bg-gradient-to-r from-[#144d39] via-[#185942] to-[#1d6b50] rounded-[26px] p-3.5 sm:px-5 sm:py-4 text-white shadow-[0_6px_24px_rgba(24,89,66,0.18)] flex items-center justify-between gap-2.5">
-        <div className="hidden sm:block">
-          <h1 className="text-lg sm:text-xl font-extrabold tracking-tight">Tổng Quan Kinh Doanh</h1>
-        </div>
+    <Bo_Cuc_Trang>
+      {/* 1. Thước đo Điều hành Kinh doanh (ThanhSoLieu với tương tác Drill-down) */}
+      <ThanhSoLieu
+        muc={[
+          {
+            khoa: 'lead',
+            nhan: 'Số lượng Lead',
+            nhan_ngan: 'Lead',
+            gia_tri: dangTai ? '-' : thongKeLanhDao.tongLead,
+            icon: Target,
+            mau: 'mac_dinh',
+            khi_bam: () => router.push('/lead'),
+          },
+          {
+            khoa: 'tiem_nang',
+            nhan: 'Tiềm năng cao',
+            nhan_ngan: 'Tiềm năng',
+            gia_tri: dangTai ? '-' : thongKeLanhDao.tongTiemNangCao,
+            icon: Flame,
+            mau: 'canh_bao',
+            khi_bam: () =>
+              setDuAnModal({
+                mo: true,
+                tieuDe: 'Dự án Tiềm năng cao',
+                danhSachDuAn: thongKeLanhDao.duAnTiemNangCao,
+              }),
+          },
+          {
+            khoa: 'sap_ky',
+            nhan: 'Sắp ký HĐ',
+            gia_tri: dangTai ? '-' : thongKeLanhDao.tongSapKyHD,
+            icon: Award,
+            mau: 'thong_tin',
+            khi_bam: () =>
+              setDuAnModal({
+                mo: true,
+                tieuDe: 'Dự án Sắp ký hợp đồng',
+                danhSachDuAn: thongKeLanhDao.duAnSapKyHD,
+              }),
+          },
+          {
+            khoa: 'tong_gia_tri',
+            nhan: `Giá trị (${thongKeLanhDao.tongDuAnPhuTrach} DA)`,
+            nhan_ngan: 'Giá trị',
+            gia_tri: dangTai ? '-' : DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongGiaTri),
+            icon: Layers,
+            mau: 'thanh_cong',
+            khi_bam: () =>
+              setDuAnModal({
+                mo: true,
+                tieuDe: `Dự án đang chạy (${thongKeLanhDao.tongDuAnPhuTrach})`,
+                danhSachDuAn: thongKeLanhDao.duAnPhuTrach,
+              }),
+          },
+        ]}
+      />
 
-        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-          <div className="flex items-center bg-white/12 hover:bg-white/18 transition rounded-full px-3.5 py-1.5 border border-white/15 text-xs font-semibold text-white">
-            <Calendar className="w-3.5 h-3.5 mr-2 text-emerald-200 shrink-0" />
-            <input
-              type="date"
-              value={ngayChon}
-              onChange={(e) => setNgayChon(e.target.value)}
-              className="bg-transparent text-white font-bold focus:outline-none cursor-pointer text-xs"
-            />
+      {/* 2. Thanh Điều hành Lịch hẹn & Đánh giá */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[var(--shadow-nhe)] p-3 sm:px-4 sm:py-3 flex flex-wrap items-center justify-between gap-2.5">
+        {/* Cụm Lịch hẹn (Drill-down) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          <div className="hidden sm:flex items-center gap-1.5 mr-1">
+            <div className="size-7 rounded-xl bg-emerald-500/12 text-primary flex items-center justify-center shrink-0">
+              <Calendar className="size-3.5" />
+            </div>
+            <span className="font-bold text-slate-800 text-noi-dung">Lịch hẹn:</span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleChayAIToanBo}
-            disabled={dangChayAITatCa}
-            className="inline-flex items-center justify-center rounded-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-amber-950 font-extrabold text-xs shadow-xs py-1.5 px-4 transition cursor-pointer disabled:opacity-60 shrink-0"
-          >
-            <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', dangChayAITatCa && 'animate-spin')} />
-            <span>{dangChayAITatCa ? 'Đang chạy...' : 'Đánh giá'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Thẻ chỉ số Modular Squircle Cards (Không chú thích rườm rà, chạm mở chi tiết) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* Thẻ 1: Lead */}
-        <Link
-          href="/lead"
-          className="bg-white p-3.5 sm:p-4.5 rounded-[24px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] hover:border-blue-300 transition-all active:scale-[0.98] flex items-center justify-between gap-3 group"
-        >
-          <div className="min-w-0">
-            <span className="text-[11px] sm:text-xs font-bold text-slate-500 block truncate">
-              Số lượng Lead
-            </span>
-            <p className="text-2xl sm:text-3xl font-black text-blue-600 tracking-tight tabular-nums mt-1 leading-none">
-              {thongKeLanhDao.tongLead}
-            </p>
-          </div>
-          <div className="size-10 sm:size-11 rounded-[16px] bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <Target className="size-5" />
-          </div>
-        </Link>
-
-        {/* Thẻ 2: Dự án tiềm năng cao */}
-        <button
-          type="button"
-          onClick={() =>
-            setDuAnModal({
-              mo: true,
-              tieuDe: 'Dự án Tiềm năng cao',
-              danhSachDuAn: thongKeLanhDao.duAnTiemNangCao
-            })
-          }
-          className="bg-white p-3.5 sm:p-4.5 rounded-[24px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] hover:border-amber-300 transition-all active:scale-[0.98] flex items-center justify-between gap-3 text-left cursor-pointer group"
-        >
-          <div className="min-w-0">
-            <span className="text-[11px] sm:text-xs font-bold text-slate-500 block truncate">
-              Tiềm năng cao
-            </span>
-            <p className="text-2xl sm:text-3xl font-black text-amber-600 tracking-tight tabular-nums mt-1 leading-none">
-              {thongKeLanhDao.tongTiemNangCao}
-            </p>
-          </div>
-          <div className="size-10 sm:size-11 rounded-[16px] bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <Flame className="size-5" />
-          </div>
-        </button>
-
-        {/* Thẻ 3: Sắp ký hợp đồng */}
-        <button
-          type="button"
-          onClick={() =>
-            setDuAnModal({
-              mo: true,
-              tieuDe: 'Dự án Sắp ký hợp đồng',
-              danhSachDuAn: thongKeLanhDao.duAnSapKyHD
-            })
-          }
-          className="bg-white p-3.5 sm:p-4.5 rounded-[24px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] hover:border-purple-300 transition-all active:scale-[0.98] flex items-center justify-between gap-3 text-left cursor-pointer group"
-        >
-          <div className="min-w-0">
-            <span className="text-[11px] sm:text-xs font-bold text-slate-500 block truncate">
-              Sắp ký HĐ
-            </span>
-            <p className="text-2xl sm:text-3xl font-black text-purple-600 tracking-tight tabular-nums mt-1 leading-none">
-              {thongKeLanhDao.tongSapKyHD}
-            </p>
-          </div>
-          <div className="size-10 sm:size-11 rounded-[16px] bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <Award className="size-5" />
-          </div>
-        </button>
-
-        {/* Thẻ 4: Tổng giá trị dự kiến */}
-        <button
-          type="button"
-          onClick={() =>
-            setDuAnModal({
-              mo: true,
-              tieuDe: `Dự án đang chạy (${thongKeLanhDao.tongDuAnPhuTrach})`,
-              danhSachDuAn: thongKeLanhDao.duAnPhuTrach
-            })
-          }
-          className="bg-white p-3.5 sm:p-4.5 rounded-[24px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] hover:border-emerald-300 transition-all active:scale-[0.98] flex items-center justify-between gap-2 text-left cursor-pointer group"
-        >
-          <div className="min-w-0">
-            <span className="text-[11px] sm:text-xs font-bold text-slate-500 block truncate">
-              Tổng giá trị ({thongKeLanhDao.tongDuAnPhuTrach} DA)
-            </span>
-            <p className="text-lg sm:text-2xl font-black text-[#185942] truncate tracking-tight tabular-nums mt-1 leading-none">
-              {DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongGiaTri)}
-            </p>
-          </div>
-          <div className="size-10 sm:size-11 rounded-[16px] bg-emerald-500/10 text-[#185942] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <Layers className="size-5" />
-          </div>
-        </button>
-      </div>
-
-      {/* 2.5. Thanh Lịch hẹn Now Nudge (1 dòng gọn gàng kiểu viên thuốc One UI 9) */}
-      <div className="bg-white rounded-[24px] border border-slate-200/80 shadow-[0_2px_12px_rgba(15,23,42,0.03)] px-3.5 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="size-8 rounded-[12px] bg-emerald-500/12 text-[#185942] flex items-center justify-center shrink-0">
-            <Calendar className="size-4" />
-          </div>
-          <span className="font-bold text-slate-800 text-xs sm:text-sm truncate">
-            <span className="sm:hidden">Lịch hẹn</span>
-            <span className="hidden sm:inline">Lịch gặp khách hàng</span>
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={() =>
@@ -461,7 +405,7 @@ export default function TrangTongQuanLanhDao() {
                 danhSachLich: thongKeLanhDao.lichTuanNay
               })
             }
-            className="px-2.5 sm:px-3 py-1.5 rounded-full bg-purple-500/10 hover:bg-purple-500/15 text-[11px] sm:text-xs font-bold text-purple-700 transition active:scale-95 cursor-pointer whitespace-nowrap"
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/15 text-phu font-bold text-purple-700 transition active:scale-95 cursor-pointer whitespace-nowrap"
           >
             Tuần này: <span className="font-black">{thongKeLanhDao.lichTuanNay.length}</span>
           </button>
@@ -475,63 +419,75 @@ export default function TrangTongQuanLanhDao() {
                 danhSachLich: thongKeLanhDao.lichThangNay
               })
             }
-            className="px-2.5 sm:px-3 py-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/15 text-[11px] sm:text-xs font-bold text-emerald-800 transition active:scale-95 cursor-pointer whitespace-nowrap"
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/15 text-phu font-bold text-emerald-800 transition active:scale-95 cursor-pointer whitespace-nowrap"
           >
             Tháng {ngayChon.slice(5, 7)}: <span className="font-black">{thongKeLanhDao.lichThangNay.length}</span>
           </button>
 
           <Link
             href="/lich-cong-tac"
-            className="inline-flex items-center gap-0.5 px-3 py-1.5 rounded-full bg-[#185942] hover:bg-emerald-900 !text-white text-[11px] sm:text-xs font-bold transition active:scale-95 whitespace-nowrap"
+            className="inline-flex items-center gap-0.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-phu font-bold transition active:scale-95 whitespace-nowrap"
           >
-            <span className="text-white">Xem lịch</span>
-            <ChevronRight className="size-3.5 text-white" />
+            <span>Xem lịch</span>
+            <ChevronRight className="size-3.5 text-slate-500" />
           </Link>
+        </div>
+
+        {/* Cụm Ngày đánh giá & Nút Đánh giá */}
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center bg-slate-50 hover:bg-slate-100 transition rounded-xl px-3 py-1.5 border border-slate-200 text-phu font-semibold text-slate-700">
+            <Calendar className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+            <input
+              type="date"
+              value={ngayChon}
+              onChange={(e) => setNgayChon(e.target.value)}
+              className="bg-transparent text-slate-800 font-bold focus:outline-none cursor-pointer text-phu"
+            />
+          </div>
+
+          <Nut
+            kieu="primary"
+            kich_thuoc="sm"
+            onClick={handleChayAIToanBo}
+            disabled={dangChayAITatCa}
+            icon_trai={RefreshCw}
+          >
+            {dangChayAITatCa ? 'Đang chạy...' : 'Đánh giá'}
+          </Nut>
         </div>
       </div>
 
       {/* 3. Danh sách Đội Ngũ Kinh Doanh */}
-      <div className="bg-white rounded-[28px] border border-slate-200/80 shadow-[0_2px_14px_rgba(15,23,42,0.03)] overflow-hidden">
-        <div className="px-4 py-3.5 sm:px-5 sm:py-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-[12px] bg-emerald-500/12 text-[#185942] flex items-center justify-center">
-              <Users className="size-4" />
-            </div>
-            <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
-              Đội ngũ Kinh doanh
-            </h3>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-[#185942] font-extrabold border border-emerald-200/60">
-              {dsNhanSuHienThi.length}
-            </span>
-          </div>
-        </div>
-
+      <KhungDanhSach
+        tieu_de="Đội ngũ Kinh doanh"
+        so_luong={dsNhanSuHienThi.length}
+      >
         {dangTai ? (
-          <div className="py-14 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
-            <Loader2 className="w-6 h-6 animate-spin text-[#185942]" />
-            <span>Đang tải dữ liệu...</span>
+          <div className="py-14 text-center text-slate-500 text-phu flex flex-col items-center justify-center gap-2">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <span>Đang tải...</span>
           </div>
         ) : dsNhanSuHienThi.length === 0 ? (
-          <div className="py-14 text-center text-slate-400 text-sm">
+          <div className="py-14 text-center text-slate-400 text-noi-dung">
             Chưa có dữ liệu nhân viên kinh doanh.
           </div>
         ) : (
           <>
-            {/* GIAO DIỆN BẢNG TRÊN PC (Desktop Table - Cột rõ ràng, chữ to ngay ngắn) */}
-            <div className="hidden xl:block overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/80 text-slate-500 font-bold uppercase tracking-wider text-xs border-b border-slate-200/80">
-                    <th className="py-3.5 px-5">Nhân viên</th>
-                    <th className="py-3.5 px-3 text-center">Điểm</th>
-                    <th className="py-3.5 px-3 text-center">Lead</th>
-                    <th className="py-3.5 px-3 text-center">Dự án</th>
-                    <th className="py-3.5 px-3 text-center">Tiềm năng</th>
-                    <th className="py-3.5 px-3 text-center">Sắp ký HĐ</th>
-                    <th className="py-3.5 px-5 text-right">Doanh số dự kiến</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
+            {/* GIAO DIỆN BẢNG TRÊN PC */}
+            <div className="hidden lg:block">
+              <Bang>
+                <ChuDeBang>
+                  <HangBang>
+                    <ODauBang>Nhân viên</ODauBang>
+                    <ODauBang className="text-center">Điểm</ODauBang>
+                    <ODauBang className="text-center">Lead</ODauBang>
+                    <ODauBang className="text-center">Dự án</ODauBang>
+                    <ODauBang className="text-center">Tiềm năng</ODauBang>
+                    <ODauBang className="text-center">Sắp ký HĐ</ODauBang>
+                    <ODauBang className="text-right">Doanh số dự kiến</ODauBang>
+                  </HangBang>
+                </ChuDeBang>
+                <ThanBang>
                   {dsNhanSuHienThi.map((ns) => {
                     const leadCuaNS = dsLead.filter((l) => l.nguoi_phu_trach_id === ns.id);
                     const duAnCuaNS = dsDuAn.filter((da) => da.nguoi_phu_trach_id === ns.id);
@@ -548,37 +504,34 @@ export default function TrangTongQuanLanhDao() {
                     const aiRecord = dsDanhGiaAI.find((d) => d.nhan_vien_id === ns.id);
 
                     return (
-                      <tr
-                        key={ns.id}
-                        className="hover:bg-slate-50/90 transition-colors group"
-                      >
+                      <HangBang key={ns.id} className="group">
                         {/* Cột 1: Nhân viên */}
-                        <td className="py-3.5 px-5">
+                        <OBang>
                           <div className="flex items-center gap-3">
                             <DaiDien
                               anh={ns.url_anh_dai_dien || ''}
                               ten={ns.ho_va_ten || 'NV'}
-                              className="w-9 h-9 text-xs font-bold ring-1 ring-slate-200 shrink-0"
+                              className="w-9 h-9 text-phu font-bold ring-1 ring-slate-200 shrink-0"
                             />
                             <div className="min-w-0">
-                              <p className="font-bold text-sm sm:text-base text-slate-900 group-hover:text-[#185942] transition-colors truncate">
+                              <p className="font-bold text-noi-dung text-slate-900 group-hover:text-primary transition-colors truncate">
                                 {ns.ho_va_ten}
                               </p>
-                              <p className="text-xs text-slate-400 font-mono">
+                              <p className="text-nhan text-slate-400 font-mono">
                                 {ns.ma_nhan_vien || ns.id.slice(0, 5)}
                               </p>
                             </div>
                           </div>
-                        </td>
+                        </OBang>
 
                         {/* Cột 2: Điểm */}
-                        <td className="py-3.5 px-3 text-center">
+                        <OBang className="text-center">
                           {aiRecord ? (
                             <button
                               type="button"
                               onClick={() => setNhanSuDangChon(ns)}
                               className={cn(
-                                'px-2.5 py-1 rounded-full text-xs font-black transition-all cursor-pointer border hover:scale-105',
+                                'px-2.5 py-1 rounded-full text-phu font-black transition-all cursor-pointer border hover:scale-105',
                                 aiRecord.muc_do_tong_the === 'tot' &&
                                   'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100',
                                 aiRecord.muc_do_tong_the === 'canh_bao' &&
@@ -591,16 +544,16 @@ export default function TrangTongQuanLanhDao() {
                               {aiRecord.diem_hieu_suat}/100
                             </button>
                           ) : (
-                            <span className="text-slate-300 text-xs italic">—</span>
+                            <span className="text-slate-300 text-phu italic">—</span>
                           )}
-                        </td>
+                        </OBang>
 
                         {/* Cột 3: Lead */}
-                        <td className="py-3.5 px-3 text-center">
+                        <OBang className="text-center">
                           <Link
                             href="/lead"
                             className={cn(
-                              'px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer text-xs inline-flex items-center gap-1',
+                              'px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer text-phu inline-flex items-center gap-1',
                               leadCuaNS.length > 0
                                 ? 'bg-blue-50 hover:bg-blue-100 text-blue-700'
                                 : 'bg-slate-100 text-slate-400'
@@ -609,10 +562,10 @@ export default function TrangTongQuanLanhDao() {
                           >
                             <span>{leadCuaNS.length}</span>
                           </Link>
-                        </td>
+                        </OBang>
 
                         {/* Cột 4: Dự án phụ trách */}
-                        <td className="py-3.5 px-3 text-center">
+                        <OBang className="text-center">
                           <button
                             type="button"
                             onClick={() => {
@@ -622,15 +575,15 @@ export default function TrangTongQuanLanhDao() {
                                 danhSachDuAn: duAnCuaNS
                               });
                             }}
-                            className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition-colors cursor-pointer text-xs"
+                            className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition-colors cursor-pointer text-phu"
                             title="Xem danh sách dự án"
                           >
                             {duAnCuaNS.length}
                           </button>
-                        </td>
+                        </OBang>
 
                         {/* Cột 5: Tiềm năng cao */}
-                        <td className="py-3.5 px-3 text-center">
+                        <OBang className="text-center">
                           <button
                             type="button"
                             onClick={() => {
@@ -641,7 +594,7 @@ export default function TrangTongQuanLanhDao() {
                               });
                             }}
                             className={cn(
-                              'px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer text-xs inline-flex items-center gap-1',
+                              'px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer text-phu inline-flex items-center gap-1',
                               dsTiemNangCuaNS.length > 0
                                 ? 'bg-amber-100/90 hover:bg-amber-200 text-amber-800'
                                 : 'bg-slate-100 text-slate-400'
@@ -651,10 +604,10 @@ export default function TrangTongQuanLanhDao() {
                             {dsTiemNangCuaNS.length > 0 && <Flame className="w-3 h-3 text-amber-600" />}
                             <span>{dsTiemNangCuaNS.length}</span>
                           </button>
-                        </td>
+                        </OBang>
 
                         {/* Cột 6: Sắp ký HĐ */}
-                        <td className="py-3.5 px-3 text-center">
+                        <OBang className="text-center">
                           <button
                             type="button"
                             onClick={() => {
@@ -665,7 +618,7 @@ export default function TrangTongQuanLanhDao() {
                               });
                             }}
                             className={cn(
-                              'px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer text-xs inline-flex items-center gap-1',
+                              'px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer text-phu inline-flex items-center gap-1',
                               dsSapKyCuaNS.length > 0
                                 ? 'bg-purple-100/90 hover:bg-purple-200 text-purple-800'
                                 : 'bg-slate-100 text-slate-400'
@@ -675,23 +628,33 @@ export default function TrangTongQuanLanhDao() {
                             {dsSapKyCuaNS.length > 0 && <Award className="w-3 h-3 text-purple-600" />}
                             <span>{dsSapKyCuaNS.length}</span>
                           </button>
-                        </td>
+                        </OBang>
 
                         {/* Cột 7: Doanh số dự kiến nổi bật */}
-                        <td className="py-3.5 px-5 text-right">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full font-mono font-extrabold text-xs bg-emerald-50 text-[#107555] border border-emerald-200/80">
+                        <OBang className="text-right">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDuAnModal({
+                                mo: true,
+                                tieuDe: `Dự án phụ trách • ${ns.ho_va_ten}`,
+                                danhSachDuAn: duAnCuaNS
+                              })
+                            }
+                            className="inline-flex items-center px-3 py-1 rounded-full font-mono font-extrabold text-phu bg-emerald-50 hover:bg-emerald-100 text-primary border border-emerald-200/80 transition cursor-pointer"
+                          >
                             {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
-                          </span>
-                        </td>
-                      </tr>
+                          </button>
+                        </OBang>
+                      </HangBang>
                     );
                   })}
-                </tbody>
-              </table>
+                </ThanBang>
+              </Bang>
             </div>
 
-            {/* GIAO DIỆN MOBILE/TABLET: Tách từng thẻ nhân viên trên nền xám nhạt giống trang Dự án */}
-            <div className="xl:hidden flex flex-col gap-2.5 p-2.5 bg-slate-100/70">
+            {/* GIAO DIỆN MOBILE/TABLET: Thẻ đồng bộ (DanhSachTheMobile + TheMobile) */}
+            <DanhSachTheMobile>
               {dsNhanSuHienThi.map((ns) => {
                 const leadCuaNS = dsLead.filter((l) => l.nguoi_phu_trach_id === ns.id);
                 const duAnCuaNS = dsDuAn.filter((da) => da.nguoi_phu_trach_id === ns.id);
@@ -708,20 +671,17 @@ export default function TrangTongQuanLanhDao() {
                 const aiRecord = dsDanhGiaAI.find((d) => d.nhan_vien_id === ns.id);
 
                 return (
-                  <div
-                    key={ns.id}
-                    className="p-3.5 bg-white rounded-[22px] border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] space-y-2.5"
-                  >
+                  <TheMobile key={ns.id} className="space-y-2.5">
                     {/* Hàng 1: Avatar + Tên + Điểm số (Trái) | Doanh số nổi bật (Phải) */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <DaiDien
                           anh={ns.url_anh_dai_dien || ''}
                           ten={ns.ho_va_ten || 'NV'}
-                          className="size-10 text-xs font-bold ring-1 ring-slate-200 shrink-0"
+                          className="size-9 text-phu font-bold ring-1 ring-slate-200 shrink-0"
                         />
                         <div className="min-w-0">
-                          <span className="font-bold text-[14.5px] text-slate-900 truncate block leading-tight">
+                          <span className="font-bold text-noi-dung text-slate-900 truncate block leading-tight">
                             {ns.ho_va_ten}
                           </span>
                           {aiRecord ? (
@@ -729,7 +689,7 @@ export default function TrangTongQuanLanhDao() {
                               type="button"
                               onClick={() => setNhanSuDangChon(ns)}
                               className={cn(
-                                'mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-extrabold border transition-transform active:scale-95 cursor-pointer',
+                                'mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-nhan font-extrabold border transition-transform active:scale-95 cursor-pointer',
                                 aiRecord.muc_do_tong_the === 'tot' &&
                                   'bg-emerald-50 text-emerald-800 border-emerald-200',
                                 aiRecord.muc_do_tong_the === 'canh_bao' &&
@@ -741,7 +701,7 @@ export default function TrangTongQuanLanhDao() {
                               Điểm: {aiRecord.diem_hieu_suat}/100
                             </button>
                           ) : (
-                            <span className="text-[11px] text-slate-400 font-medium">Chưa chấm điểm</span>
+                            <span className="text-nhan text-slate-400 font-medium">Chưa chấm điểm</span>
                           )}
                         </div>
                       </div>
@@ -756,20 +716,20 @@ export default function TrangTongQuanLanhDao() {
                             danhSachDuAn: duAnCuaNS
                           })
                         }
-                        className="font-mono font-extrabold text-[#107555] text-[13px] bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200/80 shadow-2xs shrink-0 active:scale-95 transition cursor-pointer"
+                        className="font-mono font-extrabold text-primary text-phu bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80 shadow-2xs shrink-0 active:scale-95 transition cursor-pointer"
                       >
                         {DINH_DANG_TIEN_NGAN_GON(giaTriDuAn)}
                       </button>
                     </div>
 
                     {/* Hàng 2: 4 chỉ số trọng tâm (Lead, Dự án, Tiềm năng, Sắp ký) */}
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-4 gap-2 pt-1">
                       <Link
                         href="/lead"
-                        className="bg-blue-500/8 border border-blue-200/50 py-1.5 px-1.5 rounded-[14px] text-center active:scale-95 transition"
+                        className="bg-blue-500/8 border border-blue-200/50 py-1.5 px-1.5 rounded-xl text-center active:scale-95 transition"
                       >
-                        <p className="text-[10px] font-bold text-blue-600 truncate">Lead</p>
-                        <p className="text-xs font-black text-blue-900 tabular-nums mt-0.5">{leadCuaNS.length}</p>
+                        <p className="text-nhan font-bold text-blue-600 truncate">Lead</p>
+                        <p className="text-phu font-black text-blue-900 tabular-nums mt-0.5">{leadCuaNS.length}</p>
                       </Link>
 
                       <button
@@ -781,10 +741,10 @@ export default function TrangTongQuanLanhDao() {
                             danhSachDuAn: duAnCuaNS
                           })
                         }
-                        className="bg-slate-100/80 border border-slate-200/60 py-1.5 px-1.5 rounded-[14px] text-center active:scale-95 transition cursor-pointer"
+                        className="bg-slate-100/80 border border-slate-200/60 py-1.5 px-1.5 rounded-xl text-center active:scale-95 transition cursor-pointer"
                       >
-                        <p className="text-[10px] font-bold text-slate-500 truncate">Dự án</p>
-                        <p className="text-xs font-black text-slate-800 tabular-nums mt-0.5">{duAnCuaNS.length}</p>
+                        <p className="text-nhan font-bold text-slate-500 truncate">Dự án</p>
+                        <p className="text-phu font-black text-slate-800 tabular-nums mt-0.5">{duAnCuaNS.length}</p>
                       </button>
 
                       <button
@@ -797,14 +757,14 @@ export default function TrangTongQuanLanhDao() {
                           })
                         }
                         className={cn(
-                          'border py-1.5 px-1.5 rounded-[14px] text-center active:scale-95 transition cursor-pointer',
+                          'border py-1.5 px-1.5 rounded-xl text-center active:scale-95 transition cursor-pointer',
                           dsTiemNangCuaNS.length > 0
                             ? 'bg-amber-500/10 border-amber-200/70 text-amber-800'
                             : 'bg-slate-50 border-slate-200/50 text-slate-400'
                         )}
                       >
-                        <p className="text-[10px] font-bold text-amber-600 truncate">Tiềm năng</p>
-                        <p className="text-xs font-black text-amber-800 tabular-nums mt-0.5">{dsTiemNangCuaNS.length}</p>
+                        <p className="text-nhan font-bold text-amber-600 truncate">Tiềm năng</p>
+                        <p className="text-phu font-black text-amber-800 tabular-nums mt-0.5">{dsTiemNangCuaNS.length}</p>
                       </button>
 
                       <button
@@ -817,23 +777,23 @@ export default function TrangTongQuanLanhDao() {
                           })
                         }
                         className={cn(
-                          'border py-1.5 px-1.5 rounded-[14px] text-center active:scale-95 transition cursor-pointer',
+                          'border py-1.5 px-1.5 rounded-xl text-center active:scale-95 transition cursor-pointer',
                           dsSapKyCuaNS.length > 0
                             ? 'bg-purple-500/10 border-purple-200/70 text-purple-800'
                             : 'bg-slate-50 border-slate-200/50 text-slate-400'
                         )}
                       >
-                        <p className="text-[10px] font-bold text-purple-600 truncate">Sắp ký</p>
-                        <p className="text-xs font-black text-purple-800 tabular-nums mt-0.5">{dsSapKyCuaNS.length}</p>
+                        <p className="text-nhan font-bold text-purple-600 truncate">Sắp ký</p>
+                        <p className="text-phu font-black text-purple-800 tabular-nums mt-0.5">{dsSapKyCuaNS.length}</p>
                       </button>
                     </div>
-                  </div>
+                  </TheMobile>
                 );
               })}
-            </div>
+            </DanhSachTheMobile>
           </>
         )}
-      </div>
+      </KhungDanhSach>
 
       {/* 4. Drawer Xem chi tiết Đánh giá */}
       <DrawerChiTietDanhGia
@@ -884,17 +844,17 @@ export default function TrangTongQuanLanhDao() {
       {/* 7. Modal Drill-down hiển thị chi tiết Lịch gặp khách hàng */}
       {lichGapModal?.mo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="bg-white w-full max-w-2xl rounded-[26px] shadow-2xl border border-slate-200 overflow-hidden max-h-[85vh] flex flex-col">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[85vh] flex flex-col">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
               <div>
-                <h3 className="font-bold text-slate-900 text-base">
+                <h3 className="font-bold text-slate-900 text-tieu-de">
                   {lichGapModal.tieuDe} ({lichGapModal.danhSachLich.length})
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setLichGapModal(null)}
-                className="px-3.5 py-1.5 rounded-full text-xs font-bold text-slate-600 bg-slate-200/70 hover:bg-slate-200 transition cursor-pointer"
+                className="px-3.5 py-1.5 rounded-full text-phu font-bold text-slate-600 bg-slate-200/70 hover:bg-slate-200 transition cursor-pointer"
               >
                 Đóng
               </button>
@@ -902,7 +862,7 @@ export default function TrangTongQuanLanhDao() {
 
             <div className="p-4 overflow-y-auto divide-y divide-slate-100 flex-1">
               {lichGapModal.danhSachLich.length === 0 ? (
-                <div className="py-12 text-center text-sm text-slate-400">
+                <div className="py-12 text-center text-noi-dung text-slate-400">
                   Chưa có lịch gặp khách hàng trong kỳ này.
                 </div>
               ) : (
@@ -916,28 +876,28 @@ export default function TrangTongQuanLanhDao() {
                     >
                       <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-xs font-extrabold tabular-nums">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-phu font-extrabold tabular-nums">
                             {formatNgay(lich.ngay)} • {lich.gio_bat_dau} - {lich.gio_ket_thuc}
                           </span>
-                          <span className="font-bold text-slate-900 text-sm">
+                          <span className="font-bold text-slate-900 text-noi-dung">
                             {lich.ten_khach_hang}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-600 flex items-center gap-3 flex-wrap">
+                        <div className="text-phu text-slate-600 flex items-center gap-3 flex-wrap">
                           <span>
                             Phụ trách: <strong className="text-slate-800">{ns?.ho_va_ten || 'Chưa gán'}</strong>
                           </span>
                           {lich.dia_diem && <span>• Địa điểm: {lich.dia_diem}</span>}
                         </div>
                         {lich.noi_dung && (
-                          <p className="text-xs text-slate-500 line-clamp-2">{lich.noi_dung}</p>
+                          <p className="text-phu text-slate-500 line-clamp-2">{lich.noi_dung}</p>
                         )}
                       </div>
 
                       {ttObj && (
                         <span
                           className={cn(
-                            'shrink-0 text-[11px] font-bold px-2.5 py-0.5 rounded-full border',
+                            'shrink-0 text-nhan font-bold px-2.5 py-0.5 rounded-full border',
                             ttObj.mauBadge
                           )}
                         >
@@ -953,7 +913,7 @@ export default function TrangTongQuanLanhDao() {
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/70 flex items-center justify-end">
               <Link
                 href="/lich-cong-tac"
-                className="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-[#185942] hover:bg-emerald-900 !text-white text-xs font-bold transition shadow-xs"
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-full bg-primary hover:bg-primary-dam !text-white text-phu font-bold transition shadow-xs"
               >
                 <span className="text-white">Mở Lịch Công Tác (Google Calendar)</span>
                 <ChevronRight className="w-3.5 h-3.5 text-white" />
@@ -962,6 +922,6 @@ export default function TrangTongQuanLanhDao() {
           </div>
         </div>
       )}
-    </div>
+    </Bo_Cuc_Trang>
   );
 }

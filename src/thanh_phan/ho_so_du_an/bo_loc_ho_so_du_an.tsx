@@ -113,7 +113,7 @@ export default function BoLocHoSoDuAn({
             value={tuKhoa}
             onChange={(e) => datGiaTri('tuKhoa', e.target.value)}
             placeholder="Tìm tên dự án, khách hàng..."
-            className="w-full h-11 rounded-full sm:rounded-2xl border border-slate-200/90 bg-white pl-10 pr-9 text-[13px] sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition"
+            className="w-full h-10 sm:h-11 rounded-full sm:rounded-2xl border border-slate-200/90 bg-white pl-10 pr-9 text-noi-dung font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-nhe transition"
           />
           {tuKhoa && (
             <button
@@ -130,10 +130,10 @@ export default function BoLocHoSoDuAn({
         {khi_doi_sap_xep && (
           <div
             className={cn(
-              'relative size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0',
+              'relative size-10 sm:size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0',
               kieu_sap_xep !== 'moi_nhat'
-                ? 'bg-emerald-50 border-emerald-300 text-[#107555]'
-                : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 shadow-[0_2px_8px_rgba(15,23,42,0.03)]'
+                ? 'bg-emerald-50 border-emerald-300 text-primary'
+                : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 shadow-nhe'
             )}
             title="Sắp xếp danh sách"
           >
@@ -158,17 +158,17 @@ export default function BoLocHoSoDuAn({
           onClick={() => setMoRong((m) => !m)}
           title={moRong ? 'Đóng bộ lọc' : 'Mở bộ lọc'}
           className={cn(
-            'relative size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0 cursor-pointer',
+            'relative size-10 sm:size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0 cursor-pointer',
             moRong || soLuongDieuKienKhacMacDinh > 0
-              ? 'bg-[#107555] border-[#107555] text-white shadow-sm shadow-emerald-700/20'
-              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_2px_8px_rgba(15,23,42,0.03)]'
+              ? 'bg-primary border-primary text-white shadow-sm shadow-emerald-700/20'
+              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-nhe'
           )}
         >
           <Filter className="size-[18px]" />
           {soLuongDieuKienKhacMacDinh > 0 && (
             <span className={cn(
-              "absolute -top-1 -right-1 size-5 rounded-full text-[10px] font-extrabold flex items-center justify-center border-2 border-white",
-              moRong ? "bg-amber-400 text-slate-900" : "bg-[#107555] text-white"
+              "absolute -top-1 -right-1 size-5 rounded-full text-nhan font-bold flex items-center justify-center border-2 border-white",
+              moRong ? "bg-amber-400 text-slate-900" : "bg-primary text-white"
             )}>
               {soLuongDieuKienKhacMacDinh}
             </span>
@@ -181,7 +181,7 @@ export default function BoLocHoSoDuAn({
             type="button"
             onClick={xoaTatCa}
             title="Xóa tất cả điều kiện lọc"
-            className="size-11 rounded-full sm:rounded-2xl border border-rose-200/80 bg-rose-50/60 flex items-center justify-center text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.95] shrink-0 cursor-pointer"
+            className="size-10 sm:size-11 rounded-full sm:rounded-2xl border border-rose-200/80 bg-rose-50/60 flex items-center justify-center text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.95] shrink-0 cursor-pointer"
           >
             <XCircle className="size-5" />
           </button>

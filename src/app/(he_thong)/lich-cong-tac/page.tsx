@@ -44,7 +44,7 @@ import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nh
 import FormLichGapModal, {
   type GiaTriMacDinhLichGap
 } from '../../../thanh_phan/lich_gap_kh/form_lich_gap_modal';
-import { Bo_Cuc_Trang, Nut, DaiDien } from '../../../thanh_phan/ui';
+import { Bo_Cuc_Trang, Nut, DaiDien, ThanhSoLieu } from '../../../thanh_phan/ui';
 
 type CheDoXem = 'tuan' | 'thang' | 'danh_sach';
 
@@ -162,6 +162,23 @@ const layLuoiNgayTrongThang = (ngayGocISO: string): { iso: string; ngaySo: numbe
   });
 };
 
+const CHIEU_CAO_GIO = 72;
+
+const chuyenGioSangPhut = (gio?: string): number => {
+  const [h, m] = (gio || '0:0').split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+
+const layPhutHienTai = (): number => {
+  const chuoi = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).format(new Date());
+  return chuyenGioSangPhut(chuoi);
+};
+
 export default function TrangLichCongTac() {
   const { nguoiDungHienTai } = useStoreXacThuc();
   const homNayISO = useMemo(
@@ -182,6 +199,13 @@ export default function TrangLichCongTac() {
   const [cheDoXem, setCheDoXem] = useState<CheDoXem>('tuan');
   const [ngayDangXem, setNgayDangXem] = useState<string>(homNayISO);
   const [ngayChonTrongThang, setNgayChonTrongThang] = useState<string>(homNayISO);
+  const [ngayChonTuan, setNgayChonTuan] = useState<string>(homNayISO);
+  const [phutHienTai, setPhutHienTai] = useState<number>(() => layPhutHienTai());
+
+  useEffect(() => {
+    const timer = setInterval(() => setPhutHienTai(layPhutHienTai()), 60000);
+    return () => clearInterval(timer);
+  }, []);
   const [chiNhanhLoc, setChiNhanhLoc] = useState<string>('tat_ca');
   const [nhanSuLoc, setNhanSuLoc] = useState<string>('tat_ca');
 
@@ -259,6 +283,83 @@ export default function TrangLichCongTac() {
   // 7 ngày của tuần đang xem
   const ds7NgayTuan = useMemo(() => layDanhSach7NgayTrongTuan(ngayDangXem), [ngayDangXem]);
   const luoiNgayThang = useMemo(() => layLuoiNgayTrongThang(ngayDangXem), [ngayDangXem]);
+
+  // Lịch tuần mobile: ngày đang chọn, khung giờ & bố trí thẻ theo giờ
+  const ngayTuanHienThi =
+    ds7NgayTuan.find((d) => d.iso === ngayChonTuan) ??
+    ds7NgayTuan.find((d) => d.laHomNay) ??
+    ds7NgayTuan[0];
+
+  const lichNgayChon = useMemo(
+    () =>
+      dsLichLoc
+        .filter((l) => l.ngay === ngayTuanHienThi.iso && l.trang_thai !== 'huy')
+        .sort((a, b) => a.gio_bat_dau.localeCompare(b.gio_bat_dau)),
+    [dsLichLoc, ngayTuanHienThi.iso]
+  );
+
+  const khungGio = useMemo(() => {
+    let dau = 8;
+    let cuoi = 18;
+    dsLichLoc
+      .filter((l) => l.ngay === ngayTuanHienThi.iso)
+      .forEach((l) => {
+        dau = Math.min(dau, Math.floor(chuyenGioSangPhut(l.gio_bat_dau) / 60));
+        cuoi = Math.max(cuoi, Math.ceil(chuyenGioSangPhut(l.gio_ket_thuc) / 60));
+      });
+    return { dau, cuoi: Math.min(24, Math.max(cuoi, dau + 1)) };
+  }, [dsLichLoc, ngayTuanHienThi.iso]);
+
+  const lichBoTri = useMemo(() => {
+    const muc = dsLichLoc
+      .filter((l) => l.ngay === ngayTuanHienThi.iso)
+      .map((lich) => {
+        const batDau = chuyenGioSangPhut(lich.gio_bat_dau);
+        const ketThuc = Math.max(chuyenGioSangPhut(lich.gio_ket_thuc), batDau + 30);
+        return { lich, batDau, ketThuc, lane: 0, tongLane: 1 };
+      })
+      .sort((a, b) => a.batDau - b.batDau || a.ketThuc - b.ketThuc);
+
+    let nhom: typeof muc = [];
+    let lanes: number[] = [];
+    let ketThucNhom = -1;
+    const chotNhom = () => {
+      nhom.forEach((m) => {
+        m.tongLane = lanes.length || 1;
+      });
+      nhom = [];
+      lanes = [];
+    };
+    muc.forEach((m) => {
+      if (nhom.length > 0 && m.batDau >= ketThucNhom) chotNhom();
+      let idx = lanes.findIndex((ketThuc) => ketThuc <= m.batDau);
+      if (idx === -1) {
+        idx = lanes.length;
+        lanes.push(m.ketThuc);
+      } else {
+        lanes[idx] = m.ketThuc;
+      }
+      m.lane = idx;
+      ketThucNhom = nhom.length === 0 ? m.ketThuc : Math.max(ketThucNhom, m.ketThuc);
+      nhom.push(m);
+    });
+    chotNhom();
+    return muc;
+  }, [dsLichLoc, ngayTuanHienThi.iso]);
+
+  const viTriDuongHienTai =
+    ngayTuanHienThi.iso === homNayISO &&
+    phutHienTai >= khungGio.dau * 60 &&
+    phutHienTai <= khungGio.cuoi * 60
+      ? ((phutHienTai - khungGio.dau * 60) / 60) * CHIEU_CAO_GIO
+      : null;
+
+  const chuyenTuanMobile = (huong: -1 | 1) => {
+    const [y, m, d] = ngayTuanHienThi.iso.split('-').map(Number);
+    const moi = chuyenDateSangISO(new Date(y, m - 1, d + huong * 7));
+    setNgayChonTuan(moi);
+    setNgayDangXem(moi);
+  };
 
   // Thống kê tổng quan
   const thongKe = useMemo(() => {
@@ -366,102 +467,53 @@ export default function TrangLichCongTac() {
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-5">
-      {/* 1. ONE UI 9 NOW BRIEF SUMMARY TRÊN MOBILE */}
-      <div className="sm:hidden bg-gradient-to-br from-[#0e3e2d] via-[#13503b] to-[#185942] rounded-[26px] p-3.5 text-white shadow-[0_8px_24px_rgba(14,62,45,0.16)] space-y-2.5">
-        <div className="flex items-center justify-between px-0.5">
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="size-4 text-emerald-300" />
-            <span className="text-[13px] font-extrabold text-white tracking-tight">{tieuDeThoiGian}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleMoThemNhanh(homNayISO, '09:00')}
-            title="Thêm lịch hẹn"
-            aria-label="Thêm lịch hẹn"
-            className="inline-flex items-center justify-center size-8 rounded-full bg-white text-[#0e3e2d] font-extrabold shadow-xs active:scale-95 transition cursor-pointer"
-          >
-            <Plus className="size-4 stroke-[2.5]" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-4 gap-1.5">
-          <div className="bg-white/12 rounded-[16px] py-1.5 px-1 text-center border border-white/10">
-            <div className="text-[15px] font-extrabold text-sky-300 tabular-nums leading-tight">{thongKe.lichHomNay}</div>
-            <div className="text-[10px] font-medium text-emerald-100/85 whitespace-nowrap mt-0.5">Hôm nay</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[15px] font-extrabold text-white tabular-nums leading-tight">{thongKe.lichTuanNay}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Tuần này</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[15px] font-extrabold text-amber-300 tabular-nums leading-tight">{thongKe.lichThangNay}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Tháng này</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[15px] font-extrabold text-emerald-300 tabular-nums leading-tight">{thongKe.daHoanThanh}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Đã gặp</div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. BẢNG SỐ LIỆU ĐIỀU HÀNH DESKTOP */}
-      <div className="hidden sm:grid sm:grid-cols-4 bg-[#0e3e2d] rounded-2xl p-3.5 gap-3 shadow-sm border border-emerald-950/20">
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-blue-400/20 text-blue-200 flex items-center justify-center shrink-0 border border-blue-400/20">
-            <Clock className="size-5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
-              Lịch hôm nay
-            </div>
-            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
-              {thongKe.lichHomNay}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-white/10 text-emerald-200 flex items-center justify-center shrink-0 border border-white/10">
-            <CalendarIcon className="size-5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
-              Lịch tuần này
-            </div>
-            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
-              {thongKe.lichTuanNay}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-purple-400/20 text-purple-200 flex items-center justify-center shrink-0 border border-purple-400/20">
-            <Users className="size-5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
-              Lịch trong tháng
-            </div>
-            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
-              {thongKe.lichThangNay}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-emerald-400/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/20">
-            <CheckCircle2 className="size-5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">
-              Đã hoàn thành
-            </div>
-            <div className="text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
-              {thongKe.daHoanThanh}
-            </div>
-          </div>
-        </div>
-      </div>
+      <ThanhSoLieu
+        items={[
+          {
+            id: 'hom_nay',
+            nhan: 'Lịch hôm nay',
+            nhan_ngan: 'Hôm nay',
+            so_lieu: thongKe.lichHomNay,
+            icon: Clock,
+            mau_so: 'xanh_duong',
+            dang_chon: ngayChonTuan === homNayISO && cheDoXem === 'tuan',
+            khi_bam: () => {
+              setNgayDangXem(homNayISO);
+              setNgayChonTrongThang(homNayISO);
+              setNgayChonTuan(homNayISO);
+              setCheDoXem('tuan');
+            },
+          },
+          {
+            id: 'tuan_nay',
+            nhan: 'Lịch tuần này',
+            nhan_ngan: 'Tuần này',
+            so_lieu: thongKe.lichTuanNay,
+            icon: CalendarIcon,
+            mau_so: 'trang',
+            dang_chon: cheDoXem === 'tuan',
+            khi_bam: () => setCheDoXem('tuan'),
+          },
+          {
+            id: 'thang_nay',
+            nhan: 'Lịch trong tháng',
+            nhan_ngan: 'Tháng này',
+            so_lieu: thongKe.lichThangNay,
+            icon: Users,
+            mau_so: 'vang',
+            dang_chon: cheDoXem === 'thang',
+            khi_bam: () => setCheDoXem('thang'),
+          },
+          {
+            id: 'da_hoan_thanh',
+            nhan: 'Đã hoàn thành',
+            nhan_ngan: 'Đã gặp',
+            so_lieu: thongKe.daHoanThanh,
+            icon: CheckCircle2,
+            mau_so: 'xanh_la',
+          },
+        ]}
+      />
 
       {/* 3. THANH ĐIỀU HƯỚNG GOOGLE CALENDAR & BỘ LỌC */}
       <div className="bg-white p-3 sm:p-4 rounded-[24px] sm:rounded-2xl border border-slate-200/80 shadow-[0_2px_10px_rgba(15,23,42,0.03)] flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3">
@@ -473,6 +525,7 @@ export default function TrangLichCongTac() {
               onClick={() => {
                 setNgayDangXem(homNayISO);
                 setNgayChonTrongThang(homNayISO);
+                setNgayChonTuan(homNayISO);
               }}
               className="px-3 py-1.5 rounded-full sm:rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50 transition cursor-pointer"
             >
@@ -481,7 +534,7 @@ export default function TrangLichCongTac() {
             <button
               type="button"
               onClick={() => diChuyenThoiGian(-1)}
-              className="p-1.5 rounded-full sm:rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+              className={cn('p-1.5 rounded-full sm:rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer', cheDoXem !== 'thang' && 'max-sm:hidden')}
               title="Kỳ trước"
             >
               <ChevronLeft className="size-4" />
@@ -489,7 +542,7 @@ export default function TrangLichCongTac() {
             <button
               type="button"
               onClick={() => diChuyenThoiGian(1)}
-              className="p-1.5 rounded-full sm:rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+              className={cn('p-1.5 rounded-full sm:rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer', cheDoXem !== 'thang' && 'max-sm:hidden')}
               title="Kỳ sau"
             >
               <ChevronRight className="size-4" />
@@ -753,180 +806,207 @@ export default function TrangLichCongTac() {
                 </div>
               )}
 
-              {/* MOBILE: LỊCH TUẦN DỌC TRỰC QUAN (7 ngày trong tuần theo chiều dọc + thanh chọn nhanh 7 ngày) */}
-              <div className="sm:hidden space-y-2.5">
-                {/* Thanh 7 ngày trong tuần có chấm đánh dấu ngày có lịch */}
-                <div className="bg-white rounded-[22px] p-2 border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] grid grid-cols-7 gap-1">
-                  {ds7NgayTuan.map((cotNgay, idx) => {
-                    const soLich = dsLichLoc.filter((l) => l.ngay === cotNgay.iso && l.trang_thai !== 'huy').length;
-                    const thuGon = idx === 6 ? 'CN' : `T${idx + 2}`;
-                    const ngaySo = cotNgay.ngayThang.slice(0, 2);
-                    return (
-                      <a
-                        key={cotNgay.iso}
-                        href={`#lich-ngay-${cotNgay.iso}`}
-                        className={cn(
-                          'flex flex-col items-center justify-center py-1.5 rounded-2xl transition',
-                          cotNgay.laHomNay
-                            ? 'bg-[#107555] text-white shadow-xs'
-                            : soLich > 0
-                            ? 'bg-emerald-50/70 text-slate-900'
-                            : 'text-slate-500'
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'text-[10px] font-bold uppercase',
-                            cotNgay.laHomNay ? 'text-emerald-100' : 'text-slate-400'
-                          )}
+              {/* MOBILE: LỊCH TUẦN - Thanh chọn ngày + Timeline theo giờ của ngày đang chọn */}
+              <div className="sm:hidden space-y-3">
+                <div className="bg-[#0e3e2d] rounded-[28px] p-4 space-y-4 shadow-[0_8px_24px_rgba(14,62,45,0.18)]">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => chuyenTuanMobile(-1)}
+                      aria-label="Tuần trước"
+                      className="size-9 rounded-full flex items-center justify-center text-white hover:bg-white/10 active:scale-95 transition cursor-pointer"
+                    >
+                      <ChevronLeft className="size-5" />
+                    </button>
+                    <span className="text-[15px] font-bold text-white tracking-tight">
+                      Tháng {Number(ngayTuanHienThi.iso.slice(5, 7))}, {ngayTuanHienThi.iso.slice(0, 4)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => chuyenTuanMobile(1)}
+                      aria-label="Tuần sau"
+                      className="size-9 rounded-full flex items-center justify-center text-white hover:bg-white/10 active:scale-95 transition cursor-pointer"
+                    >
+                      <ChevronRight className="size-5" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1">
+                    {ds7NgayTuan.map((ngay, idx) => {
+                      const dangChon = ngay.iso === ngayTuanHienThi.iso;
+                      const coLich = dsLichLoc.some((l) => l.ngay === ngay.iso && l.trang_thai !== 'huy');
+                      return (
+                        <button
+                          key={ngay.iso}
+                          type="button"
+                          onClick={() => setNgayChonTuan(ngay.iso)}
+                          className="flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition"
                         >
-                          {thuGon}
-                        </span>
-                        <span className="text-[13px] font-extrabold tabular-nums mt-0.5">{ngaySo}</span>
-                        <div className="h-1.5 flex items-center justify-center gap-0.5 mt-0.5">
-                          {soLich > 0 && (
-                            <span
-                              className={cn(
-                                'size-1.5 rounded-full',
-                                cotNgay.laHomNay ? 'bg-white' : 'bg-[#107555]'
-                              )}
-                            />
-                          )}
-                        </div>
-                      </a>
-                    );
-                  })}
+                          <span className="text-[11px] font-medium text-emerald-100/60">
+                            {idx === 6 ? 'CN' : `T${idx + 2}`}
+                          </span>
+                          <span
+                            className={cn(
+                              'size-9 rounded-full flex items-center justify-center text-[14px] font-bold tabular-nums transition',
+                              dangChon
+                                ? 'bg-amber-400 text-[#0e3e2d]'
+                                : ngay.laHomNay
+                                ? 'text-white ring-1 ring-amber-300/80'
+                                : 'text-white'
+                            )}
+                          >
+                            {ngay.ngayThang.slice(0, 2)}
+                          </span>
+                          <span
+                            className={cn(
+                              'size-1 rounded-full',
+                              coLich ? 'bg-amber-300' : 'bg-transparent'
+                            )}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleMoThemNhanh(ngayTuanHienThi.iso, '09:00')}
+                    className="w-full h-12 rounded-full bg-amber-400 hover:bg-amber-300 text-[#0e3e2d] text-[14px] font-extrabold flex items-center justify-center gap-1.5 active:scale-[0.98] transition cursor-pointer"
+                  >
+                    <Plus className="size-4 stroke-[2.8]" />
+                    Thêm lịch hẹn
+                  </button>
                 </div>
 
-                {/* Danh sách lịch dọc 7 ngày trong tuần */}
-                <div className="bg-slate-100/70 p-2.5 rounded-[26px] border border-slate-200/80 space-y-2">
-                  {ds7NgayTuan.map((cotNgay) => {
-                    const lichTrongNgay = dsLichLoc.filter((l) => l.ngay === cotNgay.iso);
-                    const coLich = lichTrongNgay.length > 0;
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-[16px] font-extrabold text-slate-900 tracking-tight">
+                    {ngayTuanHienThi.thu}, {ngayTuanHienThi.ngayThang}
+                  </h3>
+                  {lichNgayChon.length > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/70 text-[11px] font-extrabold tabular-nums">
+                      {lichNgayChon.length} lịch
+                    </span>
+                  )}
+                </div>
 
-                    return (
-                      <div
-                        key={cotNgay.iso}
-                        id={`lich-ngay-${cotNgay.iso}`}
-                        className={cn(
-                          'bg-white rounded-[22px] border transition-all overflow-hidden',
-                          cotNgay.laHomNay
-                            ? 'border-emerald-400/80 shadow-[0_2px_10px_rgba(16,117,85,0.08)]'
-                            : 'border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.02)]'
-                        )}
-                      >
-                        {/* Header từng ngày */}
-                        <div
-                          className={cn(
-                            'px-3.5 py-2.5 flex items-center justify-between',
-                            coLich && 'border-b border-slate-100',
-                            cotNgay.laHomNay ? 'bg-emerald-50/60' : 'bg-white'
-                          )}
+                <div className="bg-white rounded-[24px] border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] px-3 py-4">
+                  <div className="relative flex" style={{ height: (khungGio.cuoi - khungGio.dau) * CHIEU_CAO_GIO }}>
+                    <div className="w-12 shrink-0 relative">
+                      {Array.from({ length: khungGio.cuoi - khungGio.dau + 1 }, (_, i) => (
+                        <span
+                          key={i}
+                          className="absolute left-0 text-[11px] font-semibold text-slate-400 tabular-nums leading-none"
+                          style={{ top: i * CHIEU_CAO_GIO - 5 }}
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span
-                              className={cn(
-                                'text-[13px] font-extrabold',
-                                cotNgay.laHomNay ? 'text-[#107555]' : 'text-slate-800'
-                              )}
-                            >
-                              {cotNgay.thu}, {cotNgay.ngayThang}
-                            </span>
-                            {cotNgay.laHomNay && (
-                              <span className="px-2 py-0.5 rounded-full bg-[#107555] text-white text-[10px] font-bold">
-                                Hôm nay
-                              </span>
-                            )}
-                            {coLich ? (
-                              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/70 text-[10px] font-extrabold tabular-nums">
-                                {lichTrongNgay.length} lịch
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-slate-400 font-medium">Trống</span>
-                            )}
-                          </div>
+                          {String(khungGio.dau + i).padStart(2, '0')}:00
+                        </span>
+                      ))}
+                    </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleMoThemNhanh(cotNgay.iso, '09:00')}
-                            title={`Thêm lịch ngày ${cotNgay.ngayThang}`}
-                            aria-label={`Thêm lịch ngày ${cotNgay.ngayThang}`}
-                            className="size-7 rounded-full bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 flex items-center justify-center active:scale-95 transition cursor-pointer shrink-0"
+                    <div className="relative flex-1 min-w-0">
+                      {Array.from({ length: khungGio.cuoi - khungGio.dau }, (_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          aria-label={`Thêm lịch lúc ${String(khungGio.dau + i).padStart(2, '0')}:00`}
+                          onClick={() =>
+                            handleMoThemNhanh(
+                              ngayTuanHienThi.iso,
+                              `${String(khungGio.dau + i).padStart(2, '0')}:00`
+                            )
+                          }
+                          className="absolute inset-x-0 border-t border-slate-100 active:bg-slate-50 transition cursor-pointer"
+                          style={{ top: i * CHIEU_CAO_GIO, height: CHIEU_CAO_GIO }}
+                        />
+                      ))}
+                      <div
+                        className="absolute inset-x-0 border-t border-slate-100"
+                        style={{ top: (khungGio.cuoi - khungGio.dau) * CHIEU_CAO_GIO }}
+                      />
+
+                      {lichBoTri.map((muc) => {
+                        const { lich } = muc;
+                        const top = ((muc.batDau - khungGio.dau * 60) / 60) * CHIEU_CAO_GIO;
+                        const cao = Math.max(((muc.ketThuc - muc.batDau) / 60) * CHIEU_CAO_GIO - 4, 44);
+                        const dangDienRa =
+                          ngayTuanHienThi.iso === homNayISO &&
+                          phutHienTai >= muc.batDau &&
+                          phutHienTai < muc.ketThuc &&
+                          lich.trang_thai !== 'huy';
+                        const dsNguoi = Array.from(
+                          new Set([lich.nguoi_phu_trach_id, ...(lich.nguoi_tham_gia_ids || [])].filter(Boolean))
+                        );
+                        const rong = cao >= 92;
+
+                        return (
+                          <div
+                            key={lich.id}
+                            role="button"
+                            onClick={() => {
+                              setLichDangSua(lich);
+                              setMoModal(true);
+                            }}
+                            className={cn(
+                              'absolute z-10 rounded-2xl px-3 py-2 overflow-hidden cursor-pointer active:scale-[0.98] transition',
+                              lich.trang_thai === 'huy'
+                                ? 'bg-slate-100 opacity-60 line-through'
+                                : dangDienRa
+                                ? 'bg-[#FFEBD6]'
+                                : lich.trang_thai === 'da_hoan_thanh'
+                                ? 'bg-emerald-50 border border-emerald-100'
+                                : 'bg-white border border-slate-200 shadow-xs'
+                            )}
+                            style={{
+                              top: top + 2,
+                              height: cao,
+                              left: `calc(${(muc.lane / muc.tongLane) * 100}% + 4px)`,
+                              width: `calc(${100 / muc.tongLane}% - 6px)`
+                            }}
                           >
-                            <Plus className="size-3.5 stroke-[2.5]" />
-                          </button>
-                        </div>
-
-                        {/* Danh sách lịch hẹn trong ngày đó */}
-                        {coLich && (
-                          <div className="divide-y divide-slate-100">
-                            {lichTrongNgay.map((lich, idxLich) => {
-                              const ns = mapNhanSu.get(lich.nguoi_phu_trach_id);
-                              const tenNsNgan = ns?.ho_va_ten
-                                ? ns.ho_va_ten.trim().split(/\s+/).slice(-2).join(' ')
-                                : 'Chưa gán';
-                              const ttObj = DANH_SACH_TRANG_THAI_LICH_GAP.find(
-                                (t) => t.key === lich.trang_thai
-                              );
-
-                              return (
-                                <div
-                                  key={lich.id}
-                                  onClick={() => {
-                                    setLichDangSua(lich);
-                                    setMoModal(true);
-                                  }}
-                                  className={cn(
-                                    'p-3.5 active:bg-slate-50 transition cursor-pointer',
-                                    lich.trang_thai === 'huy' && 'opacity-55 line-through'
-                                  )}
-                                >
-                                  <div className="flex items-start gap-2">
-                                    <span className="text-slate-400 text-[11.5px] font-extrabold tabular-nums mt-0.5 shrink-0">
-                                      {idxLich + 1}.
-                                    </span>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-[14px] leading-snug">
-                                        <span className="font-bold text-slate-900">
-                                          {lich.ten_khach_hang}
-                                        </span>
-                                        {ttObj && (
-                                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
-                                            {ttObj.tieu_de}
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      {(lich.dia_diem || lich.noi_dung) && (
-                                        <div className="text-[12px] text-slate-500 mt-1 line-clamp-1">
-                                          {lich.dia_diem ? `📍 ${lich.dia_diem}` : lich.noi_dung}
-                                        </div>
-                                      )}
-
-                                      <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
-                                        <span className="font-mono font-extrabold text-[#107555] text-[12px] bg-emerald-50/80 px-2.5 py-0.5 rounded-full border border-emerald-200/60 tabular-nums">
-                                          {lich.gio_bat_dau} - {lich.gio_ket_thuc}
-                                        </span>
-                                        <div className="flex items-center gap-1 shrink-0 bg-slate-100 px-2 py-0.5 rounded-full text-[11px] font-semibold text-slate-700">
-                                          <UserRound className="size-3 text-slate-400" />
-                                          <span>{tenNsNgan}</span>
-                                          {lich.nguoi_tham_gia_ids && lich.nguoi_tham_gia_ids.length > 0 && (
-                                            <span className="text-emerald-700 font-bold">
-                                              +{lich.nguoi_tham_gia_ids.length}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                            <div className="text-[13px] font-bold text-slate-900 leading-snug line-clamp-2">
+                              {lich.ten_khach_hang}
+                            </div>
+                            <div className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+                              {lich.gio_bat_dau} - {lich.gio_ket_thuc}
+                            </div>
+                            {rong && lich.dia_diem && (
+                              <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1 min-w-0">
+                                <MapPin className="size-3 shrink-0" />
+                                <span className="truncate">{lich.dia_diem}</span>
+                              </div>
+                            )}
+                            {rong && dsNguoi.length > 0 && (
+                              <div className="flex items-center mt-2">
+                                {dsNguoi.slice(0, 3).map((id, i) => (
+                                  <DaiDien
+                                    key={id}
+                                    ten={mapNhanSu.get(id)?.ho_va_ten || 'NV'}
+                                    kich_thuoc="xs"
+                                    className={cn('size-6 text-[10px] ring-2 ring-white', i > 0 && '-ml-1.5')}
+                                  />
+                                ))}
+                                {dsNguoi.length > 3 && (
+                                  <span className="ml-1.5 text-[11px] font-bold text-slate-500">
+                                    +{dsNguoi.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+
+                      {viTriDuongHienTai !== null && (
+                        <div
+                          className="absolute inset-x-0 z-20 pointer-events-none flex items-center"
+                          style={{ top: viTriDuongHienTai }}
+                        >
+                          <span className="size-2 rounded-full border-2 border-amber-400 bg-white -ml-1 shrink-0" />
+                          <span className="h-px flex-1 bg-amber-400" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </>

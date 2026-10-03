@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Building2,
@@ -58,6 +59,7 @@ import {
 import { thamChieuCollection } from '../../../thu_vien/firebase/client_firebase';
 import { layDanhSachGiaiDoan, layDanhSachGiaiDoanGhiNhanDoanhSo, layCauHinhGiaiDoanTheoKey, DANH_SACH_GIAI_DOAN_MAC_DINH } from '../../../thu_vien/cau_hinh/giai_doan_du_an';
 import { langNgheCauHinhGiaiDoanDuAn } from '../../../dich_vu/cau_hinh/dich_vu_cau_hinh_giai_doan_du_an';
+import { Bo_Cuc_Trang, ThanhSoLieu, Nut } from '../../../thanh_phan/ui';
 
 const NGAY_HOM_NAY = new Date().toISOString().split('T')[0];
 const SO_NGAY_BIEU_DO = 14;
@@ -114,6 +116,7 @@ const MAU_KIEU_GD: Record<string, string> = {
 };
 
 export default function TrangBaoCaoThongKe() {
+  const router = useRouter();
   const { nguoiDungHienTai } = useStoreXacThuc();
   const laBackOffice = ['hanh_chinh_van_phong'].includes(nguoiDungHienTai?.vai_tro ?? '');
 
@@ -555,24 +558,50 @@ export default function TrangBaoCaoThongKe() {
   }
 
   return (
-    <div className="w-full max-w-none space-y-6">
-      <div className="flex items-center justify-end gap-2 mb-4">
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-input)] bg-card-icon-bg-primary text-card-icon-fg-primary text-xs font-medium border border-card-icon-br-primary">
-          <CalendarDays className="size-3.5" />
-          {formatNgay(NGAY_HOM_NAY)}
-        </div>
-        <button
-          type="button"
-          onClick={() => void taiLai()}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-input)] border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition"
-        >
-          {dangTai ? <Loader2 className="size-4 animate-spin" /> : <Activity className="size-4" />}
-          {dangTai ? 'Đang tải' : 'Làm mới dữ liệu'}
-        </button>
-      </div>
+    <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-5">
+      <ThanhSoLieu
+        items={[
+          {
+            id: 'khach_hang',
+            nhan: `Khách hàng (+${tk.khMoiTrongTuan} tuần)`,
+            nhan_ngan: 'Khách hàng',
+            so_lieu: tk.khTong,
+            icon: Building2,
+            mau_so: 'trang',
+            khi_bam: () => router.push('/khach-hang'),
+          },
+          {
+            id: 'du_an',
+            nhan: `Dự án (HT ${tk.daHoanThanh}/${tk.daTong})`,
+            nhan_ngan: 'Dự án',
+            so_lieu: tk.daTong,
+            icon: FolderKanban,
+            mau_so: 'xanh_la',
+            khi_bam: () => router.push('/ho-so-du-an'),
+          },
+          {
+            id: 'gia_tri_hd',
+            nhan: 'Giá trị hợp đồng',
+            nhan_ngan: 'Giá trị HĐ',
+            so_lieu: laBackOffice ? '***' : dinhDangTien(tk.tongGiaTriHopDong),
+            icon: CircleDollarSign,
+            mau_so: 'vang',
+            khi_bam: () => router.push('/ho-so-du-an'),
+          },
+          {
+            id: 'doanh_thu_ghi_nhan',
+            nhan: 'Doanh thu ghi nhận',
+            nhan_ngan: 'DT ghi nhận',
+            so_lieu: laBackOffice ? '***' : dinhDangTien(tk.tongDoanhThuGhiNhanHopDong),
+            icon: TrendingUp,
+            mau_so: 'xanh_duong',
+            khi_bam: () => router.push('/ho-so-du-an'),
+          },
+        ]}
+      />
 
       {errTai && (
-        <div className="mb-6 rounded-[var(--radius-card)] border border-card-icon-br-danger bg-card-icon-bg-danger p-4 flex items-start gap-3">
+        <div className="rounded-[var(--radius-card)] border border-card-icon-br-danger bg-card-icon-bg-danger p-4 flex items-start gap-3">
           <AlertTriangle className="size-5 shrink-0 text-card-icon-fg-danger mt-0.5" />
           <div>
             <div className="font-semibold text-card-icon-fg-danger">Có lỗi khi tải dữ liệu</div>
@@ -581,54 +610,24 @@ export default function TrangBaoCaoThongKe() {
         </div>
       )}
 
-      {/* Block 1: 12 Card tong hop 5 module */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 mb-6">
-        <CardThongKe icon={<Building2 className="size-[18px]" />} iconMau="bg-card-icon-bg-primary text-card-icon-fg-primary border border-card-icon-br-primary"
-          nhan="Khách hàng" giaTri={tk.khTong}
-          phu={<span className="inline-flex items-center gap-1 text-card-icon-fg-success"><ArrowUpRight className="size-3" /> +{tk.khMoiTrongTuan} 14 ngày</span>} />
-        <CardThongKe icon={<FolderKanban className="size-[18px]" />} iconMau="bg-card-icon-bg-muted text-card-icon-fg-muted border border-card-icon-br-muted"
-          nhan="Hồ sơ dự án" giaTri={tk.daTong}
-          phu={<span className="inline-flex items-center gap-1 text-card-icon-fg-success"><CheckCircle2 className="size-3" /> HT {tk.daHoanThanh}/{tk.daTong} ({tk.tiLeDa}%)</span>} />
-        <CardThongKe icon={<CircleDollarSign className="size-[18px]" />} iconMau="bg-card-icon-bg-success text-card-icon-fg-success border border-card-icon-br-success"
-          nhan="Giá trị HĐ" giaTri={laBackOffice ? '***' : dinhDangTien(tk.tongGiaTriHopDong)}
-          phu={<span className="text-muted-foreground">{laBackOffice ? '***' : `Dự kiến ${dinhDangTien(tk.tongGiaTriDuKien)}`}</span>} />
-        <CardThongKe icon={<TrendingUp className="size-[18px]" />} iconMau="bg-card-icon-bg-primary text-card-icon-fg-primary border border-card-icon-br-primary"
-          nhan="Doanh thu Ghi nhận" giaTri={laBackOffice ? '***' : dinhDangTien(tk.tongDoanhThuGhiNhanHopDong)}
-          phu={<span className="text-muted-foreground">{laBackOffice ? '***' : `Dự kiến ${dinhDangTien(tk.tongDoanhThuGhiNhanDuKien)}`}</span>} />
-        <CardThongKe icon={<ClipboardList className="size-[18px]" />} iconMau="bg-card-icon-bg-primary text-card-icon-fg-primary border border-card-icon-br-primary"
-          nhan="Công việc" giaTri={tk.cvTong}
-          phu={<span className="inline-flex items-center gap-1 text-card-icon-fg-primary"><CheckCircle2 className="size-3" /> HT {tk.cvHoanThanh} ({tk.tiLeCv}%)</span>} />
-        <CardThongKe icon={<FileText className="size-[18px]" />} iconMau="bg-card-icon-bg-warning text-card-icon-fg-warning border border-card-icon-br-warning"
-          nhan="Báo cáo CV" giaTri={tk.bccvTong}
-          phu={<span className="inline-flex items-center gap-1 text-card-icon-fg-warning"><CalendarDays className="size-3" /> Hôm nay {tk.bccvHomNay}</span>} />
-        <CardThongKe icon={<UserCog className="size-[18px]" />} iconMau="bg-card-icon-bg-muted text-card-icon-fg-muted border border-card-icon-br-muted"
-          nhan="Nhân sự" giaTri={tk.nsTong}
-          phu={<span className="inline-flex items-center gap-1 text-muted-foreground"><Lock className="size-3" /> Khóa {tk.nsKhoa} · +{tk.nsTuanMoi} 14 ngày</span>} />
-      </div>
-
       {/* Bộ lọc báo cáo HĐQT */}
-      <section className="rounded-[var(--radius-card)] border border-border bg-background p-5 shadow-[var(--shadow-card)] mb-6">
-        <div className="flex items-center justify-between gap-4 mb-4">
+      <section className="rounded-[var(--radius-card)] border border-border bg-background p-4 sm:p-5 shadow-nhe">
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="size-10 bg-card-icon-bg-primary text-card-icon-fg-primary border border-card-icon-br-primary rounded-[var(--radius-input)] flex items-center justify-center shrink-0">
-              <Filter className="size-[18px]" />
+            <div className="size-9 bg-card-icon-bg-primary text-card-icon-fg-primary border border-card-icon-br-primary rounded-[var(--radius-input)] flex items-center justify-center shrink-0">
+              <Filter className="size-4" />
             </div>
-            <div className="min-w-0">
-              <h3 className="font-semibold text-foreground truncate">Bộ lọc báo cáo HĐQT</h3>
-              <p className="text-xs text-muted-foreground mt-0.5 opacity-80 truncate">
-                Lọc Báo cáo ngày theo khoảng + Chi nhánh / Phòng ban → Tổng hợp &amp; Xuất file
-              </p>
-            </div>
+            <h3 className="text-tieu-de font-bold text-foreground truncate">Bộ lọc &amp; Xuất báo cáo</h3>
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-[11px]">
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-3 h-6 font-bold">
+          <div className="flex items-center gap-2 text-nhan">
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-2.5 h-6 font-bold">
               <FileText className="size-3" />
               {dsBccvDaLoc.length} / {dsBccv.length} BCCV
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground border border-border px-3 h-6 font-bold">
-              <CalendarDays className="size-3" />
-              {khoangNgay[0]} → {khoangNgay[1]}
-            </span>
+            <Nut kieu="outline" kich_thuoc="sm" onClick={() => void taiLai()}>
+              {dangTai ? <Loader2 className="size-3.5 animate-spin" /> : <Activity className="size-3.5" />}
+              <span className="hidden sm:inline">{dangTai ? 'Đang tải' : 'Làm mới'}</span>
+            </Nut>
           </div>
         </div>
 
@@ -1070,28 +1069,7 @@ export default function TrangBaoCaoThongKe() {
           </ul>
         )}
       </div>
-    </div>
-  );
-}
-
-function CardThongKe(props: {
-  icon: React.ReactNode;
-  iconMau: string;
-  nhan: string;
-  giaTri: string | number;
-  phu?: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-[var(--radius-card)] border border-border bg-background p-5 shadow-[var(--shadow-card)]">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{props.nhan}</span>
-        <div className={cn('size-10 rounded-[var(--radius-input)] flex items-center justify-center shrink-0', props.iconMau)}>
-          {props.icon}
-        </div>
-      </div>
-      <div className="text-2xl tracking-tight font-bold text-foreground leading-tight mb-1">{props.giaTri}</div>
-      <div className="text-xs">{props.phu}</div>
-    </div>
+    </Bo_Cuc_Trang>
   );
 }
 
