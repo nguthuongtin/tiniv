@@ -52,10 +52,10 @@ interface TrangThaiStoreXacThuc {
 // Init auth đã stable 1 lần (không còn loop mount-unmount), nhưng để phòng
 // trường hợp rules Firestore block silent → tối đa 6s mở khoá loading.
 // ============================================================================
-const THOI_GIAN_CHO_TOI_DA_MS = 6000;
+const THOI_GIAN_CHO_TOI_DA_MS = 8000;
 let daChayFallbackMotLan = false;
 const kichHoatGlobalFallbackMotLan = () => {
-  if (daChayFallbackMotLan) return;
+  if (typeof window === 'undefined' || daChayFallbackMotLan) return;
   daChayFallbackMotLan = true;
   queueMicrotask(() => {
     try {
@@ -69,9 +69,8 @@ const kichHoatGlobalFallbackMotLan = () => {
           const dangBiKet = !s.daKhoiDong || s.dangTaiHoSo;
           if (dangBiKet && !daBoKhoa1Lan) {
             daBoKhoa1Lan = true;
-             
-            console.error('[STORE] ⛔ FALLBACK 6s (singleton 1 lan) — FORCE dangTai=false, daKhoiDong=true. Kiem tra Firestore rules collection nhan_su.');
-            s._boKhoaLoadingTamThoi('fallback_6s_singleton');
+            console.warn('[STORE] Fallback mở khóa trạng thái khởi động sau 8s.');
+            s._boKhoaLoadingTamThoi('fallback_8s_singleton');
           }
         } catch { /* ignore */ }
       }, THOI_GIAN_CHO_TOI_DA_MS);
@@ -88,16 +87,15 @@ let daKhoiDongAuthGlobal = false;
 let cleanupAuthGlobal: (() => void) | null = null;
 
 export const khoiDongAuthMotLanDuyNhat = () => {
-  if (daKhoiDongAuthGlobal) return;
+  if (typeof window === 'undefined' || daKhoiDongAuthGlobal) return;
   daKhoiDongAuthGlobal = true;
+  kichHoatGlobalFallbackMotLan();
   try {
     const s = useStoreXacThuc.getState() as TrangThaiStoreXacThuc;
     cleanupAuthGlobal = s.boTriLangNgheTrangThaiDangNhap();
-     
-    console.log('[AUTH] Singleton init — lang nghe trang thai dang nhap BAT DAU (1 lan duy nhat app life)');
+    console.info('[AUTH] Singleton init — lang nghe trang thai dang nhap BAT DAU (1 lan duy nhat app life)');
   } catch (e) {
-     
-    console.error('[AUTH] Singleton init Loi:', e);
+    console.warn('[AUTH] Singleton init Loi:', e);
   }
 };
 
@@ -231,7 +229,7 @@ export const useStoreXacThuc = create<TrangThaiStoreXacThuc>((set, getState) => 
         } catch {
           /* ignore */
         }
-      }, 6000);
+      }, THOI_GIAN_CHO_TOI_DA_MS);
 
       return () => {
         daHuy = true;
@@ -245,8 +243,6 @@ export const useStoreXacThuc = create<TrangThaiStoreXacThuc>((set, getState) => 
       };
     }
   };
-  // khoi tao fallback singleton 1 lan
-  kichHoatGlobalFallbackMotLan();
   return storeObj;
 });
 

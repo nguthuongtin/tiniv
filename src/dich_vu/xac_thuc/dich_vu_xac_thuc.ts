@@ -9,7 +9,7 @@ import {
   type User,
   type Unsubscribe
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocFromCache } from 'firebase/firestore';
 import {
   firebaseAuth,
   firebaseFirestore,
@@ -21,31 +21,92 @@ import type {
   VaiTroNguoiDung
 } from '../../thu_vien/types';
 
+const KHOA_CACHE_HO_SO = 'tinipms_cached_ho_so_v1';
+
+const docHoSoTuBoNhoTam = (uid: string): NguoiDungDangNhap | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(KHOA_CACHE_HO_SO);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.uid === uid && parsed.hoSo && parsed.hoSo.id === uid) {
+      return parsed.hoSo as NguoiDungDangNhap;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+};
+
+const luuHoSoVaoBoNhoTam = (uid: string, hoSo: NguoiDungDangNhap | null) => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!hoSo) {
+      window.localStorage.removeItem(KHOA_CACHE_HO_SO);
+    } else {
+      window.localStorage.setItem(
+        KHOA_CACHE_HO_SO,
+        JSON.stringify({ uid, hoSo, capNhatLuc: Date.now() })
+      );
+    }
+  } catch {
+    /* ignore */
+  }
+};
+
+const chuyenDoiDuLieuNhanSu = (uid: string, duLieu: Partial<NhanSu>): NguoiDungDangNhap => ({
+  id: uid,
+  email: (duLieu.email ?? '').trim(),
+  ho_va_ten: duLieu.ho_va_ten ?? null,
+  vai_tro: (duLieu.vai_tro as VaiTroNguoiDung) ?? null,
+  chi_nhanh_id: duLieu.chi_nhanh_id ?? null,
+  phong_ban_id: duLieu.phong_ban_id ?? null,
+  phong_ban_phu_trach_them: duLieu.phong_ban_phu_trach_them ?? [],
+  quyen_ngoai_le_cap_them: duLieu.quyen_ngoai_le_cap_them ?? [],
+  quyen_ngoai_le_chan: duLieu.quyen_ngoai_le_chan ?? [],
+  url_anh_dai_dien: duLieu.url_anh_dai_dien ?? null,
+  trang_thai: duLieu.trang_thai === true
+});
+
 // === 1. Nap thong tin nhan_su document theo Firebase Auth UID ===
 const napHoSoNguoiDungTuFirestore = async (
   uid: string
 ): Promise<NguoiDungDangNhap | null> => {
+  const thamChieu = doc(firebaseFirestore, 'nhan_su', uid);
+
+  // Thử đọc từ Firestore online (giới hạn 4.5s để không bị treo vô hạn khi mạng/WebChannel nghẽn)
   try {
-    const thamChieu = doc(firebaseFirestore, 'nhan_su', uid);
-    const snap = await getDoc(thamChieu);
-    if (!snap.exists()) return null;
-    const duLieu = snap.data() as Partial<NhanSu>;
-    return {
-      id: uid,
-      email: (duLieu.email ?? '').trim(),
-      ho_va_ten: duLieu.ho_va_ten ?? null,
-      vai_tro: (duLieu.vai_tro as VaiTroNguoiDung) ?? null,
-      chi_nhanh_id: duLieu.chi_nhanh_id ?? null,
-      phong_ban_id: duLieu.phong_ban_id ?? null,
-      phong_ban_phu_trach_them: duLieu.phong_ban_phu_trach_them ?? [],
-      quyen_ngoai_le_cap_them: duLieu.quyen_ngoai_le_cap_them ?? [],
-      quyen_ngoai_le_chan: duLieu.quyen_ngoai_le_chan ?? [],
-      url_anh_dai_dien: duLieu.url_anh_dai_dien ?? null,
-      trang_thai: duLieu.trang_thai === true
-    };
-  } catch (_err) {
-    return null;
+    const snap = await Promise.race([
+      getDoc(thamChieu),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4500))
+    ]);
+    if (snap && snap.exists()) {
+      const hoSo = chuyenDoiDuLieuNhanSu(uid, snap.data() as Partial<NhanSu>);
+      luuHoSoVaoBoNhoTam(uid, hoSo);
+      return hoSo;
+    }
+    if (snap && !snap.exists()) {
+      luuHoSoVaoBoNhoTam(uid, null);
+      return null;
+    }
+  } catch {
+    /* fallback sang cache bên dưới */
   }
+
+  // Fallback 1: Firestore IndexedDB cache
+  try {
+    const snapCache = await getDocFromCache(thamChieu);
+    if (snapCache.exists()) {
+      const hoSo = chuyenDoiDuLieuNhanSu(uid, snapCache.data() as Partial<NhanSu>);
+      luuHoSoVaoBoNhoTam(uid, hoSo);
+      return hoSo;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // Fallback 2: localStorage cache
+  return docHoSoTuBoNhoTam(uid);
 };
 
 // === 2. Chuc nang Dang nhap ===
@@ -170,6 +231,7 @@ export const dangNhapBangEmailMatKhau = async (
 export const dangXuatHeThong = async (): Promise<boolean> => {
   try {
     const uidHienTai = firebaseAuth.currentUser?.uid;
+    luuHoSoVaoBoNhoTam('', null);
     if (uidHienTai) {
       try {
         await ghiNhatKyHoatDong(
@@ -194,28 +256,32 @@ export const dangXuatHeThong = async (): Promise<boolean> => {
 export const langNgheTrangThaiDangNhap = (
   callback: (info: NguoiDungDangNhap | null, dangTaiHoSo: boolean) => void
 ): Unsubscribe => {
-  let daCoUserAuth = false;
-
   const huyLangNghe = onAuthStateChanged(firebaseAuth, async (userFirebase) => {
     // KHÔNG BAO GIỜ để Promise uncaught làm mất callback end → kẹt loading mãi
     try {
       if (!userFirebase) {
-        daCoUserAuth = false;
+        luuHoSoVaoBoNhoTam('', null);
         callback(null, false);
         return;
       }
-      daCoUserAuth = true;
-      callback(null, true); // bat dau tai ho so tu firestore
+
+      // Nếu đã có hồ sơ hợp lệ trong bộ nhớ tạm của đúng UID này → mở khóa UI ngay lập tức (0ms)
+      const hoSoCache = docHoSoTuBoNhoTam(userFirebase.uid);
+      if (hoSoCache && hoSoCache.trang_thai === true) {
+        callback(hoSoCache, false);
+      } else {
+        callback(null, true); // bat dau tai ho so tu firestore
+      }
 
       let hoSo: NguoiDungDangNhap | null = null;
       try {
         hoSo = await napHoSoNguoiDungTuFirestore(userFirebase.uid);
       } catch (_errNap) {
-        // Loi PERMISSION_DENIED, mang yeu, CORS, timeout Firebase — coi nhu chua co ho so
-        hoSo = null;
+        hoSo = hoSoCache;
       }
 
       if (hoSo && hoSo.trang_thai !== true) {
+        luuHoSoVaoBoNhoTam('', null);
         try {
           await firebaseDangXuat(firebaseAuth);
         } catch {
@@ -225,7 +291,7 @@ export const langNgheTrangThaiDangNhap = (
         return;
       }
 
-      callback(hoSo, false);
+      callback(hoSo ?? hoSoCache ?? null, false);
     } catch (_errBaoLop) {
       // Bao loi ngoai le goc: break vo han loading bang cach goi callback end
       callback(null, false);
