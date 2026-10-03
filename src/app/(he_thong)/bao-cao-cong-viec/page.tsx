@@ -52,6 +52,7 @@ import {
   duocXemBaoCaoCuaNhanVien
 } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
+import { dongBoBaoCaoNgaySangKeHoachTuan } from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import FormBaoCaoCongViecDrawer from '../../../thanh_phan/bao_cao_cong_viec/form_bao_cao_cong_viec_drawer';
 import { Nut, Rong, Bo_Cuc_Trang, ToLichNgay, ThanhSoLieu } from '../../../thanh_phan/ui';
 
@@ -272,12 +273,21 @@ export default function TrangBaoCaoCongViec() {
     setLoiForm(null);
     try {
       const banGhiHienCo = banGhi || (data.ngay_bao_cao ? dsBaoCaoCuaToi.find((b) => b.ngay_bao_cao === data.ngay_bao_cao) : null);
+      let bccvDaLuu: BaoCaoCongViec | null = null;
       if (banGhiHienCo) {
-        await capNhatBaoCaoCongViec(banGhiHienCo.id, data, nguoiDungHienTai);
+        bccvDaLuu = await capNhatBaoCaoCongViec(banGhiHienCo.id, data, nguoiDungHienTai);
         themToast('thanh_cong', data.trang_thai === 'tam_luu' ? 'Đã tạm lưu báo cáo công việc.' : 'Đã cập nhật báo cáo công việc.');
       } else {
-        await taoBaoCaoCongViecMoi(data as TaoMoiBaoCaoCongViecDTO, nguoiDungHienTai);
+        bccvDaLuu = await taoBaoCaoCongViecMoi(data as TaoMoiBaoCaoCongViecDTO, nguoiDungHienTai);
         themToast('thanh_cong', data.trang_thai === 'tam_luu' ? 'Đã tạm lưu báo cáo công việc.' : 'Đã nộp báo cáo công việc thành công.');
+      }
+      if (bccvDaLuu) {
+        void dongBoBaoCaoNgaySangKeHoachTuan({
+          nhanVienId: bccvDaLuu.nhan_vien_id,
+          ngayBaoCao: bccvDaLuu.ngay_bao_cao,
+          danhSachChiTiet: bccvDaLuu.danh_sach_chi_tiet ?? [],
+          nguoiThucHien: nguoiDungHienTai
+        });
       }
       setMoDrawer(false);
       setDangSua(null);

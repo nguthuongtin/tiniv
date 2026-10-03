@@ -60,6 +60,7 @@ import FormLeadModal from '../../../thanh_phan/lead/form_lead_modal';
 import FormLichGapModal from '../../../thanh_phan/lich_gap_kh/form_lich_gap_modal';
 import FormKhachHangDrawer from '../../../thanh_phan/khach_hang/form_khach_hang_drawer';
 import FormHoSoDuAnDrawer from '../../../thanh_phan/ho_so_du_an/form_ho_so_du_an_drawer';
+import { dongBoLichGapSangKeHoachTuanVaBaoCaoNgay } from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import {
   Bo_Cuc_Trang,
   Nut,
@@ -291,16 +292,22 @@ export default function TrangLead() {
     }
   };
 
-  // Lưu lịch hẹn gặp KH từ Lead
+  // Lưu lịch hẹn gặp KH từ Lead (Tự động đưa vào Kế hoạch Tuần & Báo cáo Tuần)
   const handleLuuLichTuLead = async (dto: any) => {
     if (!leadDatLich) return;
     setDangLuuLich(true);
     try {
-      await taoLichGapKHMoi(dto as TaoMoiLichGapDTO);
+      const lichMoi = await taoLichGapKHMoi(dto as TaoMoiLichGapDTO);
       await capNhatLead(leadDatLich.id, {
         trang_thai: 'da_hen_gap',
         ngay_hen_lai: dto.ngay
       });
+      if (lichMoi) {
+        void dongBoLichGapSangKeHoachTuanVaBaoCaoNgay({
+          lich: lichMoi,
+          nguoiThucHien: nguoiDungHienTai
+        });
+      }
       setLeadDatLich(null);
       await taiDuLieu();
     } catch (e) {

@@ -33,6 +33,7 @@ interface Props {
   danhSachKhachHang?: KhachHang[];
   tuan: string;
   onXemChiTietNV?: (nhanVienId: string) => void;
+  onChonCongViec?: (nhanVienId: string, item: ItemKeHoachTuan) => void;
 }
 
 const formatNgay = (dateStr?: string | null) => {
@@ -86,7 +87,8 @@ export default function BangTongQuanTeamTuan({
   danhSachDuAn = [],
   danhSachKhachHang = [],
   tuan,
-  onXemChiTietNV
+  onXemChiTietNV,
+  onChonCongViec
 }: Props) {
   const [cheDoXem, setCheDoXem] = useState<'ke_hoach_gom' | 'theo_nhan_su'>('ke_hoach_gom');
   const [locNhanSuId, setLocNhanSuId] = useState<string>('tat_ca');
@@ -121,7 +123,7 @@ export default function BangTongQuanTeamTuan({
     tongSoViecTeam += dsViec.length;
     tongSoXongTeam += soXong;
 
-    const daGuiBC = bc?.trang_thai === 'da_gui';
+    const daGuiBC = Boolean(bc?.trang_thai === 'da_gui' || coKeHoach);
     if (daGuiBC) soNVNopBaoCao++;
 
     return {
@@ -419,9 +421,19 @@ export default function BangTongQuanTeamTuan({
                       const viecCanLam = item.noi_dung_tuan || item.hanh_dong_tuan || item.ten_khach_hang_du_an;
                       const dauRa = item.dau_ra_cam_ket || item.ket_qua_mong_muon;
                       const hoTro = (item.can_ho_tro || item.nguoi_ho_tro || '').trim();
+                      const dsKetQua = item.danh_sach_ket_qua ?? [];
+                      const coChiDao = dsKetQua.some((k) => Boolean(k.chi_dao?.noi_dung));
 
                       return (
-                        <tr key={`${item.id || idx}_${nhanSu.id}`} className="hover:bg-muted/30 transition-colors">
+                        <tr
+                          key={`${item.id || idx}_${nhanSu.id}`}
+                          onClick={() => onChonCongViec?.(nhanSu.id, item)}
+                          className={cn(
+                            'hover:bg-muted/30 transition-colors',
+                            onChonCongViec && 'cursor-pointer'
+                          )}
+                          title="Nhấp để xem lịch sử tiến độ & ghi ý kiến đồng hành hỗ trợ"
+                        >
                           <td className="py-3 px-3 text-center font-bold text-muted-foreground">
                             {idx + 1}
                           </td>
@@ -495,13 +507,18 @@ export default function BangTongQuanTeamTuan({
                           </td>
 
                           {/* Kết quả thực tế */}
-                          <td className="py-3 px-3 text-[11px]">
+                          <td className="py-3 px-3 text-[11px] space-y-1">
                             {item.ket_qua_thuc_te ? (
                               <div className="line-clamp-2 text-foreground font-medium">
                                 {item.ket_qua_thuc_te}
                               </div>
                             ) : (
                               <span className="text-muted-foreground">—</span>
+                            )}
+                            {coChiDao && (
+                              <div className="text-[10px] text-amber-800 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-medium inline-block">
+                                💬 Đã có ý kiến định hướng
+                              </div>
                             )}
                           </td>
 

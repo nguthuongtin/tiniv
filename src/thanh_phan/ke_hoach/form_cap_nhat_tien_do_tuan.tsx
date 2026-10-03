@@ -308,10 +308,10 @@ export default function FormCapNhatTienDoTuan({
         {/* Ô nhập thêm kết quả mới */}
         <The_Chuc_Nang>
           <div className="p-4 space-y-3 text-xs">
-            <div className="font-bold text-foreground text-sm flex items-center justify-between">
-              <span>Ghi nhận tiến độ / Kết quả mới</span>
-              <span className="text-muted-foreground text-[11px] font-normal">
-                (Có thể thêm nhiều mốc kết quả trong tuần)
+            <div className="font-bold text-foreground text-sm flex items-center justify-between gap-2 flex-wrap">
+              <span>Check-in kết quả thực hiện</span>
+              <span className="text-emerald-700 bg-emerald-500/10 px-2 py-0.5 rounded-full text-[11px] font-semibold">
+                Tự động đồng bộ Báo cáo Ngày & Tuần
               </span>
             </div>
 
@@ -330,7 +330,7 @@ export default function FormCapNhatTienDoTuan({
                 rows={2}
                 value={noiDungMoi}
                 onChange={(e) => setNoiDungMoi(e.target.value)}
-                placeholder="VD: Ngày 15/09: Đã gặp khách hàng, trình bày giải pháp. Khách hẹn thứ 5 xem demo..."
+                placeholder="Nhập kết quả buổi làm việc / trao đổi với khách hàng..."
                 className="w-full rounded-lg border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-primary"
               />
             </div>
@@ -341,7 +341,7 @@ export default function FormCapNhatTienDoTuan({
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[11px] text-foreground flex items-center gap-1">
                     <Link2 className="size-3 text-primary" />
-                    Đính kèm Link / Tài liệu minh chứng
+                    Đính kèm Link / Tài liệu
                   </span>
                   <button
                     type="button"
@@ -360,14 +360,14 @@ export default function FormCapNhatTienDoTuan({
                     type="text"
                     value={linkDinhKemMoi}
                     onChange={(e) => setLinkDinhKemMoi(e.target.value)}
-                    placeholder="https://drive.google.com/... hoặc link tài liệu"
+                    placeholder="https://drive.google.com/..."
                     className="h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-mono text-foreground"
                   />
                   <input
                     type="text"
                     value={tenTaiLieuMoi}
                     onChange={(e) => setTenTaiLieuMoi(e.target.value)}
-                    placeholder="Tên tài liệu: Báo giá PDF, Hợp đồng scan..."
+                    placeholder="Tên tài liệu: Báo giá PDF, Hợp đồng..."
                     className="h-8 rounded-lg border border-border bg-background px-2.5 text-xs text-foreground"
                   />
                 </div>
@@ -379,7 +379,7 @@ export default function FormCapNhatTienDoTuan({
                   onClick={() => setHienNhapLinkMoi(true)}
                   className="text-[11px] text-primary hover:underline font-semibold inline-flex items-center gap-1"
                 >
-                  <Link2 className="size-3" /> + Đính kèm link tài liệu / file
+                  <Link2 className="size-3" /> + Đính kèm link tài liệu
                 </button>
               </div>
             )}
@@ -389,7 +389,7 @@ export default function FormCapNhatTienDoTuan({
               onClick={xuLyThemKetQua}
               className="h-8 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold transition-colors inline-flex items-center gap-1.5 cursor-pointer"
             >
-              <Plus className="size-3.5" /> Thêm kết quả này vào lịch sử
+              <Plus className="size-3.5" /> Thêm mốc tiến độ
             </button>
           </div>
         </The_Chuc_Nang>
@@ -397,16 +397,13 @@ export default function FormCapNhatTienDoTuan({
         {/* Danh sách các kết quả đã ghi nhận */}
         <The_Chuc_Nang>
           <div className="p-4 space-y-3 text-xs">
-            <div className="font-bold text-foreground text-sm flex items-center justify-between">
-              <span>Lịch sử kết quả đạt được ({danhSachKetQua.length})</span>
-              <span className="text-[11px] text-muted-foreground italic font-normal">
-                Bấm nút "Sửa" nếu cần chỉnh sửa nội dung hoặc link
-              </span>
+            <div className="font-bold text-foreground text-sm">
+              Nhật ký tiến độ ({danhSachKetQua.length})
             </div>
 
             {danhSachKetQua.length === 0 ? (
-              <div className="py-6 text-center text-muted-foreground italic">
-                Chưa có kết quả nào được ghi nhận. Nhập nội dung ở trên và bấm "Lưu".
+              <div className="py-5 text-center text-muted-foreground">
+                Chưa có mốc tiến độ nào.
               </div>
             ) : (
               <div className="space-y-3">
@@ -553,14 +550,14 @@ export default function FormCapNhatTienDoTuan({
                             </div>
                           )}
 
-                          {/* Hiển thị Ý kiến chỉ đạo từ cấp trên (nếu có) */}
+                          {/* Hiển thị Ý kiến đồng hành từ lãnh đạo (nếu có) */}
                           {kq.chi_dao && (
                             <div className="mt-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs space-y-1">
                               <div className="flex items-center justify-between">
                                 <div className="font-bold text-amber-800 flex items-center gap-1.5 text-[11px]">
                                   <MessageSquareQuote className="size-3.5 text-amber-600" />
                                   <span>
-                                    Chỉ đạo từ {kq.chi_dao.ten_nguoi_chi_dao || 'Cấp trên'}
+                                    Đồng hành & Định hướng từ {kq.chi_dao.ten_nguoi_chi_dao || 'Lãnh đạo'}
                                     {kq.chi_dao.chuc_vu_nguoi_chi_dao ? ` (${kq.chi_dao.chuc_vu_nguoi_chi_dao})` : ''}:
                                   </span>
                                 </div>
@@ -589,18 +586,18 @@ export default function FormCapNhatTienDoTuan({
                               </div>
                               {kq.chi_dao.ngay_chi_dao && (
                                 <div className="text-[9px] text-muted-foreground pl-5 font-mono">
-                                  Ngày chỉ đạo: {new Date(kq.chi_dao.ngay_chi_dao).toLocaleDateString('vi-VN')}
+                                  Ngày phản hồi: {new Date(kq.chi_dao.ngay_chi_dao).toLocaleDateString('vi-VN')}
                                 </div>
                               )}
                             </div>
                           )}
 
-                          {/* Khung nhập / sửa chỉ đạo của cấp trên */}
+                          {/* Khung nhập / sửa ý kiến đồng hành */}
                           {laDangChiDao ? (
                             <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="font-bold text-amber-800 text-[11px] flex items-center gap-1">
-                                  <Shield className="size-3 text-amber-600" /> Ý kiến chỉ đạo của Cấp trên
+                                  <Shield className="size-3 text-amber-600" /> Ý kiến đồng hành & Định hướng
                                 </span>
                                 <div className="flex items-center gap-1">
                                   <button
@@ -608,7 +605,7 @@ export default function FormCapNhatTienDoTuan({
                                     onClick={() => xuLyLuuChiDao(kq.id)}
                                     className="h-6 px-2 rounded bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold inline-flex items-center gap-1"
                                   >
-                                    <Check className="size-3" /> Lưu chỉ đạo
+                                    <Check className="size-3" /> Lưu ý kiến
                                   </button>
                                   <button
                                     type="button"
@@ -623,12 +620,11 @@ export default function FormCapNhatTienDoTuan({
                                 rows={2}
                                 value={noiDungChiDao}
                                 onChange={(e) => setNoiDungChiDao(e.target.value)}
-                                placeholder="Nhập ý kiến chỉ đạo, nhận xét, định hướng cho nhân viên..."
+                                placeholder="Nhập ý kiến hỗ trợ, định hướng tháo gỡ cho nhân viên..."
                                 className="w-full rounded-md border border-amber-500/40 bg-background p-2 text-xs font-medium"
                               />
                             </div>
                           ) : (
-                            /* Nút mở ô chỉ đạo (chỉ hiển thị cho Cấp trên và khi chưa có chỉ đạo) */
                             laQuanLyHoacGiamDoc && !kq.chi_dao && (
                               <div className="pt-1">
                                 <button
@@ -636,7 +632,7 @@ export default function FormCapNhatTienDoTuan({
                                   onClick={() => xuLyBatDauChiDao(kq)}
                                   className="text-[11px] text-amber-700 hover:text-amber-800 font-semibold inline-flex items-center gap-1 transition-colors"
                                 >
-                                  <MessageSquareQuote className="size-3" /> + Thêm ý kiến chỉ đạo của Cấp trên
+                                  <MessageSquareQuote className="size-3" /> + Ghi ý kiến đồng hành / hỗ trợ
                                 </button>
                               </div>
                             )
@@ -656,7 +652,7 @@ export default function FormCapNhatTienDoTuan({
             Hủy
           </Nut>
           <Nut kieu="primary" icon_trai={Save} onClick={xuLyLuu}>
-            Lưu toàn bộ kết quả
+            Lưu Check-in & Đồng bộ
           </Nut>
         </div>
       </div>

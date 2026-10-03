@@ -48,6 +48,12 @@ import {
   xuatExcelKeHoachTuan,
   xuatExcelKeHoachThang
 } from '../../../dich_vu/ke_hoach/dich_vu_xuat_excel_ke_hoach';
+import {
+  dongBoTuDongBaoCaoTuan,
+  dongBoTuDongBaoCaoThang,
+  ghiNhanCheckInVaoBaoCaoNgay,
+  dongBoCongViecTuanSangLichGap
+} from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachHoSoDuAn } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import { danhSachKhachHang } from '../../../dich_vu/khach_hang/dich_vu_khach_hang';
@@ -284,7 +290,7 @@ export default function TrangKeHoachNVKD() {
     setTuanChon(`${y}-W${String(w).padStart(2, '0')}`);
   };
 
-  // Handlers Kế hoạch Tháng
+  // Handlers Kế hoạch Tháng (Tự động đồng bộ sang Báo cáo Tháng)
   const xuLyLuuItemThang = async (item: ItemKeHoachThang) => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
     if (!targetId) return;
@@ -314,6 +320,8 @@ export default function TrangKeHoachNVKD() {
     );
 
     setKeHoachThang(res);
+    const bcDongBo = await dongBoTuDongBaoCaoThang(res, nv || nguoiDungHienTai);
+    if (bcDongBo) setBaoCaoThang(bcDongBo);
   };
 
   const xuLyXoaItemThang = async (itemId: string) => {
@@ -321,6 +329,7 @@ export default function TrangKeHoachNVKD() {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
     if (!targetId || !keHoachThang) return;
 
+    const nv = dsNhanSu.find((x) => x.id === targetId);
     const dsMoi = keHoachThang.danh_sach_dia_ban.filter((x) => x.id !== itemId);
     const res = await luuKeHoachThang(
       {
@@ -333,6 +342,8 @@ export default function TrangKeHoachNVKD() {
     );
 
     setKeHoachThang(res);
+    const bcDongBo = await dongBoTuDongBaoCaoThang(res, nv || nguoiDungHienTai);
+    if (bcDongBo) setBaoCaoThang(bcDongBo);
   };
 
   const xuLyCapNhatThucTeThang = async (
@@ -342,6 +353,7 @@ export default function TrangKeHoachNVKD() {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
     if (!targetId || !keHoachThang) return;
 
+    const nv = dsNhanSu.find((x) => x.id === targetId);
     const now = new Date().toISOString();
     const dsMoi = keHoachThang.danh_sach_dia_ban.map((x) => {
       if (x.id !== itemId) return x;
@@ -364,9 +376,23 @@ export default function TrangKeHoachNVKD() {
       nguoiDungHienTai
     );
     setKeHoachThang(res);
+    const bcDongBo = await dongBoTuDongBaoCaoThang(res, nv || nguoiDungHienTai);
+    if (bcDongBo) setBaoCaoThang(bcDongBo);
   };
 
-  // Handlers Kế hoạch Tuần
+  const xuLyLuuGhiChuBaoCaoThang = async (khoKhan: string, deXuat: string) => {
+    if (!keHoachThang) return;
+    const targetId = nhanVienChonId || nguoiDungHienTai?.id;
+    const nv = dsNhanSu.find((x) => x.id === targetId);
+    const bcDongBo = await dongBoTuDongBaoCaoThang(keHoachThang, nv || nguoiDungHienTai, {
+      kho_khan: khoKhan || null,
+      de_xuat: deXuat || null,
+      trang_thai: 'da_gui'
+    });
+    if (bcDongBo) setBaoCaoThang(bcDongBo);
+  };
+
+  // Handlers Kế hoạch Tuần (Tự động đồng bộ Báo cáo Tuần + Báo cáo Ngày + Lịch công tác)
   const xuLyLuuItemTuan = async (item: ItemKeHoachTuan) => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
     if (!targetId) return;
@@ -396,6 +422,22 @@ export default function TrangKeHoachNVKD() {
     );
 
     setKeHoachTuan(res);
+
+    // Tự động đồng bộ sang Báo cáo Tuần & Lịch công tác (không chặn UI)
+    void (async () => {
+      const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
+      if (bcDongBo) setBaoCaoTuan(bcDongBo);
+
+      if (item.ngay_du_kien) {
+        await dongBoCongViecTuanSangLichGap({
+          item,
+          nhanVienId: targetId,
+          chiNhanhId: nv?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null,
+          nguoiTaoId: nguoiDungHienTai?.id || targetId,
+          choPhepTaoMoiLich: true
+        });
+      }
+    })();
   };
 
   const xuLyXoaItemTuan = async (itemId: string) => {
@@ -403,6 +445,7 @@ export default function TrangKeHoachNVKD() {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
     if (!targetId || !keHoachTuan) return;
 
+    const nv = dsNhanSu.find((x) => x.id === targetId);
     const dsMoi = keHoachTuan.danh_sach_tac_chien.filter((x) => x.id !== itemId);
     const res = await luuKeHoachTuan(
       {
@@ -415,13 +458,17 @@ export default function TrangKeHoachNVKD() {
     );
 
     setKeHoachTuan(res);
+    const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
+    if (bcDongBo) setBaoCaoTuan(bcDongBo);
   };
 
   const xuLyDoiVatChung = async (itemId: string, daLay: boolean) => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
     if (!targetId || !keHoachTuan) return;
 
+    const nv = dsNhanSu.find((x) => x.id === targetId);
     const homNay = new Date().toISOString().split('T')[0];
+    let itemDaCapNhat: ItemKeHoachTuan | null = null;
 
     const dsMoi = keHoachTuan.danh_sach_tac_chien.map((x) => {
       if (x.id !== itemId) return x;
@@ -437,11 +484,12 @@ export default function TrangKeHoachNVKD() {
         }
       }
 
-      return {
+      itemDaCapNhat = {
         ...x,
         da_hoan_thanh: daLay,
         ngay_hoan_thanh: ngayHoanThanh
       };
+      return itemDaCapNhat;
     });
 
     const res = await luuKeHoachTuan(
@@ -455,6 +503,34 @@ export default function TrangKeHoachNVKD() {
     );
 
     setKeHoachTuan(res);
+
+    void (async () => {
+      const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
+      if (bcDongBo) setBaoCaoTuan(bcDongBo);
+
+      if (itemDaCapNhat && daLay) {
+        const it = itemDaCapNhat as ItemKeHoachTuan;
+        await dongBoCongViecTuanSangLichGap({
+          item: it,
+          nhanVienId: targetId,
+          chiNhanhId: nv?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null,
+          nguoiTaoId: nguoiDungHienTai?.id || targetId,
+          choPhepTaoMoiLich: false
+        });
+        await ghiNhanCheckInVaoBaoCaoNgay({
+          nhanVienId: targetId,
+          chiNhanhId: nv?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null,
+          phongBanId: nv?.phong_ban_id ?? nguoiDungHienTai?.phong_ban_id ?? null,
+          ngayBaoCao: homNay,
+          duAnId: it.du_an_id || null,
+          tenKhachHangDuAn: it.co_quan_doanh_nghiep || it.ten_khach_hang_du_an || 'Công việc tuần',
+          noiDungKetQua:
+            it.ket_qua_thuc_te ||
+            `Hoàn thành kế hoạch: ${it.hanh_dong_tuan || it.noi_dung_tuan || it.dau_ra_cam_ket}`,
+          nguoiThucHien: nguoiDungHienTai ? { id: nguoiDungHienTai.id } : { id: targetId }
+        });
+      }
+    })();
   };
 
   const xuLyCapNhatTienDoTuan = async (
@@ -466,12 +542,19 @@ export default function TrangKeHoachNVKD() {
     }
   ) => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
-    if (!targetId || !keHoachTuan) return;
+    const keHoachMucTieu =
+      tabHienTai === 'team_tuan'
+        ? dsKeHoachTeamTuan.find((k) => k.nhan_vien_id === targetId) || keHoachTuan
+        : keHoachTuan;
 
+    if (!targetId || !keHoachMucTieu) return;
+
+    const nv = dsNhanSu.find((x) => x.id === targetId);
     const homNay = new Date().toISOString().split('T')[0];
     const now = new Date().toISOString();
+    let itemDaCapNhat: ItemKeHoachTuan | null = null;
 
-    const dsMoi = keHoachTuan.danh_sach_tac_chien.map((x) => {
+    const dsMoi = keHoachMucTieu.danh_sach_tac_chien.map((x) => {
       if (x.id !== itemId) return x;
       let ngayHoanThanh = x.ngay_hoan_thanh || null;
       if (capNhat.da_hoan_thanh && !ngayHoanThanh) {
@@ -480,7 +563,7 @@ export default function TrangKeHoachNVKD() {
         ngayHoanThanh = null;
       }
 
-      return {
+      itemDaCapNhat = {
         ...x,
         danh_sach_ket_qua: capNhat.danh_sach_ket_qua,
         ket_qua_thuc_te: capNhat.ket_qua_thuc_te,
@@ -488,21 +571,79 @@ export default function TrangKeHoachNVKD() {
         ngay_hoan_thanh: ngayHoanThanh,
         ngay_cap_nhat_tien_do: now
       };
+      return itemDaCapNhat;
     });
 
     const res = await luuKeHoachTuan(
       {
-        id: keHoachTuan.id,
+        id: keHoachMucTieu.id,
         tuan: tuanChon,
         nhan_vien_id: targetId,
         danh_sach_tac_chien: dsMoi
       },
       nguoiDungHienTai
     );
-    setKeHoachTuan(res);
+
+    if (tabHienTai === 'team_tuan') {
+      setDsKeHoachTeamTuan((prev) => prev.map((k) => (k.id === res.id ? res : k)));
+    } else {
+      setKeHoachTuan(res);
+    }
+
+    // Tự động đồng bộ sang Báo cáo Tuần, Báo cáo Ngày và Lịch công tác
+    void (async () => {
+      const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
+      if (bcDongBo) {
+        if (tabHienTai === 'team_tuan') {
+          setDsBaoCaoTeamTuan((prev) => {
+            const exists = prev.some((b) => b.id === bcDongBo.id);
+            return exists ? prev.map((b) => (b.id === bcDongBo.id ? bcDongBo : b)) : [...prev, bcDongBo];
+          });
+        } else {
+          setBaoCaoTuan(bcDongBo);
+        }
+      }
+
+      if (itemDaCapNhat) {
+        const it = itemDaCapNhat as ItemKeHoachTuan;
+        const kqMoiNhat = capNhat.danh_sach_ket_qua[0];
+        if (kqMoiNhat && kqMoiNhat.noi_dung) {
+          await ghiNhanCheckInVaoBaoCaoNgay({
+            nhanVienId: targetId,
+            chiNhanhId: nv?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null,
+            phongBanId: nv?.phong_ban_id ?? nguoiDungHienTai?.phong_ban_id ?? null,
+            ngayBaoCao: kqMoiNhat.ngay_ghi_nhan || homNay,
+            duAnId: it.du_an_id || null,
+            tenKhachHangDuAn:
+              it.co_quan_doanh_nghiep || it.ten_khach_hang_du_an || 'Công việc tuần',
+            noiDungKetQua: kqMoiNhat.noi_dung,
+            nguoiThucHien: nguoiDungHienTai ? { id: nguoiDungHienTai.id } : { id: targetId }
+          });
+        }
+        await dongBoCongViecTuanSangLichGap({
+          item: it,
+          nhanVienId: targetId,
+          chiNhanhId: nv?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null,
+          nguoiTaoId: nguoiDungHienTai?.id || targetId,
+          choPhepTaoMoiLich: false
+        });
+      }
+    })();
   };
 
-  // Handlers Nộp Báo cáo Tuần & Tháng
+  const xuLyLuuGhiChuBaoCaoTuan = async (khoKhan: string, deXuat: string) => {
+    if (!keHoachTuan) return;
+    const targetId = nhanVienChonId || nguoiDungHienTai?.id;
+    const nv = dsNhanSu.find((x) => x.id === targetId);
+    const bcDongBo = await dongBoTuDongBaoCaoTuan(keHoachTuan, nv || nguoiDungHienTai, {
+      kho_khan: khoKhan || null,
+      de_xuat: deXuat || null,
+      trang_thai: 'da_gui'
+    });
+    if (bcDongBo) setBaoCaoTuan(bcDongBo);
+  };
+
+  // Handlers Nộp Báo cáo Tuần & Tháng (từ Drawer in/xuất)
   const xuLyLuuBaoCaoTuan = async (bc: Partial<BaoCaoKeHoachTuan>) => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
     if (!targetId || !keHoachTuan) return;
@@ -517,7 +658,7 @@ export default function TrangKeHoachNVKD() {
       so_hoan_thanh: bc.so_hoan_thanh || 0,
       ty_le_hoan_thanh: bc.ty_le_hoan_thanh || 0,
       danh_sach_ket_qua: bc.danh_sach_ket_qua || [],
-      trang_thai: bc.trang_thai || 'nhap',
+      trang_thai: bc.trang_thai || 'da_gui',
       nguoi_tao_id: nguoiDungHienTai?.id || targetId
     });
     setBaoCaoTuan(res);
@@ -538,7 +679,7 @@ export default function TrangKeHoachNVKD() {
       tong_thuc_te_thu: bc.tong_thuc_te_thu || 0,
       ty_le_dat_ke_hoach: bc.ty_le_dat_ke_hoach || 0,
       danh_sach_ket_qua: bc.danh_sach_ket_qua || [],
-      trang_thai: bc.trang_thai || 'nhap',
+      trang_thai: bc.trang_thai || 'da_gui',
       nguoi_tao_id: nguoiDungHienTai?.id || targetId
     });
     setBaoCaoThang(res);
@@ -713,6 +854,7 @@ export default function TrangKeHoachNVKD() {
             setMoCapNhatThucTeThang(true);
           }}
           onMoDrawerTongKet={() => setMoDrawerTongKetThang(true)}
+          onLuuGhiChuBaoCao={xuLyLuuGhiChuBaoCaoThang}
           onXuatExcel={() => void xuatExcelKeHoachThang(keHoachThang, nhanVienDangXem, thangChon, dsKhachHang)}
         />
       ) : tabHienTai === 'tuan' ? (
@@ -735,6 +877,7 @@ export default function TrangKeHoachNVKD() {
             setMoCapNhatTienDoTuan(true);
           }}
           onMoDrawerTongKet={() => setMoDrawerTongKetTuan(true)}
+          onLuuGhiChuBaoCao={xuLyLuuGhiChuBaoCaoTuan}
           onXuatExcel={() => void xuatExcelKeHoachTuan(keHoachTuan, nhanVienDangXem, tuanChon, dsKhachHang)}
           danhSachMucTieuThang={keHoachThang?.danh_sach_dia_ban ?? []}
         />
@@ -746,6 +889,11 @@ export default function TrangKeHoachNVKD() {
           danhSachDuAn={dsHoSoDuAn}
           danhSachKhachHang={dsKhachHang}
           tuan={tuanChon}
+          onChonCongViec={(nvId, item) => {
+            setNhanVienChonId(nvId);
+            setItemTuanDangCapNhat(item);
+            setMoCapNhatTienDoTuan(true);
+          }}
         />
       ) : (
         <BangTongQuanTeamThang

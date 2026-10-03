@@ -44,6 +44,7 @@ import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nh
 import FormLichGapModal, {
   type GiaTriMacDinhLichGap
 } from '../../../thanh_phan/lich_gap_kh/form_lich_gap_modal';
+import { dongBoLichGapSangKeHoachTuanVaBaoCaoNgay } from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import { Bo_Cuc_Trang, Nut, DaiDien, ThanhSoLieu } from '../../../thanh_phan/ui';
 
 type CheDoXem = 'tuan' | 'thang' | 'danh_sach';
@@ -418,10 +419,18 @@ export default function TrangLichCongTac() {
   const handleLuuLich = async (dto: TaoMoiLichGapDTO | CapNhatLichGapDTO) => {
     setDangLuu(true);
     try {
+      let lichDaLuu: LichGapKH | null = null;
       if (lichDangSua) {
         await capNhatLichGapKH(lichDangSua.id, dto, nguoiDungHienTai?.id);
+        lichDaLuu = { ...lichDangSua, ...dto } as LichGapKH;
       } else {
-        await taoLichGapKHMoi(dto as TaoMoiLichGapDTO);
+        lichDaLuu = await taoLichGapKHMoi(dto as TaoMoiLichGapDTO);
+      }
+      if (lichDaLuu) {
+        void dongBoLichGapSangKeHoachTuanVaBaoCaoNgay({
+          lich: lichDaLuu,
+          nguoiThucHien: nguoiDungHienTai
+        });
       }
       setMoModal(false);
       setLichDangSua(null);
