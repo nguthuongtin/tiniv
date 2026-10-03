@@ -742,124 +742,60 @@ function TrangHoSoDuAn() {
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-6">
-      {/* One UI 9 Now Brief Summary trên Mobile */}
-      <div className="sm:hidden bg-gradient-to-br from-[#0e3e2d] via-[#13503b] to-[#185942] rounded-[26px] p-3.5 text-white shadow-[0_8px_24px_rgba(14,62,45,0.16)] space-y-2.5">
-        {/* Dòng 1 — Quy mô & Tổng giá trị */}
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-200/85">Dự án</span>
-            <span className="font-extrabold text-white text-[20px] tabular-nums leading-none">{thongKe.tongSo}</span>
+      {/* Flagship Dashboard Bento Hub - Thống nhất cho cả Mobile & Desktop */}
+      <section className="bento-flagship squircle-card p-5 sm:p-6 text-white shadow-squircle relative overflow-hidden mb-2">
+        <div className="absolute -right-6 -top-6 w-40 h-40 bg-emerald-400/25 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -left-10 -bottom-10 w-44 h-44 bg-teal-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div className="flex items-start justify-between relative z-10 gap-2">
+          <div>
+            <div className="flex items-center space-x-1.5">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">TỔNG QUAN HỆ THỐNG</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ring-4 ring-emerald-400/25"></span>
+            </div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-xs font-semibold text-emerald-100/80">Dự án:</span>
+              <span className="text-3xl font-black tracking-tight text-white drop-shadow-sm font-sans">{thongKe.tongSo}</span>
+              <span className="text-[11px] text-emerald-300 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-500/30 hidden sm:inline-block">Hoạt động</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 bg-white/12 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
-            <Wallet className="size-3.5 text-amber-300 shrink-0" />
-            <span className="font-extrabold text-amber-300 text-[13px] tabular-nums">
-              {laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(thongKe.tongGiaTri)}
-            </span>
-          </div>
-        </div>
-
-        {/* Dòng 2 — 4 Thẻ trạng thái Squircle gọn trên 1 hàng */}
-        <div className="grid grid-cols-4 gap-1.5">
-          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[14px] font-extrabold text-emerald-300 tabular-nums leading-tight">{thongKe.soDangThucHien}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Đang chạy</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[14px] font-extrabold text-teal-200 tabular-nums leading-tight">{thongKe.soHoanThanh}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Hoàn thành</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[14px] font-extrabold text-amber-300 tabular-nums leading-tight">{thongKe.soTamDung}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Tạm dừng</div>
-          </div>
-          <div className="bg-white/10 rounded-[16px] py-1.5 px-1 text-center border border-white/5">
-            <div className="text-[14px] font-extrabold text-rose-300 tabular-nums leading-tight">{thongKe.soDaHuy}</div>
-            <div className="text-[10px] font-medium text-emerald-100/80 whitespace-nowrap mt-0.5">Đã hủy</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bảng số liệu điều hành chuẩn Forest Green Banner trên Desktop (ảnh mẫu 2) */}
-      <div className="hidden sm:grid sm:grid-cols-6 bg-[#0e3e2d] rounded-2xl p-3.5 gap-3 shadow-sm border border-emerald-950/20">
-        {/* 1. Tổng dự án */}
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
-          <div className="size-9 rounded-xl bg-white/10 text-emerald-200 flex items-center justify-center shrink-0 border border-white/10">
-            <FolderKanban className="size-4.5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">Tổng dự án</div>
-            <div className="text-[18px] xl:text-[20px] font-extrabold text-white tabular-nums tracking-tight leading-none mt-1">
-              {thongKe.tongSo}
+          
+          <div className="glass-inner-pill px-3 py-2 rounded-2xl flex items-center gap-2.5 shadow-sm shrink-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-900 flex items-center justify-center shadow-md shadow-amber-400/30 shrink-0 font-bold">
+              <Wallet className="size-4 sm:size-5 text-emerald-950 stroke-[2.4]" />
+            </div>
+            <div>
+              <p className="text-[9px] text-emerald-200/90 font-bold uppercase tracking-wider leading-none">TỔNG GIÁ TRỊ</p>
+              <p className="text-[13px] sm:text-[15px] font-black text-amber-300 tracking-tight mt-1 leading-none drop-shadow">
+                {laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(thongKe.tongGiaTri)}
+              </p>
             </div>
           </div>
         </div>
-
-        {/* 2. Tổng giá trị */}
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
-          <div className="size-9 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 border border-amber-400/20">
-            <Wallet className="size-4.5" strokeWidth={2.2} />
+        
+        <div className="grid grid-cols-4 gap-2 mt-4 sm:mt-6 relative z-10">
+          <div className="glass-inner-pill-active rounded-2xl py-2 px-1 sm:py-3 text-center transition-transform hover:scale-95 cursor-default">
+            <div className="text-[19px] sm:text-[22px] font-black text-emerald-300 leading-none drop-shadow-sm">{thongKe.soDangThucHien}</div>
+            <div className="text-[10px] sm:text-[12px] font-bold text-emerald-100 tracking-tight mt-1 truncate">Đang chạy</div>
+            <div className="w-6 h-0.5 bg-emerald-400/70 rounded-full mx-auto mt-1.5"></div>
           </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">Tổng giá trị</div>
-            <div className="text-[18px] xl:text-[20px] font-extrabold text-amber-300 tabular-nums tracking-tight leading-none mt-1 truncate">
-              {laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(thongKe.tongGiaTri)}
-            </div>
+          <div className="glass-inner-pill rounded-2xl py-2 px-1 sm:py-3 text-center hover:bg-white/10 transition-all cursor-default">
+            <div className="text-[19px] sm:text-[22px] font-extrabold text-slate-200 leading-none">{thongKe.soHoanThanh}</div>
+            <div className="text-[10px] sm:text-[12px] font-semibold text-slate-300/80 tracking-tight mt-1 truncate">Hoàn tất</div>
+            <div className="w-4 h-0.5 bg-white/20 rounded-full mx-auto mt-1.5"></div>
           </div>
-        </div>
-
-        {/* 3. Đang chạy */}
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
-          <div className="size-9 rounded-xl bg-emerald-400/20 text-emerald-300 flex items-center justify-center shrink-0 border border-emerald-400/20">
-            <TrendingUp className="size-4.5" strokeWidth={2.2} />
+          <div className="glass-inner-pill rounded-2xl py-2 px-1 sm:py-3 text-center hover:bg-white/10 transition-all cursor-default">
+            <div className="text-[19px] sm:text-[22px] font-extrabold text-amber-200/90 leading-none">{thongKe.soTamDung}</div>
+            <div className="text-[10px] sm:text-[12px] font-semibold text-amber-200/70 tracking-tight mt-1 truncate">Tạm dừng</div>
+            <div className="w-4 h-0.5 bg-amber-400/20 rounded-full mx-auto mt-1.5"></div>
           </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">Đang chạy</div>
-            <div className="text-[18px] xl:text-[20px] font-extrabold text-emerald-300 tabular-nums tracking-tight leading-none mt-1">
-              {thongKe.soDangThucHien}
-            </div>
+          <div className="glass-inner-pill rounded-2xl py-2 px-1 sm:py-3 text-center hover:bg-white/10 transition-all cursor-default">
+            <div className="text-[19px] sm:text-[22px] font-extrabold text-rose-200/80 leading-none">{thongKe.soDaHuy}</div>
+            <div className="text-[10px] sm:text-[12px] font-semibold text-rose-200/60 tracking-tight mt-1 truncate">Đã hủy</div>
+            <div className="w-4 h-0.5 bg-rose-400/20 rounded-full mx-auto mt-1.5"></div>
           </div>
         </div>
-
-        {/* 4. Hoàn thành */}
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
-          <div className="size-9 rounded-xl bg-teal-400/20 text-teal-300 flex items-center justify-center shrink-0 border border-teal-400/20">
-            <CheckCircle2 className="size-4.5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">Hoàn thành</div>
-            <div className="text-[18px] xl:text-[20px] font-extrabold text-teal-300 tabular-nums tracking-tight leading-none mt-1">
-              {thongKe.soHoanThanh}
-            </div>
-          </div>
-        </div>
-
-        {/* 5. Tạm dừng */}
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
-          <div className="size-9 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 border border-amber-400/20">
-            <Clock className="size-4.5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">Tạm dừng</div>
-            <div className="text-[18px] xl:text-[20px] font-extrabold text-amber-300 tabular-nums tracking-tight leading-none mt-1">
-              {thongKe.soTamDung}
-            </div>
-          </div>
-        </div>
-
-        {/* 6. Đã hủy */}
-        <div className="bg-[#185942] rounded-xl p-3.5 flex items-center gap-3">
-          <div className="size-9 rounded-xl bg-rose-400/20 text-rose-300 flex items-center justify-center shrink-0 border border-rose-400/20">
-            <XCircle className="size-4.5" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium text-emerald-200/80 uppercase tracking-wider truncate">Đã hủy</div>
-            <div className="text-[18px] xl:text-[20px] font-extrabold text-rose-300 tabular-nums tracking-tight leading-none mt-1">
-              {thongKe.soDaHuy}
-            </div>
-          </div>
-        </div>
-      </div>
-
+      </section>
       <BoLocHoSoDuAn
         gia_tri_hien_tai={dieukien}
         khi_thay_doi={setDieukien}
@@ -923,246 +859,107 @@ function TrangHoSoDuAn() {
             </div>
           </div>
 
-          {/* Bảng dữ liệu chuẩn mẫu (Desktop) */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-3 w-[42px] text-center">
-                    <input
-                      type="checkbox"
-                      aria-label="Chọn tất cả dự án trang này"
-                      checked={daChonHetTrang}
-                      onChange={chonTatCaTrang}
-                      className="size-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500 cursor-pointer"
-                    />
-                  </th>
-                  <th className="py-3 px-3 w-[45px] text-center">STT</th>
-                  <th className="py-3 px-4 min-w-[240px]">TÊN DỰ ÁN & KHÁCH HÀNG</th>
-                  <th className="py-3 px-4 min-w-[150px]">GIAI ĐOẠN</th>
-                  <th className="py-3 px-4 min-w-[140px]">GIÁ TRỊ & TIỀM NĂNG</th>
-                  <th className="py-3 px-4 min-w-[140px]">PHỤ TRÁCH</th>
-                  <th className="py-3 px-4 w-[120px] text-right">THAO TÁC</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
-                {danhSachTrangHienTai.map((hda, index) => {
-                  const kh = hda.khach_hang_id ? dsKhachHang.find((k) => k.id === hda.khach_hang_id) ?? null : null;
-                  const nguoiLead = dsNhanSu.find((n) => n.id === (hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id)) ?? null;
-                  const gd = tenGiaiDoan[hda.giai_doan] ?? { nhan: String(hda.giai_doan), kieu: 'muted' as const };
-                  const tiemNang = TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? { nhan: 'Bình thường', kieu: 'muted' };
-                  const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
-                  const duocChon = dsDuAnDaChonIds.has(hda.id);
-
-                  return (
-                    <tr
-                      key={hda.id}
-                      className={cn(
-                        'hover:bg-slate-50/70 transition-colors',
-                        hda.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/30',
-                        duocChon && 'bg-emerald-50/40'
-                      )}
-                    >
-                      {/* Checkbox chọn */}
-                      <td className="py-3.5 px-3 text-center">
-                        <input
-                          type="checkbox"
-                          aria-label={`Chọn dự án ${hda.ten_du_an}`}
-                          checked={duocChon}
-                          onChange={() => toggleChonDuAn(hda.id)}
-                          className="size-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500 cursor-pointer"
-                        />
-                      </td>
-
-                      {/* 0. STT */}
-                      <td className="py-3.5 px-3 text-center font-semibold text-slate-400 text-xs">
-                        {stt}
-                      </td>
-
-                      {/* 1. TÊN DỰ ÁN & KHÁCH HÀNG */}
-                      <td className="py-3.5 px-4">
-                        <Link
-                          href={`/ho-so-du-an/${hda.id}`}
-                          className="font-bold text-slate-900 text-sm hover:text-emerald-700 transition-colors line-clamp-1"
-                        >
-                          {hda.ten_du_an}
-                        </Link>
-                        <div className="flex items-center gap-3 text-xs text-slate-400 font-normal mt-0.5 flex-wrap">
-                          {kh && (
-                            <span className="inline-flex items-center gap-1 text-slate-600 font-medium">
-                              <Building2 className="size-3 text-slate-400" />
-                              {kh.ten_khach_hang}
-                            </span>
-                          )}
-                          {hda.thoi_han_hoan_thanh && (
-                            <span className="inline-flex items-center gap-1 text-slate-400">
-                              <Clock className="size-3" />
-                              Ký HĐ: {formatNgay(hda.thoi_han_hoan_thanh.slice(0, 10))}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* 2. GIAI ĐOẠN */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/60">
-                          {gd.nhan}
-                        </span>
-                      </td>
-
-                      {/* 3. GIÁ TRỊ & TIỀM NĂNG */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="font-mono font-bold text-slate-900 text-xs">
-                          {laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong)}
-                        </div>
-                        <span className="inline-block mt-0.5 text-[10px] font-semibold text-slate-500 bg-slate-100 rounded px-1.5 py-0.2">
-                          Tiềm năng: {tiemNang.nhan}
-                        </span>
-                      </td>
-
-                      {/* 4. PHỤ TRÁCH */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        {nguoiLead ? (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
-                            <User className="size-3.5 text-slate-400" />
-                            <span>{nguoiLead.ho_va_ten}</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">Chưa gán</span>
-                        )}
-                      </td>
-
-                      {/* 5. THAO TÁC */}
-                      <td className="py-3.5 px-4 whitespace-nowrap text-right">
-                        <div className="inline-flex items-center gap-1 justify-end">
-                          <Link
-                            href={`/ho-so-du-an/${hda.id}`}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
-                            title="Xem chi tiết"
-                          >
-                            <Eye className="size-4" />
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => moSua(hda)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-                            title="Chỉnh sửa"
-                          >
-                            <Pencil className="size-4" />
-                          </button>
-                          {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc ? (
-                            <button
-                              type="button"
-                              onClick={() => xuLyKhoiPhuc(hda)}
-                              disabled={dangXuLyKhac === hda.id}
-                              className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition cursor-pointer disabled:opacity-50"
-                              title="Khôi phục hồ sơ"
-                            >
-                              <RotateCcw className="size-4" />
-                            </button>
-                          ) : coQuyenXoa ? (
-                            <button
-                              type="button"
-                              onClick={() => xuLyXoa(hda)}
-                              disabled={dangXuLyKhac === hda.id}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer disabled:opacity-50"
-                              title="Xóa vào thùng rác"
-                            >
-                              <Trash2 className="size-4" />
-                            </button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* 2. GIAO DIỆN THẺ MODULAR SQUIRCLE ONE UI 9 TRÊN MOBILE */}
-          <div className="sm:hidden flex flex-col gap-2.5 p-2.5 bg-slate-100/70">
+          {/* Flagship Apple Squircle Glass Project Cards Unified Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4 p-3.5 sm:p-5 bg-slate-50/50">
             {danhSachTrangHienTai.map((hda, index) => {
-              const gd = tenGiaiDoan[hda.giai_doan] ?? { nhan: String(hda.giai_doan) };
-              const giaTri = laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong);
-              const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
+              const kh = hda.khach_hang_id ? dsKhachHang.find((k) => k.id === hda.khach_hang_id) ?? null : null;
               const idLead = hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id;
               const nguoiLead = idLead ? dsNhanSu.find((n) => n.id === idLead) ?? null : null;
-              const tenLeadNgan = nguoiLead?.ho_va_ten
-                ? nguoiLead.ho_va_ten.trim().split(/\s+/).slice(-2).join(' ')
-                : null;
-
+              const gd = tenGiaiDoan[hda.giai_doan] ?? { nhan: String(hda.giai_doan) };
+              const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
               const duocChon = dsDuAnDaChonIds.has(hda.id);
+              const giaTri = laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong);
+              
+              const gdColors: Record<string, { badge: string; dotBg: string; barWidth: string }> = {
+                moi_tao: { badge: 'bg-violet-50 text-violet-700 border-violet-200/80', dotBg: 'bg-violet-600', barWidth: '15%' },
+                tiep_can: { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200/80', dotBg: 'bg-indigo-600', barWidth: '25%' },
+                khao_sat: { badge: 'bg-emerald-50 text-emerald-800 border-emerald-300/80', dotBg: 'bg-emerald-500', barWidth: '35%' },
+                len_giai_phap: { badge: 'bg-sky-50 text-sky-700 border-sky-200/80', dotBg: 'bg-sky-500', barWidth: '50%' },
+                bao_gia: { badge: 'bg-amber-50 text-amber-700 border-amber-200/80', dotBg: 'bg-amber-500', barWidth: '65%' },
+                dam_phan: { badge: 'bg-orange-50 text-orange-700 border-orange-200/80', dotBg: 'bg-orange-500', barWidth: '80%' },
+                ky_hop_dong: { badge: 'bg-teal-50 text-teal-700 border-teal-200/80', dotBg: 'bg-teal-500', barWidth: '90%' },
+                trien_khai: { badge: 'bg-blue-50 text-blue-700 border-blue-200/80', dotBg: 'bg-blue-600', barWidth: '95%' },
+                nghiem_thu: { badge: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200/80', dotBg: 'bg-fuchsia-600', barWidth: '98%' },
+                hoan_thanh: { badge: 'bg-emerald-50 text-emerald-800 border-emerald-300/80', dotBg: 'bg-emerald-500', barWidth: '100%' },
+                tam_dung: { badge: 'bg-slate-50 text-slate-700 border-slate-200/80', dotBg: 'bg-slate-500', barWidth: '50%' },
+                huy: { badge: 'bg-rose-50 text-rose-700 border-rose-200/80', dotBg: 'bg-rose-500', barWidth: '10%' },
+              };
+              const styleColor = hda.trang_thai === 'da_xoa' ? { badge: 'bg-rose-50 text-rose-700 border-rose-200/80', dotBg: 'bg-rose-500', barWidth: '0%' } : (gdColors[hda.giai_doan] || { badge: 'bg-slate-100 text-slate-600 border-slate-200/80', dotBg: 'bg-slate-400', barWidth: '0%' });
 
               return (
-                <div
+                <article
                   key={hda.id}
                   className={cn(
-                    "p-3.5 bg-white rounded-[22px] border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition-all relative",
-                    hda.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/50',
-                    duocChon && 'border-emerald-500 ring-2 ring-emerald-500/15 bg-emerald-50/20'
+                    "glass-card-item p-4 sm:p-5 hover:shadow-card-hover transition-all duration-200 relative group flex flex-col",
+                    hda.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/50 grayscale-[30%]',
+                    duocChon && 'border-emerald-500/80 ring-1 ring-emerald-500/20 bg-emerald-50/10 shadow-emerald-500/10'
                   )}
                 >
-                  {/* Hàng 1: Checkbox + STT + Tên dự án + Tình trạng chìm ngay sau tên dự án */}
-                  <div className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      aria-label={`Chọn dự án ${hda.ten_du_an}`}
-                      checked={duocChon}
-                      onChange={() => toggleChonDuAn(hda.id)}
-                      className="size-4 mt-0.5 rounded-md border-slate-300 text-emerald-700 focus:ring-emerald-500 cursor-pointer shrink-0"
-                    />
-                    <span className="text-slate-400 text-[11.5px] font-extrabold tabular-nums mt-0.5 shrink-0">
-                      {stt}.
-                    </span>
-                    <Link href={`/ho-so-du-an/${hda.id}`} className="flex-1 min-w-0 group">
-                      <div className="text-[14.5px] leading-snug">
-                        <span className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                          {hda.ten_du_an}
+                  <div className="flex items-start gap-3 flex-1">
+                    <label className="pt-0.5 cursor-pointer flex items-center">
+                      <input type="checkbox" checked={duocChon} onChange={() => toggleChonDuAn(hda.id)} className="custom-check" />
+                    </label>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200/60 leading-none">
+                          #{stt < 10 ? `0${stt}` : stt}
                         </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
-                          {gd.nhan}
+                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border shadow-xs", styleColor.badge)}>
+                          <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5", styleColor.dotBg, hda.giai_doan === 'moi_tao' && 'animate-pulse')}></span>
+                          {hda.trang_thai === 'da_xoa' ? 'Đã xóa' : gd.nhan}
                         </span>
-                        {hda.trang_thai === 'da_xoa' && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 uppercase ml-1.5 align-middle">
-                            Đã xóa
-                          </span>
-                        )}
+                        <span className="ml-auto text-[10px] text-slate-400 font-semibold truncate max-w-[80px]">
+                          {hda.ngay_tao ? formatNgay(hda.ngay_tao.slice(0, 10)) : 'Hôm nay'}
+                        </span>
                       </div>
-                    </Link>
-
-                    {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc && (
-                      <button
-                        type="button"
-                        disabled={dangXuLyKhac === hda.id}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          xuLyKhoiPhuc(hda);
-                        }}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white active:scale-95 transition cursor-pointer shrink-0"
-                      >
-                        <RotateCcw className="size-3" strokeWidth={2.5} />
-                      </button>
-                    )}
+                      
+                      <Link href={`/ho-so-du-an/${hda.id}`}>
+                        <h3 className="text-[13px] sm:text-[14px] font-bold text-slate-900 leading-snug tracking-tight uppercase line-clamp-2 mt-1 hover:text-emerald-700 transition-colors">
+                          {hda.ten_du_an}
+                        </h3>
+                      </Link>
+                      
+                      {kh && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] sm:text-xs font-medium text-slate-500 truncate">
+                          <Building2 className="size-3.5 shrink-0 text-slate-400" />
+                          <span className="truncate">{kh.ten_khach_hang}</span>
+                        </div>
+                      )}
+                      
+                      <div className="mt-3.5 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                        <div className={cn("h-full rounded-full transition-all", styleColor.dotBg)} style={{ width: styleColor.barWidth }}></div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Hàng 2 (Footer): Số tiền bên trái (vị trí tên KH cũ) & Người phụ trách bên phải */}
-                  <Link
-                    href={`/ho-so-du-an/${hda.id}`}
-                    className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-slate-100"
-                  >
-                    <span className="font-mono font-extrabold text-[#107555] text-[12.5px] bg-emerald-50/80 px-2.5 py-0.5 rounded-full border border-emerald-200/60">
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-slate-200/50 flex items-center gap-1 p-1">
+                    <Link href={`/ho-so-du-an/${hda.id}`} className="p-1.5 rounded-md text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition" title="Xem"><Eye className="size-3.5" /></Link>
+                    <button type="button" onClick={() => moSua(hda)} className="p-1.5 rounded-md text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition" title="Sửa"><Pencil className="size-3.5" /></button>
+                    {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc ? (
+                      <button type="button" onClick={() => xuLyKhoiPhuc(hda)} disabled={dangXuLyKhac === hda.id} className="p-1.5 rounded-md text-emerald-600 hover:bg-emerald-50 transition disabled:opacity-50" title="Khôi phục"><RotateCcw className="size-3.5" /></button>
+                    ) : coQuyenXoa ? (
+                      <button type="button" onClick={() => xuLyXoa(hda)} disabled={dangXuLyKhac === hda.id} className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition disabled:opacity-50" title="Xóa"><Trash2 className="size-3.5" /></button>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100/90 flex items-center justify-between text-xs">
+                    <div className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-800 border border-emerald-300/80 font-black tracking-tight text-[11px] shadow-xs truncate max-w-[130px]">
                       {giaTri}
-                    </span>
-                    {tenLeadNgan && (
-                      <div className="flex items-center gap-1 shrink-0 bg-slate-100 px-2 py-0.5 rounded-full text-[11px] font-semibold text-slate-700">
-                        <User className="size-3 text-slate-400" />
-                        <span>{tenLeadNgan}</span>
+                    </div>
+                    {nguoiLead ? (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[11px] font-bold text-slate-700 truncate max-w-[80px]">
+                          {nguoiLead.ho_va_ten.split(' ').pop()}
+                        </span>
+                        <div className="size-6 sm:size-7 rounded-full bg-gradient-to-tr from-brand-500 to-teal-400 text-white flex items-center justify-center text-[10px] sm:text-[11px] font-black shadow-xs ring-2 ring-white">
+                          {nguoiLead.ho_va_ten.split(' ').pop()?.[0]?.toUpperCase()}
+                        </div>
                       </div>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 italic">Chưa gán</span>
                     )}
-                  </Link>
-                </div>
+                  </div>
+                </article>
               );
             })}
           </div>
