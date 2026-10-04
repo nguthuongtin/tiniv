@@ -980,23 +980,12 @@ export function NoiDungKeHoachNVKD({
       ) : tabHienTai === 'ban_lam_viec' ? (
         <BanLamViecHangNgay
           keHoachTuan={keHoachTuan}
-          danhSachLichGap={dsLichGap}
           danhSachDuAn={dsHoSoDuAn}
           danhSachKhachHang={dsKhachHang}
-          tuan={tuanChon}
           ngayChon={ngayTacChien}
           onDoiNgayChon={xuLyDoiNgayTacChien}
           laSuaDuoc={laSuaDuoc}
-          onThemCongViec={({ ngay, hinhThuc }) => {
-            setDangSuaTuan(null);
-            setNgayMacDinhDrawerTuan(ngay);
-            setHinhThucMacDinhDrawerTuan(hinhThuc);
-            setMoDrawerTuan(true);
-          }}
-          onSuaCongViec={(item) => {
-            setDangSuaTuan(item);
-            setMoDrawerTuan(true);
-          }}
+          onThemNhanh={xuLyLuuItemTuan}
           onXoaCongViec={xuLyXoaItemTuan}
           onCheckIn1Cham={(item) => {
             setItemTuanDangCapNhat(item);
