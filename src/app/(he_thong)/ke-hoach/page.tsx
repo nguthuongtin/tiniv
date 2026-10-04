@@ -8,7 +8,8 @@ import {
   CalendarRange,
   ChevronLeft,
   ChevronRight,
-  LayoutDashboard
+  LayoutDashboard,
+  ListTodo
 } from 'lucide-react';
 import { cn } from '../../../thu_vien/utils/cn';
 import useStoreXacThuc from '../../../thu_vien/zustand/store_xac_thuc';
@@ -16,6 +17,7 @@ import { coQuyen, layPhamViPhongBan } from '../../../thu_vien/phan_quyen/kiem_tr
 import type { NhanSu } from '../../../thu_vien/types/nhan_su';
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
 import type { KhachHang } from '../../../thu_vien/types/khach_hang';
+import type { LichGapKH } from '../../../thu_vien/types/lich_gap_kh';
 import type {
   KeHoachThang,
   KeHoachTuan,
@@ -33,6 +35,7 @@ import {
   luuKeHoachTuan,
   layThangHienTaiISO,
   layTuanHienTaiISO,
+  layTuanFromDateISO,
   danhSachKeHoachThangTheoFilter,
   danhSachKeHoachTuanTheoFilter
 } from '../../../dich_vu/ke_hoach/dich_vu_ke_hoach';
@@ -53,15 +56,18 @@ import {
   dongBoTuDongBaoCaoThang,
   ghiNhanCheckInVaoBaoCaoNgay,
   dongBoCongViecTuanSangLichGap,
-  superSyncCheckIn1Cham
+  superSyncCheckIn1Cham,
+  layKhoangNgayTuTuanISO
 } from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachHoSoDuAn } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import { danhSachKhachHang } from '../../../dich_vu/khach_hang/dich_vu_khach_hang';
+import { danhSachLichGapKH } from '../../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
 import Bo_Cuc_Trang from '../../../thanh_phan/ui/bo_cuc_trang';
 
 import BangKeHoachThang from '../../../thanh_phan/ke_hoach/bang_ke_hoach_thang';
 import BangKeHoachTuan from '../../../thanh_phan/ke_hoach/bang_ke_hoach_tuan';
+import BanLamViecHangNgay from '../../../thanh_phan/ke_hoach/ban_lam_viec_hang_ngay';
 import FormDiaBanDrawer from '../../../thanh_phan/ke_hoach/form_dia_ban_drawer';
 import FormTacChienTuanDrawer from '../../../thanh_phan/ke_hoach/form_tac_chien_tuan_drawer';
 import FormCapNhatTienDoTuan from '../../../thanh_phan/ke_hoach/form_cap_nhat_tien_do_tuan';
@@ -92,23 +98,35 @@ const taoDanhSachTuanNam = (nam: number) => {
 };
 
 export default function TrangKeHoachNVKD() {
+  return <NoiDungKeHoachNVKD />;
+}
+
+export function NoiDungKeHoachNVKD({
+  tabKhoiTao
+}: {
+  tabKhoiTao?: 'ban_lam_viec' | 'thang' | 'tuan' | 'team_tuan' | 'team_thang';
+} = {}) {
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
   const laQuanLyHoacGiamDoc =
     ['quan_tri_he_thong', 'giam_doc', 'truong_phong'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
     coQuyen(nguoiDungHienTai, 'ke_hoach.duyet');
 
-  const [tabHienTai, setTabHienTai] = useState<'thang' | 'tuan' | 'team_tuan' | 'team_thang'>('team_tuan');
+  const [tabHienTai, setTabHienTai] = useState<'ban_lam_viec' | 'thang' | 'tuan' | 'team_tuan' | 'team_thang'>(
+    tabKhoiTao || 'ban_lam_viec'
+  );
   const [dangTai, setDangTai] = useState(true);
 
   // Time selectors
   const [thangChon, setThangChon] = useState<string>(layThangHienTaiISO());
   const [tuanChon, setTuanChon] = useState<string>(layTuanHienTaiISO());
   const [namTuanChon, setNamTuanChon] = useState<number>(new Date().getFullYear());
+  const [ngayTacChien, setNgayTacChien] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   // Data states cá nhân
   const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>([]);
   const [dsHoSoDuAn, setDsHoSoDuAn] = useState<HoSoDuAn[]>([]);
   const [dsKhachHang, setDsKhachHang] = useState<KhachHang[]>([]);
+  const [dsLichGap, setDsLichGap] = useState<LichGapKH[]>([]);
   const [nhanVienChonId, setNhanVienChonId] = useState<string>('');
 
   const [keHoachThang, setKeHoachThang] = useState<KeHoachThang | null>(null);
@@ -128,6 +146,8 @@ export default function TrangKeHoachNVKD() {
 
   const [moDrawerTuan, setMoDrawerTuan] = useState(false);
   const [dangSuaTuan, setDangSuaTuan] = useState<ItemKeHoachTuan | null>(null);
+  const [ngayMacDinhDrawerTuan, setNgayMacDinhDrawerTuan] = useState<string>('');
+  const [hinhThucMacDinhDrawerTuan, setHinhThucMacDinhDrawerTuan] = useState<'gap_mat' | 'goi_dien'>('goi_dien');
 
   // Drawers Cập nhật tiến độ / thực tế thu (Tap nhanh)
   const [moCapNhatTienDoTuan, setMoCapNhatTienDoTuan] = useState(false);
@@ -140,18 +160,19 @@ export default function TrangKeHoachNVKD() {
   const [moDrawerTongKetTuan, setMoDrawerTongKetTuan] = useState(false);
   const [moDrawerTongKetThang, setMoDrawerTongKetThang] = useState(false);
 
-  // Định tuyến tab mặc định theo vai trò: Giám đốc / TP chỉ xem Kế hoạch chung của toàn đội
+  // Định tuyến tab mặc định theo vai trò (nếu không truyền tabKhoiTao)
   useEffect(() => {
+    if (tabKhoiTao) return;
     if (laQuanLyHoacGiamDoc) {
-      if (tabHienTai === 'tuan' || tabHienTai === 'thang') {
+      if (tabHienTai === 'tuan' || tabHienTai === 'thang' || tabHienTai === 'ban_lam_viec') {
         setTabHienTai('team_tuan');
       }
     } else {
       if (tabHienTai === 'team_tuan' || tabHienTai === 'team_thang') {
-        setTabHienTai('tuan');
+        setTabHienTai('ban_lam_viec');
       }
     }
-  }, [laQuanLyHoacGiamDoc]);
+  }, [laQuanLyHoacGiamDoc, tabKhoiTao]);
 
   const phamVi = useMemo(() => {
     return layPhamViPhongBan(nguoiDungHienTai);
@@ -223,15 +244,22 @@ export default function TrangKeHoachNVKD() {
         ]);
         setKeHoachThang(resKH);
         setBaoCaoThang(resBC);
-      } else if (tabHienTai === 'tuan') {
+      } else if (tabHienTai === 'tuan' || tabHienTai === 'ban_lam_viec') {
         if (!targetId) return;
-        const [resKH, resBC, resThang] = await Promise.all([
+        const { tuNgay, denNgay } = layKhoangNgayTuTuanISO(tuanChon);
+        const [resKH, resBC, resThang, resLich] = await Promise.all([
           layKeHoachTuan(targetId, tuanChon),
           layBaoCaoKeHoachTuan(targetId, tuanChon),
-          layKeHoachThang(targetId, thangChon)
+          layKeHoachThang(targetId, thangChon),
+          danhSachLichGapKH({
+            nguoi_phu_trach_id: targetId,
+            tu_ngay: tuNgay,
+            den_ngay: denNgay
+          })
         ]);
         setKeHoachTuan(resKH);
         setBaoCaoTuan(resBC);
+        setDsLichGap(resLich);
         if (resThang) {
           setKeHoachThang(resThang);
         }
@@ -429,7 +457,7 @@ export default function TrangKeHoachNVKD() {
       const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
       if (bcDongBo) setBaoCaoTuan(bcDongBo);
 
-      if (item.ngay_du_kien) {
+      if (item.ngay_du_kien && item.hinh_thuc === 'gap_mat') {
         await dongBoCongViecTuanSangLichGap({
           item,
           nhanVienId: targetId,
@@ -437,6 +465,13 @@ export default function TrangKeHoachNVKD() {
           nguoiTaoId: nguoiDungHienTai?.id || targetId,
           choPhepTaoMoiLich: true
         });
+        const { tuNgay, denNgay } = layKhoangNgayTuTuanISO(tuanChon);
+        const resLich = await danhSachLichGapKH({
+          nguoi_phu_trach_id: targetId,
+          tu_ngay: tuNgay,
+          den_ngay: denNgay
+        });
+        setDsLichGap(resLich);
       }
     })();
   };
@@ -534,6 +569,72 @@ export default function TrangKeHoachNVKD() {
     })();
   };
 
+  const xuLyDoiNgayTacChien = (ngayMoi: string) => {
+    setNgayTacChien(ngayMoi);
+    const tuanMoi = layTuanFromDateISO(ngayMoi);
+    if (tuanMoi && tuanMoi !== tuanChon) {
+      const m = tuanMoi.match(/^(\d{4})-W(\d{2})$/);
+      if (m) setNamTuanChon(Number(m[1]));
+      setTuanChon(tuanMoi);
+    }
+  };
+
+  // Điều phối "Lên nòng": Rút việc từ Kho chờ xuống Bảng việc văn phòng hoặc Lịch công tác
+  const xuLyLenNongCongViec = async (
+    item: ItemKeHoachTuan,
+    ngayDich: string | null,
+    hinhThucMoi: 'gap_mat' | 'goi_dien'
+  ) => {
+    const targetId = nhanVienChonId || nguoiDungHienTai?.id;
+    if (!targetId) return;
+
+    const nv = dsNhanSu.find((x) => x.id === targetId);
+    const itemCapNhat: ItemKeHoachTuan = {
+      ...item,
+      ngay_du_kien: ngayDich,
+      hinh_thuc: hinhThucMoi
+    };
+
+    const dsHienTai = keHoachTuan?.danh_sach_tac_chien ?? [];
+    const dsMoi = dsHienTai.map((x) => (x.id === item.id ? itemCapNhat : x));
+
+    const res = await luuKeHoachTuan(
+      {
+        id: keHoachTuan?.id,
+        tuan: tuanChon,
+        nhan_vien_id: targetId,
+        chi_nhanh_id: nv?.chi_nhanh_id ?? null,
+        phong_ban_id: nv?.phong_ban_id ?? null,
+        danh_sach_tac_chien: dsMoi
+      },
+      nguoiDungHienTai
+    );
+
+    setKeHoachTuan(res);
+
+    void (async () => {
+      const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
+      if (bcDongBo) setBaoCaoTuan(bcDongBo);
+
+      if (ngayDich && hinhThucMoi === 'gap_mat') {
+        await dongBoCongViecTuanSangLichGap({
+          item: itemCapNhat,
+          nhanVienId: targetId,
+          chiNhanhId: nv?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null,
+          nguoiTaoId: nguoiDungHienTai?.id || targetId,
+          choPhepTaoMoiLich: true
+        });
+        const { tuNgay, denNgay } = layKhoangNgayTuTuanISO(tuanChon);
+        const resLich = await danhSachLichGapKH({
+          nguoi_phu_trach_id: targetId,
+          tu_ngay: tuNgay,
+          den_ngay: denNgay
+        });
+        setDsLichGap(resLich);
+      }
+    })();
+  };
+
   const xuLyCapNhatTienDoTuan = async (
     itemId: string,
     capNhat: {
@@ -542,6 +643,7 @@ export default function TrangKeHoachNVKD() {
       da_hoan_thanh: boolean;
       trang_thai_cong_viec?: 'da_hoan_thanh' | 'dang_thuc_hien' | 'doi_hen';
       giai_doan_du_an_moi?: string | null;
+      ngay_du_kien_moi?: string | null;
     }
   ) => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
@@ -568,6 +670,8 @@ export default function TrangKeHoachNVKD() {
 
       itemDaCapNhat = {
         ...x,
+        ngay_du_kien:
+          capNhat.ngay_du_kien_moi !== undefined ? capNhat.ngay_du_kien_moi : x.ngay_du_kien,
         danh_sach_ket_qua: capNhat.danh_sach_ket_qua,
         ket_qua_thuc_te: capNhat.ket_qua_thuc_te,
         da_hoan_thanh: capNhat.da_hoan_thanh,
@@ -619,6 +723,11 @@ export default function TrangKeHoachNVKD() {
           giaiDoanDuAnMoi: capNhat.giai_doan_du_an_moi,
           nguoiThucHien: nguoiDungHienTai
         });
+
+        if (capNhat.giai_doan_du_an_moi) {
+          const resDA = await danhSachHoSoDuAn({ trang_thai: 'hoat_dong' });
+          setDsHoSoDuAn(resDA.mang ?? []);
+        }
       }
     })();
   };
@@ -705,7 +814,7 @@ export default function TrangKeHoachNVKD() {
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <CalendarRange className="size-4" /> Kế hoạch Tuần
+                <CalendarRange className="size-4" /> Điều hành Tuần
               </button>
               <button
                 type="button"
@@ -717,11 +826,35 @@ export default function TrangKeHoachNVKD() {
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <CalendarDays className="size-4" /> Kế hoạch Tháng
+                <CalendarDays className="size-4" /> Điều hành Tháng
+              </button>
+              <button
+                type="button"
+                onClick={() => setTabHienTai('ban_lam_viec')}
+                className={cn(
+                  'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2',
+                  tabHienTai === 'ban_lam_viec'
+                    ? 'bg-background text-primary shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <ListTodo className="size-4" /> Bàn làm việc ngày
               </button>
             </>
           ) : (
             <>
+              <button
+                type="button"
+                onClick={() => setTabHienTai('ban_lam_viec')}
+                className={cn(
+                  'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2',
+                  tabHienTai === 'ban_lam_viec'
+                    ? 'bg-background text-primary shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <ListTodo className="size-4" /> Bàn làm việc hôm nay
+              </button>
               <button
                 type="button"
                 onClick={() => setTabHienTai('tuan')}
@@ -732,7 +865,7 @@ export default function TrangKeHoachNVKD() {
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <CalendarRange className="size-4" /> Kế hoạch Tuần
+                <CalendarRange className="size-4" /> Kế hoạch Tuần (Kho chờ)
               </button>
               <button
                 type="button"
@@ -750,8 +883,25 @@ export default function TrangKeHoachNVKD() {
           )}
         </div>
 
-        {/* Filters: Time Selectors */}
+        {/* Filters: Nhân viên (nếu là Quản lý đang xem Bàn làm việc) & Time Selectors */}
         <div className="flex items-center gap-2 flex-wrap">
+          {laQuanLyHoacGiamDoc && (tabHienTai === 'ban_lam_viec' || tabHienTai === 'tuan' || tabHienTai === 'thang') && (
+            <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg px-2.5 h-9">
+              <Users className="size-3.5 text-muted-foreground" />
+              <select
+                value={nhanVienChonId}
+                onChange={(e) => setNhanVienChonId(e.target.value)}
+                className="bg-transparent border-0 text-xs font-bold text-foreground focus:ring-0"
+              >
+                {dsNhanSuTeam.map((nv) => (
+                  <option key={nv.id} value={nv.id}>
+                    {nv.ho_va_ten}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {tabHienTai === 'thang' || tabHienTai === 'team_thang' ? (
             <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg p-1">
               <button
@@ -827,6 +977,34 @@ export default function TrangKeHoachNVKD() {
           <Loader2 className="size-6 animate-spin text-primary" strokeWidth={2.25} />
           <span className="font-semibold text-xs">Đang tải dữ liệu...</span>
         </div>
+      ) : tabHienTai === 'ban_lam_viec' ? (
+        <BanLamViecHangNgay
+          keHoachTuan={keHoachTuan}
+          danhSachLichGap={dsLichGap}
+          danhSachDuAn={dsHoSoDuAn}
+          danhSachKhachHang={dsKhachHang}
+          tuan={tuanChon}
+          ngayChon={ngayTacChien}
+          onDoiNgayChon={xuLyDoiNgayTacChien}
+          laSuaDuoc={laSuaDuoc}
+          onThemCongViec={({ ngay, hinhThuc }) => {
+            setDangSuaTuan(null);
+            setNgayMacDinhDrawerTuan(ngay);
+            setHinhThucMacDinhDrawerTuan(hinhThuc);
+            setMoDrawerTuan(true);
+          }}
+          onSuaCongViec={(item) => {
+            setDangSuaTuan(item);
+            setMoDrawerTuan(true);
+          }}
+          onXoaCongViec={xuLyXoaItemTuan}
+          onCheckIn1Cham={(item) => {
+            setItemTuanDangCapNhat(item);
+            setMoCapNhatTienDoTuan(true);
+          }}
+          onDoiNhanhHoanThanh={xuLyDoiVatChung}
+          onLenNongCongViec={xuLyLenNongCongViec}
+        />
       ) : tabHienTai === 'thang' ? (
         <BangKeHoachThang
           keHoach={keHoachThang}
@@ -856,6 +1034,8 @@ export default function TrangKeHoachNVKD() {
           laSuaDuoc={laSuaDuoc}
           onThemMoi={() => {
             setDangSuaTuan(null);
+            setNgayMacDinhDrawerTuan('');
+            setHinhThucMacDinhDrawerTuan('goi_dien');
             setMoDrawerTuan(true);
           }}
           onSuaItem={(item) => {
@@ -915,6 +1095,8 @@ export default function TrangKeHoachNVKD() {
         danhSachDuAn={dsHoSoDuAn}
         danhSachKhachHang={dsKhachHang}
         danhSachMucTieuThang={keHoachThang?.danh_sach_dia_ban ?? []}
+        ngayMacDinh={ngayMacDinhDrawerTuan}
+        hinhThucMacDinh={hinhThucMacDinhDrawerTuan}
         onLuu={xuLyLuuItemTuan}
       />
 

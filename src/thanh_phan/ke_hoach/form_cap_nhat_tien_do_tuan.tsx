@@ -35,6 +35,7 @@ interface Props {
       da_hoan_thanh: boolean;
       trang_thai_cong_viec?: 'da_hoan_thanh' | 'dang_thuc_hien' | 'doi_hen';
       giai_doan_du_an_moi?: string | null;
+      ngay_du_kien_moi?: string | null;
     }
   ) => void;
 }
@@ -54,6 +55,7 @@ export default function FormCapNhatTienDoTuan({
   const [daHoanThanh, setDaHoanThanh] = useState<boolean>(false);
   const [trangThaiCongViec, setTrangThaiCongViec] = useState<'da_hoan_thanh' | 'dang_thuc_hien' | 'doi_hen'>('dang_thuc_hien');
   const [giaiDoanDuAnMoi, setGiaiDoanDuAnMoi] = useState<string>('');
+  const [ngayDuKienMoi, setNgayDuKienMoi] = useState<string>('');
 
   // State thêm kết quả mới
   const [noiDungMoi, setNoiDungMoi] = useState<string>('');
@@ -86,6 +88,7 @@ export default function FormCapNhatTienDoTuan({
       setDaHoanThanh(Boolean(item.da_hoan_thanh));
       setTrangThaiCongViec(item.da_hoan_thanh ? 'da_hoan_thanh' : 'dang_thuc_hien');
       setGiaiDoanDuAnMoi('');
+      setNgayDuKienMoi(item.ngay_du_kien || '');
 
       // Migrate từ kết quả đơn lẻ sang danh sách nếu có
       if (item.danh_sach_ket_qua && item.danh_sach_ket_qua.length > 0) {
@@ -263,7 +266,8 @@ export default function FormCapNhatTienDoTuan({
       ket_qua_thuc_te: ketQuaGanNhat,
       da_hoan_thanh: isFinished,
       trang_thai_cong_viec: trangThaiCongViec,
-      giai_doan_du_an_moi: giaiDoanDuAnMoi.trim() || null
+      giai_doan_du_an_moi: giaiDoanDuAnMoi.trim() || null,
+      ngay_du_kien_moi: trangThaiCongViec === 'doi_hen' ? (ngayDuKienMoi || null) : undefined
     });
     onDong();
   };
@@ -301,7 +305,7 @@ export default function FormCapNhatTienDoTuan({
             </div>
 
             {/* Trạng thái công việc: Hoàn thành / Đang xử lý / Dời hẹn */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label className="font-bold text-foreground text-xs block">Trạng thái công việc:</label>
               <div className="grid grid-cols-3 gap-2">
                 <button
@@ -350,6 +354,18 @@ export default function FormCapNhatTienDoTuan({
                   Dời hẹn
                 </button>
               </div>
+
+              {trangThaiCongViec === 'doi_hen' && !daHoanThanh && (
+                <div className="flex items-center gap-2 pt-1.5">
+                  <span className="text-xs font-semibold text-blue-700">Dời sang ngày:</span>
+                  <input
+                    type="date"
+                    value={ngayDuKienMoi}
+                    onChange={(e) => setNgayDuKienMoi(e.target.value)}
+                    className="h-8 rounded-lg border border-blue-300 bg-blue-50/40 px-2.5 text-xs font-bold text-foreground"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Chuyển Giai đoạn Dự án (Pipeline) nếu công việc có gắn Dự án */}

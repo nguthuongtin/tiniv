@@ -12,7 +12,9 @@ import {
   Sparkles,
   Layers,
   ArrowRight,
-  MapPin
+  MapPin,
+  PhoneCall,
+  Users
 } from 'lucide-react';
 import type { ItemKeHoachTuan, ItemKeHoachThang } from '../../thu_vien/types/ke_hoach';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
@@ -27,6 +29,8 @@ interface Props {
   danhSachDuAn?: HoSoDuAn[];
   danhSachKhachHang?: KhachHang[];
   danhSachMucTieuThang?: ItemKeHoachThang[];
+  ngayMacDinh?: string;
+  hinhThucMacDinh?: 'gap_mat' | 'goi_dien' | 'nhan_tin' | 'khac';
   onLuu: (item: ItemKeHoachTuan) => void;
 }
 
@@ -37,10 +41,13 @@ export default function FormTacChienTuanDrawer({
   danhSachDuAn = [],
   danhSachKhachHang = [],
   danhSachMucTieuThang = [],
+  ngayMacDinh = '',
+  hinhThucMacDinh = 'goi_dien',
   onLuu
 }: Props) {
   // Chế độ: 'theo_muc_tieu' hoặc 'phat_sinh'
   const [loaiHanhDong, setLoaiHanhDong] = useState<'theo_muc_tieu' | 'phat_sinh'>('theo_muc_tieu');
+  const [hinhThuc, setHinhThuc] = useState<'gap_mat' | 'goi_dien' | 'nhan_tin' | 'khac'>('goi_dien');
 
   const [mucTieuThangId, setMucTieuThangId] = useState<string>('');
   const [khachHangId, setKhachHangId] = useState<string>('');
@@ -61,7 +68,10 @@ export default function FormTacChienTuanDrawer({
   // Đổ dữ liệu khi mở form hoặc sửa
   useEffect(() => {
     if (dangSua) {
+      setLoaiHanhDong(dangSua.loai_hanh_dong === 'phat_sinh' ? 'phat_sinh' : 'theo_muc_tieu');
+      setHinhThuc((dangSua.hinh_thuc as any) || 'goi_dien');
       const mt = danhSachMucTieuThang.find((x) => x.id === dangSua.muc_tieu_thang_id);
+      setMucTieuThangId(dangSua.muc_tieu_thang_id || '');
       let khId = dangSua.khach_hang_id || mt?.khach_hang_id || '';
       if (!khId && (dangSua.co_quan_doanh_nghiep || mt?.co_quan_doanh_nghiep)) {
         const tenCQ = (dangSua.co_quan_doanh_nghiep || mt?.co_quan_doanh_nghiep || '').trim().toLowerCase();
@@ -96,6 +106,7 @@ export default function FormTacChienTuanDrawer({
       // Mặc định: nếu có mục tiêu tháng thì chọn mục tiêu tháng đầu tiên
       const coMucTieu = danhSachMucTieuThang.length > 0;
       setLoaiHanhDong(coMucTieu ? 'theo_muc_tieu' : 'phat_sinh');
+      setHinhThuc(hinhThucMacDinh || 'goi_dien');
       if (coMucTieu) {
         const mtDau = danhSachMucTieuThang[0];
         setMucTieuThangId(mtDau.id);
@@ -137,11 +148,11 @@ export default function FormTacChienTuanDrawer({
       }
       setHanhDongTuan('');
       setKetQuaMongMuon('');
-      setNgayDuKien('');
+      setNgayDuKien(ngayMacDinh || '');
       setNguoiHoTro('');
       setDsNguoiLienHe([]);
     }
-  }, [dangSua, mo, danhSachMucTieuThang, danhSachKhachHang]);
+  }, [dangSua, mo, danhSachMucTieuThang, danhSachKhachHang, ngayMacDinh, hinhThucMacDinh]);
 
   // Load danh sách người liên hệ khi chọn khách hàng
   useEffect(() => {
@@ -242,6 +253,7 @@ export default function FormTacChienTuanDrawer({
       id: dangSua?.id || `item_tuan_${Date.now()}`,
       muc_tieu_thang_id: loaiHanhDong === 'theo_muc_tieu' ? (mucTieuThangId || null) : null,
       loai_hanh_dong: loaiHanhDong,
+      hinh_thuc: hinhThuc,
       khach_hang_id: khachHangId || null,
       du_an_id: duAnId || null,
       ten_khach_hang_du_an: tenHienThi,
@@ -562,16 +574,47 @@ export default function FormTacChienTuanDrawer({
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-foreground mb-1 flex items-center gap-1">
-                <Briefcase className="size-3.5 text-muted-foreground" />
-                Dự án (Dự kiến)
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-foreground flex items-center gap-1">
+                <Briefcase className="size-3.5 text-primary" />
+                Gắn Dự án / Gói thầu
               </label>
+              {danhSachDuAn.length > 0 && (
+                <select
+                  value={duAnId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setDuAnId(id);
+                    const da = danhSachDuAn.find((d) => d.id === id);
+                    if (da) {
+                      setDuAnDuKien(da.ten_du_an);
+                      if (da.khach_hang_id && !khachHangId) {
+                        xuLyChonKhachHang(da.khach_hang_id);
+                      }
+                    }
+                  }}
+                  className="w-full text-xs h-9 rounded-lg border border-border bg-background px-3 font-medium focus:outline-hidden focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">-- Chọn Hồ sơ Dự án (hoặc nhập tên bên dưới) --</option>
+                  {danhSachDuAn
+                    .filter((d) => !khachHangId || d.khach_hang_id === khachHangId)
+                    .map((da) => {
+                      const tenKH = da.khach_hang_id
+                        ? danhSachKhachHang.find((k) => k.id === da.khach_hang_id)?.ten_khach_hang
+                        : null;
+                      return (
+                        <option key={da.id} value={da.id}>
+                          {da.ten_du_an} {tenKH ? `— (${tenKH})` : ''}
+                        </option>
+                      );
+                    })}
+                </select>
+              )}
               <input
                 type="text"
                 value={duAnDuKien}
                 onChange={(e) => setDuAnDuKien(e.target.value)}
-                placeholder="Tên dự án hoặc nội dung công việc..."
+                placeholder="Tên dự án hoặc gói thầu..."
                 className="w-full text-xs h-9 rounded-lg border border-border bg-background px-3 focus:outline-hidden focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -580,21 +623,56 @@ export default function FormTacChienTuanDrawer({
 
         {/* NỘI DUNG HÀNH ĐỘNG TRONG TUẦN */}
         <div className="p-4 rounded-xl border border-border/80 bg-card space-y-3.5 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold text-foreground pb-1 border-b border-border/60">
-            <ArrowRight className="size-4 text-primary" />
-            <span>Kế hoạch hành động tuần</span>
+          <div className="flex items-center justify-between gap-2 text-xs font-bold text-foreground pb-1 border-b border-border/60">
+            <span className="flex items-center gap-2">
+              <ArrowRight className="size-4 text-primary" />
+              <span>Chi tiết công việc & Phân luồng</span>
+            </span>
+          </div>
+
+          {/* Phân luồng: Việc văn phòng vs Lịch công tác */}
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">
+              Hình thức thực hiện
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setHinhThuc('goi_dien')}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  hinhThuc !== 'gap_mat'
+                    ? 'bg-primary/10 border-primary text-primary shadow-2xs'
+                    : 'bg-background border-border text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <PhoneCall className="size-3.5" />
+                <span>Việc văn phòng (Gọi điện / Hồ sơ)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setHinhThuc('gap_mat')}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  hinhThuc === 'gap_mat'
+                    ? 'bg-emerald-500/15 border-emerald-600 text-emerald-700 shadow-2xs'
+                    : 'bg-background border-border text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Users className="size-3.5" />
+                <span>Lịch công tác (Gặp mặt / Khảo sát)</span>
+              </button>
+            </div>
           </div>
 
           {/* Kế hoạch / Hành động */}
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1">
-              Kế hoạch / Hành động trong tuần <span className="text-destructive">*</span>
+              Kế hoạch / Hành động <span className="text-destructive">*</span>
             </label>
             <textarea
               rows={2}
               value={hanhDongTuan}
               onChange={(e) => setHanhDongTuan(e.target.value)}
-              placeholder="Ví dụ: Gặp Chị Giang để hâm nóng tình cảm, thống nhất lịch demo..."
+              placeholder="Ví dụ: Gọi điện chốt danh mục thiết bị, Gửi báo giá dự toán..."
               className="w-full text-xs rounded-lg border border-border bg-background p-2.5 leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-medium"
             />
           </div>
@@ -608,7 +686,7 @@ export default function FormTacChienTuanDrawer({
               rows={2}
               value={ketQuaMongMuon}
               onChange={(e) => setKetQuaMongMuon(e.target.value)}
-              placeholder="Ví dụ: Hâm được tình cảm, chốt được lịch demo thứ 4..."
+              placeholder="Ví dụ: Khách xác nhận nhận báo giá, chốt lịch demo thứ 4..."
               className="w-full text-xs rounded-lg border border-border bg-background p-2.5 leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -618,7 +696,7 @@ export default function FormTacChienTuanDrawer({
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1 flex items-center gap-1">
                 <Calendar className="size-3.5 text-primary" />
-                Ngày dự kiến
+                Ngày thực hiện (Để trống nếu để ở Kho chờ)
               </label>
               <input
                 type="date"

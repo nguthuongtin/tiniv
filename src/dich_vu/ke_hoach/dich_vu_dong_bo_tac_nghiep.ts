@@ -387,7 +387,8 @@ export const dongBoCongViecTuanSangLichGap = async (params: {
       return;
     }
 
-    if (!choPhepTaoMoiLich || !tenKH) return;
+    // Chỉ tạo lịch hẹn mới trên Lịch công tác khi công việc là Gặp mặt trực tiếp (đi thị trường)
+    if (!choPhepTaoMoiLich || !tenKH || item.hinh_thuc !== 'gap_mat') return;
 
     // Tạo lịch hẹn mới trên Lịch công tác
     const nlhRaw = item.nguoi_lien_he || '';
@@ -480,6 +481,7 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
 
       dsTacChien[idxKhop] = {
         ...itemCu,
+        hinh_thuc: 'gap_mat',
         ngay_du_kien: itemCu.ngay_du_kien || lich.ngay,
         da_hoan_thanh: daXongLich ? true : itemCu.da_hoan_thanh,
         ngay_hoan_thanh: daXongLich ? itemCu.ngay_hoan_thanh || lich.ngay : itemCu.ngay_hoan_thanh,
@@ -505,6 +507,7 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
         id: `tuan_lich_${lich.id || Date.now()}`,
         loai_hanh_dong: 'phat_sinh',
         loai_cong_viec: 'khach_hang',
+        hinh_thuc: 'gap_mat',
         khach_hang_id: lich.khach_hang_id || null,
         du_an_id: lich.du_an_id || null,
         xa_phuong: lich.dia_diem || null,
