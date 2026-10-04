@@ -33,6 +33,10 @@ import {
   taoLichGapKHMoi,
   capNhatLichGapKH
 } from '../lich_gap_kh/dich_vu_lich_gap_kh';
+import { taoTienDoDuAnMoi } from '../ho_so_du_an/dich_vu_tien_do_du_an';
+import { doiGiaiDoanHoSoDuAn } from '../ho_so_du_an/dich_vu_ho_so_du_an';
+import type { GiaiDoanDuAn } from '../../thu_vien/types/du_an';
+import { ghiNhatKyHoatDong } from '../../thu_vien/firebase/client_firebase';
 
 /**
  * Tính khoảng ngày (Thứ 2 -> Chủ nhật) của một tuần ISO (VD: "2026-W40")
@@ -641,3 +645,101 @@ export const dongBoBaoCaoNgaySangKeHoachTuan = async (params: {
     return 0;
   }
 };
+
+/**
+ * 7. SUPER-SYNC CHECK-IN 1 CHẠM (BÓP CÒ BẢN CHUẨN)
+ * Khi NVKD check-in tại Kế hoạch tuần, đẩy dữ liệu về 4 đích:
+ * - Về Hồ sơ Dự án (Timeline TienDoDuAn)
+ * - Về Phễu Pipeline (Giai đoạn Dự án nếu NVKD đổi)
+ * - Về Báo cáo công việc ngày (BaoCaoCongViec)
+ * - Về Audit Log (NhatKyHoatDong)
+ */
+export const superSyncCheckIn1Cham = async (params: {
+  item: ItemKeHoachTuan;
+  nhanVienId: string;
+  ngayBaoCao: string; // YYYY-MM-DD
+  noiDungKetQua: string;
+  trangThaiCongViec: 'da_hoan_thanh' | 'dang_thuc_hien' | 'doi_hen';
+  giaiDoanDuAnMoi?: string | null;
+  nguoiThucHien?: NguoiDungDangNhap | null;
+}): Promise<void> => {
+  const {
+    item,
+    nhanVienId,
+    ngayBaoCao,
+    noiDungKetQua,
+    trangThaiCongViec,
+    giaiDoanDuAnMoi,
+    nguoiThucHien
+  } = params;
+
+  try {
+    const noiDungSach = noiDungKetQua.trim();
+
+    // [Đích 1] Về Hồ sơ Dự án (Timeline TienDoDuAn)
+    if (item.du_an_id && noiDungSach) {
+      await taoTienDoDuAnMoi(
+        {
+          du_an_id: item.du_an_id,
+          tinh_hinh_hien_tai: noiDungSach,
+          trang_thai_hanh_dong:
+            trangThaiCongViec === 'da_hoan_thanh'
+              ? 'da_hoan_thanh'
+              : trangThaiCongViec === 'doi_hen'
+              ? 'dang_cho'
+              : 'dang_thuc_hien',
+          nguoi_tao_id: nguoiThucHien?.id || nhanVienId
+        },
+        item.du_an_du_kien || item.ten_khach_hang_du_an
+      );
+    }
+
+    // [Đích 2] Về Phễu Pipeline (Đổi giai đoạn dự án nếu NVKD có chọn)
+    if (item.du_an_id && giaiDoanDuAnMoi && giaiDoanDuAnMoi.trim()) {
+      await doiGiaiDoanHoSoDuAn(
+        item.du_an_id,
+        giaiDoanDuAnMoi.trim() as GiaiDoanDuAn,
+        nguoiThucHien ? { id: nguoiThucHien.id } : null
+      );
+    }
+
+    // [Đích 3] Về Báo cáo công việc ngày
+    if (noiDungSach) {
+      await ghiNhanCheckInVaoBaoCaoNgay({
+        nhanVienId,
+        chiNhanhId: nguoiThucHien?.chi_nhanh_id || null,
+        phongBanId: nguoiThucHien?.phong_ban_id || null,
+        ngayBaoCao,
+        duAnId: item.du_an_id || null,
+        tenKhachHangDuAn: item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an,
+        noiDungKetQua: noiDungSach,
+        nguoiThucHien
+      });
+    }
+
+    // [Đích 4] Lịch công tác (Chỉ đồng bộ nếu là Gặp mặt đi thị trường)
+    if (item.hinh_thuc === 'gap_mat' && item.ngay_du_kien) {
+      await dongBoCongViecTuanSangLichGap({
+        item: {
+          ...item,
+          da_hoan_thanh: trangThaiCongViec === 'da_hoan_thanh'
+        },
+        nhanVienId,
+        chiNhanhId: nguoiThucHien?.chi_nhanh_id || null,
+        nguoiTaoId: nguoiThucHien?.id || nhanVienId
+      });
+    }
+
+    // [Đích 5] Nhật ký hoạt động (Audit log)
+    await ghiNhatKyHoatDong(
+      nguoiThucHien?.id || nhanVienId,
+      'ke_hoach',
+      'cap_nhat',
+      item.id,
+      `Check-in 1 chạm công việc "${item.ten_khach_hang_du_an}": ${noiDungSach || trangThaiCongViec}`
+    );
+  } catch (err) {
+    console.warn('[superSyncCheckIn1Cham] Lỗi:', err);
+  }
+};
+

@@ -52,7 +52,8 @@ import {
   dongBoTuDongBaoCaoTuan,
   dongBoTuDongBaoCaoThang,
   ghiNhanCheckInVaoBaoCaoNgay,
-  dongBoCongViecTuanSangLichGap
+  dongBoCongViecTuanSangLichGap,
+  superSyncCheckIn1Cham
 } from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachHoSoDuAn } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
@@ -539,6 +540,8 @@ export default function TrangKeHoachNVKD() {
       danh_sach_ket_qua: import('../../../thu_vien/types/ke_hoach').NhatKyKetQuaTuan[];
       ket_qua_thuc_te: string;
       da_hoan_thanh: boolean;
+      trang_thai_cong_viec?: 'da_hoan_thanh' | 'dang_thuc_hien' | 'doi_hen';
+      giai_doan_du_an_moi?: string | null;
     }
   ) => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
@@ -590,7 +593,7 @@ export default function TrangKeHoachNVKD() {
       setKeHoachTuan(res);
     }
 
-    // Tự động đồng bộ sang Báo cáo Tuần, Báo cáo Ngày và Lịch công tác
+    // Super-Sync: Tự động đồng bộ sang Báo cáo Tuần, Báo cáo Ngày, Timeline Dự án, Pipeline & Lịch công tác
     void (async () => {
       const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
       if (bcDongBo) {
@@ -607,25 +610,14 @@ export default function TrangKeHoachNVKD() {
       if (itemDaCapNhat) {
         const it = itemDaCapNhat as ItemKeHoachTuan;
         const kqMoiNhat = capNhat.danh_sach_ket_qua[0];
-        if (kqMoiNhat && kqMoiNhat.noi_dung) {
-          await ghiNhanCheckInVaoBaoCaoNgay({
-            nhanVienId: targetId,
-            chiNhanhId: nv?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null,
-            phongBanId: nv?.phong_ban_id ?? nguoiDungHienTai?.phong_ban_id ?? null,
-            ngayBaoCao: kqMoiNhat.ngay_ghi_nhan || homNay,
-            duAnId: it.du_an_id || null,
-            tenKhachHangDuAn:
-              it.co_quan_doanh_nghiep || it.ten_khach_hang_du_an || 'Công việc tuần',
-            noiDungKetQua: kqMoiNhat.noi_dung,
-            nguoiThucHien: nguoiDungHienTai ? { id: nguoiDungHienTai.id } : { id: targetId }
-          });
-        }
-        await dongBoCongViecTuanSangLichGap({
+        await superSyncCheckIn1Cham({
           item: it,
           nhanVienId: targetId,
-          chiNhanhId: nv?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null,
-          nguoiTaoId: nguoiDungHienTai?.id || targetId,
-          choPhepTaoMoiLich: false
+          ngayBaoCao: kqMoiNhat?.ngay_ghi_nhan || homNay,
+          noiDungKetQua: kqMoiNhat?.noi_dung || capNhat.ket_qua_thuc_te || '',
+          trangThaiCongViec: capNhat.trang_thai_cong_viec || (capNhat.da_hoan_thanh ? 'da_hoan_thanh' : 'dang_thuc_hien'),
+          giaiDoanDuAnMoi: capNhat.giai_doan_du_an_moi,
+          nguoiThucHien: nguoiDungHienTai
         });
       }
     })();

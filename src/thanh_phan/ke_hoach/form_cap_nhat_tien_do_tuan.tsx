@@ -18,6 +18,7 @@ import {
   FileText
 } from 'lucide-react';
 import type { ItemKeHoachTuan, NhatKyKetQuaTuan, ChiDaoTienDo } from '../../thu_vien/types/ke_hoach';
+import { DANH_SACH_GIAI_DOAN_MAC_DINH } from '../../thu_vien/cau_hinh/giai_doan_du_an';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
 import { coQuyen } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
 import { Nut, Ban_Ve, The_Chuc_Nang } from '../ui';
@@ -32,6 +33,8 @@ interface Props {
       danh_sach_ket_qua: NhatKyKetQuaTuan[];
       ket_qua_thuc_te: string;
       da_hoan_thanh: boolean;
+      trang_thai_cong_viec?: 'da_hoan_thanh' | 'dang_thuc_hien' | 'doi_hen';
+      giai_doan_du_an_moi?: string | null;
     }
   ) => void;
 }
@@ -49,6 +52,8 @@ export default function FormCapNhatTienDoTuan({
 
   const [danhSachKetQua, setDanhSachKetQua] = useState<NhatKyKetQuaTuan[]>([]);
   const [daHoanThanh, setDaHoanThanh] = useState<boolean>(false);
+  const [trangThaiCongViec, setTrangThaiCongViec] = useState<'da_hoan_thanh' | 'dang_thuc_hien' | 'doi_hen'>('dang_thuc_hien');
+  const [giaiDoanDuAnMoi, setGiaiDoanDuAnMoi] = useState<string>('');
 
   // State thêm kết quả mới
   const [noiDungMoi, setNoiDungMoi] = useState<string>('');
@@ -79,6 +84,8 @@ export default function FormCapNhatTienDoTuan({
       setDangSuaId(null);
       setDangChiDaoId(null);
       setDaHoanThanh(Boolean(item.da_hoan_thanh));
+      setTrangThaiCongViec(item.da_hoan_thanh ? 'da_hoan_thanh' : 'dang_thuc_hien');
+      setGiaiDoanDuAnMoi('');
 
       // Migrate từ kết quả đơn lẻ sang danh sách nếu có
       if (item.danh_sach_ket_qua && item.danh_sach_ket_qua.length > 0) {
@@ -249,10 +256,14 @@ export default function FormCapNhatTienDoTuan({
     // Kết quả mới nhất làm tóm tắt hiển thị
     const ketQuaGanNhat = dsCuoi.length > 0 ? dsCuoi[0].noi_dung : '';
 
+    const isFinished = trangThaiCongViec === 'da_hoan_thanh' || daHoanThanh;
+
     onLuu(item.id, {
       danh_sach_ket_qua: dsCuoi,
       ket_qua_thuc_te: ketQuaGanNhat,
-      da_hoan_thanh: daHoanThanh
+      da_hoan_thanh: isFinished,
+      trang_thai_cong_viec: trangThaiCongViec,
+      giai_doan_du_an_moi: giaiDoanDuAnMoi.trim() || null
     });
     onDong();
   };
@@ -261,13 +272,13 @@ export default function FormCapNhatTienDoTuan({
     <Ban_Ve
       mo={mo}
       onDong={onDong}
-      tieu_de="Cập nhật tiến độ & Kết quả thực hiện"
+      tieu_de="Check-in 1 chạm & Cập nhật Tiến độ"
       phu_de={item.ten_khach_hang_du_an}
     >
       <div className="space-y-4 p-1">
         {/* Thông tin mục tiêu ban đầu */}
         <The_Chuc_Nang>
-          <div className="p-4 space-y-2.5 text-xs">
+          <div className="p-4 space-y-3 text-xs">
             <div className="flex items-center justify-between gap-2">
               <span className="font-bold text-foreground text-sm">
                 {item.ten_khach_hang_du_an}
@@ -289,19 +300,79 @@ export default function FormCapNhatTienDoTuan({
               )}
             </div>
 
-            {/* Checkbox Đã hoàn thành mục tiêu */}
-            <label className="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-lg border border-border bg-background hover:bg-muted/30 transition-colors">
-              <input
-                type="checkbox"
-                checked={daHoanThanh}
-                onChange={(e) => setDaHoanThanh(e.target.checked)}
-                className="size-4.5 rounded text-primary focus:ring-primary cursor-pointer"
-              />
-              <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                <CheckCircle2 className={`size-4 ${daHoanThanh ? 'text-emerald-600' : 'text-muted-foreground'}`} />
-                Đánh dấu đã hoàn thành toàn bộ công việc này
-              </span>
-            </label>
+            {/* Trạng thái công việc: Hoàn thành / Đang xử lý / Dời hẹn */}
+            <div className="space-y-1.5">
+              <label className="font-bold text-foreground text-xs block">Trạng thái công việc:</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTrangThaiCongViec('da_hoan_thanh');
+                    setDaHoanThanh(true);
+                  }}
+                  className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    trangThaiCongViec === 'da_hoan_thanh' || daHoanThanh
+                      ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-400 shadow-2xs'
+                      : 'bg-background border-border text-muted-foreground hover:bg-muted/40'
+                  }`}
+                >
+                  <CheckCircle2 className="size-4 text-emerald-600" />
+                  Hoàn thành
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTrangThaiCongViec('dang_thuc_hien');
+                    setDaHoanThanh(false);
+                  }}
+                  className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    trangThaiCongViec === 'dang_thuc_hien' && !daHoanThanh
+                      ? 'bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-400 shadow-2xs'
+                      : 'bg-background border-border text-muted-foreground hover:bg-muted/40'
+                  }`}
+                >
+                  <Edit2 className="size-3.5 text-amber-600" />
+                  Đang xử lý
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTrangThaiCongViec('doi_hen');
+                    setDaHoanThanh(false);
+                  }}
+                  className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    trangThaiCongViec === 'doi_hen' && !daHoanThanh
+                      ? 'bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-400 shadow-2xs'
+                      : 'bg-background border-border text-muted-foreground hover:bg-muted/40'
+                  }`}
+                >
+                  <Calendar className="size-3.5 text-blue-600" />
+                  Dời hẹn
+                </button>
+              </div>
+            </div>
+
+            {/* Chuyển Giai đoạn Dự án (Pipeline) nếu công việc có gắn Dự án */}
+            {item.du_an_id && (
+              <div className="space-y-1.5 pt-2 border-t border-border/40">
+                <label className="font-bold text-foreground text-xs flex items-center justify-between">
+                  <span>Chuyển Giai đoạn Dự án (Pipeline):</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">NVKD chủ động đổi nếu thầu có bước tiến</span>
+                </label>
+                <select
+                  value={giaiDoanDuAnMoi}
+                  onChange={(e) => setGiaiDoanDuAnMoi(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">-- Giữ nguyên giai đoạn hiện tại --</option>
+                  {DANH_SACH_GIAI_DOAN_MAC_DINH.map((gd) => (
+                    <option key={gd.key} value={gd.key}>
+                      {gd.nhan_day_du}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         </The_Chuc_Nang>
 

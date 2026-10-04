@@ -91,6 +91,7 @@ export interface ItemKeHoachTuan {
   chuc_vu?: string | null; // Chức vụ của người liên hệ
   co_quan_doanh_nghiep?: string | null; // Cơ quan / Doanh nghiệp
   du_an_du_kien?: string | null; // Dự án (Dự kiến)
+  hinh_thuc?: 'gap_mat' | 'goi_dien' | 'nhan_tin' | 'khac' | string | null; // Hình thức làm việc (Gặp mặt, Gọi điện...)
   hanh_dong_tuan?: string | null; // Kế hoạch / Hành động trong tuần
   ket_qua_mong_muon?: string | null; // Kết quả mong muốn
   nguoi_ho_tro?: string | null; // Người hỗ trợ
