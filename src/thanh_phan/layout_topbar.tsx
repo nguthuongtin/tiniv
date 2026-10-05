@@ -72,13 +72,6 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     icon: Calendar,
     placeholder_tim: 'Tìm lịch hẹn...'
   },
-  '/lead': {
-    nhan: 'Quản lý Lead',
-    nhan_mobile: 'Lead',
-    mo_ta: 'Tiếp cận và khai thác khách hàng tiềm năng',
-    icon: Sparkles,
-    placeholder_tim: 'Tìm kiếm Lead...'
-  },
   '/khach-hang': {
     nhan: 'Khách hàng',
     nhan_mobile: 'Khách hàng',
@@ -218,7 +211,6 @@ const timThongTinTrang = (pathname: string): { thongTin: ThongTinTrang; laChiTie
   }
 
   if (pathname.startsWith('/lich-cong-tac')) return { thongTin: MAP_TIEU_DE['/lich-cong-tac'], laChiTiet: false };
-  if (pathname.startsWith('/lead')) return { thongTin: MAP_TIEU_DE['/lead'], laChiTiet: false };
   if (pathname.startsWith('/kho-tai-lieu')) return { thongTin: MAP_TIEU_DE['/kho-tai-lieu'], laChiTiet: false };
   if (pathname.startsWith('/ke-hoach')) return { thongTin: MAP_TIEU_DE['/ke-hoach'], laChiTiet: false };
   if (pathname.startsWith('/quan-tri')) return { thongTin: MAP_TIEU_DE['/quan-tri'], laChiTiet: false };
@@ -369,20 +361,6 @@ export default function ThanhPhanTopbar() {
             onClick={() => setMoMenuMobile(false)} 
           />
           <div className="fixed top-15 left-3 z-50 w-68 rounded-[26px] border border-slate-200/90 bg-white/95 backdrop-blur-2xl shadow-[0_16px_40px_rgba(15,23,42,0.16)] p-2 space-y-1 animate-in slide-in-from-top-2 fade-in duration-200 sm:hidden">
-            <Link
-              href="/lead"
-              onClick={() => setMoMenuMobile(false)}
-              className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
-            >
-              <div className="size-9 rounded-[14px] bg-blue-500/15 text-blue-600 flex items-center justify-center shrink-0">
-                <Sparkles className="size-[18px]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-bold leading-snug">Lead tiềm năng</div>
-                <div className="text-[11px] text-slate-400 leading-tight">Tiếp cận & khai thác</div>
-              </div>
-            </Link>
-
             <Link
               href="/ke-hoach"
               onClick={() => setMoMenuMobile(false)}

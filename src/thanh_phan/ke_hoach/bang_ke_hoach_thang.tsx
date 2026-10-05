@@ -13,14 +13,13 @@ import {
   MapPin,
   Users,
   DollarSign,
-  FileSpreadsheet,
-  Sparkles,
-  ChevronDown,
-  ChevronUp,
-  Save
+  Save,
+  ArrowRight,
+  CalendarRange
 } from 'lucide-react';
 import type {
   KeHoachThang,
+  KeHoachTuan,
   ItemKeHoachThang,
   LoaiMucTieuThang
 } from '../../thu_vien/types/ke_hoach';
@@ -43,15 +42,18 @@ import { cn } from '../../thu_vien/utils/cn';
 
 interface Props {
   keHoach: KeHoachThang | null;
+  keHoachTuan?: KeHoachTuan | null;
   baoCao?: BaoCaoKeHoachThang | null;
   laSuaDuoc: boolean;
   onThemMoi: () => void;
+  onThemNhanh?: (item: ItemKeHoachThang) => void;
   onSuaItem: (item: ItemKeHoachThang) => void;
   onXoaItem: (itemId: string) => void;
   onCapNhatThucTe: (item: ItemKeHoachThang) => void;
   onMoDrawerTongKet: () => void;
   onLuuGhiChuBaoCao?: (khoKhan: string, deXuat: string) => Promise<void>;
   onXuatExcel?: () => void;
+  onTaoViecTuanTuMucTieu?: (mucTieuThang: ItemKeHoachThang) => void;
 }
 
 const renderBadgeLoai = (loai?: LoaiMucTieuThang) => {
@@ -59,7 +61,7 @@ const renderBadgeLoai = (loai?: LoaiMucTieuThang) => {
     case 'thi_truong':
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-amber-500/10 text-amber-700 border border-amber-500/20">
-          <MapPin className="size-3" /> Thị trường
+          <MapPin className="size-3" /> Số lượng / Thị trường
         </span>
       );
     case 'khach_hang':
@@ -71,37 +73,78 @@ const renderBadgeLoai = (loai?: LoaiMucTieuThang) => {
     case 'khac':
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-slate-500/10 text-slate-700 border border-slate-500/20">
-          <Target className="size-3" /> Khác
+          <Target className="size-3" /> Mục tiêu khác
         </span>
       );
     case 'tai_chinh':
     default:
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
-          <DollarSign className="size-3" /> Tài chính
+          <DollarSign className="size-3" /> Doanh số
         </span>
       );
   }
 };
 
+const dinhDangSoPhanNgan = (str: string): string => {
+  const numStr = str.replace(/\D/g, '');
+  if (!numStr) return '';
+  return Number(numStr).toLocaleString('vi-VN');
+};
+
 export default function BangKeHoachThang({
   keHoach,
+  keHoachTuan,
   baoCao,
   laSuaDuoc,
   onThemMoi,
+  onThemNhanh,
   onSuaItem,
   onXoaItem,
   onCapNhatThucTe,
   onMoDrawerTongKet,
   onLuuGhiChuBaoCao,
-  onXuatExcel
+  onTaoViecTuanTuMucTieu
 }: Props) {
   const ds = keHoach?.danh_sach_dia_ban ?? [];
+  const dsViecTuan = keHoachTuan?.danh_sach_tac_chien ?? [];
+
+  // State thêm nhanh mục tiêu tháng ngay trên đầu bảng
+  const [loaiNhanh, setLoaiNhanh] = useState<'tai_chinh' | 'thi_truong' | 'khac'>('tai_chinh');
+  const [noiDungNhanh, setNoiDungNhanh] = useState('');
+  const [chiTieuNhanh, setChiTieuNhanh] = useState('');
+  const [donViNhanh, setDonViNhanh] = useState('Khách hàng');
 
   const [moGhiChu, setMoGhiChu] = useState(false);
   const [khoKhan, setKhoKhan] = useState(baoCao?.kho_khan ?? '');
   const [deXuat, setDeXuat] = useState(baoCao?.de_xuat ?? '');
   const [dangLuuGhiChu, setDangLuuGhiChu] = useState(false);
+  const [itemChiTiet, setItemChiTiet] = useState<ItemKeHoachThang | null>(null);
+
+  const xuLyThemNhanhMucTieu = () => {
+    if (!noiDungNhanh.trim() || !onThemNhanh) return;
+    const soChiTieu = Number(chiTieuNhanh.replace(/\D/g, '')) || 0;
+    const itemMoi: ItemKeHoachThang = {
+      id: `item_${Date.now()}`,
+      ten_khach_hang_du_an: noiDungNhanh.trim(),
+      co_quan_doanh_nghiep: null,
+      muc_tieu_thang: noiDungNhanh.trim(),
+      ten_muc_tieu: noiDungNhanh.trim(),
+      loai_muc_tieu: loaiNhanh,
+      doanh_so_du_kien: loaiNhanh === 'tai_chinh' && soChiTieu > 0 ? soChiTieu : null,
+      du_kien_thu_thang_nay: loaiNhanh === 'tai_chinh' && soChiTieu > 0 ? soChiTieu : undefined,
+      chi_tieu: loaiNhanh !== 'khac' && soChiTieu > 0 ? soChiTieu : undefined,
+      don_vi_tinh:
+        loaiNhanh === 'tai_chinh'
+          ? 'VNĐ'
+          : loaiNhanh === 'thi_truong'
+          ? donViNhanh.trim() || 'Mục tiêu'
+          : undefined
+    };
+    onThemNhanh(itemMoi);
+    setNoiDungNhanh('');
+    setChiTieuNhanh('');
+  };
 
   // Tính toán chỉ số tài chính
   const dsTaiChinh = ds.filter(
@@ -120,7 +163,6 @@ export default function BangKeHoachThang({
   );
   const tyLeDatTien = tongDuKienThu > 0 ? Math.round((tongThucTeThu / tongDuKienThu) * 100) : 0;
 
-  // Tính toán tỷ lệ hoàn thành KPI tổng quát
   let tongDiemDat = 0;
   ds.forEach((item) => {
     const isTC =
@@ -171,7 +213,7 @@ export default function BangKeHoachThang({
           },
           {
             id: 'chi_tieu_thu',
-            nhan: 'Chỉ tiêu doanh thu',
+            nhan: 'Chỉ tiêu doanh số',
             nhan_ngan: 'Chỉ tiêu',
             so_lieu: DINH_DANG_TIEN_NGAN_GON(tongDuKienThu),
             icon: DollarSign,
@@ -179,7 +221,7 @@ export default function BangKeHoachThang({
           },
           {
             id: 'thuc_te_thu',
-            nhan: `Thực tế về (${tyLeDatTien}%)`,
+            nhan: `Thực tế đạt (${tyLeDatTien}%)`,
             nhan_ngan: 'Thực tế',
             so_lieu: DINH_DANG_TIEN_NGAN_GON(tongThucTeThu),
             icon: TrendingUp,
@@ -188,138 +230,44 @@ export default function BangKeHoachThang({
         ]}
       />
 
-      {/* Thanh trạng thái tự động đồng bộ + Ghi chú Khó khăn / Đề xuất tháng */}
-      {ds.length > 0 && (
-        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3.5 py-2.5 space-y-2.5">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2 min-w-0">
-              <Sparkles className="size-4 text-emerald-600 shrink-0" />
-              <span className="text-phu font-semibold text-foreground">
-                Kết quả thực tế cập nhật tới đâu tự động đồng bộ Báo cáo Tháng tới đó ({tyLeHoanThanhChung}%)
-              </span>
-              {(baoCao?.kho_khan || baoCao?.de_xuat) && !moGhiChu && (
-                <span className="text-nhan px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 font-bold">
-                  Đã có ghi chú khó khăn / đề xuất
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              {onLuuGhiChuBaoCao && laSuaDuoc && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setKhoKhan(baoCao?.kho_khan ?? '');
-                    setDeXuat(baoCao?.de_xuat ?? '');
-                    setMoGhiChu(!moGhiChu);
-                  }}
-                  className="h-7.5 px-2.5 rounded-lg bg-background border border-border hover:bg-muted text-nhan font-bold text-foreground inline-flex items-center gap-1 transition-colors"
-                >
-                  {moGhiChu ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-                  Khó khăn & Đề xuất
-                </button>
-              )}
+      <KhungDanhSach
+        tieu_de="Mục tiêu Tháng"
+        tieu_de_ngan="Mục tiêu Tháng"
+        so_luong={ds.length}
+        hanh_dong={
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {onLuuGhiChuBaoCao && laSuaDuoc && ds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setKhoKhan(baoCao?.kho_khan ?? '');
+                  setDeXuat(baoCao?.de_xuat ?? '');
+                  setMoGhiChu(true);
+                }}
+                className="h-8.5 px-3 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-nhan font-bold transition-colors inline-flex items-center gap-1.5 shadow-2xs relative cursor-pointer"
+              >
+                <AlertCircle className="size-4 text-amber-600" />
+                <span className="hidden sm:inline">Khó khăn & Đề xuất</span>
+                {(baoCao?.kho_khan || baoCao?.de_xuat) && (
+                  <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-red-500 border-2 border-white"></span>
+                )}
+              </button>
+            )}
+            {ds.length > 0 && (
               <button
                 type="button"
                 onClick={onMoDrawerTongKet}
-                className="h-7.5 px-2.5 rounded-lg bg-background border border-border hover:bg-muted text-nhan font-bold text-foreground inline-flex items-center gap-1 transition-colors"
+                className="h-8.5 px-3 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-nhan font-bold transition-colors inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
               >
-                <FileCheck2 className="size-3.5 text-emerald-600" />
-                Phiếu tổng kết / In
-              </button>
-            </div>
-          </div>
-
-          {!moGhiChu && (baoCao?.kho_khan || baoCao?.de_xuat) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-emerald-500/15 text-phu">
-              {baoCao?.kho_khan && (
-                <div className="text-muted-foreground">
-                  <span className="font-bold text-amber-700">Khó khăn: </span>
-                  {baoCao.kho_khan}
-                </div>
-              )}
-              {baoCao?.de_xuat && (
-                <div className="text-muted-foreground">
-                  <span className="font-bold text-primary">Đề xuất: </span>
-                  {baoCao.de_xuat}
-                </div>
-              )}
-            </div>
-          )}
-
-          {moGhiChu && (
-            <div className="pt-2 border-t border-emerald-500/20 space-y-2.5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="text-nhan font-bold text-foreground block mb-1">
-                    Khó khăn / Vướng mắc trong tháng
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={khoKhan}
-                    onChange={(e) => setKhoKhan(e.target.value)}
-                    placeholder="Nhập vướng mắc trong tháng..."
-                    className="w-full rounded-lg border border-border bg-background p-2 text-phu text-foreground focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="text-nhan font-bold text-foreground block mb-1">
-                    Đề xuất / Kiến nghị tháng tới
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={deXuat}
-                    onChange={(e) => setDeXuat(e.target.value)}
-                    placeholder="Nhập đề xuất hỗ trợ..."
-                    className="w-full rounded-lg border border-border bg-background p-2 text-phu text-foreground focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMoGhiChu(false)}
-                  className="h-8 px-3 rounded-lg border border-border bg-background text-nhan font-semibold hover:bg-muted"
-                >
-                  Đóng
-                </button>
-                <button
-                  type="button"
-                  disabled={dangLuuGhiChu}
-                  onClick={xuLyLuuGhiChuNhanh}
-                  className="h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-nhan font-bold hover:bg-primary/90 inline-flex items-center gap-1.5"
-                >
-                  <Save className="size-3.5" />
-                  {dangLuuGhiChu ? 'Đang lưu...' : 'Lưu ghi chú'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Bảng & Thẻ Mục tiêu Tháng */}
-      <KhungDanhSach
-        tieu_de="Mục tiêu & Kế hoạch Tháng"
-        tieu_de_ngan="KH Tháng"
-        so_luong={ds.length}
-        hanh_dong={
-          <div className="flex items-center gap-2">
-            {onXuatExcel && ds.length > 0 && (
-              <button
-                type="button"
-                onClick={onXuatExcel}
-                className="h-8.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-nhan font-bold transition-colors inline-flex items-center gap-1.5 shadow-2xs"
-              >
-                <FileSpreadsheet className="size-3.5" />
-                <span className="hidden sm:inline">Xuất Excel</span>
+                <FileCheck2 className="size-4 text-emerald-600" />
+                <span className="hidden sm:inline">Tổng kết tháng</span>
               </button>
             )}
             {laSuaDuoc && (
               <button
                 type="button"
                 onClick={onThemMoi}
-                className="h-8.5 px-3.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-nhan font-bold transition-colors inline-flex items-center gap-1.5 shadow-2xs"
+                className="h-8.5 px-3.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-nhan font-bold transition-colors inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
               >
                 <Plus className="size-4" /> Thêm mục tiêu
               </button>
@@ -330,39 +278,30 @@ export default function BangKeHoachThang({
         {ds.length === 0 ? (
           <div className="p-10 text-center text-muted-foreground space-y-2">
             <AlertCircle className="size-7 mx-auto text-muted-foreground/50" />
-            <p className="font-semibold text-phu">Chưa có mục tiêu hoặc KPI tháng nào.</p>
-            {laSuaDuoc && (
-              <button
-                type="button"
-                onClick={onThemMoi}
-                className="text-phu font-bold text-primary hover:underline inline-block pt-1"
-              >
-                + Thêm mục tiêu tháng
-              </button>
-            )}
+            <p className="font-semibold text-phu">Chưa có mục tiêu tháng nào.</p>
           </div>
         ) : (
           <>
-            {/* DESKTOP TABLE */}
             <div className="hidden sm:block">
               <Bang>
                 <ChuDeBang>
                   <HangBang>
-                    <ODauBang className="w-10 text-center">STT</ODauBang>
-                    <ODauBang className="w-[220px]">Khách hàng / Địa bàn</ODauBang>
-                    <ODauBang className="w-[200px]">Dự án & Phân loại</ODauBang>
-                    <ODauBang>Mục tiêu & Giải trình</ODauBang>
-                    <ODauBang className="w-[210px] text-right">Thực tế đạt / Chỉ tiêu</ODauBang>
-                    {laSuaDuoc && <ODauBang className="w-28 text-right">Thao tác</ODauBang>}
+                    <ODauBang className="w-12 text-center">STT</ODauBang>
+                    <ODauBang>Mục tiêu cam kết trong tháng</ODauBang>
+                    <ODauBang className="w-[180px]">Triển khai tuần</ODauBang>
+                    <ODauBang className="w-[240px] text-right">Thực tế / Chỉ tiêu</ODauBang>
+                    {laSuaDuoc && <ODauBang className="w-48 text-right">Thao tác</ODauBang>}
                   </HangBang>
                 </ChuDeBang>
                 <ThanBang>
                   {ds.map((item, idx) => {
-                    const xaPhuongVal = item.xa_phuong || '';
-                    const coQuan = item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an || '—';
-                    const duAnVal = item.du_an_du_kien || '';
                     const mucTieuVal =
                       item.muc_tieu_thang || item.ten_muc_tieu || item.ten_khach_hang_du_an || '—';
+                    const coQuanRaw = (item.co_quan_doanh_nghiep || '').trim();
+                    const coQuan =
+                      coQuanRaw && coQuanRaw.toLowerCase() !== mucTieuVal.toLowerCase()
+                        ? coQuanRaw
+                        : '';
                     const doanhSoVal =
                       item.doanh_so_du_kien ?? item.du_kien_thu_thang_nay ?? item.gia_tri_hd ?? 0;
                     const laTaiChinh =
@@ -373,114 +312,128 @@ export default function BangKeHoachThang({
                       : (item.ket_qua_thuc_te ?? 0);
                     const tyLe =
                       chiTieu > 0 ? Math.min(100, Math.round((thucTe / chiTieu) * 100)) : 0;
-                    const ghiChuText = item.ghi_chu_ket_qua || item.ghi_chu || '';
+
+                    const soViecTuanLienKet = dsViecTuan.filter(
+                      (v) => v.muc_tieu_thang_id === item.id
+                    ).length;
 
                     return (
                       <HangBang
                         key={item.id || idx}
-                        className="cursor-pointer"
+                        className="cursor-pointer hover:bg-slate-50 transition-colors"
                         onClick={(e) => {
                           if ((e.target as HTMLElement).closest('button, a')) return;
-                          if (laSuaDuoc) onCapNhatThucTe(item);
+                          setItemChiTiet(item);
                         }}
                       >
-                        <OBang className="text-center font-bold text-muted-foreground align-top">
+                        <OBang className="text-center font-bold text-muted-foreground align-middle">
                           {idx + 1}
                         </OBang>
 
-                        <OBang className="align-top space-y-1">
-                          <div className="font-bold text-noi-dung text-foreground">{coQuan}</div>
-                          {xaPhuongVal && (
-                            <div className="text-nhan text-muted-foreground flex items-center gap-1">
-                              <MapPin className="size-3 text-amber-600 shrink-0" />
-                              <span>{xaPhuongVal}</span>
-                            </div>
-                          )}
-                          {item.nguoi_ho_tro && (
-                            <div className="text-nhan text-amber-700 font-medium">
-                              Phối hợp: {item.nguoi_ho_tro}
-                            </div>
-                          )}
-                        </OBang>
-
-                        <OBang className="align-top space-y-1">
-                          {duAnVal && (
-                            <div className="font-semibold text-phu text-foreground line-clamp-2">
-                              {duAnVal}
-                            </div>
-                          )}
-                          <div>{renderBadgeLoai(item.loai_muc_tieu)}</div>
-                        </OBang>
-
-                        <OBang className="align-top space-y-1">
-                          <div className="font-medium text-phu text-foreground">{mucTieuVal}</div>
-                          {ghiChuText && (
-                            <div className="text-nhan text-muted-foreground italic">
-                              Ghi chú: {ghiChuText}
+                        <OBang className="align-middle space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-noi-dung text-foreground">
+                              {mucTieuVal}
+                            </span>
+                            {renderBadgeLoai(item.loai_muc_tieu)}
+                          </div>
+                          {(coQuan || item.du_an_du_kien || item.nguoi_lien_he) && (
+                            <div className="font-medium text-phu text-muted-foreground flex items-center gap-2 flex-wrap">
+                              {coQuan && <span>KH: {coQuan}</span>}
+                              {item.du_an_du_kien && <span>· DA: {item.du_an_du_kien}</span>}
+                              {item.nguoi_lien_he && (
+                                <span className="text-emerald-700 font-semibold">
+                                  · LH: {item.nguoi_lien_he}
+                                  {item.chuc_vu ? ` (${item.chuc_vu})` : ''}
+                                </span>
+                              )}
                             </div>
                           )}
                         </OBang>
 
-                        <OBang className="align-top text-right space-y-1.5">
-                          {laTaiChinh ? (
-                            <div className="font-mono text-phu font-bold">
-                              <span className="text-emerald-600">
-                                {DINH_DANG_TIEN_NGAN_GON(thucTe)}
+                        <OBang className="align-middle" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {soViecTuanLienKet > 0 && (
+                              <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-nhan font-bold">
+                                {soViecTuanLienKet} việc tuần
                               </span>
-                              <span className="text-muted-foreground font-normal"> / </span>
-                              <span className="text-foreground">
-                                {chiTieu > 0 ? DINH_DANG_TIEN_NGAN_GON(chiTieu) : '—'}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="font-mono text-phu font-bold">
-                              <span className="text-emerald-600">{thucTe}</span>
-                              <span className="text-muted-foreground font-normal"> / </span>
-                              <span className="text-foreground">
-                                {chiTieu} {item.don_vi_tinh || ''}
-                              </span>
-                            </div>
-                          )}
+                            )}
+                            {laSuaDuoc && onTaoViecTuanTuMucTieu && (
+                              <button
+                                type="button"
+                                onClick={() => onTaoViecTuanTuMucTieu(item)}
+                                className="h-7 px-2.5 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/15 text-primary text-nhan font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                                title="Rút mục tiêu tháng này thành công việc trong tuần"
+                              >
+                                <CalendarRange className="size-3.5" /> + Rút việc tuần
+                              </button>
+                            )}
+                          </div>
+                        </OBang>
 
-                          {chiTieu > 0 && (
-                            <div className="flex items-center justify-end gap-2">
-                              <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
-                                <div
-                                  className={cn(
-                                    'h-full rounded-full transition-all',
-                                    tyLe >= 100
-                                      ? 'bg-emerald-600'
-                                      : tyLe >= 50
+                        <OBang className="align-middle text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            <div className="text-right">
+                              {laTaiChinh ? (
+                                <div className="font-mono text-phu font-bold">
+                                  <span className="text-emerald-600">
+                                    {DINH_DANG_TIEN_NGAN_GON(thucTe)}
+                                  </span>
+                                  <span className="text-muted-foreground font-normal"> / </span>
+                                  <span className="text-foreground">
+                                    {chiTieu > 0 ? DINH_DANG_TIEN_NGAN_GON(chiTieu) : '—'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="font-mono text-phu font-bold">
+                                  <span className="text-emerald-600">{thucTe}</span>
+                                  <span className="text-muted-foreground font-normal"> / </span>
+                                  <span className="text-foreground">
+                                    {chiTieu} {item.don_vi_tinh || ''}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            {chiTieu > 0 && (
+                              <div className="w-16 shrink-0">
+                                <div className="flex items-center justify-end gap-1.5 mb-1">
+                                  <span className="font-mono text-[10px] font-bold text-muted-foreground">
+                                    {tyLe}%
+                                  </span>
+                                </div>
+                                <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                  <div
+                                    className={cn(
+                                      'h-full rounded-full transition-all',
+                                      tyLe >= 100
+                                        ? 'bg-emerald-500'
+                                        : tyLe >= 50
                                         ? 'bg-primary'
                                         : 'bg-amber-500'
-                                  )}
-                                  style={{ width: `${Math.min(100, tyLe)}%` }}
-                                />
+                                    )}
+                                    style={{ width: `${Math.min(100, tyLe)}%` }}
+                                  />
+                                </div>
                               </div>
-                              <span className="font-mono text-nhan font-bold text-muted-foreground">
-                                {tyLe}%
-                              </span>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </OBang>
 
                         {laSuaDuoc && (
-                          <OBang className="text-right align-top" onClick={(e) => e.stopPropagation()}>
+                          <OBang
+                            className="text-right align-middle"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="flex items-center justify-end gap-1">
                               <button
                                 type="button"
                                 onClick={() => onCapNhatThucTe(item)}
-                                className="h-7 px-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-nhan font-bold inline-flex items-center gap-1 transition-colors"
+                                className="h-7 px-2 rounded-lg bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 text-nhan font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
                                 title="Cập nhật kết quả thực tế"
                               >
-                                <TrendingUp className="size-3.5" />
-                                Cập nhật
+                                <TrendingUp className="size-3.5" /> Thực tế
                               </button>
-                              <NutIcon
-                                icon={Pencil}
-                                tieu_de="Sửa mục tiêu"
-                                onClick={() => onSuaItem(item)}
-                              />
+                              <NutIcon icon={Pencil} tieu_de="Sửa" onClick={() => onSuaItem(item)} />
                               <NutIcon
                                 icon={Trash2}
                                 tieu_de="Xóa"
@@ -500,7 +453,6 @@ export default function BangKeHoachThang({
             {/* MOBILE CARDS */}
             <DanhSachTheMobile>
               {ds.map((item, idx) => {
-                const coQuan = item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an || 'Mục tiêu tháng';
                 const mucTieuVal =
                   item.muc_tieu_thang || item.ten_muc_tieu || item.ten_khach_hang_du_an || '—';
                 const doanhSoVal =
@@ -523,20 +475,13 @@ export default function BangKeHoachThang({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="font-bold text-noi-dung text-foreground">{coQuan}</div>
-                        {item.xa_phuong && (
-                          <div className="text-nhan text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <MapPin className="size-3 text-amber-600 shrink-0" />
-                            <span>{item.xa_phuong}</span>
-                          </div>
-                        )}
+                        <div className="font-bold text-noi-dung text-foreground">{mucTieuVal}</div>
                       </div>
                       {renderBadgeLoai(item.loai_muc_tieu)}
                     </div>
 
                     <div className="text-phu text-foreground font-medium bg-muted/40 rounded-lg p-2.5 space-y-1.5">
-                      <div>{mucTieuVal}</div>
-                      <div className="flex items-center justify-between text-nhan pt-1 border-t border-border/50">
+                      <div className="flex items-center justify-between text-nhan">
                         <span className="text-muted-foreground">Thực tế / Chỉ tiêu:</span>
                         <span className="font-mono font-bold text-emerald-600">
                           {laTaiChinh
@@ -547,32 +492,18 @@ export default function BangKeHoachThang({
                       </div>
                     </div>
 
-                    {laSuaDuoc && (
+                    {laSuaDuoc && onTaoViecTuanTuMucTieu && (
                       <div
-                        className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/60"
+                        className="pt-1 flex justify-end"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
                           type="button"
-                          onClick={() => onCapNhatThucTe(item)}
-                          className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-nhan font-bold inline-flex items-center gap-1.5 shadow-2xs"
+                          onClick={() => onTaoViecTuanTuMucTieu(item)}
+                          className="h-7 px-2.5 rounded-lg bg-primary/10 text-primary text-nhan font-bold inline-flex items-center gap-1"
                         >
-                          <TrendingUp className="size-3.5" />
-                          Cập nhật thực tế
+                          + Rút thành việc tuần <ArrowRight className="size-3" />
                         </button>
-                        <div className="flex items-center gap-1">
-                          <NutIcon
-                            icon={Pencil}
-                            tieu_de="Sửa"
-                            onClick={() => onSuaItem(item)}
-                          />
-                          <NutIcon
-                            icon={Trash2}
-                            tieu_de="Xóa"
-                            mau="do"
-                            onClick={() => onXoaItem(item.id)}
-                          />
-                        </div>
                       </div>
                     )}
                   </TheMobile>
@@ -582,6 +513,152 @@ export default function BangKeHoachThang({
           </>
         )}
       </KhungDanhSach>
+
+      {/* Drill-down: Chi tiết mục tiêu */}
+      {itemChiTiet && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setItemChiTiet(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h3 className="font-bold text-lg text-slate-900">Chi tiết mục tiêu tháng</h3>
+              <button
+                onClick={() => setItemChiTiet(null)}
+                className="p-1 text-slate-400 hover:text-slate-600"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-4 space-y-4 overflow-y-auto">
+              <div>
+                <div className="text-sm text-slate-500 mb-1">Nội dung mục tiêu</div>
+                <div className="font-bold">
+                  {itemChiTiet.muc_tieu_thang || itemChiTiet.ten_muc_tieu || '—'}
+                </div>
+              </div>
+              {itemChiTiet.co_quan_doanh_nghiep && (
+                <div>
+                  <div className="text-sm text-slate-500 mb-1">Khách hàng / Dự án gắn kèm</div>
+                  <div className="font-medium">{itemChiTiet.co_quan_doanh_nghiep}</div>
+                </div>
+              )}
+              {(itemChiTiet.ghi_chu || itemChiTiet.ghi_chu_ket_qua) && (
+                <div>
+                  <div className="text-sm text-slate-500 mb-1">Ghi chú & Giải trình</div>
+                  <div className="text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    {itemChiTiet.ghi_chu_ket_qua || itemChiTiet.ghi_chu}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50 rounded-b-xl">
+              {laSuaDuoc && (
+                <>
+                  {onTaoViecTuanTuMucTieu && (
+                    <button
+                      onClick={() => {
+                        onTaoViecTuanTuMucTieu(itemChiTiet);
+                        setItemChiTiet(null);
+                      }}
+                      className="h-9 px-3.5 rounded-lg bg-primary/10 text-primary font-bold text-sm"
+                    >
+                      + Rút việc tuần
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      onCapNhatThucTe(itemChiTiet);
+                      setItemChiTiet(null);
+                    }}
+                    className="h-9 px-4 rounded-lg bg-primary text-white font-bold text-sm"
+                  >
+                    Cập nhật thực tế
+                  </button>
+                  <button
+                    onClick={() => {
+                      onSuaItem(itemChiTiet);
+                      setItemChiTiet(null);
+                    }}
+                    className="h-9 px-4 rounded-lg bg-white border border-slate-200 font-bold text-sm"
+                  >
+                    Sửa
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Khó khăn đề xuất */}
+      {moGhiChu && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setMoGhiChu(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
+                <AlertCircle className="size-5 text-amber-600" /> Khó khăn & Đề xuất Tháng
+              </h3>
+              <button
+                onClick={() => setMoGhiChu(false)}
+                className="p-1 text-slate-400 hover:text-slate-600"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-4 space-y-4 overflow-y-auto">
+              <div>
+                <label className="text-sm font-bold text-slate-900 block mb-1">
+                  Khó khăn / Vướng mắc
+                </label>
+                <textarea
+                  rows={3}
+                  value={khoKhan}
+                  onChange={(e) => setKhoKhan(e.target.value)}
+                  placeholder="Nhập vướng mắc trong tháng..."
+                  className="w-full rounded-lg border border-slate-200 p-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-bold text-slate-900 block mb-1">
+                  Đề xuất / Kiến nghị
+                </label>
+                <textarea
+                  rows={3}
+                  value={deXuat}
+                  onChange={(e) => setDeXuat(e.target.value)}
+                  placeholder="Nhập đề xuất hỗ trợ..."
+                  className="w-full rounded-lg border border-slate-200 p-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50 rounded-b-xl">
+              <button
+                onClick={() => setMoGhiChu(false)}
+                className="h-9 px-4 rounded-lg bg-white border border-slate-200 font-bold text-sm"
+              >
+                Đóng
+              </button>
+              <button
+                disabled={dangLuuGhiChu}
+                onClick={xuLyLuuGhiChuNhanh}
+                className="h-9 px-4 rounded-lg bg-primary text-white font-bold text-sm flex items-center gap-2"
+              >
+                <Save className="size-4" /> {dangLuuGhiChu ? 'Đang lưu...' : 'Lưu ghi chú'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

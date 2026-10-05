@@ -50,13 +50,11 @@ import { DINH_DANG_TIEN_NGAN_GON } from '../../../thu_vien/utils/format_tien';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
 import type { NhanSu, ChiNhanh, PhongBan } from '../../../thu_vien/types/nhan_su';
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
-import type { Lead } from '../../../thu_vien/types/lead';
 import type { LichGapKH } from '../../../thu_vien/types/lich_gap_kh';
 import { DANH_SACH_TRANG_THAI_LICH_GAP } from '../../../thu_vien/types/lich_gap_kh';
 import type { AIDanhGiaNhanSu, MucDoDanhGiaAI } from '../../../thu_vien/types/ai_danh_gia';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachHoSoDuAn } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
-import { danhSachLead } from '../../../dich_vu/lead/dich_vu_lead';
 import { danhSachLichGapKH } from '../../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
 import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
 import { danhSachPhongBan } from '../../../dich_vu/co_cau_to_chuc/dich_vu_phong_ban';
@@ -83,7 +81,6 @@ export default function TrangTongQuanLanhDao() {
   const [dangTai, setDangTai] = useState(true);
   const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>([]);
   const [dsDuAn, setDsDuAn] = useState<HoSoDuAn[]>([]);
-  const [dsLead, setDsLead] = useState<Lead[]>([]);
   const [dsLichGap, setDsLichGap] = useState<LichGapKH[]>([]);
   const [dsChiNhanh, setDsChiNhanh] = useState<ChiNhanh[]>([]);
   const [dsPhongBan, setDsPhongBan] = useState<PhongBan[]>([]);
@@ -149,7 +146,7 @@ export default function TrangTongQuanLanhDao() {
       const tuanHienTai = layTuanFromDateISO(ngayChon);
       const thangHienTai = ngayChon.slice(0, 7);
 
-      const [resNS, resDA, resCN, resPB, resAI, resKHTuan, resKHThang, resLead, resLichGap] = await Promise.all([
+      const [resNS, resDA, resCN, resPB, resAI, resKHTuan, resKHThang, resLichGap] = await Promise.all([
         danhSachNhanSu(),
         danhSachHoSoDuAn(),
         danhSachChiNhanh(),
@@ -157,7 +154,6 @@ export default function TrangTongQuanLanhDao() {
         danhSachAIDanhGia(ngayChon),
         danhSachKeHoachTuanTheoFilter(tuanHienTai),
         danhSachKeHoachThangTheoFilter(thangHienTai),
-        danhSachLead().catch(() => []),
         danhSachLichGapKH().catch(() => [])
       ]);
 
@@ -165,7 +161,6 @@ export default function TrangTongQuanLanhDao() {
       const mangDA = Array.isArray(resDA) ? resDA : resDA?.mang || [];
       const mangCN = Array.isArray(resCN) ? resCN : resCN?.mang || [];
       const mangPB = Array.isArray(resPB) ? resPB : resPB?.mang || [];
-      const mangLead = Array.isArray(resLead) ? resLead : (resLead as any)?.mang || resLead || [];
       const mangLichGap = Array.isArray(resLichGap) ? resLichGap : [];
 
       setDsNhanSu(mangNS.filter((ns: NhanSu) => ns.trang_thai_du_lieu !== 'da_xoa' && ns.trang_thai === true));
@@ -175,7 +170,6 @@ export default function TrangTongQuanLanhDao() {
       setDsDanhGiaAI(resAI);
       setDsKeHoachTuan(resKHTuan || []);
       setDsKeHoachThang(resKHThang || []);
-      setDsLead(mangLead);
       setDsLichGap(mangLichGap);
     } catch (e) {
       console.error('Lỗi khi tải dữ liệu lãnh đạo:', e);
@@ -237,11 +231,6 @@ export default function TrangTongQuanLanhDao() {
 
     const tongGiaTri = duAnPhuTrach.reduce((sum, da) => sum + (Number(da.gia_tri_du_kien) || 0), 0);
 
-    const tongLead = dsLead.length;
-    const leadMoiVaDangChamSoc = dsLead.filter((l) =>
-      ['moi_tiep_can', 'da_lien_he', 'da_hen_gap'].includes(l.trang_thai)
-    ).length;
-
     // Tính tuần (Thứ 2 -> Chủ Nhật) của ngayChon
     const [y, m, d] = ngayChon.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
@@ -275,8 +264,6 @@ export default function TrangTongQuanLanhDao() {
 
     return {
       tongNhanSu: dsNhanSuHienThi.length,
-      tongLead,
-      leadMoiVaDangChamSoc,
       tongDuAnPhuTrach: duAnPhuTrach.length,
       duAnPhuTrach,
       tongTiemNangCao: duAnTiemNangCao.length,
@@ -292,7 +279,7 @@ export default function TrangTongQuanLanhDao() {
       soCanhBao,
       soRuiRo
     };
-  }, [dsNhanSuHienThi, dsDuAn, dsLead, dsLichGap, ngayChon, dsDanhGiaAI]);
+  }, [dsNhanSuHienThi, dsDuAn, dsLichGap, ngayChon, dsDanhGiaAI]);
 
   // 6. Xử lý chạy AI toàn bộ nhân sự
   const handleChayAIToanBo = async () => {
@@ -332,15 +319,6 @@ export default function TrangTongQuanLanhDao() {
       {/* 1. Thước đo Điều hành Kinh doanh (ThanhSoLieu với tương tác Drill-down) */}
       <ThanhSoLieu
         muc={[
-          {
-            khoa: 'lead',
-            nhan: 'Số lượng Lead',
-            nhan_ngan: 'Lead',
-            gia_tri: dangTai ? '-' : thongKeLanhDao.tongLead,
-            icon: Target,
-            mau: 'mac_dinh',
-            khi_bam: () => router.push('/lead'),
-          },
           {
             khoa: 'tiem_nang',
             nhan: 'Tiềm năng cao',
@@ -480,7 +458,6 @@ export default function TrangTongQuanLanhDao() {
                   <HangBang>
                     <ODauBang>Nhân viên</ODauBang>
                     <ODauBang className="text-center">Điểm</ODauBang>
-                    <ODauBang className="text-center">Lead</ODauBang>
                     <ODauBang className="text-center">Dự án</ODauBang>
                     <ODauBang className="text-center">Tiềm năng</ODauBang>
                     <ODauBang className="text-center">Sắp ký HĐ</ODauBang>
@@ -489,7 +466,6 @@ export default function TrangTongQuanLanhDao() {
                 </ChuDeBang>
                 <ThanBang>
                   {dsNhanSuHienThi.map((ns) => {
-                    const leadCuaNS = dsLead.filter((l) => l.nguoi_phu_trach_id === ns.id);
                     const duAnCuaNS = dsDuAn.filter((da) => da.nguoi_phu_trach_id === ns.id);
                     const dsTiemNangCuaNS = duAnCuaNS.filter((da) =>
                       ['cao', 'rat_cao'].includes(da.muc_do_tiem_nang)
@@ -546,22 +522,6 @@ export default function TrangTongQuanLanhDao() {
                           ) : (
                             <span className="text-slate-300 text-phu italic">—</span>
                           )}
-                        </OBang>
-
-                        {/* Cột 3: Lead */}
-                        <OBang className="text-center">
-                          <Link
-                            href="/lead"
-                            className={cn(
-                              'px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer text-phu inline-flex items-center gap-1',
-                              leadCuaNS.length > 0
-                                ? 'bg-blue-50 hover:bg-blue-100 text-blue-700'
-                                : 'bg-slate-100 text-slate-400'
-                            )}
-                            title="Xem danh sách Lead"
-                          >
-                            <span>{leadCuaNS.length}</span>
-                          </Link>
                         </OBang>
 
                         {/* Cột 4: Dự án phụ trách */}
@@ -656,7 +616,6 @@ export default function TrangTongQuanLanhDao() {
             {/* GIAO DIỆN MOBILE/TABLET: Thẻ đồng bộ (DanhSachTheMobile + TheMobile) */}
             <DanhSachTheMobile>
               {dsNhanSuHienThi.map((ns) => {
-                const leadCuaNS = dsLead.filter((l) => l.nguoi_phu_trach_id === ns.id);
                 const duAnCuaNS = dsDuAn.filter((da) => da.nguoi_phu_trach_id === ns.id);
                 const dsTiemNangCuaNS = duAnCuaNS.filter((da) =>
                   ['cao', 'rat_cao'].includes(da.muc_do_tiem_nang)
@@ -722,16 +681,8 @@ export default function TrangTongQuanLanhDao() {
                       </button>
                     </div>
 
-                    {/* Hàng 2: 4 chỉ số trọng tâm (Lead, Dự án, Tiềm năng, Sắp ký) */}
-                    <div className="grid grid-cols-4 gap-2 pt-1">
-                      <Link
-                        href="/lead"
-                        className="bg-blue-500/8 border border-blue-200/50 py-1.5 px-1.5 rounded-xl text-center active:scale-95 transition"
-                      >
-                        <p className="text-nhan font-bold text-blue-600 truncate">Lead</p>
-                        <p className="text-phu font-black text-blue-900 tabular-nums mt-0.5">{leadCuaNS.length}</p>
-                      </Link>
-
+                    {/* Hàng 2: 3 chỉ số trọng tâm (Dự án, Tiềm năng, Sắp ký) */}
+                    <div className="grid grid-cols-3 gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() =>

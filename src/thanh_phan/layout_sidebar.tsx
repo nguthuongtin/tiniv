@@ -46,9 +46,7 @@ const DANH_MUC_SIDEBAR: MucSidebar[] = [
     quyen: 'lanh_dao.xem'
   },
   { href: '/ban-lam-viec', icon: ListTodo, nhan: 'Bàn làm việc', nhom: 'Module' },
-  { href: '/ke-hoach', icon: CalendarRange, nhan: 'Kế hoạch', nhom: 'Module', quyen: 'ke_hoach.xem' },
   { href: '/lich-cong-tac', icon: CalendarCheck, nhan: 'Lịch công tác', nhom: 'Module' },
-  { href: '/lead', icon: Sparkles, nhan: 'Lead', nhom: 'Module' },
   { href: '/khach-hang', icon: Building2, nhan: 'Khách hàng', nhom: 'Module' },
   { href: '/ho-so-du-an', icon: FolderKanban, nhan: 'Hồ sơ dự án', nhom: 'Module', quyen: 'du_an.xem' },
   { href: '/bao-cao-cong-viec', icon: FileText, nhan: 'Báo cáo công việc', nhom: 'Module', quyen: ['bao_cao.xem', 'bao_cao.tao'] },
@@ -123,6 +121,7 @@ const useSidebarShared = () => {
 
   const nhomHienTai = (() => {
     if (pathname === '/') return 'Tổng quan';
+    if (pathname.startsWith('/ban-lam-viec') || pathname.startsWith('/ke-hoach')) return 'Bàn làm việc';
     if (pathname.startsWith('/bao-cao-cong-viec')) return 'Báo cáo công việc';
     if (pathname.startsWith('/bao-cao')) return 'Báo cáo & Thống kê';
     if (pathname.startsWith('/khach-hang')) return 'Khách hàng';
@@ -195,6 +194,8 @@ const renderDanhMuc = (
                 const active =
                   muc.href === '/'
                     ? pathname === '/'
+                    : muc.href === '/ban-lam-viec'
+                    ? pathname.startsWith('/ban-lam-viec') || pathname.startsWith('/ke-hoach')
                     : muc.href === '/bao-cao'
                     ? pathname === '/bao-cao' ||
                       (pathname.startsWith('/bao-cao/') &&

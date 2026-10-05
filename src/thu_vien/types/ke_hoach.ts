@@ -4,12 +4,15 @@ export interface ItemKeHoachThang {
   id: string;
   khach_hang_id?: string | null;
   du_an_id?: string | null;
+  nguoi_lien_he_id?: string | null;
   ten_khach_hang_du_an: string; // Tên khách hàng / dự án / mục tiêu
 
   // === Trường dữ liệu chuẩn hóa theo mẫu ===
   tinh_thanh?: string | null; // Tỉnh / Thành phố
   xa_phuong?: string | null; // Xã / Phường / Đặc khu
   nguoi_lien_he?: string | null; // Người liên hệ (Chị Giang_Chủ tịch...)
+  chuc_vu?: string | null; // Chức vụ người liên hệ
+  so_dien_thoai_lien_he?: string | null; // SĐT người liên hệ
   co_quan_doanh_nghiep?: string | null; // Cơ quan / Doanh nghiệp (UBND Xã...)
   du_an_du_kien?: string | null; // Dự án (Dự kiến)
   muc_tieu_thang?: string | null; // Mục tiêu (Kết quả mong muốn)
@@ -58,6 +61,15 @@ export interface ChiDaoTienDo {
   ngay_chi_dao?: string | null; // YYYY-MM-DD
 }
 
+export type LoaiTacNghiepKetQuaTuan =
+  | 'ghi_chu'
+  | 'goi_dien'
+  | 'gap_mat'
+  | 'cap_nhat_du_an'
+  | 'tao_khach_hang'
+  | 'tao_du_an'
+  | 'dat_lich_hen';
+
 // Mỗi kết quả ghi nhận theo ngày / thời điểm
 export interface NhatKyKetQuaTuan {
   id: string;
@@ -65,6 +77,19 @@ export interface NhatKyKetQuaTuan {
   noi_dung: string; // Nội dung kết quả đạt được
   nguoi_ghi_id?: string | null;
   ten_nguoi_ghi?: string | null;
+
+  // Liên kết thực thể CRM cho từng mốc tương tác (1 nhiệm vụ có thể tương tác nhiều KH / nhiều Dự án)
+  loai_tac_nghiep?: LoaiTacNghiepKetQuaTuan | null;
+  khach_hang_id?: string | null;
+  ten_khach_hang?: string | null;
+  du_an_id?: string | null;
+  ten_du_an?: string | null;
+  nguoi_lien_he_id?: string | null;
+  ten_nguoi_lien_he?: string | null;
+  chuc_vu_lien_he?: string | null;
+  so_dien_thoai_lien_he?: string | null;
+  giai_doan_du_an?: string | null;
+  lich_hen_id?: string | null;
 
   // Tài liệu / Link đính kèm
   link_dinh_kem?: string | null; // Link Google Drive, Dropbox, báo giá, tài liệu online...
@@ -83,12 +108,14 @@ export interface ItemKeHoachTuan {
   loai_hanh_dong?: 'theo_muc_tieu' | 'phat_sinh'; // Phân loại hành động theo mục tiêu hay phát sinh
   khach_hang_id?: string | null;
   du_an_id?: string | null;
+  nguoi_lien_he_id?: string | null;
 
   // === Trường dữ liệu chuẩn hóa theo mẫu ===
   tinh_thanh?: string | null; // Tỉnh / Thành phố
   xa_phuong?: string | null; // Xã / Phường / Đặc khu
   nguoi_lien_he?: string | null; // Người liên hệ
   chuc_vu?: string | null; // Chức vụ của người liên hệ
+  so_dien_thoai_lien_he?: string | null; // SĐT của người liên hệ
   co_quan_doanh_nghiep?: string | null; // Cơ quan / Doanh nghiệp
   du_an_du_kien?: string | null; // Dự án (Dự kiến)
   hinh_thuc?: 'gap_mat' | 'goi_dien' | 'nhan_tin' | 'khac' | string | null; // Hình thức làm việc (Gặp mặt, Gọi điện...)
@@ -101,6 +128,10 @@ export interface ItemKeHoachTuan {
   noi_dung_tuan: string; // Việc cần làm trong tuần
   dau_ra_cam_ket: string; // Đầu ra / Kết quả cần lấy về
   ngay_du_kien?: string | null; // Ngày dự kiến thực hiện / hoàn thành (YYYY-MM-DD)
+  cac_ngay_thuc_hien?: string[]; // Danh sách các ngày trong tuần có thực hiện công việc này (YYYY-MM-DD)
+  gio_bat_dau?: string | null; // Giờ bắt đầu hẹn gặp (HH:mm) nếu chốt lịch hẹn
+  gio_ket_thuc?: string | null; // Giờ kết thúc hẹn gặp (HH:mm) nếu chốt lịch hẹn
+  dia_diem_hen?: string | null; // Địa điểm hẹn gặp cụ thể
   da_hoan_thanh: boolean; // Trạng thái tick xong
   ngay_hoan_thanh?: string | null; // Ngày bấm hoàn thành đầu tiên (YYYY-MM-DD) chống gian lận
   can_ho_tro?: string | null; // Cần Sếp/CN hỗ trợ

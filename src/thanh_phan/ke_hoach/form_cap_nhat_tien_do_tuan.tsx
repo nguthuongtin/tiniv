@@ -276,151 +276,30 @@ export default function FormCapNhatTienDoTuan({
     <Ban_Ve
       mo={mo}
       onDong={onDong}
-      tieu_de="Check-in 1 chạm & Cập nhật Tiến độ"
-      phu_de={item.ten_khach_hang_du_an}
+      tieu_de="Cập nhật tiến độ công việc"
+      phu_de={item.hanh_dong_tuan || item.noi_dung_tuan || item.ten_khach_hang_du_an}
     >
       <div className="space-y-4 p-1">
-        {/* Thông tin mục tiêu ban đầu */}
+        {/* Ô nhập tiến độ mới ngay trên đầu */}
         <The_Chuc_Nang>
           <div className="p-4 space-y-3 text-xs">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-bold text-foreground text-sm">
-                {item.ten_khach_hang_du_an}
-              </span>
-              {item.ngay_du_kien && (
-                <span className="px-2 py-0.5 rounded bg-primary/10 text-primary font-bold text-[11px] inline-flex items-center gap-1">
-                  <Calendar className="size-3" /> Dự kiến: {new Date(item.ngay_du_kien).toLocaleDateString('vi-VN')}
-                </span>
-              )}
-            </div>
-
-            <div className="p-3 bg-muted/40 rounded-xl space-y-1.5 border border-border/60">
-              <div className="text-muted-foreground font-semibold">Kết quả / Đầu ra cam kết:</div>
-              <div className="font-bold text-foreground text-xs">{item.ket_qua_mong_muon || item.dau_ra_cam_ket || '—'}</div>
-              {(item.hanh_dong_tuan || item.noi_dung_tuan) && (
-                <div className="text-[11px] text-muted-foreground pt-1.5 border-t border-border/40">
-                  <span className="font-semibold text-foreground">Hành động:</span> {item.hanh_dong_tuan || item.noi_dung_tuan}
-                </div>
-              )}
-            </div>
-
-            {/* Trạng thái công việc: Hoàn thành / Đang xử lý / Dời hẹn */}
-            <div className="space-y-2">
-              <label className="font-bold text-foreground text-xs block">Trạng thái công việc:</label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTrangThaiCongViec('da_hoan_thanh');
-                    setDaHoanThanh(true);
-                  }}
-                  className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    trangThaiCongViec === 'da_hoan_thanh' || daHoanThanh
-                      ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-400 shadow-2xs'
-                      : 'bg-background border-border text-muted-foreground hover:bg-muted/40'
-                  }`}
-                >
-                  <CheckCircle2 className="size-4 text-emerald-600" />
-                  Hoàn thành
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTrangThaiCongViec('dang_thuc_hien');
-                    setDaHoanThanh(false);
-                  }}
-                  className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    trangThaiCongViec === 'dang_thuc_hien' && !daHoanThanh
-                      ? 'bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-400 shadow-2xs'
-                      : 'bg-background border-border text-muted-foreground hover:bg-muted/40'
-                  }`}
-                >
-                  <Edit2 className="size-3.5 text-amber-600" />
-                  Đang xử lý
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTrangThaiCongViec('doi_hen');
-                    setDaHoanThanh(false);
-                  }}
-                  className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    trangThaiCongViec === 'doi_hen' && !daHoanThanh
-                      ? 'bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-400 shadow-2xs'
-                      : 'bg-background border-border text-muted-foreground hover:bg-muted/40'
-                  }`}
-                >
-                  <Calendar className="size-3.5 text-blue-600" />
-                  Dời hẹn
-                </button>
-              </div>
-
-              {trangThaiCongViec === 'doi_hen' && !daHoanThanh && (
-                <div className="flex items-center gap-2 pt-1.5">
-                  <span className="text-xs font-semibold text-blue-700">Dời sang ngày:</span>
-                  <input
-                    type="date"
-                    value={ngayDuKienMoi}
-                    onChange={(e) => setNgayDuKienMoi(e.target.value)}
-                    className="h-8 rounded-lg border border-blue-300 bg-blue-50/40 px-2.5 text-xs font-bold text-foreground"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Chuyển Giai đoạn Dự án (Pipeline) nếu công việc có gắn Dự án */}
-            {item.du_an_id && (
-              <div className="space-y-1.5 pt-2 border-t border-border/40">
-                <label className="font-bold text-foreground text-xs flex items-center justify-between">
-                  <span>Chuyển Giai đoạn Dự án (Pipeline):</span>
-                  <span className="text-[10px] text-muted-foreground font-normal">NVKD chủ động đổi nếu thầu có bước tiến</span>
-                </label>
-                <select
-                  value={giaiDoanDuAnMoi}
-                  onChange={(e) => setGiaiDoanDuAnMoi(e.target.value)}
-                  className="w-full h-9 rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">-- Giữ nguyên giai đoạn hiện tại --</option>
-                  {DANH_SACH_GIAI_DOAN_MAC_DINH.map((gd) => (
-                    <option key={gd.key} value={gd.key}>
-                      {gd.nhan_day_du}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        </The_Chuc_Nang>
-
-        {/* Ô nhập thêm kết quả mới */}
-        <The_Chuc_Nang>
-          <div className="p-4 space-y-3 text-xs">
-            <div className="font-bold text-foreground text-sm flex items-center justify-between gap-2 flex-wrap">
-              <span>Check-in kết quả thực hiện</span>
-              <span className="text-emerald-700 bg-emerald-500/10 px-2 py-0.5 rounded-full text-[11px] font-semibold">
-                Tự động đồng bộ Báo cáo Ngày & Tuần
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
+              <span className="font-bold text-foreground text-sm">Ghi nhận tiến độ</span>
               <input
                 type="date"
                 value={ngayGhiNhanMoi}
                 onChange={(e) => setNgayGhiNhanMoi(e.target.value)}
-                className="h-8.5 rounded-lg border border-border bg-background px-2 text-xs font-semibold text-foreground"
+                className="h-8 rounded-lg border border-border bg-background px-2 text-xs font-semibold text-foreground"
               />
-              <span className="text-muted-foreground text-[11px]">Ngày thực hiện</span>
             </div>
 
-            <div>
-              <textarea
-                rows={2}
-                value={noiDungMoi}
-                onChange={(e) => setNoiDungMoi(e.target.value)}
-                placeholder="Nhập kết quả buổi làm việc / trao đổi với khách hàng..."
-                className="w-full rounded-lg border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-primary"
-              />
-            </div>
+            <textarea
+              rows={3}
+              value={noiDungMoi}
+              onChange={(e) => setNoiDungMoi(e.target.value)}
+              placeholder="Nhập kết quả / tiến độ thực hiện trong ngày..."
+              className="w-full rounded-lg border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-primary"
+            />
 
             {/* Tài liệu & Link đính kèm */}
             {hienNhapLinkMoi ? (
@@ -428,7 +307,7 @@ export default function FormCapNhatTienDoTuan({
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-[11px] text-foreground flex items-center gap-1">
                     <Link2 className="size-3 text-primary" />
-                    Đính kèm Link / Tài liệu
+                    Link tài liệu
                   </span>
                   <button
                     type="button"
@@ -439,7 +318,7 @@ export default function FormCapNhatTienDoTuan({
                     }}
                     className="text-[10px] text-muted-foreground hover:text-danger"
                   >
-                    Bỏ đính kèm
+                    Đóng
                   </button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -447,20 +326,20 @@ export default function FormCapNhatTienDoTuan({
                     type="text"
                     value={linkDinhKemMoi}
                     onChange={(e) => setLinkDinhKemMoi(e.target.value)}
-                    placeholder="https://drive.google.com/..."
+                    placeholder="https://..."
                     className="h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-mono text-foreground"
                   />
                   <input
                     type="text"
                     value={tenTaiLieuMoi}
                     onChange={(e) => setTenTaiLieuMoi(e.target.value)}
-                    placeholder="Tên tài liệu: Báo giá PDF, Hợp đồng..."
+                    placeholder="Tên tài liệu..."
                     className="h-8 rounded-lg border border-border bg-background px-2.5 text-xs text-foreground"
                   />
                 </div>
               </div>
             ) : (
-              <div>
+              <div className="flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setHienNhapLinkMoi(true)}
@@ -468,16 +347,97 @@ export default function FormCapNhatTienDoTuan({
                 >
                   <Link2 className="size-3" /> + Đính kèm link tài liệu
                 </button>
+                {noiDungMoi.trim() && (
+                  <button
+                    type="button"
+                    onClick={xuLyThemKetQua}
+                    className="h-7 px-2.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-[11px] font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="size-3" /> Thêm vào nhật ký
+                  </button>
+                )}
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={xuLyThemKetQua}
-              className="h-8 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="size-3.5" /> Thêm mốc tiến độ
-            </button>
+            {/* Trạng thái & Giai đoạn dự án */}
+            <div className="pt-2 border-t border-border/50 space-y-2.5">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTrangThaiCongViec('dang_thuc_hien');
+                    setDaHoanThanh(false);
+                  }}
+                  className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    trangThaiCongViec === 'dang_thuc_hien' && !daHoanThanh
+                      ? 'bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-400'
+                      : 'bg-background border-border text-muted-foreground hover:bg-muted/40'
+                  }`}
+                >
+                  <Edit2 className="size-3.5 text-amber-600" />
+                  Đang làm
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTrangThaiCongViec('da_hoan_thanh');
+                    setDaHoanThanh(true);
+                  }}
+                  className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    trangThaiCongViec === 'da_hoan_thanh' || daHoanThanh
+                      ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-400'
+                      : 'bg-background border-border text-muted-foreground hover:bg-muted/40'
+                  }`}
+                >
+                  <CheckCircle2 className="size-4 text-emerald-600" />
+                  Hoàn thành
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTrangThaiCongViec('doi_hen');
+                    setDaHoanThanh(false);
+                  }}
+                  className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    trangThaiCongViec === 'doi_hen' && !daHoanThanh
+                      ? 'bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-400'
+                      : 'bg-background border-border text-muted-foreground hover:bg-muted/40'
+                  }`}
+                >
+                  <Calendar className="size-3.5 text-blue-600" />
+                  Dời ngày
+                </button>
+              </div>
+
+              {trangThaiCongViec === 'doi_hen' && !daHoanThanh && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-blue-700">Chuyển sang ngày:</span>
+                  <input
+                    type="date"
+                    value={ngayDuKienMoi}
+                    onChange={(e) => setNgayDuKienMoi(e.target.value)}
+                    className="h-8 rounded-lg border border-blue-300 bg-blue-50/40 px-2.5 text-xs font-bold text-foreground"
+                  />
+                </div>
+              )}
+
+              {item.du_an_id && (
+                <div>
+                  <select
+                    value={giaiDoanDuAnMoi}
+                    onChange={(e) => setGiaiDoanDuAnMoi(e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">-- Chuyển giai đoạn dự án (nếu có) --</option>
+                    {DANH_SACH_GIAI_DOAN_MAC_DINH.map((gd) => (
+                      <option key={gd.key} value={gd.key}>
+                        {gd.nhan_day_du}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
         </The_Chuc_Nang>
 
@@ -577,10 +537,20 @@ export default function FormCapNhatTienDoTuan({
                         /* Chế độ Xem bình thường */
                         <>
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="px-1.5 py-0.5 rounded bg-muted font-mono font-bold text-[10px] text-muted-foreground">
                                 {kq.ngay_ghi_nhan ? new Date(kq.ngay_ghi_nhan).toLocaleDateString('vi-VN') : '—'}
                               </span>
+                              {kq.ten_khach_hang && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 font-bold text-[10px]">
+                                  KH: {kq.ten_khach_hang}
+                                </span>
+                              )}
+                              {kq.ten_du_an && (
+                                <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-700 border border-indigo-500/20 font-bold text-[10px]">
+                                  DA: {kq.ten_du_an}
+                                </span>
+                              )}
                               {idx === 0 && (
                                 <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 font-bold text-[10px]">
                                   Mới nhất

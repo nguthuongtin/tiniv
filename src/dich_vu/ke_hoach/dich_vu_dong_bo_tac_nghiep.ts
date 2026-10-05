@@ -346,26 +346,34 @@ export const dongBoCongViecTuanSangLichGap = async (params: {
     const { item, nhanVienId, chiNhanhId, nguoiTaoId, choPhepTaoMoiLich = true } = params;
     if (!item.ngay_du_kien || !nhanVienId) return;
 
+    const tuanISO = layTuanFromDateISO(item.ngay_du_kien);
+    const { tuNgay, denNgay } = layKhoangNgayTuTuanISO(tuanISO);
+
     const dsLich = await danhSachLichGapKH({
       nguoi_phu_trach_id: nhanVienId,
-      tu_ngay: item.ngay_du_kien,
-      den_ngay: item.ngay_du_kien
+      tu_ngay: tuNgay,
+      den_ngay: denNgay
     });
 
     const tenKH = (
       item.co_quan_doanh_nghiep ||
       item.ten_khach_hang_du_an ||
       item.du_an_du_kien ||
-      ''
+      item.hanh_dong_tuan ||
+      'Khách hàng'
     ).trim();
 
+    const tieuDeCv = (item.hanh_dong_tuan || item.noi_dung_tuan || `Làm việc với ${tenKH}`).trim();
+
     const lichKhop = dsLich.find((l) => {
-      if (item.khach_hang_id && l.khach_hang_id === item.khach_hang_id) return true;
-      if (item.du_an_id && l.du_an_id === item.du_an_id) return true;
+      if (l.tieu_de && l.tieu_de.trim().toLowerCase() === tieuDeCv.toLowerCase()) return true;
+      if (item.khach_hang_id && l.khach_hang_id === item.khach_hang_id && l.ngay === item.ngay_du_kien) return true;
+      if (item.du_an_id && l.du_an_id === item.du_an_id && l.ngay === item.ngay_du_kien) return true;
       if (
         tenKH &&
         l.ten_khach_hang &&
-        l.ten_khach_hang.trim().toLowerCase() === tenKH.toLowerCase()
+        l.ten_khach_hang.trim().toLowerCase() === tenKH.toLowerCase() &&
+        l.ngay === item.ngay_du_kien
       ) {
         return true;
       }
@@ -373,29 +381,38 @@ export const dongBoCongViecTuanSangLichGap = async (params: {
     });
 
     if (lichKhop) {
-      // Nếu mục tiêu tuần đã hoàn thành mà lịch hẹn vẫn "sap_toi", tự động chuyển sang "da_hoan_thanh"
+      const capNhatData: Record<string, any> = {};
       if (item.da_hoan_thanh && lichKhop.trang_thai === 'sap_toi') {
-        await capNhatLichGapKH(
-          lichKhop.id,
-          {
-            trang_thai: 'da_hoan_thanh',
-            ket_qua: item.ket_qua_thuc_te || lichKhop.ket_qua || 'Đã hoàn thành theo kế hoạch tuần'
-          },
-          nguoiTaoId
-        );
+        capNhatData.trang_thai = 'da_hoan_thanh';
+        capNhatData.ket_qua = item.ket_qua_thuc_te || lichKhop.ket_qua || 'Đã hoàn thành theo kế hoạch tuần';
+      }
+      if (item.ngay_du_kien && lichKhop.ngay !== item.ngay_du_kien) {
+        capNhatData.ngay = item.ngay_du_kien;
+      }
+      if (item.gio_bat_dau && lichKhop.gio_bat_dau !== item.gio_bat_dau) {
+        capNhatData.gio_bat_dau = item.gio_bat_dau;
+      }
+      if (item.gio_ket_thuc && lichKhop.gio_ket_thuc !== item.gio_ket_thuc) {
+        capNhatData.gio_ket_thuc = item.gio_ket_thuc;
+      }
+      if (item.dia_diem_hen !== undefined && item.dia_diem_hen !== lichKhop.dia_diem) {
+        capNhatData.dia_diem = item.dia_diem_hen || item.xa_phuong || lichKhop.dia_diem;
+      }
+
+      if (Object.keys(capNhatData).length > 0) {
+        await capNhatLichGapKH(lichKhop.id, capNhatData, nguoiTaoId);
       }
       return;
     }
 
-    // Chỉ tạo lịch hẹn mới trên Lịch công tác khi công việc là Gặp mặt trực tiếp (đi thị trường)
+    // Chỉ tạo lịch hẹn mới trên Lịch công tác khi công việc đã chốt lịch hẹn (gap_mat)
     if (!choPhepTaoMoiLich || !tenKH || item.hinh_thuc !== 'gap_mat') return;
 
-    // Tạo lịch hẹn mới trên Lịch công tác
     const nlhRaw = item.nguoi_lien_he || '';
     const tenLienHe = nlhRaw.includes('_') ? nlhRaw.split('_')[0] : nlhRaw;
 
     await taoLichGapKHMoi({
-      tieu_de: item.hanh_dong_tuan || item.noi_dung_tuan || `Làm việc với ${tenKH}`,
+      tieu_de: tieuDeCv,
       khach_hang_id: item.khach_hang_id || null,
       ten_khach_hang: tenKH,
       nguoi_lien_he_id: null,
@@ -405,9 +422,9 @@ export const dongBoCongViecTuanSangLichGap = async (params: {
       nguoi_tham_gia_ids: [],
       chi_nhanh_id: chiNhanhId ?? null,
       ngay: item.ngay_du_kien,
-      gio_bat_dau: '08:30',
-      gio_ket_thuc: '10:00',
-      dia_diem: item.xa_phuong || null,
+      gio_bat_dau: item.gio_bat_dau || '08:30',
+      gio_ket_thuc: item.gio_ket_thuc || '10:00',
+      dia_diem: item.dia_diem_hen || item.xa_phuong || null,
       noi_dung: item.ket_qua_mong_muon || item.dau_ra_cam_ket || item.hanh_dong_tuan || null,
       ket_qua: item.ket_qua_thuc_te || null,
       trang_thai: item.da_hoan_thanh ? 'da_hoan_thanh' : 'sap_toi',
@@ -429,30 +446,34 @@ export const dongBoCongViecTuanSangLichGap = async (params: {
 export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
   lich: LichGapKH;
   nguoiThucHien?: NguoiDungDangNhap | null;
-}): Promise<void> => {
+}): Promise<KeHoachTuan | null> => {
   try {
     const { lich, nguoiThucHien } = params;
     const nhanVienId = lich.nguoi_phu_trach_id || nguoiThucHien?.id;
-    if (!nhanVienId || !lich.ngay) return;
+    if (!nhanVienId || !lich.ngay) return null;
 
     const tuanISO = layTuanFromDateISO(lich.ngay);
     const keHoachHienTai = await layKeHoachTuan(nhanVienId, tuanISO);
     const dsTacChien = [...(keHoachHienTai?.danh_sach_tac_chien ?? [])];
 
     const tenKH = (lich.ten_khach_hang || lich.tieu_de || '').trim();
+    const idMucTieuLich = lich.id ? `tuan_lich_${lich.id}` : '';
+
     const idxKhop = dsTacChien.findIndex((item) => {
-      if (lich.khach_hang_id && item.khach_hang_id === lich.khach_hang_id && item.ngay_du_kien === lich.ngay) {
+      if (idMucTieuLich && item.id === idMucTieuLich) return true;
+      if (item.hinh_thuc !== 'gap_mat') return false;
+      if (item.ngay_du_kien !== lich.ngay) return false;
+      if (item.gio_bat_dau && lich.gio_bat_dau && item.gio_bat_dau !== lich.gio_bat_dau) {
+        return false;
+      }
+      if (lich.khach_hang_id && item.khach_hang_id === lich.khach_hang_id) {
         return true;
       }
-      if (lich.du_an_id && item.du_an_id === lich.du_an_id && item.ngay_du_kien === lich.ngay) {
+      if (lich.du_an_id && item.du_an_id === lich.du_an_id) {
         return true;
       }
       const tenItem = (item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an || '').trim();
-      return (
-        tenKH.length > 0 &&
-        tenItem.toLowerCase() === tenKH.toLowerCase() &&
-        (!item.ngay_du_kien || item.ngay_du_kien === lich.ngay)
-      );
+      return tenKH.length > 0 && tenItem.toLowerCase() === tenKH.toLowerCase();
     });
 
     const daXongLich = lich.trang_thai === 'da_hoan_thanh';
@@ -479,10 +500,18 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
         }
       }
 
+      const dsNgayMoi = Array.from(
+        new Set([...(itemCu.cac_ngay_thuc_hien ?? []), lich.ngay])
+      ).sort();
+
       dsTacChien[idxKhop] = {
         ...itemCu,
         hinh_thuc: 'gap_mat',
-        ngay_du_kien: itemCu.ngay_du_kien || lich.ngay,
+        ngay_du_kien: lich.ngay,
+        cac_ngay_thuc_hien: dsNgayMoi,
+        gio_bat_dau: lich.gio_bat_dau || itemCu.gio_bat_dau || '08:30',
+        gio_ket_thuc: lich.gio_ket_thuc || itemCu.gio_ket_thuc || '10:00',
+        dia_diem_hen: lich.dia_diem || itemCu.dia_diem_hen || null,
         da_hoan_thanh: daXongLich ? true : itemCu.da_hoan_thanh,
         ngay_hoan_thanh: daXongLich ? itemCu.ngay_hoan_thanh || lich.ngay : itemCu.ngay_hoan_thanh,
         ket_qua_thuc_te: ketQuaLich || itemCu.ket_qua_thuc_te || null,
@@ -519,6 +548,10 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
         ket_qua_mong_muon: lich.noi_dung || 'Trao đổi nắm bắt nhu cầu & thúc đẩy cơ hội',
         dau_ra_cam_ket: lich.noi_dung || 'Trao đổi nắm bắt nhu cầu & thúc đẩy cơ hội',
         ngay_du_kien: lich.ngay,
+        cac_ngay_thuc_hien: [lich.ngay],
+        gio_bat_dau: lich.gio_bat_dau || '08:30',
+        gio_ket_thuc: lich.gio_ket_thuc || '10:00',
+        dia_diem_hen: lich.dia_diem || null,
         da_hoan_thanh: daXongLich,
         ngay_hoan_thanh: daXongLich ? lich.ngay : null,
         danh_sach_ket_qua: dsKqMoi,
@@ -556,8 +589,11 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
         nguoiThucHien: nguoiThucHien ? { id: nguoiThucHien.id } : { id: nhanVienId }
       });
     }
+
+    return keHoachDaLuu;
   } catch (err) {
     console.warn('[dongBoLichGapSangKeHoachTuanVaBaoCaoNgay] Lỗi:', err);
+    return null;
   }
 };
 
@@ -662,6 +698,8 @@ export const superSyncCheckIn1Cham = async (params: {
   nhanVienId: string;
   ngayBaoCao: string; // YYYY-MM-DD
   noiDungKetQua: string;
+  linkTaiLieu?: string | null;
+  tenTaiLieu?: string | null;
   trangThaiCongViec: 'da_hoan_thanh' | 'dang_thuc_hien' | 'doi_hen';
   giaiDoanDuAnMoi?: string | null;
   nguoiThucHien?: NguoiDungDangNhap | null;
@@ -671,6 +709,8 @@ export const superSyncCheckIn1Cham = async (params: {
     nhanVienId,
     ngayBaoCao,
     noiDungKetQua,
+    linkTaiLieu,
+    tenTaiLieu,
     trangThaiCongViec,
     giaiDoanDuAnMoi,
     nguoiThucHien
@@ -678,13 +718,30 @@ export const superSyncCheckIn1Cham = async (params: {
 
   try {
     const noiDungSach = noiDungKetQua.trim();
+    const kqMoiNhat = item.danh_sach_ket_qua?.[0];
 
-    // [Đích 1] Về Hồ sơ Dự án (Timeline TienDoDuAn)
-    if (item.du_an_id && noiDungSach) {
+    const duAnIdMucTieu = kqMoiNhat?.du_an_id || item.du_an_id || null;
+    const tenDuAnMucTieu =
+      kqMoiNhat?.ten_du_an || item.du_an_du_kien || item.ten_khach_hang_du_an;
+    const tenDoiTuongBaoCao =
+      kqMoiNhat?.ten_du_an ||
+      kqMoiNhat?.ten_khach_hang ||
+      item.co_quan_doanh_nghiep ||
+      item.ten_khach_hang_du_an ||
+      'Công việc tuần';
+
+    // [Đích 1] Về Hồ sơ Dự án (Timeline TienDoDuAn) — chỉ tạo khi không phải vừa tạo mới dự án
+    if (
+      duAnIdMucTieu &&
+      noiDungSach &&
+      kqMoiNhat?.loai_tac_nghiep !== 'tao_du_an'
+    ) {
       await taoTienDoDuAnMoi(
         {
-          du_an_id: item.du_an_id,
+          du_an_id: duAnIdMucTieu,
           tinh_hinh_hien_tai: noiDungSach,
+          link_tai_lieu: linkTaiLieu || null,
+          ten_tai_lieu: tenTaiLieu || null,
           trang_thai_hanh_dong:
             trangThaiCongViec === 'da_hoan_thanh'
               ? 'da_hoan_thanh'
@@ -693,14 +750,14 @@ export const superSyncCheckIn1Cham = async (params: {
               : 'dang_thuc_hien',
           nguoi_tao_id: nguoiThucHien?.id || nhanVienId
         },
-        item.du_an_du_kien || item.ten_khach_hang_du_an
+        tenDuAnMucTieu
       );
     }
 
     // [Đích 2] Về Phễu Pipeline (Đổi giai đoạn dự án nếu NVKD có chọn)
-    if (item.du_an_id && giaiDoanDuAnMoi && giaiDoanDuAnMoi.trim()) {
+    if (duAnIdMucTieu && giaiDoanDuAnMoi && giaiDoanDuAnMoi.trim()) {
       await doiGiaiDoanHoSoDuAn(
-        item.du_an_id,
+        duAnIdMucTieu,
         giaiDoanDuAnMoi.trim() as GiaiDoanDuAn,
         nguoiThucHien ? { id: nguoiThucHien.id } : null
       );
@@ -713,8 +770,8 @@ export const superSyncCheckIn1Cham = async (params: {
         chiNhanhId: nguoiThucHien?.chi_nhanh_id || null,
         phongBanId: nguoiThucHien?.phong_ban_id || null,
         ngayBaoCao,
-        duAnId: item.du_an_id || null,
-        tenKhachHangDuAn: item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an,
+        duAnId: duAnIdMucTieu,
+        tenKhachHangDuAn: tenDoiTuongBaoCao,
         noiDungKetQua: noiDungSach,
         nguoiThucHien
       });
@@ -739,7 +796,7 @@ export const superSyncCheckIn1Cham = async (params: {
       'ke_hoach',
       'cap_nhat',
       item.id,
-      `Check-in 1 chạm công việc "${item.ten_khach_hang_du_an}": ${noiDungSach || trangThaiCongViec}`
+      `Check-in 1 chạm công việc "${tenDoiTuongBaoCao}": ${noiDungSach || trangThaiCongViec}`
     );
   } catch (err) {
     console.warn('[superSyncCheckIn1Cham] Lỗi:', err);
