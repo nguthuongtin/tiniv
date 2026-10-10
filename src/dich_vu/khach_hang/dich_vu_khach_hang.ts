@@ -393,13 +393,52 @@ export const capNhatKhachHang = async (
     else mangMoi.unshift(moi);
     _rawCacheKH = { mang: mangMoi, ts: Date.now() };
   }
-  void ghiNhatKyHoatDong(
-    nguoiThucHien?.id,
-    'khach_hang',
-    'cap_nhat',
-    moi.id,
-    `Cập nhật khách hàng "${moi.ten_khach_hang}"`
-  );
+  // Ghi nhật ký chi tiết các trường thay đổi thực tế (Không ghi câu chung chung)
+  const cacThayDoi: string[] = [];
+  if (dto.ten_khach_hang && dto.ten_khach_hang.trim().toUpperCase() !== hienTai.ten_khach_hang) {
+    cacThayDoi.push(`Đổi tên: "${hienTai.ten_khach_hang}" ➔ "${moi.ten_khach_hang}"`);
+  }
+  if (dto.so_dien_thoai !== undefined && (dto.so_dien_thoai || null) !== (hienTai.so_dien_thoai || null)) {
+    cacThayDoi.push(`SĐT: ${moi.so_dien_thoai || '(đã xóa)'}`);
+  }
+  if (dto.email !== undefined && (dto.email || null) !== (hienTai.email || null)) {
+    cacThayDoi.push(`Email: ${moi.email || '(đã xóa)'}`);
+  }
+  if (dto.dia_chi !== undefined && (dto.dia_chi || null) !== (hienTai.dia_chi || null)) {
+    cacThayDoi.push(`Địa chỉ: ${moi.dia_chi || '(đã xóa)'}`);
+  }
+  if (dto.xa_phuong !== undefined && (dto.xa_phuong || null) !== (hienTai.xa_phuong || null)) {
+    cacThayDoi.push(`Xã/phường: ${moi.xa_phuong || '(đã xóa)'}`);
+  }
+  if (dto.tinh_thanh !== undefined && (dto.tinh_thanh || null) !== (hienTai.tinh_thanh || null)) {
+    cacThayDoi.push(`Tỉnh/thành: ${moi.tinh_thanh || '(đã xóa)'}`);
+  }
+  if (dto.ma_so_thue !== undefined && (dto.ma_so_thue || null) !== (hienTai.ma_so_thue || null)) {
+    cacThayDoi.push(`Mã số thuế: ${moi.ma_so_thue || '(đã xóa)'}`);
+  }
+  if (dto.loai_khach_hang !== undefined && dto.loai_khach_hang !== hienTai.loai_khach_hang) {
+    cacThayDoi.push(`Loại KH: ${moi.loai_khach_hang}`);
+  }
+  if (dto.nguoi_phu_trach_id !== undefined && (dto.nguoi_phu_trach_id || null) !== (hienTai.nguoi_phu_trach_id || null)) {
+    cacThayDoi.push(`Phân công người phụ trách`);
+  }
+  if (dto.ghi_chu !== undefined && (dto.ghi_chu || null) !== (hienTai.ghi_chu || null)) {
+    const chiCoGhiChu = Object.keys(dto).filter((k) => k !== 'id').length === 1;
+    const laSyncTuDong = Boolean(dto.ghi_chu?.includes('[202') && dto.ghi_chu?.includes(']:'));
+    if (!chiCoGhiChu || !laSyncTuDong) {
+      cacThayDoi.push(`Ghi chú`);
+    }
+  }
+
+  if (cacThayDoi.length > 0) {
+    void ghiNhatKyHoatDong(
+      nguoiThucHien?.id,
+      'khach_hang',
+      'cap_nhat',
+      moi.id,
+      `Cập nhật hồ sơ: ${cacThayDoi.join(', ')}`
+    );
+  }
   return moi;
 };
 

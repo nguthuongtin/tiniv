@@ -59,6 +59,7 @@ import {
 import type { DiaGioiHanhChinh } from '../../../../thu_vien/types/dia_gioi_hanh_chinh';
 import { ModalNguoiLienHe } from '../../../../thanh_phan/khach_hang/modal_nguoi_lien_he';
 import { ModalHuongDanDatTen } from '../../../../thanh_phan/chung/modal_huong_dan_dat_ten';
+import { danhSachNhatKyHoatDong, type NhatKyHoatDong } from '../../../../dich_vu/nhat_ky_hoat_dong/dich_vu_nhat_ky_hoat_dong';
 import FormHoSoDuAnDrawer from '../../../../thanh_phan/ho_so_du_an/form_ho_so_du_an_drawer';
 import { formatNgay } from '../../../../thu_vien/utils/format_ngay';
 import { formatTien } from '../../../../thu_vien/utils/format_tien';
@@ -212,6 +213,7 @@ export default function TrangChiTietKhachHang() {
   const [moModalNLH, setMoModalNLH] = useState(false);
   const [dangSuaNLH, setDangSuaNLH] = useState<NguoiLienHe | null>(null);
   const [dangXuLyTacVu, setDangXuLyTacVu] = useState<Record<string, boolean>>({});
+  const [dsNhatKy, setDsNhatKy] = useState<NhatKyHoatDong[]>([]);
 
   const taiLai = useCallback(async (imLang = false) => {
     if (!id) return;
@@ -221,12 +223,13 @@ export default function TrangChiTietKhachHang() {
     }
     setErrTai(null);
     try {
-      const [kq1, kq2, kq3, kqCn, kqNs] = await Promise.all([
+      const [kq1, kq2, kq3, kqCn, kqNs, kqNk] = await Promise.all([
         layChiTietKhachHang(id),
         layDanhSachNguoiLienHeTheoKhachHang(id),
         danhSachHoSoDuAn({ khach_hang_id: id }),
         danhSachChiNhanh(),
-        danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong' })
+        danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong' }),
+        danhSachNhatKyHoatDong({ ban_ghi_id: id })
       ]);
       if (!kq1) {
         setKh(null);
@@ -237,6 +240,7 @@ export default function TrangChiTietKhachHang() {
       setDanhSachHDA(kq3.mang);
       setDsChiNhanh(kqCn.mang ?? []);
       setDsNhanSu(kqNs.mang ?? []);
+      setDsNhatKy(kqNk.mang ?? []);
     } catch (e: any) {
       setErrTai(e?.message ?? 'Tải dữ liệu khách hàng thất bại');
     } finally {
@@ -745,9 +749,10 @@ export default function TrangChiTietKhachHang() {
               {/* TAB 3: Ghi chú & Lịch sử */}
               {tabHienTai === 'ghi_chu' && (
                 <div className="space-y-5">
+                  {/* 1. Ghi chú chung */}
                   <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Ghi chú
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                      <span>Ghi chú chung</span>
                     </div>
                     {kh?.ghi_chu ? (
                       <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
@@ -760,6 +765,42 @@ export default function TrangChiTietKhachHang() {
                     )}
                   </div>
 
+                  {/* 2. Dòng thời gian tác nghiệp & Tương tác từ Bàn làm việc */}
+                  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                      <span>Lịch sử tác nghiệp & tương tác ({dsNhatKy.length})</span>
+                    </div>
+
+                    {dsNhatKy.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {dsNhatKy.map((nk) => {
+                          const nguoiThucHien = dsNhanSu.find((ns) => ns.id === nk.nguoi_dung_id);
+                          return (
+                            <div
+                              key={nk.id}
+                              className="p-3 rounded-lg border border-border bg-muted/30 text-xs space-y-1"
+                            >
+                              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                <span className="font-semibold text-foreground">
+                                  {nguoiThucHien?.ho_va_ten || 'Nhân sự'}
+                                </span>
+                                <span>{formatNgay(nk.thoi_gian)}</span>
+                              </div>
+                              <p className="text-foreground text-xs leading-relaxed">
+                                {nk.noi_dung}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-xs text-muted-foreground italic bg-muted/10 rounded-lg">
+                        Chưa có lịch sử tác nghiệp nào được ghi nhận cho khách hàng này từ Bàn làm việc.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. Lịch sử hệ thống */}
                   <div className="rounded-xl border border-border p-4 space-y-3">
                     <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Lịch sử hệ thống

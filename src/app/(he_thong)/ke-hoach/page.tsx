@@ -1103,6 +1103,10 @@ export function NoiDungKeHoachNVKD({
       trang_thai_cong_viec?: 'da_hoan_thanh' | 'dang_thuc_hien' | 'doi_hen';
       giai_doan_du_an_moi?: string | null;
       ngay_du_kien_moi?: string | null;
+      khach_hang_id?: string | null;
+      co_quan_doanh_nghiep?: string | null;
+      du_an_id?: string | null;
+      du_an_du_kien?: string | null;
     }
   ) => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
@@ -1131,6 +1135,14 @@ export function NoiDungKeHoachNVKD({
         ...x,
         ngay_du_kien:
           capNhat.ngay_du_kien_moi !== undefined ? capNhat.ngay_du_kien_moi : x.ngay_du_kien,
+        khach_hang_id:
+          capNhat.khach_hang_id !== undefined ? capNhat.khach_hang_id : x.khach_hang_id,
+        co_quan_doanh_nghiep:
+          capNhat.co_quan_doanh_nghiep !== undefined ? capNhat.co_quan_doanh_nghiep : x.co_quan_doanh_nghiep,
+        du_an_id:
+          capNhat.du_an_id !== undefined ? capNhat.du_an_id : x.du_an_id,
+        du_an_du_kien:
+          capNhat.du_an_du_kien !== undefined ? capNhat.du_an_du_kien : x.du_an_du_kien,
         danh_sach_ket_qua: capNhat.danh_sach_ket_qua,
         ket_qua_thuc_te: capNhat.ket_qua_thuc_te,
         da_hoan_thanh: capNhat.da_hoan_thanh,

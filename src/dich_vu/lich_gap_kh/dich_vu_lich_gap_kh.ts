@@ -246,6 +246,16 @@ export const taoLichGapKHMoi = async (dto: TaoMoiLichGapDTO): Promise<LichGapKH>
     `Đăng ký lịch gặp KH "${dto.ten_khach_hang}" vào ${dto.gio_bat_dau} ngày ${dto.ngay}`
   );
 
+  if (dto.khach_hang_id) {
+    void ghiNhatKyHoatDong(
+      dto.nguoi_tao_id,
+      'khach_hang',
+      'cap_nhat',
+      dto.khach_hang_id,
+      `Đặt lịch hẹn gặp vào ${dto.gio_bat_dau} ngày ${dto.ngay}${dto.dia_diem ? ` tại ${dto.dia_diem}` : ''}`
+    );
+  }
+
   return banGhiMoi;
 };
 
@@ -293,6 +303,22 @@ export const capNhatLichGapKH = async (
       id,
       `Cập nhật lịch gặp KH ${dto.ten_khach_hang || ''}`.trim()
     );
+
+    const khId = dto.khach_hang_id || dsLocal.find((x) => x.id === id)?.khach_hang_id;
+    if (khId && (dto.ket_qua || dto.trang_thai)) {
+      const noiDungKQ = dto.ket_qua
+        ? `Kết quả lịch hẹn: ${dto.ket_qua}`
+        : dto.trang_thai === 'da_hoan_thanh'
+        ? 'Hoàn thành lịch gặp'
+        : `Cập nhật trạng thái lịch hẹn: ${dto.trang_thai}`;
+      void ghiNhatKyHoatDong(
+        nguoiCapNhatId,
+        'khach_hang',
+        'cap_nhat',
+        khId,
+        noiDungKQ
+      );
+    }
   }
 };
 

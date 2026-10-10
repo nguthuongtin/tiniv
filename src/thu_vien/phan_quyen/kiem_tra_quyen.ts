@@ -226,10 +226,11 @@ export const duocXemKhachHang = (
 
   const vaiTroKey = String(nguoiDung.vai_tro || '');
 
-  // 1. Quản trị hệ thống hoặc Giám đốc
+  // 1. Quản trị hệ thống hoặc Giám đốc hoặc có quyền quản trị
   if (
     vaiTroKey === 'quan_tri_he_thong' ||
     vaiTroKey === 'giam_doc' ||
+    coQuyen(nguoiDung, 'he_thong.quan_tri', dsVaiTro) ||
     coQuyen(nguoiDung, 'bao_cao.xem_toan_cong_ty', dsVaiTro)
   ) {
     return true;

@@ -105,6 +105,10 @@ interface Props {
       ket_qua_thuc_te: string;
       da_hoan_thanh: boolean;
       giai_doan_du_an_moi?: string | null;
+      khach_hang_id?: string | null;
+      co_quan_doanh_nghiep?: string | null;
+      du_an_id?: string | null;
+      du_an_du_kien?: string | null;
     }
   ) => void;
   onMoFormViecPhatSinh: (ngayMacDinh: string) => void;
@@ -888,7 +892,11 @@ export default function BanLamViecHangNgay({
       danh_sach_ket_qua: dsMoi,
       ket_qua_thuc_te: dsMoi[0]?.noi_dung || viecDangChon.ket_qua_thuc_te || 'Đã hoàn thành',
       da_hoan_thanh: daHoanThanhMoi,
-      giai_doan_du_an_moi: giaiDoanDuAnChon || null
+      giai_doan_du_an_moi: giaiDoanDuAnChon || null,
+      khach_hang_id: khTuongTac?.id || null,
+      co_quan_doanh_nghiep: khTuongTac?.ten_khach_hang || null,
+      du_an_id: duAnTuongTac?.id || null,
+      du_an_du_kien: duAnTuongTac?.ten_du_an || null
     });
 
     setNoiDungCheckIn('');
@@ -1476,19 +1484,14 @@ export default function BanLamViecHangNgay({
                                               nguoiLienHe: lhChon
                                             }
                                           }));
-                                          if (
-                                            khCoDinhCuaViecChon?.id ===
-                                            khachHangDangTacNghiep.id
-                                          ) {
-                                            onCapNhatLichCongViec(item, {
-                                              nguoi_lien_he_id: lhChon?.id || null,
-                                              nguoi_lien_he:
-                                                lhChon?.ho_va_ten || null,
-                                              chuc_vu: lhChon?.chuc_vu || null,
-                                              so_dien_thoai_lien_he:
-                                                lhChon?.so_dien_thoai || null
-                                            });
-                                          }
+                                          onCapNhatLichCongViec(item, {
+                                            nguoi_lien_he_id: lhChon?.id || null,
+                                            nguoi_lien_he:
+                                              lhChon?.ho_va_ten || null,
+                                            chuc_vu: lhChon?.chuc_vu || null,
+                                            so_dien_thoai_lien_he:
+                                              lhChon?.so_dien_thoai || null
+                                          });
                                         }}
                                         className="h-7 rounded-lg border border-border bg-background px-2 text-[11px] font-bold text-foreground max-w-[210px] truncate"
                                         title="Chọn người liên hệ của khách hàng"
@@ -1613,6 +1616,13 @@ export default function BanLamViecHangNgay({
                                                 nguoiLienHe: undefined
                                               }
                                             }));
+                                            onCapNhatLichCongViec(item, {
+                                              khach_hang_id: k.id,
+                                              co_quan_doanh_nghiep: k.ten_khach_hang,
+                                              ten_khach_hang_du_an: item.hanh_dong_tuan
+                                                ? `${k.ten_khach_hang} - ${item.hanh_dong_tuan}`
+                                                : k.ten_khach_hang
+                                            });
                                             setMoTimDoiTuongTrongPanel(false);
                                             setTimeout(
                                               () => inputCheckInRef.current?.focus(),
@@ -1656,6 +1666,13 @@ export default function BanLamViecHangNgay({
                                                   nguoiLienHe: undefined
                                                 }
                                               }));
+                                              onCapNhatLichCongViec(item, {
+                                                du_an_id: d.id,
+                                                du_an_du_kien: d.ten_du_an,
+                                                khach_hang_id: khCuaDa?.id || null,
+                                                co_quan_doanh_nghiep: khCuaDa?.ten_khach_hang || null,
+                                                ten_khach_hang_du_an: d.ten_du_an
+                                              });
                                               setMoTimDoiTuongTrongPanel(false);
                                               setTimeout(
                                                 () => inputCheckInRef.current?.focus(),

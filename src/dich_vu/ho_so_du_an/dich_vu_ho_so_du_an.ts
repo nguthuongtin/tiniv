@@ -322,17 +322,46 @@ export const capNhatHoSoDuAn = async (
     else mangMoi.unshift(moi);
     _rawCacheHDA = { mang: mangMoi, ts: Date.now() };
   }
-  const logThem = [
-    moi.san_pham_dich_vu_id ? `SP/DV: ${moi.san_pham_dich_vu_id}` : null,
-    moi.san_pham_khac_mo_ta ? `SP Khac: ${moi.san_pham_khac_mo_ta}` : null
-  ].filter(Boolean).join(' | ');
-  void ghiNhatKyHoatDong(
-    nguoiThucHien?.id,
-    'ho_so_du_an',
-    'cap_nhat',
-    moi.id,
-    `Cap nhat ho so du an "${moi.ten_du_an}"${logThem ? ` (${logThem})` : ''}`
-  );
+  const cacThayDoi: string[] = [];
+  if (dto.ten_du_an && dto.ten_du_an.trim().toUpperCase() !== hienTai.ten_du_an) {
+    cacThayDoi.push(`Đổi tên: "${hienTai.ten_du_an}" ➔ "${moi.ten_du_an}"`);
+  }
+  if (dto.gia_tri_du_kien !== undefined && dto.gia_tri_du_kien !== hienTai.gia_tri_du_kien) {
+    cacThayDoi.push(`Giá trị dự kiến: ${dto.gia_tri_du_kien.toLocaleString('vi-VN')} đ`);
+  }
+  if (dto.gia_tri_hop_dong !== undefined && dto.gia_tri_hop_dong !== hienTai.gia_tri_hop_dong) {
+    cacThayDoi.push(`Giá trị hợp đồng: ${dto.gia_tri_hop_dong.toLocaleString('vi-VN')} đ`);
+  }
+  if (dto.nguoi_phu_trach_id !== undefined && (dto.nguoi_phu_trach_id || null) !== (hienTai.nguoi_phu_trach_id || null)) {
+    cacThayDoi.push(`Đổi người phụ trách`);
+  }
+  if (dto.muc_do_tiem_nang !== undefined && dto.muc_do_tiem_nang !== hienTai.muc_do_tiem_nang) {
+    cacThayDoi.push(`Mức tiềm năng: ${dto.muc_do_tiem_nang}`);
+  }
+  if (dto.mo_ta !== undefined && (dto.mo_ta || null) !== (hienTai.mo_ta || null)) {
+    cacThayDoi.push(`Cập nhật mô tả`);
+  }
+
+  if (cacThayDoi.length > 0) {
+    const noiDungLog = `Cập nhật dự án: ${cacThayDoi.join(', ')}`;
+    void ghiNhatKyHoatDong(
+      nguoiThucHien?.id,
+      'ho_so_du_an',
+      'cap_nhat',
+      moi.id,
+      noiDungLog
+    );
+    // Nếu dự án gắn với khách hàng, đồng bộ dòng sự kiện này vào lịch sử của khách hàng
+    if (moi.khach_hang_id) {
+      void ghiNhatKyHoatDong(
+        nguoiThucHien?.id,
+        'khach_hang',
+        'cap_nhat',
+        moi.khach_hang_id,
+        `Dự án [${moi.ten_du_an}]: ${cacThayDoi.join(', ')}`
+      );
+    }
+  }
   return moi;
 };
 
@@ -425,15 +454,25 @@ export const doiGiaiDoanHoSoDuAn = async (
   }
 
   const res = await capNhatHoSoDuAn(payload, nguoiThucHien);
+  const noiDungLog = `Chuyển giai đoạn dự án "${res.ten_du_an}" sang "${giai_doan_moi}"${
+    giai_doan_moi === 'huy' && thongTinThatBai?.ly_do_that_bai ? ` (Lý do: ${thongTinThatBai.ly_do_that_bai})` : ''
+  }`;
   await ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'ho_so_du_an',
     'thay_doi_giai_doan',
     id,
-    `Chuyen giai doan du an "${res.ten_du_an}" thanh "${giai_doan_moi}"${
-      giai_doan_moi === 'huy' ? ` (Ly do: ${thongTinThatBai?.ly_do_that_bai})` : ''
-    }`
+    noiDungLog
   );
+  if (res.khach_hang_id) {
+    void ghiNhatKyHoatDong(
+      nguoiThucHien?.id,
+      'khach_hang',
+      'cap_nhat',
+      res.khach_hang_id,
+      `Dự án [${res.ten_du_an}]: ${noiDungLog}`
+    );
+  }
   return res;
 };
 

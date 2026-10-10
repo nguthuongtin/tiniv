@@ -48,6 +48,7 @@ const DANH_MUC_SIDEBAR: MucSidebar[] = [
   { href: '/ban-lam-viec', icon: ListTodo, nhan: 'Bàn làm việc', nhom: 'Module' },
   { href: '/lich-cong-tac', icon: CalendarCheck, nhan: 'Lịch công tác', nhom: 'Module' },
   { href: '/khach-hang', icon: Building2, nhan: 'Khách hàng', nhom: 'Module' },
+  { href: '/ban-do-3d', icon: MapPin, nhan: 'Bản đồ địa bàn', nhom: 'Module' },
   { href: '/ho-so-du-an', icon: FolderKanban, nhan: 'Hồ sơ dự án', nhom: 'Module', quyen: 'du_an.xem' },
   { href: '/bao-cao-cong-viec', icon: FileText, nhan: 'Báo cáo công việc', nhom: 'Module', quyen: ['bao_cao.xem', 'bao_cao.tao'] },
   { href: '/kho-tai-lieu', icon: BookOpen, nhan: 'Kho tài liệu', nhom: 'Module' },

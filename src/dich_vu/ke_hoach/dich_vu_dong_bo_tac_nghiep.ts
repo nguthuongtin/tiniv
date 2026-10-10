@@ -34,7 +34,8 @@ import {
   capNhatLichGapKH
 } from '../lich_gap_kh/dich_vu_lich_gap_kh';
 import { taoTienDoDuAnMoi } from '../ho_so_du_an/dich_vu_tien_do_du_an';
-import { doiGiaiDoanHoSoDuAn } from '../ho_so_du_an/dich_vu_ho_so_du_an';
+import { doiGiaiDoanHoSoDuAn, layChiTietHoSoDuAn } from '../ho_so_du_an/dich_vu_ho_so_du_an';
+import { layChiTietKhachHang, capNhatKhachHang } from '../khach_hang/dich_vu_khach_hang';
 import type { GiaiDoanDuAn } from '../../thu_vien/types/du_an';
 import { ghiNhatKyHoatDong } from '../../thu_vien/firebase/client_firebase';
 
@@ -790,7 +791,47 @@ export const superSyncCheckIn1Cham = async (params: {
       });
     }
 
-    // [Đích 5] Nhật ký hoạt động (Audit log)
+    // [Đích 5] Đồng bộ về Lịch sử Tác nghiệp & Ghi chú của Khách hàng
+    let khachHangIdMucTieu = kqMoiNhat?.khach_hang_id || item.khach_hang_id || null;
+    if (!khachHangIdMucTieu && duAnIdMucTieu) {
+      try {
+        const da = await layChiTietHoSoDuAn(duAnIdMucTieu);
+        if (da?.khach_hang_id) {
+          khachHangIdMucTieu = da.khach_hang_id;
+        }
+      } catch (e) {
+        console.warn('[superSyncCheckIn1Cham] Không tìm thấy khách hàng từ dự án:', e);
+      }
+    }
+
+    if (khachHangIdMucTieu) {
+      const noiDungGhiNhan =
+        noiDungSach ||
+        item.ket_qua_thuc_te ||
+        `Cập nhật tiến độ: ${item.hanh_dong_tuan || item.noi_dung_tuan || 'Hoàn thành công việc trong ngày'}`;
+
+      await ghiNhatKyHoatDong(
+        nguoiThucHien?.id || nhanVienId,
+        'khach_hang',
+        'cap_nhat',
+        khachHangIdMucTieu,
+        `Tác nghiệp bàn làm việc [${item.hinh_thuc || 'liên hệ'}]: ${noiDungGhiNhan}`
+      );
+
+      try {
+        const khach = await layChiTietKhachHang(khachHangIdMucTieu);
+        if (khach) {
+          const tenNguoiThucHien = nguoiThucHien?.ho_va_ten || 'NVKD';
+          const dongMoi = `[${ngayBaoCao} - ${tenNguoiThucHien}]: ${noiDungGhiNhan}`;
+          const ghiChuMoi = khach.ghi_chu ? `${khach.ghi_chu}\n${dongMoi}` : dongMoi;
+          await capNhatKhachHang({ id: khachHangIdMucTieu, ghi_chu: ghiChuMoi }, nguoiThucHien);
+        }
+      } catch (err) {
+        console.warn('[superSyncCheckIn1Cham] Lỗi đồng bộ ghi chú khách hàng:', err);
+      }
+    }
+
+    // [Đích 6] Nhật ký hoạt động chung (Audit log)
     await ghiNhatKyHoatDong(
       nguoiThucHien?.id || nhanVienId,
       'ke_hoach',

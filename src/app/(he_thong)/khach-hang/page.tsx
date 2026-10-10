@@ -46,7 +46,7 @@ import { danhSachChiNhanh, layCacheChiNhanhDongBo } from '../../../dich_vu/co_ca
 import { danhSachNhanSu, layCacheNhanSuDongBo } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachHoSoDuAn, layCacheHoSoDuAnDongBo } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import { danhSachNguoiLienHe, layCacheNguoiLienHeDongBo } from '../../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
-import { duocXemKhachHang, duocXemHoSoDuAn } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { duocXemKhachHang, duocXemHoSoDuAn, coQuyen } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import BoLocKhachHang from '../../../thanh_phan/khach_hang/bo_loc_khach_hang';
 import FormKhachHangDrawer from '../../../thanh_phan/khach_hang/form_khach_hang_drawer';
 import {
@@ -285,7 +285,11 @@ export default function TrangKhachHang() {
   // Bước 1: Lọc theo phân quyền người dùng trên RAM
   const danhSachDuocQuyenXem = useMemo(() => {
     const vaiTroKey = String(nguoi_dung_hien_tai?.vai_tro || '');
-    const laQuanLy = vaiTroKey === 'quan_tri_he_thong' || vaiTroKey === 'giam_doc' || vaiTroKey === 'truong_phong';
+    const laQuanLy =
+      vaiTroKey === 'quan_tri_he_thong' ||
+      vaiTroKey === 'giam_doc' ||
+      vaiTroKey === 'truong_phong' ||
+      coQuyen(nguoi_dung_hien_tai, 'he_thong.quan_tri');
     const dsDuAnCuaToi = laQuanLy ? dsDuAn : dsDuAn.filter((hda) => duocXemHoSoDuAn(nguoi_dung_hien_tai, hda));
     const dsKhachHangIdsCoDuAn = new Set(dsDuAnCuaToi.map((hda) => hda.khach_hang_id).filter(Boolean) as string[]);
 
