@@ -281,8 +281,12 @@ export default function BangKeHoachThang({
                     const tyLe =
                       chiTieu > 0 ? Math.min(100, Math.round((thucTe / chiTieu) * 100)) : 0;
 
-                    const soViecTuanLienKet = dsViecTuan.filter(
+                    const viecTuanLienKet = dsViecTuan.filter(
                       (v) => v.muc_tieu_thang_id === item.id
+                    );
+                    const soViecTuanLienKet = viecTuanLienKet.length;
+                    const soViecTuanDaXong = viecTuanLienKet.filter(
+                      (v) => v.trang_thai_ket_qua === 'dat_muc_tieu' || v.da_hoan_thanh
                     ).length;
 
                     return (
@@ -321,19 +325,30 @@ export default function BangKeHoachThang({
 
                         <OBang className="align-middle" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            {soViecTuanLienKet > 0 && (
-                              <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-nhan font-bold">
-                                {soViecTuanLienKet} việc tuần
+                            {soViecTuanLienKet > 0 ? (
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 rounded-md text-nhan font-bold inline-flex items-center gap-1 border',
+                                  soViecTuanDaXong === soViecTuanLienKet
+                                    ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/25'
+                                    : 'bg-primary/10 text-primary border-primary/25'
+                                )}
+                              >
+                                {soViecTuanDaXong}/{soViecTuanLienKet} việc xong
+                              </span>
+                            ) : (
+                              <span className="text-phu text-muted-foreground italic">
+                                Chưa bẻ việc
                               </span>
                             )}
                             {laSuaDuoc && onTaoViecTuanTuMucTieu && (
                               <button
                                 type="button"
                                 onClick={() => onTaoViecTuanTuMucTieu(item)}
-                                className="h-7 px-2.5 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/15 text-primary text-nhan font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                                className="h-7 px-2 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/15 text-primary text-nhan font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
                                 title="Rút mục tiêu tháng này thành công việc trong tuần"
                               >
-                                <CalendarRange className="size-3.5" /> + Rút việc tuần
+                                <CalendarRange className="size-3" /> + Bẻ việc
                               </button>
                             )}
                           </div>
@@ -516,12 +531,72 @@ export default function BangKeHoachThang({
               )}
               {(itemChiTiet.ghi_chu || itemChiTiet.ghi_chu_ket_qua) && (
                 <div>
-                  <div className="text-sm text-slate-500 mb-1">Ghi chú & Giải trình</div>
-                  <div className="text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  <div className="text-xs font-bold text-muted-foreground mb-1">Ghi chú & Giải trình</div>
+                  <div className="text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                     {itemChiTiet.ghi_chu_ket_qua || itemChiTiet.ghi_chu}
                   </div>
                 </div>
               )}
+
+              {/* Danh sách công việc tuần triển khai mục tiêu này */}
+              <div>
+                <div className="text-xs font-bold text-foreground mb-1.5 flex items-center justify-between">
+                  <span>Việc tuần triển khai</span>
+                  <span className="text-[11px] font-normal text-muted-foreground">
+                    {dsViecTuan.filter((v) => v.muc_tieu_thang_id === itemChiTiet.id).length} việc
+                  </span>
+                </div>
+                {dsViecTuan.filter((v) => v.muc_tieu_thang_id === itemChiTiet.id).length === 0 ? (
+                  <div className="text-xs text-muted-foreground italic bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    Chưa bẻ mục tiêu này thành công việc tuần nào.
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {dsViecTuan
+                      .filter((v) => v.muc_tieu_thang_id === itemChiTiet.id)
+                      .map((v, vIdx) => {
+                        const daXong = v.trang_thai_ket_qua === 'dat_muc_tieu' || v.da_hoan_thanh;
+                        return (
+                          <div
+                            key={v.id || vIdx}
+                            className="p-2.5 rounded-lg border border-border bg-slate-50/60 flex items-start justify-between gap-2 text-xs"
+                          >
+                            <div className="min-w-0 flex-1 space-y-0.5">
+                              <div className={cn('font-bold text-foreground leading-snug', daXong && 'line-through text-muted-foreground')}>
+                                {v.noi_dung_tuan || v.hanh_dong_tuan}
+                              </div>
+                              {v.dau_ra_cam_ket && v.dau_ra_cam_ket !== (v.noi_dung_tuan || v.hanh_dong_tuan) && (
+                                <div className="text-[11px] text-muted-foreground">
+                                  🎯 {v.dau_ra_cam_ket}
+                                </div>
+                              )}
+                            </div>
+                            <span
+                              className={cn(
+                                'px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border',
+                                v.trang_thai_ket_qua === 'dat_muc_tieu' || daXong
+                                  ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30'
+                                  : v.trang_thai_ket_qua === 'do_dang'
+                                  ? 'bg-amber-500/15 text-amber-700 border-amber-500/30'
+                                  : v.trang_thai_ket_qua === 'khong_dat'
+                                  ? 'bg-rose-500/15 text-rose-700 border-rose-500/30'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
+                              )}
+                            >
+                              {v.trang_thai_ket_qua === 'dat_muc_tieu' || daXong
+                                ? 'Đạt MT'
+                                : v.trang_thai_ket_qua === 'do_dang'
+                                ? 'Dở dang'
+                                : v.trang_thai_ket_qua === 'khong_dat'
+                                ? 'Không đạt'
+                                : 'Đang làm'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="p-4 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50 rounded-b-xl">
               {laSuaDuoc && (

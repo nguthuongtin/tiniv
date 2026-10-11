@@ -130,7 +130,7 @@ export const dongBoTuDongBaoCaoTuan = async (
         ghiChuBoSung?.de_xuat !== undefined
           ? ghiChuBoSung.de_xuat
           : (baoCaoCu?.de_xuat ?? null),
-      trang_thai: ghiChuBoSung?.trang_thai ?? baoCaoCu?.trang_thai ?? 'da_gui',
+      trang_thai: ghiChuBoSung?.trang_thai ?? baoCaoCu?.trang_thai ?? 'nhap',
       nguoi_tao_id: keHoach.nhan_vien_id
     });
 
@@ -237,7 +237,7 @@ export const dongBoTuDongBaoCaoThang = async (
         ghiChuBoSung?.de_xuat !== undefined
           ? ghiChuBoSung.de_xuat
           : (baoCaoCu?.de_xuat ?? null),
-      trang_thai: ghiChuBoSung?.trang_thai ?? baoCaoCu?.trang_thai ?? 'da_gui',
+      trang_thai: ghiChuBoSung?.trang_thai ?? baoCaoCu?.trang_thai ?? 'nhap',
       nguoi_tao_id: keHoach.nhan_vien_id
     });
 

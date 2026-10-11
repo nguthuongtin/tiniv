@@ -142,8 +142,8 @@ export default function BangKeHoachTuan({
       du_an_du_kien: mt?.du_an_du_kien || null,
       hanh_dong_tuan: noiDungNhanh.trim(),
       noi_dung_tuan: noiDungNhanh.trim(),
-      ket_qua_mong_muon: noiDungNhanh.trim(),
-      dau_ra_cam_ket: noiDungNhanh.trim(),
+      ket_qua_mong_muon: '',
+      dau_ra_cam_ket: '',
       ngay_du_kien: ngayNhanh || null,
       cac_ngay_thuc_hien: ngayNhanh ? [ngayNhanh] : [],
       da_hoan_thanh: false,
@@ -272,11 +272,12 @@ export default function BangKeHoachTuan({
               <Bang>
                 <ChuDeBang>
                   <HangBang>
-                    <ODauBang className="w-32 text-center">Trạng thái</ODauBang>
-                    <ODauBang>Nội dung công việc tuần</ODauBang>
-                    <ODauBang className="w-[190px]">Thời điểm thực hiện</ODauBang>
-                    <ODauBang className="w-[230px]">Kết quả / Tương tác</ODauBang>
-                    {laSuaDuoc && <ODauBang className="w-[240px] text-right">Thao tác</ODauBang>}
+                    <ODauBang className="w-28 text-center">Trạng thái</ODauBang>
+                    <ODauBang>Nội dung & Đối tượng</ODauBang>
+                    <ODauBang className="w-[180px]">Đầu ra cam kết</ODauBang>
+                    <ODauBang className="w-[150px]">Lịch thực hiện</ODauBang>
+                    <ODauBang className="w-[210px]">Kết quả thực tế</ODauBang>
+                    {laSuaDuoc && <ODauBang className="w-[190px] text-right">Thao tác</ODauBang>}
                   </HangBang>
                 </ChuDeBang>
                 <ThanBang>
@@ -401,6 +402,16 @@ export default function BangKeHoachTuan({
                                 {mtGoc.muc_tieu_thang || mtGoc.ten_muc_tieu}
                               </span>
                             </div>
+                          )}
+                        </OBang>
+
+                        <OBang className="align-middle text-sm" onClick={(e) => e.stopPropagation()}>
+                          {item.dau_ra_cam_ket || item.ket_qua_mong_muon ? (
+                            <span className="font-medium text-slate-800 line-clamp-2">
+                              🎯 {item.dau_ra_cam_ket || item.ket_qua_mong_muon}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/40 text-xs">—</span>
                           )}
                         </OBang>
 
@@ -582,6 +593,12 @@ export default function BangKeHoachTuan({
                         </span>
                       )}
                     </div>
+
+                    {(item.dau_ra_cam_ket || item.ket_qua_mong_muon) && (
+                      <div className="text-xs text-slate-700 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-md font-medium">
+                        🎯 Cam kết: {item.dau_ra_cam_ket || item.ket_qua_mong_muon}
+                      </div>
+                    )}
 
                     {kqMoiNhat && (
                       <div className="text-nhan text-emerald-700 bg-emerald-500/10 px-2.5 py-1.5 rounded-lg font-medium line-clamp-2">
