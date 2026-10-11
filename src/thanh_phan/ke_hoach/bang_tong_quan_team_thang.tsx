@@ -433,23 +433,23 @@ export default function BangTongQuanTeamThang({
                           {/* Mục tiêu / Dự án / Địa bàn */}
                           <td className="py-3 px-3">
                             <div className="font-bold text-foreground leading-snug">{tenMucTieu}</div>
-                            {item.muc_tieu_thang && (
+                            {item.muc_tieu_thang && item.muc_tieu_thang.trim().toLowerCase() !== (tenMucTieu || '').trim().toLowerCase() && (
                               <div className="text-[11px] text-muted-foreground mt-0.5">
                                 🎯 {item.muc_tieu_thang}
                               </div>
                             )}
-                            {item.co_quan_doanh_nghiep && (
+                            {item.co_quan_doanh_nghiep && item.co_quan_doanh_nghiep.trim().toLowerCase() !== (tenMucTieu || '').trim().toLowerCase() && (
                               <div className="text-[11px] text-foreground/80 mt-0.5">
                                 🏢 {item.co_quan_doanh_nghiep}
                               </div>
                             )}
-                            {diaBanStr && (
+                            {diaBanStr && diaBanStr.trim().toLowerCase() !== (tenMucTieu || '').trim().toLowerCase() && (
                               <div className="text-[10px] text-muted-foreground mt-0.5">
                                 📍 {diaBanStr}
                               </div>
                             )}
                             {item.nguoi_lien_he && (
-                              <div className="text-[10px] text-muted-foreground">
+                              <div className="text-[10px] text-muted-foreground mt-0.5">
                                 👤 {item.nguoi_lien_he}
                               </div>
                             )}

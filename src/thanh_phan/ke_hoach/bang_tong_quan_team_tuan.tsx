@@ -50,6 +50,60 @@ const formatNgay = (dateStr?: string | null) => {
   }
 };
 
+const layDoiTuongKhongTrungLap = (
+  viecCanLam: string,
+  tenDoiTuong?: string | null,
+  coQuan?: string | null,
+  diaBanStr?: string | null,
+  nguoiLienHe?: string | null
+) => {
+  const norm = (s?: string | null) =>
+    (s || '')
+      .trim()
+      .toLowerCase()
+      .replace(/^(ubnd|xã|phường|thị trấn|sở|ban|phòng|tỉnh|huyện)\s+/gi, '')
+      .replace(/\s+/g, ' ');
+
+  const nViec = norm(viecCanLam);
+
+  // Chỉ lấy tên đối tượng nếu không trùng với việc cần làm
+  const nDoiTuong = norm(tenDoiTuong);
+  const coDoiTuong = Boolean(
+    tenDoiTuong &&
+      tenDoiTuong.trim() &&
+      nDoiTuong !== nViec &&
+      !nViec.includes(nDoiTuong)
+  );
+
+  // Cơ quan (nếu có và không trùng với đối tượng, việc cần làm)
+  const nCoQuan = norm(coQuan);
+  const coCoQuan = Boolean(
+    coQuan &&
+      coQuan.trim() &&
+      nCoQuan !== nViec &&
+      nCoQuan !== nDoiTuong &&
+      !nViec.includes(nCoQuan)
+  );
+
+  // Địa bàn (nếu có và không trùng với đối tượng, cơ quan, việc cần làm)
+  const nDiaBan = norm(diaBanStr);
+  const coDiaBan = Boolean(
+    diaBanStr &&
+      diaBanStr.trim() &&
+      nDiaBan !== nViec &&
+      nDiaBan !== nDoiTuong &&
+      nDiaBan !== nCoQuan &&
+      !nViec.includes(nDiaBan)
+  );
+
+  return {
+    tenDoiTuong: coDoiTuong ? tenDoiTuong : null,
+    coQuan: coCoQuan ? coQuan : null,
+    diaBan: coDiaBan ? diaBanStr : null,
+    nguoiLienHe: (nguoiLienHe || '').trim() || null,
+  };
+};
+
 const renderBadgeLoai = (loai?: LoaiMucTieuThang) => {
   switch (loai) {
     case 'tai_chinh':
@@ -403,15 +457,12 @@ export default function BangTongQuanTeamTuan({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-border/80 bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                      <th className="py-3 px-3 w-10 text-center">STT</th>
-                      <th className="py-3 px-3 min-w-[160px]">Phụ trách</th>
-                      <th className="py-3 px-3 min-w-[200px]">Việc cần làm / Hành động</th>
-                      <th className="py-3 px-3 min-w-[180px]">Mục tiêu / Địa bàn / Dự án</th>
-                      <th className="py-3 px-3 min-w-[110px] text-center">Ngày dự kiến</th>
-                      <th className="py-3 px-3 min-w-[160px]">Đầu ra cam kết</th>
-                      <th className="py-3 px-3 min-w-[120px]">Hỗ trợ</th>
-                      <th className="py-3 px-3 min-w-[160px]">Kết quả thực tế</th>
-                      <th className="py-3 px-3 min-w-[120px] text-center">Trạng thái</th>
+                      <th className="py-3 px-3 w-12 text-center">STT</th>
+                      <th className="py-3 px-3 w-44">Phụ trách</th>
+                      <th className="py-3 px-3 min-w-[280px]">Nội dung công việc & Đối tượng</th>
+                      <th className="py-3 px-3 w-28 text-center">Thời gian</th>
+                      <th className="py-3 px-3 min-w-[260px]">Mục tiêu cam kết & Tiến độ thực tế</th>
+                      <th className="py-3 px-3 w-28 text-center">Trạng thái</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
@@ -424,6 +475,14 @@ export default function BangTongQuanTeamTuan({
                       const dsKetQua = item.danh_sach_ket_qua ?? [];
                       const coChiDao = dsKetQua.some((k) => Boolean(k.chi_dao?.noi_dung));
 
+                      const thongTinDoiTuong = layDoiTuongKhongTrungLap(
+                        viecCanLam,
+                        tenDuAn || tenKhachHang || item.ten_khach_hang_du_an,
+                        item.co_quan_doanh_nghiep,
+                        diaBanStr,
+                        item.nguoi_lien_he
+                      );
+
                       return (
                         <tr
                           key={`${item.id || idx}_${nhanSu.id}`}
@@ -434,96 +493,105 @@ export default function BangTongQuanTeamTuan({
                           )}
                           title="Nhấp để xem lịch sử tiến độ & ghi ý kiến đồng hành hỗ trợ"
                         >
-                          <td className="py-3 px-3 text-center font-bold text-muted-foreground">
+                          {/* 1. STT */}
+                          <td className="py-3.5 px-3 text-center font-bold text-muted-foreground tabular-nums">
                             {idx + 1}
                           </td>
 
-                          {/* Phụ trách */}
-                          <td className="py-3 px-3">
-                            <div className="font-bold text-foreground">{nhanSu.ho_va_ten}</div>
-                            <div className="text-[11px] text-muted-foreground font-mono">
+                          {/* 2. Phụ trách */}
+                          <td className="py-3.5 px-3">
+                            <div className="font-bold text-foreground leading-snug">{nhanSu.ho_va_ten}</div>
+                            <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
                               {nhanSu.ma_nhan_vien} {nhanSu.chuc_vu ? `• ${nhanSu.chuc_vu}` : ''}
                             </div>
                           </td>
 
-                          {/* Việc cần làm */}
-                          <td className="py-3 px-3">
-                            <div className="font-semibold text-foreground leading-snug">{viecCanLam}</div>
-                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          {/* 3. Nội dung công việc & Đối tượng (Gộp, chống lặp tên) */}
+                          <td className="py-3.5 px-3">
+                            <div className="font-semibold text-foreground leading-snug text-sm">{viecCanLam}</div>
+
+                            {/* Đối tượng phụ trợ (Chỉ hiện nếu có và không bị lặp từ việc cần làm) */}
+                            {(thongTinDoiTuong.tenDoiTuong || thongTinDoiTuong.coQuan || thongTinDoiTuong.diaBan || thongTinDoiTuong.nguoiLienHe) && (
+                              <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300 font-medium flex-wrap">
+                                {thongTinDoiTuong.tenDoiTuong && (
+                                  <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-700 dark:text-slate-200">
+                                    🏛️ {thongTinDoiTuong.tenDoiTuong}
+                                  </span>
+                                )}
+                                {thongTinDoiTuong.coQuan && (
+                                  <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                                    🏢 {thongTinDoiTuong.coQuan}
+                                  </span>
+                                )}
+                                {thongTinDoiTuong.diaBan && (
+                                  <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                                    📍 {thongTinDoiTuong.diaBan}
+                                  </span>
+                                )}
+                                {thongTinDoiTuong.nguoiLienHe && (
+                                  <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-400">
+                                    👤 {thongTinDoiTuong.nguoiLienHe}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Badges loại việc, phát sinh, và hỗ trợ */}
+                            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                               {renderBadgeLoai(item.loai_cong_viec)}
                               {item.loai_hanh_dong === 'phat_sinh' && (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700">
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
                                   Phát sinh
+                                </span>
+                              )}
+                              {hoTro && (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+                                  🤝 Cần hỗ trợ: {hoTro}
                                 </span>
                               )}
                             </div>
                           </td>
 
-                          {/* Mục tiêu / Địa bàn / Khách hàng / Dự án */}
-                          <td className="py-3 px-3 text-muted-foreground">
-                            <div className="font-medium text-foreground">
-                              {tenDuAn || tenKhachHang || item.ten_khach_hang_du_an}
-                            </div>
-                            {item.co_quan_doanh_nghiep && (
-                              <div className="text-[11px] text-foreground/80 mt-0.5">
-                                {item.co_quan_doanh_nghiep}
-                              </div>
-                            )}
-                            {diaBanStr && (
-                              <div className="text-[10px] text-muted-foreground mt-0.5">
-                                📍 {diaBanStr}
-                              </div>
-                            )}
-                            {item.nguoi_lien_he && (
-                              <div className="text-[10px] text-muted-foreground">
-                                👤 {item.nguoi_lien_he}
-                              </div>
-                            )}
+                          {/* 4. Thời gian */}
+                          <td className="py-3.5 px-3 text-center">
+                            <span className="inline-block px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[11px] font-bold text-foreground">
+                              {formatNgay(item.ngay_du_kien)}
+                            </span>
                           </td>
 
-                          {/* Ngày dự kiến */}
-                          <td className="py-3 px-3 text-center font-mono text-[11px] font-semibold text-foreground">
-                            {formatNgay(item.ngay_du_kien)}
-                          </td>
-
-                          {/* Đầu ra cam kết */}
-                          <td className="py-3 px-3 text-muted-foreground text-[11px]">
+                          {/* 5. Mục tiêu cam kết & Tiến độ thực tế (Gộp) */}
+                          <td className="py-3.5 px-3 space-y-1.5">
+                            {/* Mục tiêu / Đầu ra cam kết */}
                             {dauRa ? (
-                              <span className="font-medium text-foreground">{dauRa}</span>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-
-                          {/* Hỗ trợ */}
-                          <td className="py-3 px-3 text-muted-foreground text-[11px]">
-                            {hoTro ? (
-                              <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-300 font-medium inline-block">
-                                🤝 {hoTro}
-                              </span>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-
-                          {/* Kết quả thực tế */}
-                          <td className="py-3 px-3 text-[11px] space-y-1">
-                            {item.ket_qua_thuc_te ? (
-                              <div className="line-clamp-2 text-foreground font-medium">
-                                {item.ket_qua_thuc_te}
+                              <div className="text-xs text-foreground font-medium flex items-start gap-1.5 leading-snug">
+                                <span className="text-sky-600 dark:text-sky-400 font-bold shrink-0">🎯</span>
+                                <span>{dauRa}</span>
                               </div>
                             ) : (
-                              <span className="text-muted-foreground">—</span>
+                              <div className="text-[11px] text-muted-foreground italic">Chưa đặt cam kết đầu ra</div>
                             )}
+
+                            {/* Kết quả thực tế / Tiến độ */}
+                            {item.ket_qua_thuc_te ? (
+                              <div className="text-[11px] text-emerald-800 dark:text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 font-medium leading-relaxed">
+                                ✓ {item.ket_qua_thuc_te}
+                              </div>
+                            ) : (
+                              <div className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                                <span>⏳</span>
+                                <span>Đang triển khai</span>
+                              </div>
+                            )}
+
                             {coChiDao && (
-                              <div className="text-[10px] text-amber-800 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-medium inline-block">
+                              <div className="text-[10px] text-amber-800 dark:text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-medium inline-block">
                                 💬 Đã có ý kiến định hướng
                               </div>
                             )}
                           </td>
 
-                          {/* Trạng thái */}
-                          <td className="py-3 px-3 text-center">
+                          {/* 6. Trạng thái */}
+                          <td className="py-3.5 px-3 text-center">
                             {daHoanThanh ? (
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1 border border-emerald-500/30">
                                 <Check className="size-3" /> Đã xong
