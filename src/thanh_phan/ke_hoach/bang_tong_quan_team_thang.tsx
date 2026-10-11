@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import {
   Printer,
+  FileSpreadsheet,
   CheckCircle2,
   AlertCircle,
   Eye,
@@ -20,6 +21,7 @@ import type { BaoCaoKeHoachThang } from '../../thu_vien/types/bao_cao_ke_hoach';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
 import type { KhachHang } from '../../thu_vien/types/khach_hang';
+import { xuatExcelDieuHanhTeamThang } from '../../dich_vu/ke_hoach/dich_vu_xuat_excel_ke_hoach';
 import { Nut, ThanhSoLieu } from '../ui';
 import { DINH_DANG_TIEN_NGAN_GON } from '../../thu_vien/utils/format_tien';
 import { cn } from '../../thu_vien/utils/cn';
@@ -215,6 +217,17 @@ export default function BangTongQuanTeamThang({
     window.print();
   };
 
+  const xuLyXuatExcel = () => {
+    void xuatExcelDieuHanhTeamThang(
+      thang,
+      danhSachNhanSu,
+      danhSachKeHoach,
+      danhSachBaoCao,
+      danhSachDuAn,
+      danhSachKhachHang
+    );
+  };
+
   const xuLyChonNhanSuTuBang = (nsId: string) => {
     setLocNhanSuId(nsId);
     setCheDoXem('ke_hoach_gom');
@@ -259,7 +272,7 @@ export default function BangTongQuanTeamThang({
         ]}
       />
 
-      {/* Chuyển đổi chế độ xem & In PDF */}
+      {/* Chuyển đổi chế độ xem & In PDF & Xuất Excel */}
       <div className="flex items-center justify-between gap-2.5 border-b border-border pb-2 flex-wrap">
         <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl">
           <button
@@ -290,9 +303,14 @@ export default function BangTongQuanTeamThang({
           </button>
         </div>
 
-        <Nut kieu="outline" kich_thuoc="sm" icon_trai={Printer} onClick={xuLyInTongHop} className="print:hidden">
-          In / Xuất PDF
-        </Nut>
+        <div className="flex items-center gap-2 print:hidden">
+          <Nut kieu="outline" kich_thuoc="sm" icon_trai={FileSpreadsheet} onClick={xuLyXuatExcel}>
+            Xuất Excel
+          </Nut>
+          <Nut kieu="outline" kich_thuoc="sm" icon_trai={Printer} onClick={xuLyInTongHop}>
+            In / Xuất PDF
+          </Nut>
+        </div>
 
         {cheDoXem === 'ke_hoach_gom' && locNhanSuId !== 'tat_ca' && (
           <div className="inline-flex items-center gap-1.5 text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-lg font-semibold">
@@ -558,7 +576,6 @@ export default function BangTongQuanTeamThang({
                   <th className="py-3 px-3 min-w-[130px] text-right">Thực tế đã thu</th>
                   <th className="py-3 px-3 min-w-[90px] text-center">% Hoàn thành KPI</th>
                   <th className="py-3 px-3 min-w-[130px] text-center">Báo cáo tháng</th>
-                  <th className="py-3 px-3 min-w-[160px]">Khó khăn / Đề xuất</th>
                   <th className="py-3 px-3 w-28 text-center print:hidden">Chi tiết</th>
                 </tr>
               </thead>
@@ -620,19 +637,6 @@ export default function BangTongQuanTeamThang({
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 inline-flex items-center gap-1">
                             <AlertCircle className="size-3" /> Chưa nộp
                           </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-muted-foreground text-[11px]">
-                        {item.baoCao?.kho_khan ? (
-                          <div className="line-clamp-2 text-foreground font-medium">
-                            ⚠️ {item.baoCao.kho_khan}
-                          </div>
-                        ) : item.baoCao?.de_xuat ? (
-                          <div className="line-clamp-2 text-primary">
-                            💡 {item.baoCao.de_xuat}
-                          </div>
-                        ) : (
-                          '—'
                         )}
                       </td>
                       <td className="py-3 px-3 text-center print:hidden">

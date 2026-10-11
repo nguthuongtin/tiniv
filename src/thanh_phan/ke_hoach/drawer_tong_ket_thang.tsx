@@ -286,37 +286,6 @@ export default function DrawerTongKetThang({
           </div>
         </The_Chuc_Nang>
 
-        {/* Khó khăn & Đề xuất */}
-        <The_Chuc_Nang>
-          <div className="p-4 space-y-3 text-xs">
-            <div>
-              <label className="block font-bold text-foreground mb-1">
-                Khó khăn trong tháng (thị trường, đối thủ, thanh toán...):
-              </label>
-              <textarea
-                rows={2}
-                value={khoKhan}
-                onChange={(e) => setKhoKhan(e.target.value)}
-                placeholder="VD: Chủ đầu tư tạm hoãn giải ngân sang quý sau, vướng thủ tục ký hợp đồng, mưa bão..."
-                className="w-full rounded-lg border border-border bg-background p-2 text-xs font-medium text-foreground"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-foreground mb-1">
-                Đề xuất chiến lược / Kế hoạch tháng tới:
-              </label>
-              <textarea
-                rows={2}
-                value={deXuat}
-                onChange={(e) => setDeXuat(e.target.value)}
-                placeholder="VD: Đề xuất mở rộng thêm địa bàn tỉnh/xã lân cận, xin hỗ trợ từ ban giám đốc..."
-                className="w-full rounded-lg border border-border bg-background p-2 text-xs font-medium text-foreground"
-              />
-            </div>
-          </div>
-        </The_Chuc_Nang>
-
         {/* Action Buttons */}
         <div className="flex items-center justify-between gap-2 pt-3 border-t border-border print:hidden flex-wrap">
           <div className="flex items-center gap-2">

@@ -111,14 +111,37 @@ const laySoTuanTrongNam = (nam: number): number => {
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 };
 
-const taoDanhSachTuanNam = (nam: number) => {
-  const maxWeeks = laySoTuanTrongNam(nam);
-  const ds = [];
-  for (let w = 1; w <= maxWeeks; w++) {
-    const wStr = String(w).padStart(2, '0');
-    ds.push({ val: `${nam}-W${wStr}`, label: `Tuần ${w} (${nam})` });
+const layThangTuTuanISO = (wISO: string): string => {
+  const { tuNgay } = layKhoangNgayTuTuanISO(wISO);
+  const d = new Date(tuNgay);
+  d.setDate(d.getDate() + 3); // Giữa tuần (Thứ Năm)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const layDanhSachTuanTrongThang = (thangISO: string) => {
+  const [yyyyStr, mmStr] = thangISO.split('-');
+  const nam = Number(yyyyStr) || new Date().getFullYear();
+  const thang = Number(mmStr) || (new Date().getMonth() + 1);
+  const soNgay = new Date(nam, thang, 0).getDate();
+  const cacTuanSet = new Set<string>();
+
+  for (let d = 1; d <= soNgay; d++) {
+    const dStr = `${nam}-${String(thang).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const wISO = layTuanFromDateISO(dStr);
+    cacTuanSet.add(wISO);
   }
-  return ds;
+
+  const dsTuanArray = Array.from(cacTuanSet);
+  return dsTuanArray.map((wISO, idx) => {
+    const { tuNgay, denNgay } = layKhoangNgayTuTuanISO(wISO);
+    const tuNgayFmt = `${tuNgay.slice(8, 10)}/${tuNgay.slice(5, 7)}`;
+    const denNgayFmt = `${denNgay.slice(8, 10)}/${denNgay.slice(5, 7)}`;
+    return {
+      val: wISO,
+      tuanSo: idx + 1,
+      label: `Tuần ${idx + 1} (${tuNgayFmt} - ${denNgayFmt})`
+    };
+  });
 };
 
 export default function TrangKeHoachNVKD() {
@@ -348,7 +371,15 @@ export function NoiDungKeHoachNVKD({
     void taiKinhDoanhPlan();
   }, [taiKinhDoanhPlan]);
 
-  const dsTuanTrongNam = useMemo(() => taoDanhSachTuanNam(namTuanChon), [namTuanChon]);
+  const dsTuanTrongThang = useMemo(() => layDanhSachTuanTrongThang(thangChon), [thangChon]);
+
+  const xuLyDoiThang = (thangMoi: string) => {
+    setThangChon(thangMoi);
+    const dsTuan = layDanhSachTuanTrongThang(thangMoi);
+    if (dsTuan.length > 0 && !dsTuan.some((t) => t.val === tuanChon)) {
+      setTuanChon(dsTuan[0].val);
+    }
+  };
 
   // Handlers for Month Navigation
   const doiThangTroi = (delta: number) => {
@@ -356,7 +387,7 @@ export function NoiDungKeHoachNVKD({
     const d = new Date(y, m - 1 + delta, 1);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
-    setThangChon(`${yyyy}-${mm}`);
+    xuLyDoiThang(`${yyyy}-${mm}`);
   };
 
   // Handlers for Week Navigation
@@ -374,8 +405,13 @@ export function NoiDungKeHoachNVKD({
       y += 1;
       w = 1;
     }
+    const nextTuan = `${y}-W${String(w).padStart(2, '0')}`;
     setNamTuanChon(y);
-    setTuanChon(`${y}-W${String(w).padStart(2, '0')}`);
+    setTuanChon(nextTuan);
+    const thangMoi = layThangTuTuanISO(nextTuan);
+    if (thangMoi !== thangChon) {
+      setThangChon(thangMoi);
+    }
   };
 
   useEffect(() => {
@@ -651,6 +687,8 @@ export function NoiDungKeHoachNVKD({
       const m = tuanMoi.match(/^(\d{4})-W(\d{2})$/);
       if (m) setNamTuanChon(Number(m[1]));
       setTuanChon(tuanMoi);
+      const thMoi = layThangTuTuanISO(tuanMoi);
+      if (thMoi !== thangChon) setThangChon(thMoi);
     }
   };
 
@@ -1389,32 +1427,29 @@ export function NoiDungKeHoachNVKD({
             </div>
           ) : (
             <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg p-1">
+              <input
+                type="month"
+                value={thangChon}
+                onChange={(e) => xuLyDoiThang(e.target.value)}
+                className="h-7 border-0 bg-transparent px-1.5 text-xs font-bold text-slate-800 focus:ring-0 cursor-pointer"
+                title="Chọn tháng"
+              />
+              <div className="h-4 w-px bg-border my-auto" />
               <button
                 type="button"
                 onClick={() => doiTuanTroi(-1)}
-                className="size-7 rounded hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                className="size-7 rounded hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 title="Tuần trước"
               >
                 <ChevronLeft className="size-4" />
               </button>
               <select
-                value={namTuanChon}
-                onChange={(e) => setNamTuanChon(Number(e.target.value))}
-                className="h-7 border-0 bg-transparent px-1 text-xs font-bold"
-              >
-                {DS_NAM.map((n) => (
-                  <option key={n} value={n}>
-                    Năm {n}
-                  </option>
-                ))}
-              </select>
-              <select
                 value={tuanChon}
                 onChange={(e) => setTuanChon(e.target.value)}
-                className="h-7 border-0 bg-transparent px-1 text-xs font-bold text-foreground"
+                className="h-7 border-0 bg-transparent px-1 text-xs font-bold text-slate-800 cursor-pointer"
               >
-                {dsTuanTrongNam.map((t) => (
-                  <option key={t.val} value={t.val}>
+                {dsTuanTrongThang.map((t) => (
+                  <option key={t.val} value={t.val} className="text-slate-900 bg-white">
                     {t.label}
                   </option>
                 ))}
@@ -1422,7 +1457,7 @@ export function NoiDungKeHoachNVKD({
               <button
                 type="button"
                 onClick={() => doiTuanTroi(1)}
-                className="size-7 rounded hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                className="size-7 rounded hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 title="Tuần sau"
               >
                 <ChevronRight className="size-4" />

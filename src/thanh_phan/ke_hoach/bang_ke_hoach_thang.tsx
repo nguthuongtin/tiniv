@@ -115,10 +115,6 @@ export default function BangKeHoachThang({
   const [chiTieuNhanh, setChiTieuNhanh] = useState('');
   const [donViNhanh, setDonViNhanh] = useState('Khách hàng');
 
-  const [moGhiChu, setMoGhiChu] = useState(false);
-  const [khoKhan, setKhoKhan] = useState(baoCao?.kho_khan ?? '');
-  const [deXuat, setDeXuat] = useState(baoCao?.de_xuat ?? '');
-  const [dangLuuGhiChu, setDangLuuGhiChu] = useState(false);
   const [itemChiTiet, setItemChiTiet] = useState<ItemKeHoachThang | null>(null);
 
   const xuLyThemNhanhMucTieu = () => {
@@ -180,17 +176,6 @@ export default function BangKeHoachThang({
   });
   const tyLeHoanThanhChung = ds.length > 0 ? Math.round(tongDiemDat / ds.length) : 0;
 
-  const xuLyLuuGhiChuNhanh = async () => {
-    if (!onLuuGhiChuBaoCao) return;
-    setDangLuuGhiChu(true);
-    try {
-      await onLuuGhiChuBaoCao(khoKhan.trim(), deXuat.trim());
-      setMoGhiChu(false);
-    } finally {
-      setDangLuuGhiChu(false);
-    }
-  };
-
   return (
     <div className="space-y-4">
       <ThanhSoLieu
@@ -236,23 +221,6 @@ export default function BangKeHoachThang({
         so_luong={ds.length}
         hanh_dong={
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            {onLuuGhiChuBaoCao && laSuaDuoc && ds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setKhoKhan(baoCao?.kho_khan ?? '');
-                  setDeXuat(baoCao?.de_xuat ?? '');
-                  setMoGhiChu(true);
-                }}
-                className="h-8.5 px-3 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-nhan font-bold transition-colors inline-flex items-center gap-1.5 shadow-2xs relative cursor-pointer"
-              >
-                <AlertCircle className="size-4 text-amber-600" />
-                <span className="hidden sm:inline">Khó khăn & Đề xuất</span>
-                {(baoCao?.kho_khan || baoCao?.de_xuat) && (
-                  <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-red-500 border-2 border-white"></span>
-                )}
-              </button>
-            )}
             {ds.length > 0 && (
               <button
                 type="button"
@@ -594,71 +562,6 @@ export default function BangKeHoachThang({
         </div>
       )}
 
-      {/* Modal: Khó khăn đề xuất */}
-      {moGhiChu && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setMoGhiChu(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-slate-100">
-              <h3 className="font-bold text-lg text-slate-900 flex items-center gap-2">
-                <AlertCircle className="size-5 text-amber-600" /> Khó khăn & Đề xuất Tháng
-              </h3>
-              <button
-                onClick={() => setMoGhiChu(false)}
-                className="p-1 text-slate-400 hover:text-slate-600"
-              >
-                &times;
-              </button>
-            </div>
-            <div className="p-4 space-y-4 overflow-y-auto">
-              <div>
-                <label className="text-sm font-bold text-slate-900 block mb-1">
-                  Khó khăn / Vướng mắc
-                </label>
-                <textarea
-                  rows={3}
-                  value={khoKhan}
-                  onChange={(e) => setKhoKhan(e.target.value)}
-                  placeholder="Nhập vướng mắc trong tháng..."
-                  className="w-full rounded-lg border border-slate-200 p-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-bold text-slate-900 block mb-1">
-                  Đề xuất / Kiến nghị
-                </label>
-                <textarea
-                  rows={3}
-                  value={deXuat}
-                  onChange={(e) => setDeXuat(e.target.value)}
-                  placeholder="Nhập đề xuất hỗ trợ..."
-                  className="w-full rounded-lg border border-slate-200 p-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary"
-                />
-              </div>
-            </div>
-            <div className="p-4 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50 rounded-b-xl">
-              <button
-                onClick={() => setMoGhiChu(false)}
-                className="h-9 px-4 rounded-lg bg-white border border-slate-200 font-bold text-sm"
-              >
-                Đóng
-              </button>
-              <button
-                disabled={dangLuuGhiChu}
-                onClick={xuLyLuuGhiChuNhanh}
-                className="h-9 px-4 rounded-lg bg-primary text-white font-bold text-sm flex items-center gap-2"
-              >
-                <Save className="size-4" /> {dangLuuGhiChu ? 'Đang lưu...' : 'Lưu ghi chú'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

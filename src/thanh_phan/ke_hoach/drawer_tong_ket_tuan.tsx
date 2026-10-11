@@ -280,37 +280,6 @@ export default function DrawerTongKetTuan({
           </div>
         </The_Chuc_Nang>
 
-        {/* Khó khăn & Đề xuất */}
-        <The_Chuc_Nang>
-          <div className="p-4 space-y-3 text-xs">
-            <div>
-              <label className="block font-bold text-foreground mb-1">
-                Khó khăn, vướng mắc trong tuần:
-              </label>
-              <textarea
-                rows={2}
-                value={khoKhan}
-                onChange={(e) => setKhoKhan(e.target.value)}
-                placeholder="VD: Khách hàng hẹn lùi lịch khảo sát, thiết bị chưa về kịp..."
-                className="w-full rounded-lg border border-border bg-background p-2 text-xs font-medium text-foreground"
-              />
-            </div>
-
-            <div>
-              <label className="block font-bold text-foreground mb-1">
-                Đề xuất, kiến nghị với Sếp / Chi nhánh:
-              </label>
-              <textarea
-                rows={2}
-                value={deXuat}
-                onChange={(e) => setDeXuat(e.target.value)}
-                placeholder="VD: Nhờ Giám đốc hỗ trợ đàm phán giá hợp đồng với UBND Xã..."
-                className="w-full rounded-lg border border-border bg-background p-2 text-xs font-medium text-foreground"
-              />
-            </div>
-          </div>
-        </The_Chuc_Nang>
-
         {/* Action Buttons */}
         <div className="flex items-center justify-between gap-2 pt-3 border-t border-border print:hidden flex-wrap">
           <div className="flex items-center gap-2">
