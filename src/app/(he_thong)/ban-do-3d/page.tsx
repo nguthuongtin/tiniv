@@ -214,39 +214,34 @@ export default function MapDashboardPage() {
   const tongSoDuAn = crmData.reduce((acc, d) => acc + (d.danh_sach_du_an?.length || 0), 0);
 
   return (
-    <div className="space-y-4 flex flex-col min-h-[600px] h-[calc(100dvh-130px)] md:h-[calc(100vh-5.5rem)]">
-      {/* Tiêu đề & Tổng quan chỉ số */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 shrink-0">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">
-            Bản Đồ Địa Bàn & Khách Hàng An Giang
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Bản đồ 2D trực quan 102 địa bàn xã/phường, kết nối trực tiếp dự án, người liên hệ và sale phụ trách.
-          </p>
-        </div>
+    <div className="flex flex-col h-[calc(100dvh-100px)] sm:h-[calc(100vh-5.5rem)] sm:space-y-3">
+      {/* Tiêu đề & Tổng quan chỉ số (Chỉ hiển thị trên Desktop để dành toàn bộ không gian cho Map trên Mobile) */}
+      <div className="hidden sm:flex sm:items-center sm:justify-between gap-4 shrink-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">
+          Bản Đồ Địa Bàn Phụ Trách
+        </h1>
 
-        {/* Chỉ số địa bàn */}
-        <div className="flex items-center gap-2 sm:gap-3 text-xs overflow-x-auto pb-1 max-w-full shrink-0">
-          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
-            <span className="text-slate-500 block text-[11px]">Tổng địa bàn</span>
-            <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">102 xã/phường</span>
+        {/* Chỉ số địa bàn trên Desktop */}
+        <div className="flex items-center gap-2.5 text-xs shrink-0">
+          <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
+            <span className="text-slate-400 block text-[10px]">Địa bàn</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">102 xã/phường</span>
           </div>
-          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
-            <span className="text-slate-500 block text-[11px]">Tổng dự án</span>
-            <span className="font-bold text-blue-600 text-sm">{tongSoDuAn} dự án</span>
+          <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
+            <span className="text-slate-400 block text-[10px]">Dự án</span>
+            <span className="font-bold text-blue-600 text-xs">{tongSoDuAn} dự án</span>
           </div>
-          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
-            <span className="text-slate-500 block text-[11px]">Đã gán sale</span>
-            <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{countDaGanSale} địa bàn</span>
+          <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
+            <span className="text-slate-400 block text-[10px]">Đã gán sale</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">{countDaGanSale}</span>
           </div>
-          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
-            <span className="text-slate-500 block text-[11px]">Đang chăm sóc</span>
-            <span className="font-bold text-amber-500 text-sm">{countDangChamSoc} địa bàn</span>
+          <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
+            <span className="text-slate-400 block text-[10px]">Đang chăm sóc</span>
+            <span className="font-bold text-amber-500 text-xs">{countDangChamSoc}</span>
           </div>
-          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
-            <span className="text-slate-500 block text-[11px]">Đã chốt</span>
-            <span className="font-bold text-emerald-600 text-sm">{countDaChot} địa bàn</span>
+          <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
+            <span className="text-slate-400 block text-[10px]">Đã chốt</span>
+            <span className="font-bold text-emerald-600 text-xs">{countDaChot}</span>
           </div>
         </div>
       </div>

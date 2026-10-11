@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { FolderKanban, Users, Phone, ExternalLink, Plus, Search, X, MapPin } from 'lucide-react';
+import { FolderKanban, Users, Phone, ExternalLink, Plus, Search, X, MapPin, SlidersHorizontal, RotateCcw } from 'lucide-react';
 
 export interface DuAnLienKet {
   id: string;
@@ -145,6 +145,10 @@ export default function Map3D({ crmData, onUpdateCRM }: MapProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const mobileSearchRef = useRef<HTMLDivElement>(null);
+
+  // State mở Bottom Sheet bộ lọc trên Mobile
+  const [moBoLocMobile, setMoBoLocMobile] = useState(false);
 
   // Form cập nhật
   const [editStatus, setEditStatus] = useState<CommuneCRMData['reach_status']>('Chưa tiếp cận');
@@ -153,7 +157,10 @@ export default function Map3D({ crmData, onUpdateCRM }: MapProps) {
   // Đóng dropdown tìm kiếm khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insideDesktop = searchRef.current && searchRef.current.contains(target);
+      const insideMobile = mobileSearchRef.current && mobileSearchRef.current.contains(target);
+      if (!insideDesktop && !insideMobile) {
         setIsSearching(false);
       }
     };
@@ -223,10 +230,10 @@ export default function Map3D({ crmData, onUpdateCRM }: MapProps) {
         ],
         {
           padding: {
-            top: 70,
-            bottom: 70,
-            left: 70,
-            right: typeof window !== 'undefined' && window.innerWidth > 1024 ? 420 : 70,
+            top: typeof window !== 'undefined' && window.innerWidth < 640 ? 60 : 70,
+            bottom: typeof window !== 'undefined' && window.innerWidth < 640 ? 280 : 70,
+            left: typeof window !== 'undefined' && window.innerWidth < 640 ? 24 : 70,
+            right: typeof window !== 'undefined' && window.innerWidth > 1024 ? 420 : (typeof window !== 'undefined' && window.innerWidth < 640 ? 24 : 70),
           },
           maxZoom: 13,
           duration: 1200,
@@ -572,9 +579,9 @@ export default function Map3D({ crmData, onUpdateCRM }: MapProps) {
   };
 
   return (
-    <div className="relative w-full h-full min-h-[640px] rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl flex flex-col">
-      {/* 1. Thanh Thống Kê Nhanh & Bộ Lọc Phía Trên Bản Đồ */}
-      <div className="z-20 bg-slate-900/95 backdrop-blur-md p-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+    <div className="relative w-full h-full min-h-[350px] rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl flex flex-col">
+      {/* 1. Thanh Thống Kê & Bộ Lọc Trên Desktop (Ẩn trên mobile để dành toàn bộ không gian cho map) */}
+      <div className="hidden sm:flex z-20 bg-slate-900/95 backdrop-blur-md p-3 border-b border-slate-800 flex-wrap items-center justify-between gap-3 text-xs shrink-0">
         {/* Nhãn thống kê theo từng bạn sale */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-slate-400 uppercase tracking-wider text-[11px] mr-1">
@@ -599,7 +606,7 @@ export default function Map3D({ crmData, onUpdateCRM }: MapProps) {
           ))}
         </div>
 
-        {/* Dropdowns Bộ lọc & Ô Tìm Kiếm Nhanh */}
+        {/* Dropdowns Bộ lọc & Ô Tìm Kiếm Nhanh Trên Desktop */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Ô Tìm Kiếm Xã/Phường Nhanh & Tự Động Zoom */}
           <div ref={searchRef} className="relative w-56 sm:w-64">
@@ -692,8 +699,113 @@ export default function Map3D({ crmData, onUpdateCRM }: MapProps) {
       </div>
 
       {/* 2. Container Bản Đồ */}
-      <div className="relative flex-1 w-full h-full min-h-[550px]">
+      <div className="relative flex-1 w-full h-full min-h-0">
         <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+
+        {/* THANH ĐIỀU KHIỂN NỔI GỌN GÀNG TRÊN MOBILE (Floating Pill) - Không chiếm diện tích bản đồ */}
+        <div className="sm:hidden absolute top-2.5 inset-x-2.5 z-30 flex items-center gap-2 pointer-events-auto">
+          {/* Ô Tìm Kiếm Nhanh Nổi */}
+          <div ref={mobileSearchRef} className="relative flex-1">
+            <div className="relative">
+              <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearching(true);
+                }}
+                onFocus={() => setIsSearching(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (filteredSearchList.length > 0) {
+                      chonVaDinhViXa(filteredSearchList[0].id);
+                      setSearchQuery(filteredSearchList[0].id);
+                      setIsSearching(false);
+                    }
+                  } else if (e.key === 'Escape') {
+                    setIsSearching(false);
+                  }
+                }}
+                placeholder="Tìm nhanh xã / phường..."
+                className="w-full h-9 bg-slate-900/95 backdrop-blur-md border border-slate-700/90 text-white pl-8.5 pr-8 rounded-full text-xs shadow-xl placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setIsSearching(false);
+                    resetMapView();
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Dropdown Gợi Ý Tìm Kiếm Trên Mobile */}
+            {isSearching && filteredSearchList.length > 0 && (
+              <div className="absolute left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-slate-900/98 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl z-50 divide-y divide-slate-800/80">
+                {filteredSearchList.slice(0, 15).map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      chonVaDinhViXa(c.id);
+                      setSearchQuery(c.id);
+                      setIsSearching(false);
+                    }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-slate-800 transition flex items-center justify-between text-xs cursor-pointer"
+                  >
+                    <div className="min-w-0 pr-2">
+                      <div className="font-semibold text-white truncate flex items-center gap-1.5">
+                        <MapPin className="size-3 text-sky-400 shrink-0" />
+                        <span>{c.id}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 truncate pl-4.5">
+                        {c.sale_name !== 'Chưa gán' ? `Sale: ${c.sale_name}` : 'Chưa gán sale'}
+                      </div>
+                    </div>
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{ backgroundColor: SALE_COLORS[c.sale_name] || '#64748b' }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Nút Mở Bottom Sheet Lọc Trên Mobile */}
+          <button
+            type="button"
+            onClick={() => setMoBoLocMobile(true)}
+            className={`size-9 rounded-full bg-slate-900/95 backdrop-blur-md border border-slate-700/90 flex items-center justify-center shrink-0 shadow-xl active:scale-95 transition relative ${
+              filterSale !== 'All' || filterStatus !== 'All'
+                ? 'text-sky-400 border-sky-500/70'
+                : 'text-slate-300 hover:text-white'
+            }`}
+            title="Lọc địa bàn"
+          >
+            <SlidersHorizontal className="size-3.5" />
+            {(filterSale !== 'All' || filterStatus !== 'All') && (
+              <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-sky-400 ring-2 ring-slate-900" />
+            )}
+          </button>
+
+          {/* Nút Đặt Lại Bản Đồ Mobile */}
+          <button
+            type="button"
+            onClick={resetMapView}
+            className="size-9 rounded-full bg-slate-900/95 backdrop-blur-md border border-slate-700/90 flex items-center justify-center text-slate-300 hover:text-white shrink-0 shadow-xl active:scale-95 transition"
+            title="Đặt lại bản đồ"
+          >
+            <RotateCcw className="size-3.5" />
+          </button>
+        </div>
 
         {mapError && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 text-slate-300 p-6 z-20">
@@ -711,10 +823,10 @@ export default function Map3D({ crmData, onUpdateCRM }: MapProps) {
           </div>
         )}
 
-        {/* Floating Tooltip khi di chuột qua xã */}
+        {/* Floating Tooltip khi di chuột qua xã (Chỉ hiển thị trên Desktop để không vướng cảm ứng trên Mobile) */}
         {hoveredCommune && tooltipPos && !selectedFeature && (
           <div
-            className="pointer-events-none absolute z-30 bg-slate-900/95 backdrop-blur-md border border-slate-700 text-white rounded-lg p-2.5 shadow-2xl text-xs space-y-1 transform -translate-x-1/2 -translate-y-full mb-3 min-w-[210px]"
+            className="hidden sm:block pointer-events-none absolute z-30 bg-slate-900/95 backdrop-blur-md border border-slate-700 text-white rounded-lg p-2.5 shadow-2xl text-xs space-y-1 transform -translate-x-1/2 -translate-y-full mb-3 min-w-[210px]"
             style={{ left: `${tooltipPos.x}px`, top: `${tooltipPos.y}px` }}
           >
             <div className="font-bold text-sm text-sky-400 border-b border-slate-800 pb-1">
@@ -761,15 +873,15 @@ export default function Map3D({ crmData, onUpdateCRM }: MapProps) {
                 </span>
               </div>
             )}
-            <div className="text-[10px] text-sky-300/80 pt-1 text-center italic">
-              Nhấp chuột để xem chi tiết & cập nhật
-            </div>
           </div>
         )}
 
-        {/* 3. Card/Drawer Chi Tiết Xã Khi Click */}
+        {/* 3. Card/Drawer Chi Tiết Xã Khi Click: Bottom Sheet trên Mobile, Right Drawer trên Desktop */}
         {selectedFeature && (
-          <div className="absolute top-2 right-2 bottom-2 left-2 sm:left-auto sm:top-4 sm:right-4 sm:bottom-4 sm:w-96 max-w-[calc(100vw-1rem)] bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-2xl flex flex-col overflow-hidden text-slate-100 animate-in fade-in slide-in-from-right duration-150">
+          <div className="fixed sm:absolute bottom-0 inset-x-0 sm:inset-x-auto sm:top-4 sm:right-4 sm:bottom-4 sm:w-96 max-h-[70vh] sm:max-h-none rounded-t-2xl sm:rounded-xl z-40 bg-slate-900/98 backdrop-blur-md border-t sm:border border-slate-700/80 shadow-2xl flex flex-col overflow-hidden text-slate-100 animate-in slide-in-from-bottom sm:slide-in-from-right duration-200">
+            {/* Thanh gạt vuốt (Drag Handle) trực quan trên Mobile */}
+            <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mt-2.5 sm:hidden shrink-0" />
+
             {/* Header Drawer */}
             <div className="p-4 border-b border-slate-800 flex items-start justify-between bg-slate-800/60">
               <div className="min-w-0 flex-1 pr-2">
@@ -965,6 +1077,112 @@ export default function Map3D({ crmData, onUpdateCRM }: MapProps) {
                   Lưu thay đổi địa bàn
                 </button>
               </form>
+            </div>
+          </div>
+        )}
+        {/* 4. Bottom Sheet Bộ Lọc Trên Mobile: Tiện lợi, không chiếm diện tích bản đồ khi đóng */}
+        {moBoLocMobile && (
+          <div className="sm:hidden fixed inset-0 z-50 flex flex-col justify-end">
+            <div
+              className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs animate-in fade-in"
+              onClick={() => setMoBoLocMobile(false)}
+            />
+            <div className="relative bg-slate-900 border-t border-slate-700/80 rounded-t-2xl p-4 space-y-4 shadow-2xl animate-in slide-in-from-bottom duration-200 text-xs text-white max-h-[80vh] overflow-y-auto">
+              <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto -mt-1" />
+              <div className="flex items-center justify-between pb-1 border-b border-slate-800">
+                <span className="font-bold text-sm text-white">Bộ lọc địa bàn</span>
+                {(filterSale !== 'All' || filterStatus !== 'All') ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterSale('All');
+                      setFilterStatus('All');
+                    }}
+                    className="text-xs text-sky-400 hover:underline"
+                  >
+                    Đặt lại bộ lọc
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setMoBoLocMobile(false)}
+                    className="text-slate-400 hover:text-white text-xs"
+                  >
+                    Đóng
+                  </button>
+                )}
+              </div>
+
+              {/* Lọc theo Sale */}
+              <div className="space-y-2">
+                <span className="text-slate-400 block text-[11px] font-semibold uppercase tracking-wider">
+                  Nhân sự phụ trách
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFilterSale('All')}
+                    className={`p-2.5 rounded-xl border text-left transition ${
+                      filterSale === 'All'
+                        ? 'bg-slate-800 border-white text-white font-bold ring-1 ring-white/50'
+                        : 'bg-slate-800/40 border-slate-700/80 text-slate-300'
+                    }`}
+                  >
+                    Tất cả sale
+                  </button>
+                  {salesList.map((sale) => (
+                    <button
+                      key={sale}
+                      type="button"
+                      onClick={() => setFilterSale(filterSale === sale ? 'All' : sale)}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between transition ${
+                        filterSale === sale
+                          ? 'bg-slate-800 border-white text-white font-bold ring-1 ring-white/50'
+                          : 'bg-slate-800/40 border-slate-700/80 text-slate-300'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 truncate">
+                        <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: SALE_COLORS[sale] }} />
+                        <span className="truncate">{sale}</span>
+                      </span>
+                      <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 shrink-0">
+                        {saleStats[sale] || 0}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lọc theo Trạng thái tiếp cận */}
+              <div className="space-y-2">
+                <span className="text-slate-400 block text-[11px] font-semibold uppercase tracking-wider">
+                  Trạng thái tiếp cận
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {['All', 'Chưa tiếp cận', 'Đang chăm sóc', 'Đã chốt'].map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setFilterStatus(st)}
+                      className={`p-2.5 rounded-xl border text-left transition ${
+                        filterStatus === st
+                          ? 'bg-slate-800 border-white text-white font-bold ring-1 ring-white/50'
+                          : 'bg-slate-800/40 border-slate-700/80 text-slate-300'
+                      }`}
+                    >
+                      {st === 'All' ? 'Tất cả trạng thái' : st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMoBoLocMobile(false)}
+                className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-center transition shadow-lg shadow-sky-600/30"
+              >
+                Áp dụng & xem bản đồ
+              </button>
             </div>
           </div>
         )}
