@@ -15,7 +15,9 @@ import {
   DollarSign,
   Save,
   ArrowRight,
-  CalendarRange
+  CalendarRange,
+  Building2,
+  FolderKanban
 } from 'lucide-react';
 import type {
   KeHoachThang,
@@ -60,26 +62,26 @@ const renderBadgeLoai = (loai?: LoaiMucTieuThang) => {
   switch (loai) {
     case 'thi_truong':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-amber-500/10 text-amber-700 border border-amber-500/20">
-          <MapPin className="size-3" /> Số lượng / Thị trường
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-500/10 text-amber-700 border border-amber-500/20">
+          <MapPin className="size-3" /> Thị trường
         </span>
       );
     case 'khach_hang':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-purple-500/10 text-purple-700 border border-purple-500/20">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-purple-500/10 text-purple-700 border border-purple-500/20">
           <Users className="size-3" /> Khách hàng
         </span>
       );
     case 'khac':
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-slate-500/10 text-slate-700 border border-slate-500/20">
-          <Target className="size-3" /> Mục tiêu khác
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+          <Target className="size-3" /> Khác
         </span>
       );
     case 'tai_chinh':
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-nhan font-bold bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
           <DollarSign className="size-3" /> Doanh số
         </span>
       );
@@ -256,9 +258,9 @@ export default function BangKeHoachThang({
                   <HangBang>
                     <ODauBang className="w-12 text-center">STT</ODauBang>
                     <ODauBang>Mục tiêu cam kết trong tháng</ODauBang>
-                    <ODauBang className="w-[180px]">Triển khai tuần</ODauBang>
-                    <ODauBang className="w-[240px] text-right">Thực tế / Chỉ tiêu</ODauBang>
-                    {laSuaDuoc && <ODauBang className="w-48 text-right">Thao tác</ODauBang>}
+                    <ODauBang className="w-[190px]">Tiến độ việc tuần</ODauBang>
+                    <ODauBang className="w-[230px] text-right">Thực tế / Chỉ tiêu</ODauBang>
+                    {laSuaDuoc && <ODauBang className="w-[180px] text-right">Thao tác</ODauBang>}
                   </HangBang>
                 </ChuDeBang>
                 <ThanBang>
@@ -298,24 +300,32 @@ export default function BangKeHoachThang({
                           setItemChiTiet(item);
                         }}
                       >
-                        <OBang className="text-center font-bold text-muted-foreground align-middle">
+                        <OBang className="text-center font-medium text-xs text-muted-foreground align-middle">
                           {idx + 1}
                         </OBang>
 
                         <OBang className="align-middle space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-noi-dung text-foreground">
+                            <span className="font-semibold text-sm text-foreground">
                               {mucTieuVal}
                             </span>
                             {renderBadgeLoai(item.loai_muc_tieu)}
                           </div>
                           {(coQuan || item.du_an_du_kien || item.nguoi_lien_he) && (
-                            <div className="font-medium text-phu text-muted-foreground flex items-center gap-2 flex-wrap">
-                              {coQuan && <span>KH: {coQuan}</span>}
-                              {item.du_an_du_kien && <span>· DA: {item.du_an_du_kien}</span>}
+                            <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                              {coQuan && (
+                                <span className="inline-flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                                  <Building2 className="size-3" /> {coQuan}
+                                </span>
+                              )}
+                              {item.du_an_du_kien && (
+                                <span className="inline-flex items-center gap-1 font-medium text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/60">
+                                  <FolderKanban className="size-3" /> {item.du_an_du_kien}
+                                </span>
+                              )}
                               {item.nguoi_lien_he && (
-                                <span className="text-emerald-700 font-semibold">
-                                  · LH: {item.nguoi_lien_he}
+                                <span className="inline-flex items-center gap-1 text-slate-600">
+                                  <Users className="size-3 text-slate-400" /> {item.nguoi_lien_he}
                                   {item.chuc_vu ? ` (${item.chuc_vu})` : ''}
                                 </span>
                               )}
@@ -323,42 +333,44 @@ export default function BangKeHoachThang({
                           )}
                         </OBang>
 
-                        <OBang className="align-middle" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {soViecTuanLienKet > 0 ? (
-                              <span
-                                className={cn(
-                                  'px-2 py-0.5 rounded-md text-nhan font-bold inline-flex items-center gap-1 border',
-                                  soViecTuanDaXong === soViecTuanLienKet
-                                    ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/25'
-                                    : 'bg-primary/10 text-primary border-primary/25'
-                                )}
-                              >
-                                {soViecTuanDaXong}/{soViecTuanLienKet} việc xong
-                              </span>
-                            ) : (
-                              <span className="text-phu text-muted-foreground italic">
-                                Chưa bẻ việc
-                              </span>
-                            )}
-                            {laSuaDuoc && onTaoViecTuanTuMucTieu && (
-                              <button
-                                type="button"
-                                onClick={() => onTaoViecTuanTuMucTieu(item)}
-                                className="h-7 px-2 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/15 text-primary text-nhan font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                                title="Rút mục tiêu tháng này thành công việc trong tuần"
-                              >
-                                <CalendarRange className="size-3" /> + Bẻ việc
-                              </button>
-                            )}
-                          </div>
+                        <OBang className="align-middle">
+                          {soViecTuanLienKet > 0 ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-xs font-medium text-foreground">
+                                <span className="font-semibold text-emerald-700">
+                                  {soViecTuanDaXong}/{soViecTuanLienKet} việc xong
+                                </span>
+                                <span className="font-mono text-muted-foreground text-[11px]">
+                                  {Math.round((soViecTuanDaXong / soViecTuanLienKet) * 100)}%
+                                </span>
+                              </div>
+                              <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                                <div
+                                  className={cn(
+                                    'h-full rounded-full transition-all',
+                                    soViecTuanDaXong === soViecTuanLienKet ? 'bg-emerald-500' : 'bg-primary'
+                                  )}
+                                  style={{
+                                    width: `${Math.min(
+                                      100,
+                                      Math.round((soViecTuanDaXong / soViecTuanLienKet) * 100)
+                                    )}%`
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/60 italic">
+                              Chưa bẻ việc tuần
+                            </span>
+                          )}
                         </OBang>
 
                         <OBang className="align-middle text-right">
                           <div className="flex items-center justify-end gap-3">
                             <div className="text-right">
                               {laTaiChinh ? (
-                                <div className="font-mono text-phu font-bold">
+                                <div className="font-mono text-xs font-semibold">
                                   <span className="text-emerald-600">
                                     {DINH_DANG_TIEN_NGAN_GON(thucTe)}
                                   </span>
@@ -368,7 +380,7 @@ export default function BangKeHoachThang({
                                   </span>
                                 </div>
                               ) : (
-                                <div className="font-mono text-phu font-bold">
+                                <div className="font-mono text-xs font-semibold">
                                   <span className="text-emerald-600">{thucTe}</span>
                                   <span className="text-muted-foreground font-normal"> / </span>
                                   <span className="text-foreground">
@@ -378,9 +390,9 @@ export default function BangKeHoachThang({
                               )}
                             </div>
                             {chiTieu > 0 && (
-                              <div className="w-16 shrink-0">
-                                <div className="flex items-center justify-end gap-1.5 mb-1">
-                                  <span className="font-mono text-[10px] font-bold text-muted-foreground">
+                              <div className="w-14 shrink-0">
+                                <div className="text-right mb-1">
+                                  <span className="font-mono text-[11px] font-semibold text-muted-foreground">
                                     {tyLe}%
                                   </span>
                                 </div>
@@ -404,18 +416,21 @@ export default function BangKeHoachThang({
 
                         {laSuaDuoc && (
                           <OBang
-                            className="text-right align-middle"
+                            className="text-right align-middle whitespace-nowrap"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="flex items-center justify-end gap-1">
-                              <button
-                                type="button"
-                                onClick={() => onCapNhatThucTe(item)}
-                                className="h-7 px-2 rounded-lg bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 text-nhan font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                                title="Cập nhật kết quả thực tế"
-                              >
-                                <TrendingUp className="size-3.5" /> Thực tế
-                              </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              {onTaoViecTuanTuMucTieu && (
+                                <button
+                                  type="button"
+                                  onClick={() => onTaoViecTuanTuMucTieu(item)}
+                                  className="h-7 px-2.5 rounded-lg border border-primary/25 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                                  title="Rút mục tiêu tháng thành công việc trong tuần"
+                                >
+                                  <CalendarRange className="size-3" />
+                                  <span>+ Bẻ việc</span>
+                                </button>
+                              )}
                               <NutIcon icon={Pencil} tieu_de="Sửa" onClick={() => onSuaItem(item)} />
                               <NutIcon
                                 icon={Trash2}

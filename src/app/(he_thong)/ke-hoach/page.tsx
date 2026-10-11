@@ -1408,14 +1408,14 @@ export function NoiDungKeHoachNVKD({
     <Bo_Cuc_Trang khoang_cach_trong="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-border print:hidden">
         {/* Main View Switcher: Hôm nay -> Tuần này -> Tháng này */}
-        <div className="flex items-center gap-1 bg-muted p-1 rounded-xl flex-wrap">
+        <div className="flex items-center gap-1 bg-muted/70 p-1 rounded-xl flex-wrap">
           <button
             type="button"
             onClick={() => setTabHienTai('ban_lam_viec')}
             className={cn(
-              'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer',
+              'h-8.5 px-3 sm:px-4 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer',
               tabHienTai === 'ban_lam_viec'
-                ? 'bg-background text-primary shadow-xs'
+                ? 'bg-background text-primary shadow-xs font-bold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -1425,9 +1425,9 @@ export function NoiDungKeHoachNVKD({
             type="button"
             onClick={() => setTabHienTai('tuan')}
             className={cn(
-              'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer',
+              'h-8.5 px-3 sm:px-4 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer',
               tabHienTai === 'tuan'
-                ? 'bg-background text-foreground shadow-xs'
+                ? 'bg-background text-foreground shadow-xs font-bold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -1437,9 +1437,9 @@ export function NoiDungKeHoachNVKD({
             type="button"
             onClick={() => setTabHienTai('thang')}
             className={cn(
-              'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer',
+              'h-8.5 px-3 sm:px-4 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer',
               tabHienTai === 'thang'
-                ? 'bg-background text-foreground shadow-xs'
+                ? 'bg-background text-foreground shadow-xs font-bold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -1448,14 +1448,14 @@ export function NoiDungKeHoachNVKD({
 
           {laQuanLyHoacGiamDoc && (
             <>
-              <div className="h-5 w-px bg-border mx-1 hidden sm:block" />
+              <div className="h-4 w-px bg-border/80 mx-1 hidden sm:block" />
               <button
                 type="button"
                 onClick={() => setTabHienTai('team_tuan')}
                 className={cn(
-                  'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer',
+                  'h-8.5 px-3 sm:px-4 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer',
                   tabHienTai === 'team_tuan'
-                    ? 'bg-background text-foreground shadow-xs'
+                    ? 'bg-background text-foreground shadow-xs font-bold'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -1465,9 +1465,9 @@ export function NoiDungKeHoachNVKD({
                 type="button"
                 onClick={() => setTabHienTai('team_thang')}
                 className={cn(
-                  'h-9 px-3 sm:px-4 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-2 cursor-pointer',
+                  'h-8.5 px-3 sm:px-4 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer',
                   tabHienTai === 'team_thang'
-                    ? 'bg-background text-foreground shadow-xs'
+                    ? 'bg-background text-foreground shadow-xs font-bold'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -1477,15 +1477,15 @@ export function NoiDungKeHoachNVKD({
           )}
         </div>
 
-        {/* Filters: Nhân viên (nếu là Quản lý đang xem Bàn làm việc) & Time Selectors */}
+        {/* Filters: Nhân viên & Time Selectors */}
         <div className="flex items-center gap-2 flex-wrap">
           {laQuanLyHoacGiamDoc && (tabHienTai === 'ban_lam_viec' || tabHienTai === 'tuan' || tabHienTai === 'thang') && (
-            <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg px-2.5 h-9">
+            <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2.5 h-9 shadow-xs">
               <Users className="size-3.5 text-muted-foreground" />
               <select
                 value={nhanVienChonId}
                 onChange={(e) => setNhanVienChonId(e.target.value)}
-                className="bg-transparent border-0 text-xs font-bold text-foreground focus:ring-0"
+                className="bg-transparent border-0 text-xs font-semibold text-foreground focus:ring-0 cursor-pointer"
               >
                 {dsNhanSuTeam.map((nv) => (
                   <option key={nv.id} value={nv.id}>
@@ -1497,11 +1497,11 @@ export function NoiDungKeHoachNVKD({
           )}
 
           {tabHienTai === 'thang' || tabHienTai === 'team_thang' ? (
-            <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-1.5 h-9 shadow-xs">
               <button
                 type="button"
                 onClick={() => doiThangTroi(-1)}
-                className="size-7 rounded hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                className="size-7 rounded-lg hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 title="Tháng trước"
               >
                 <ChevronLeft className="size-4" />
@@ -1510,31 +1510,31 @@ export function NoiDungKeHoachNVKD({
                 type="month"
                 value={thangChon}
                 onChange={(e) => setThangChon(e.target.value)}
-                className="h-7 border-0 bg-transparent px-2 text-xs font-bold text-foreground focus:ring-0"
+                className="h-7 border-0 bg-transparent px-2 text-xs font-semibold text-foreground focus:ring-0 cursor-pointer"
               />
               <button
                 type="button"
                 onClick={() => doiThangTroi(1)}
-                className="size-7 rounded hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                className="size-7 rounded-lg hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 title="Tháng sau"
               >
                 <ChevronRight className="size-4" />
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 bg-background border border-border rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-1.5 h-9 shadow-xs">
               <input
                 type="month"
                 value={thangChon}
                 onChange={(e) => xuLyDoiThang(e.target.value)}
-                className="h-7 border-0 bg-transparent px-1.5 text-xs font-bold text-slate-800 focus:ring-0 cursor-pointer"
+                className="h-7 border-0 bg-transparent px-1.5 text-xs font-semibold text-foreground focus:ring-0 cursor-pointer"
                 title="Chọn tháng"
               />
-              <div className="h-4 w-px bg-border my-auto" />
+              <div className="h-4 w-px bg-border/80 my-auto" />
               <button
                 type="button"
                 onClick={() => doiTuanTroi(-1)}
-                className="size-7 rounded hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                className="size-7 rounded-lg hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 title="Tuần trước"
               >
                 <ChevronLeft className="size-4" />
@@ -1542,10 +1542,10 @@ export function NoiDungKeHoachNVKD({
               <select
                 value={tuanChon}
                 onChange={(e) => setTuanChon(e.target.value)}
-                className="h-7 border-0 bg-transparent px-1 text-xs font-bold text-slate-800 cursor-pointer"
+                className="h-7 border-0 bg-transparent px-1 text-xs font-semibold text-foreground cursor-pointer"
               >
                 {dsTuanTrongThang.map((t) => (
-                  <option key={t.val} value={t.val} className="text-slate-900 bg-white">
+                  <option key={t.val} value={t.val} className="text-foreground bg-background">
                     {t.label}
                   </option>
                 ))}
@@ -1553,7 +1553,7 @@ export function NoiDungKeHoachNVKD({
               <button
                 type="button"
                 onClick={() => doiTuanTroi(1)}
-                className="size-7 rounded hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                className="size-7 rounded-lg hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 title="Tuần sau"
               >
                 <ChevronRight className="size-4" />

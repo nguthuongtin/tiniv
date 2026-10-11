@@ -17,7 +17,10 @@ import {
   Inbox,
   Play,
   Clock,
-  XCircle
+  XCircle,
+  Building2,
+  FolderKanban,
+  Users
 } from 'lucide-react';
 import type {
   KeHoachTuan,
@@ -377,27 +380,35 @@ export default function BangKeHoachTuan({
                         <OBang className="align-middle space-y-1">
                           <div
                             className={cn(
-                              'font-bold text-noi-dung text-foreground',
-                              daXong && 'line-through decoration-emerald-600/50'
+                              'font-semibold text-sm text-foreground',
+                              daXong && 'line-through text-muted-foreground'
                             )}
                           >
                             {hanhDongVal}
                           </div>
                           {(coQuan || item.du_an_du_kien || item.nguoi_lien_he) && (
-                            <div className="font-medium text-phu text-muted-foreground flex items-center gap-2 flex-wrap">
-                              {coQuan && <span>KH: {coQuan}</span>}
-                              {item.du_an_du_kien && <span>· DA: {item.du_an_du_kien}</span>}
+                            <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                              {coQuan && (
+                                <span className="inline-flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                                  <Building2 className="size-3" /> {coQuan}
+                                </span>
+                              )}
+                              {item.du_an_du_kien && (
+                                <span className="inline-flex items-center gap-1 font-medium text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/60">
+                                  <FolderKanban className="size-3" /> {item.du_an_du_kien}
+                                </span>
+                              )}
                               {item.nguoi_lien_he && (
-                                <span className="text-emerald-700 font-semibold">
-                                  · LH: {item.nguoi_lien_he}
+                                <span className="inline-flex items-center gap-1 text-slate-600">
+                                  <Users className="size-3 text-slate-400" /> {item.nguoi_lien_he}
                                   {item.chuc_vu ? ` (${item.chuc_vu})` : ''}
                                 </span>
                               )}
                             </div>
                           )}
                           {mtGoc && (
-                            <div className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                              <Target className="size-3" />
+                            <div className="inline-flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80">
+                              <Target className="size-3 text-slate-500" />
                               <span className="line-clamp-1">
                                 {mtGoc.muc_tieu_thang || mtGoc.ten_muc_tieu}
                               </span>
@@ -405,13 +416,13 @@ export default function BangKeHoachTuan({
                           )}
                         </OBang>
 
-                        <OBang className="align-middle text-sm" onClick={(e) => e.stopPropagation()}>
+                        <OBang className="align-middle text-xs" onClick={(e) => e.stopPropagation()}>
                           {item.dau_ra_cam_ket || item.ket_qua_mong_muon ? (
-                            <span className="font-medium text-slate-800 line-clamp-2">
-                              🎯 {item.dau_ra_cam_ket || item.ket_qua_mong_muon}
+                            <span className="font-medium text-foreground line-clamp-2">
+                              {item.dau_ra_cam_ket || item.ket_qua_mong_muon}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground/40 text-xs">—</span>
+                            <span className="text-muted-foreground/40">—</span>
                           )}
                         </OBang>
 
@@ -419,21 +430,21 @@ export default function BangKeHoachTuan({
                           {!chuaDinhNgay ? (
                             <span
                               className={cn(
-                                'px-2 py-0.5 rounded text-nhan font-bold font-mono inline-flex items-center gap-1',
+                                'px-2 py-0.5 rounded text-xs font-semibold font-mono inline-flex items-center gap-1',
                                 item.ngay_du_kien === homNayISO ||
                                   item.cac_ngay_thuc_hien?.includes(homNayISO)
                                   ? 'bg-emerald-500/15 text-emerald-800 border border-emerald-500/30'
                                   : 'bg-slate-100 text-slate-700'
                               )}
                             >
-                              <Calendar className="size-3" />
+                              <Calendar className="size-3 text-muted-foreground" />
                               {item.ngay_du_kien
                                 ? new Date(item.ngay_du_kien).toLocaleDateString('vi-VN')
                                 : `${item.cac_ngay_thuc_hien?.length || 1} ngày`}
                             </span>
                           ) : (
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-800 border border-amber-500/25 text-nhan font-bold inline-flex items-center gap-1">
+                              <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-800 border border-amber-500/25 text-xs font-semibold inline-flex items-center gap-1">
                                 <Inbox className="size-3" /> Rổ tuần (Chưa định ngày)
                               </span>
                             </div>
@@ -444,12 +455,11 @@ export default function BangKeHoachTuan({
                           {kqMoiNhat ? (
                             <div className="space-y-1">
                               {dsKetQua.length > 0 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-semibold">
                                   {dsKetQua.length} lượt tương tác
                                 </span>
                               )}
-                              <div className="text-sm font-medium text-emerald-700 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 line-clamp-2">
-                                ✓{' '}
+                              <div className="text-xs font-medium text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200/60 line-clamp-2">
                                 {dsKetQua[0]?.ten_khach_hang
                                   ? `[${dsKetQua[0].ten_khach_hang}] `
                                   : ''}
@@ -457,7 +467,7 @@ export default function BangKeHoachTuan({
                               </div>
                             </div>
                           ) : (
-                            <div className="text-nhan text-muted-foreground italic">
+                            <div className="text-xs text-muted-foreground italic">
                               Chưa có tương tác
                             </div>
                           )}
