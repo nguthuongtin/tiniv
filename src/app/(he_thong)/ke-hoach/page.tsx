@@ -22,7 +22,9 @@ import type {
   KeHoachThang,
   KeHoachTuan,
   ItemKeHoachThang,
-  ItemKeHoachTuan
+  ItemKeHoachTuan,
+  TrangThaiKetQuaCongViec,
+  NhatKyKetQuaTuan
 } from '../../../thu_vien/types/ke_hoach';
 import type {
   BaoCaoKeHoachTuan,
@@ -674,6 +676,100 @@ export function NoiDungKeHoachNVKD({
           noiDungKetQua:
             it.ket_qua_thuc_te ||
             `Hoàn thành kế hoạch: ${it.hanh_dong_tuan || it.noi_dung_tuan || it.dau_ra_cam_ket}`,
+          nguoiThucHien: nguoiDungHienTai ? { id: nguoiDungHienTai.id } : { id: targetId }
+        });
+      }
+    })();
+  };
+
+  const xuLyChotKetQuaTuan = async (
+    itemId: string,
+    trangThai: TrangThaiKetQuaCongViec,
+    ketQuaThucTe: string
+  ) => {
+    const targetId = nhanVienChonId || nguoiDungHienTai?.id;
+    if (!targetId || !keHoachTuan) return;
+
+    const nv = dsNhanSu.find((x) => x.id === targetId);
+    const homNay = new Date().toISOString().split('T')[0];
+    let itemDaCapNhat: ItemKeHoachTuan | null = null;
+    const daHoanThanh = trangThai === 'dat_muc_tieu';
+
+    const dsMoi = keHoachTuan.danh_sach_tac_chien.map((x) => {
+      if (x.id !== itemId) return x;
+
+      let ngayHoanThanh = x.ngay_hoan_thanh || null;
+      if (daHoanThanh) {
+        if (!ngayHoanThanh) ngayHoanThanh = homNay;
+      } else {
+        ngayHoanThanh = null;
+      }
+
+      const dsKetQuaCu = x.danh_sach_ket_qua || [];
+      const dsKetQuaMoi: NhatKyKetQuaTuan[] = ketQuaThucTe
+        ? [
+            {
+              id: `kq_${Date.now()}`,
+              ngay_ghi_nhan: homNay,
+              noi_dung: ketQuaThucTe,
+              nguoi_ghi_id: nguoiDungHienTai?.id || targetId,
+              ten_nguoi_ghi: nguoiDungHienTai?.ho_va_ten || nv?.ho_va_ten || null
+            },
+            ...dsKetQuaCu
+          ]
+        : dsKetQuaCu;
+
+      itemDaCapNhat = {
+        ...x,
+        da_hoan_thanh: daHoanThanh,
+        trang_thai_ket_qua: trangThai,
+        ket_qua_thuc_te: ketQuaThucTe || x.ket_qua_thuc_te,
+        danh_sach_ket_qua: dsKetQuaMoi,
+        ngay_hoan_thanh: ngayHoanThanh,
+        ngay_cap_nhat_tien_do: new Date().toISOString()
+      };
+      return itemDaCapNhat;
+    });
+
+    setKeHoachTuan((prev) => (prev ? { ...prev, danh_sach_tac_chien: dsMoi } : prev));
+
+    const res = await luuKeHoachTuan(
+      {
+        id: keHoachTuan.id,
+        tuan: tuanChon,
+        nhan_vien_id: targetId,
+        danh_sach_tac_chien: dsMoi
+      },
+      nguoiDungHienTai
+    );
+
+    setKeHoachTuan(res);
+
+    void (async () => {
+      const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
+      if (bcDongBo) setBaoCaoTuan(bcDongBo);
+
+      if (itemDaCapNhat && (daHoanThanh || ketQuaThucTe)) {
+        const it = itemDaCapNhat as ItemKeHoachTuan;
+        if (daHoanThanh) {
+          await dongBoCongViecTuanSangLichGap({
+            item: it,
+            nhanVienId: targetId,
+            chiNhanhId: nv?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null,
+            nguoiTaoId: nguoiDungHienTai?.id || targetId,
+            choPhepTaoMoiLich: false
+          });
+        }
+        await ghiNhanCheckInVaoBaoCaoNgay({
+          nhanVienId: targetId,
+          chiNhanhId: nv?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null,
+          phongBanId: nv?.phong_ban_id ?? nguoiDungHienTai?.phong_ban_id ?? null,
+          ngayBaoCao: homNay,
+          duAnId: it.du_an_id || null,
+          tenKhachHangDuAn: it.co_quan_doanh_nghiep || it.ten_khach_hang_du_an || 'Công việc tuần',
+          noiDungKetQua:
+            it.ket_qua_thuc_te ||
+            `Chốt kết quả: [${trangThai === 'dat_muc_tieu' ? 'Đạt mục tiêu' : trangThai === 'do_dang' ? 'Dở dang' : 'Không đạt'}] ${it.hanh_dong_tuan || it.noi_dung_tuan || it.dau_ra_cam_ket}`,
           nguoiThucHien: nguoiDungHienTai ? { id: nguoiDungHienTai.id } : { id: targetId }
         });
       }
@@ -1499,6 +1595,7 @@ export function NoiDungKeHoachNVKD({
             setMoDrawerTuan(true);
           }}
           onDoiNhanhHoanThanh={xuLyDoiVatChung}
+          onChotKetQua={xuLyChotKetQuaTuan}
           onCapNhatLichCongViec={xuLyCapNhatLichCongViec}
           onCapNhatTienDoInline={xuLyCapNhatTienDoTuan}
           onMoFormViecPhatSinh={(ngayMacDinh) => {
@@ -1616,6 +1713,7 @@ export function NoiDungKeHoachNVKD({
           }}
           onXoaItem={xuLyXoaItemTuan}
           onDoiVatChung={xuLyDoiVatChung}
+          onChotKetQua={xuLyChotKetQuaTuan}
           onCapNhatTienDo={(item) => {
             setViecChonMacDinhId(item.id);
             setTabHienTai('ban_lam_viec');

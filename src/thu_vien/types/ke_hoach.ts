@@ -131,8 +131,9 @@ export interface ItemKeHoachTuan {
   cac_ngay_thuc_hien?: string[]; // Danh sách các ngày trong tuần có thực hiện công việc này (YYYY-MM-DD)
   gio_bat_dau?: string | null; // Giờ bắt đầu hẹn gặp (HH:mm) nếu chốt lịch hẹn
   gio_ket_thuc?: string | null; // Giờ kết thúc hẹn gặp (HH:mm) nếu chốt lịch hẹn
-  dia_diem_hen?: string | null; // Địa điểm hẹn gặp cụ thể
+  dia_diem_hen?: string | null; // Địa điểm hẹn gặp (quán cà phê, cơ quan, văn phòng...)
   da_hoan_thanh: boolean; // Trạng thái tick xong
+  trang_thai_ket_qua?: 'dang_thuc_hien' | 'dat_muc_tieu' | 'do_dang' | 'khong_dat'; // Phản ánh đúng 3 trạng thái thực tế
   ngay_hoan_thanh?: string | null; // Ngày bấm hoàn thành đầu tiên (YYYY-MM-DD) chống gian lận
   can_ho_tro?: string | null; // Cần Sếp/CN hỗ trợ
 
@@ -142,6 +143,8 @@ export interface ItemKeHoachTuan {
   ngay_cap_nhat_tien_do?: string | null; // Ngày cập nhật kết quả gần nhất (ISO)
   tien_do?: number; // Giữ lại optional để backward compatibility nếu có dữ liệu cũ
 }
+
+export type TrangThaiKetQuaCongViec = 'dang_thuc_hien' | 'dat_muc_tieu' | 'do_dang' | 'khong_dat';
 
 // Backward compatibility alias for existing code
 export type ItemTacChienTuan = ItemKeHoachTuan;

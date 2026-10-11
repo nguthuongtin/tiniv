@@ -15,14 +15,18 @@ import {
   Link2,
   Save,
   Inbox,
-  Play
+  Play,
+  Clock,
+  XCircle
 } from 'lucide-react';
 import type {
   KeHoachTuan,
   ItemKeHoachTuan,
-  ItemKeHoachThang
+  ItemKeHoachThang,
+  TrangThaiKetQuaCongViec
 } from '../../thu_vien/types/ke_hoach';
 import type { BaoCaoKeHoachTuan } from '../../thu_vien/types/bao_cao_ke_hoach';
+import ModalChotKetQuaTuan from './modal_chot_ket_qua_tuan';
 import {
   ThanhSoLieu,
   KhungDanhSach,
@@ -47,6 +51,11 @@ interface Props {
   onSuaItem: (item: ItemKeHoachTuan) => void;
   onXoaItem: (itemId: string) => void;
   onDoiVatChung: (itemId: string, daLay: boolean) => void;
+  onChotKetQua?: (
+    itemId: string,
+    trangThai: TrangThaiKetQuaCongViec,
+    ketQuaThucTe: string
+  ) => Promise<void> | void;
   onCapNhatTienDo: (item: ItemKeHoachTuan) => void;
   onLamHomNay?: (item: ItemKeHoachTuan) => void;
   onMoDrawerTongKet: () => void;
@@ -64,6 +73,7 @@ export default function BangKeHoachTuan({
   onSuaItem,
   onXoaItem,
   onDoiVatChung,
+  onChotKetQua,
   onCapNhatTienDo,
   onLamHomNay,
   onMoDrawerTongKet,
@@ -81,6 +91,7 @@ export default function BangKeHoachTuan({
     'tat_ca' | 'ro_tuan' | 'da_xep_ngay' | 'da_xong'
   >('tat_ca');
   const [itemChiTiet, setItemChiTiet] = useState<ItemKeHoachTuan | null>(null);
+  const [itemChotKetQua, setItemChotKetQua] = useState<ItemKeHoachTuan | null>(null);
 
   const homNayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -261,7 +272,7 @@ export default function BangKeHoachTuan({
               <Bang>
                 <ChuDeBang>
                   <HangBang>
-                    <ODauBang className="w-12 text-center">Xong</ODauBang>
+                    <ODauBang className="w-32 text-center">Trạng thái</ODauBang>
                     <ODauBang>Nội dung công việc tuần</ODauBang>
                     <ODauBang className="w-[190px]">Thời điểm thực hiện</ODauBang>
                     <ODauBang className="w-[230px]">Kết quả / Tương tác</ODauBang>
@@ -306,16 +317,59 @@ export default function BangKeHoachTuan({
                           onClick={(e) => e.stopPropagation()}
                         >
                           {laSuaDuoc ? (
-                            <input
-                              type="checkbox"
-                              checked={Boolean(daXong)}
-                              onChange={(e) => onDoiVatChung(item.id, e.target.checked)}
-                              className="size-4.5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                            />
-                          ) : daXong ? (
-                            <CheckCircle2 className="size-4.5 text-emerald-600 mx-auto" />
+                            <button
+                              type="button"
+                              onClick={() => setItemChotKetQua(item)}
+                              className={cn(
+                                'px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer border',
+                                item.trang_thai_ket_qua === 'dat_muc_tieu' || (item.da_hoan_thanh && !item.trang_thai_ket_qua)
+                                  ? 'bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 border-emerald-500/30'
+                                  : item.trang_thai_ket_qua === 'do_dang'
+                                  ? 'bg-amber-500/15 text-amber-700 hover:bg-amber-500/25 border-amber-500/30'
+                                  : item.trang_thai_ket_qua === 'khong_dat'
+                                  ? 'bg-rose-500/15 text-rose-700 hover:bg-rose-500/25 border-rose-500/30'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                              )}
+                              title="Nhấp để chốt kết quả hoặc đổi trạng thái"
+                            >
+                              {item.trang_thai_ket_qua === 'dat_muc_tieu' || (item.da_hoan_thanh && !item.trang_thai_ket_qua) ? (
+                                <>
+                                  <CheckCircle2 className="size-3.5 text-emerald-600" />
+                                  <span>Đạt mục tiêu</span>
+                                </>
+                              ) : item.trang_thai_ket_qua === 'do_dang' ? (
+                                <>
+                                  <Clock className="size-3.5 text-amber-600" />
+                                  <span>Dở dang</span>
+                                </>
+                              ) : item.trang_thai_ket_qua === 'khong_dat' ? (
+                                <>
+                                  <XCircle className="size-3.5 text-rose-600" />
+                                  <span>Không đạt</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="size-3.5 text-slate-400" />
+                                  <span>Đang làm</span>
+                                </>
+                              )}
+                            </button>
+                          ) : item.trang_thai_ket_qua === 'dat_muc_tieu' || daXong ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 inline-flex items-center gap-1">
+                              <CheckCircle2 className="size-3 text-emerald-600" /> Đạt MT
+                            </span>
+                          ) : item.trang_thai_ket_qua === 'do_dang' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 border border-amber-500/30 inline-flex items-center gap-1">
+                              <Clock className="size-3 text-amber-600" /> Dở dang
+                            </span>
+                          ) : item.trang_thai_ket_qua === 'khong_dat' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 border border-rose-500/30 inline-flex items-center gap-1">
+                              <XCircle className="size-3 text-rose-600" /> Không đạt
+                            </span>
                           ) : (
-                            <AlertCircle className="size-4.5 text-muted-foreground mx-auto" />
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 inline-flex items-center gap-1">
+                              <Clock className="size-3 text-slate-400" /> Đang làm
+                            </span>
                           )}
                         </OBang>
 
@@ -463,15 +517,45 @@ export default function BangKeHoachTuan({
                     className={cn(daXong && 'border-emerald-500/30 bg-emerald-500/[0.02]')}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="flex items-start gap-2 min-w-0">
                         {laSuaDuoc && (
-                          <input
-                            type="checkbox"
-                            checked={Boolean(daXong)}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => onDoiVatChung(item.id, e.target.checked)}
-                            className="size-4.5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer mt-0.5 shrink-0"
-                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setItemChotKetQua(item);
+                            }}
+                            className={cn(
+                              'mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer border',
+                              item.trang_thai_ket_qua === 'dat_muc_tieu' || (item.da_hoan_thanh && !item.trang_thai_ket_qua)
+                                ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30'
+                                : item.trang_thai_ket_qua === 'do_dang'
+                                ? 'bg-amber-500/15 text-amber-700 border-amber-500/30'
+                                : item.trang_thai_ket_qua === 'khong_dat'
+                                ? 'bg-rose-500/15 text-rose-700 border-rose-500/30'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                            )}
+                            title="Chốt kết quả"
+                          >
+                            {item.trang_thai_ket_qua === 'dat_muc_tieu' || (item.da_hoan_thanh && !item.trang_thai_ket_qua) ? (
+                              <CheckCircle2 className="size-3 text-emerald-600" />
+                            ) : item.trang_thai_ket_qua === 'do_dang' ? (
+                              <Clock className="size-3 text-amber-600" />
+                            ) : item.trang_thai_ket_qua === 'khong_dat' ? (
+                              <XCircle className="size-3 text-rose-600" />
+                            ) : (
+                              <Clock className="size-3 text-slate-400" />
+                            )}
+                            <span>
+                              {item.trang_thai_ket_qua === 'dat_muc_tieu' || (item.da_hoan_thanh && !item.trang_thai_ket_qua)
+                                ? 'Đạt MT'
+                                : item.trang_thai_ket_qua === 'do_dang'
+                                ? 'Dở dang'
+                                : item.trang_thai_ket_qua === 'khong_dat'
+                                ? 'Không đạt'
+                                : 'Chốt KQ'}
+                            </span>
+                          </button>
                         )}
                         <div className="min-w-0">
                           <div
@@ -658,6 +742,19 @@ export default function BangKeHoachTuan({
         </div>
       )}
 
+      {/* MODAL CHỐT KẾT QUẢ CÔNG VIỆC (3 TRẠNG THÁI + BẮT BUỘC KẾT QUẢ THỰC TẾ) */}
+      <ModalChotKetQuaTuan
+        mo={Boolean(itemChotKetQua)}
+        item={itemChotKetQua}
+        onDong={() => setItemChotKetQua(null)}
+        onLuu={async (itemId, trangThai, ketQuaThucTe) => {
+          if (onChotKetQua) {
+            await onChotKetQua(itemId, trangThai, ketQuaThucTe);
+          } else {
+            onDoiVatChung(itemId, trangThai === 'dat_muc_tieu');
+          }
+        }}
+      />
     </div>
   );
 }

@@ -16,7 +16,8 @@ import {
   Target,
   X,
   ListTodo,
-  UserCheck
+  UserCheck,
+  XCircle
 } from 'lucide-react';
 import type { KeHoachTuan, ItemKeHoachTuan, LoaiMucTieuThang } from '../../thu_vien/types/ke_hoach';
 import type { BaoCaoKeHoachTuan } from '../../thu_vien/types/bao_cao_ke_hoach';
@@ -148,7 +149,9 @@ export default function BangTongQuanTeamTuan({
 }: Props) {
   const [cheDoXem, setCheDoXem] = useState<'ke_hoach_gom' | 'theo_nhan_su'>('ke_hoach_gom');
   const [locNhanSuId, setLocNhanSuId] = useState<string>('tat_ca');
-  const [locTrangThai, setLocTrangThai] = useState<'tat_ca' | 'hoan_thanh' | 'dang_lam'>('tat_ca');
+  const [locTrangThai, setLocTrangThai] = useState<
+    'tat_ca' | 'dat_muc_tieu' | 'do_dang' | 'khong_dat' | 'dang_lam'
+  >('tat_ca');
   const [locLoaiViec, setLocLoaiViec] = useState<string>('tat_ca');
   const [tuKhoa, setTuKhoa] = useState<string>('');
 
@@ -233,8 +236,21 @@ export default function BangTongQuanTeamTuan({
       if (locNhanSuId !== 'tat_ca' && nhanSu.id !== locNhanSuId) return false;
 
       const daXong = item.da_hoan_thanh || (item as any).trang_thai_vat_chung === 'da_lay';
-      if (locTrangThai === 'hoan_thanh' && !daXong) return false;
-      if (locTrangThai === 'dang_lam' && daXong) return false;
+      if (
+        locTrangThai === 'dat_muc_tieu' &&
+        !(item.trang_thai_ket_qua === 'dat_muc_tieu' || daXong)
+      )
+        return false;
+      if (locTrangThai === 'do_dang' && item.trang_thai_ket_qua !== 'do_dang') return false;
+      if (locTrangThai === 'khong_dat' && item.trang_thai_ket_qua !== 'khong_dat') return false;
+      if (
+        locTrangThai === 'dang_lam' &&
+        (daXong ||
+          item.trang_thai_ket_qua === 'dat_muc_tieu' ||
+          item.trang_thai_ket_qua === 'do_dang' ||
+          item.trang_thai_ket_qua === 'khong_dat')
+      )
+        return false;
 
       if (locLoaiViec !== 'tat_ca' && (item.loai_cong_viec || 'thi_truong') !== locLoaiViec) return false;
 
@@ -415,8 +431,10 @@ export default function BangTongQuanTeamTuan({
                 className="w-full h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
               >
                 <option value="tat_ca">Tất cả trạng thái</option>
-                <option value="hoan_thanh">Đã hoàn thành</option>
-                <option value="dang_lam">Đang thực hiện</option>
+                <option value="dat_muc_tieu">Đạt mục tiêu</option>
+                <option value="do_dang">Dở dang</option>
+                <option value="khong_dat">Không đạt</option>
+                <option value="dang_lam">Đang triển khai</option>
               </select>
             </div>
 
@@ -610,13 +628,21 @@ export default function BangTongQuanTeamTuan({
 
                           {/* 6. Trạng thái */}
                           <td className="py-3.5 px-3 text-center">
-                            {daHoanThanh ? (
+                            {item.trang_thai_ket_qua === 'dat_muc_tieu' || daHoanThanh ? (
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1 border border-emerald-500/30">
-                                <Check className="size-3" /> Đã xong
+                                <Check className="size-3" /> Đạt MT
+                              </span>
+                            ) : item.trang_thai_ket_qua === 'do_dang' ? (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 inline-flex items-center gap-1 border border-amber-500/30">
+                                <Clock className="size-3" /> Dở dang
+                              </span>
+                            ) : item.trang_thai_ket_qua === 'khong_dat' ? (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 inline-flex items-center gap-1 border border-rose-500/30">
+                                <XCircle className="size-3" /> Không đạt
                               </span>
                             ) : (
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 inline-flex items-center gap-1 border border-amber-500/30">
-                                <Clock className="size-3" /> Đang làm
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 inline-flex items-center gap-1 border border-slate-200">
+                                <Clock className="size-3 text-slate-400" /> Đang làm
                               </span>
                             )}
                           </td>
