@@ -370,7 +370,7 @@ export function SidebarMobileDrawer() {
 
   return (
     <div
-      className="md:hidden fixed inset-0 z-10 flex flex-col min-h-0"
+      className="md:hidden fixed inset-0 z-[60] flex flex-col min-h-0"
       aria-modal="true"
       role="dialog"
       aria-label="Menu điều hướng"

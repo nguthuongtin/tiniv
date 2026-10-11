@@ -113,6 +113,7 @@ export default function BoCucGoc({
       </head>
       <body className="bg-slate-50 text-slate-900 antialiased" style={{ colorScheme: 'light' }}>
         <BocXacThucToanUngDung>
+          <SidebarMobileDrawer />
           <div className="flex h-[100dvh] w-full overflow-hidden min-w-0 max-w-none">
             <aside className="hidden md:flex w-64 h-full flex-shrink-0 flex-col min-h-0 overflow-hidden bg-background/85 backdrop-blur-md">
               <SidebarDesktop />

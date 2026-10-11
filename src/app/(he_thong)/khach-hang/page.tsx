@@ -18,7 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
-  FolderKanban
+  FolderKanban,
+  MapPin
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -434,15 +435,25 @@ export default function TrangKhachHang() {
           tieu_de_ngan="Khách hàng"
           so_luong={danhSachDaSapXep.length}
           hanh_dong={
-            <Nut
-              kich_thuoc="sm"
-              icon_trai={Plus}
-              onClick={mo_them_moi}
-              title="Thêm khách hàng mới"
-              aria-label="Thêm khách hàng mới"
-            >
-              <span className="hidden sm:inline">Thêm khách hàng</span>
-            </Nut>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/ban-do-3d"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition active:scale-95"
+                title="Xem bản đồ 102 xã phường địa bàn An Giang"
+              >
+                <MapPin className="size-3.5 text-sky-600" />
+                <span>Bản đồ địa bàn</span>
+              </Link>
+              <Nut
+                kich_thuoc="sm"
+                icon_trai={Plus}
+                onClick={mo_them_moi}
+                title="Thêm khách hàng mới"
+                aria-label="Thêm khách hàng mới"
+              >
+                <span className="hidden sm:inline">Thêm khách hàng</span>
+              </Nut>
+            </div>
           }
           chan={
             <PhanTrang

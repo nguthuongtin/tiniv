@@ -214,9 +214,9 @@ export default function MapDashboardPage() {
   const tongSoDuAn = crmData.reduce((acc, d) => acc + (d.danh_sach_du_an?.length || 0), 0);
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 flex flex-col h-[calc(100vh-4rem)]">
+    <div className="space-y-4 flex flex-col min-h-[600px] h-[calc(100dvh-130px)] md:h-[calc(100vh-5.5rem)]">
       {/* Tiêu đề & Tổng quan chỉ số */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 shrink-0">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">
             Bản Đồ Địa Bàn & Khách Hàng An Giang
@@ -227,24 +227,24 @@ export default function MapDashboardPage() {
         </div>
 
         {/* Chỉ số địa bàn */}
-        <div className="flex items-center gap-3 text-xs">
-          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center gap-2 sm:gap-3 text-xs overflow-x-auto pb-1 max-w-full shrink-0">
+          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
             <span className="text-slate-500 block text-[11px]">Tổng địa bàn</span>
             <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">102 xã/phường</span>
           </div>
-          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
             <span className="text-slate-500 block text-[11px]">Tổng dự án</span>
             <span className="font-bold text-blue-600 text-sm">{tongSoDuAn} dự án</span>
           </div>
-          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
             <span className="text-slate-500 block text-[11px]">Đã gán sale</span>
             <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{countDaGanSale} địa bàn</span>
           </div>
-          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
             <span className="text-slate-500 block text-[11px]">Đang chăm sóc</span>
             <span className="font-bold text-amber-500 text-sm">{countDangChamSoc} địa bàn</span>
           </div>
-          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="bg-white dark:bg-slate-800 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
             <span className="text-slate-500 block text-[11px]">Đã chốt</span>
             <span className="font-bold text-emerald-600 text-sm">{countDaChot} địa bàn</span>
           </div>
@@ -252,7 +252,7 @@ export default function MapDashboardPage() {
       </div>
 
       {/* Khu vực Bản Đồ 2D */}
-      <div className="flex-1 w-full min-h-[500px]">
+      <div className="flex-1 w-full min-h-[450px] relative rounded-2xl overflow-hidden border border-slate-800 shadow-xl">
         {isLoading ? (
           <div className="w-full h-full flex items-center justify-center bg-slate-900 rounded-xl border border-slate-800 text-slate-400 text-sm">
             Đang tải dữ liệu địa bàn An Giang...

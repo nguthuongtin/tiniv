@@ -24,6 +24,8 @@ import {
   User,
   BookOpen,
   TrendingUp,
+  MapPin,
+  ListTodo,
   Menu
 } from 'lucide-react';
 
@@ -80,6 +82,20 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     nut_them: 'Thêm khách hàng',
     placeholder_tim: 'Tìm kiếm tên khách hàng, điện thoại, MST, email...',
     event_them: 'ebms:khach_hang:them_moi'
+  },
+  '/ban-do-3d': {
+    nhan: 'Bản đồ địa bàn',
+    nhan_mobile: 'Bản đồ',
+    mo_ta: 'Bản đồ 102 xã/phường phụ trách tại An Giang',
+    icon: MapPin,
+    placeholder_tim: 'Tìm xã, phường, nhân sự phụ trách...'
+  },
+  '/ban-lam-viec': {
+    nhan: 'Bàn làm việc',
+    nhan_mobile: 'Bàn làm việc',
+    mo_ta: 'Danh sách công việc trong ngày và tác nghiệp khách hàng',
+    icon: ListTodo,
+    placeholder_tim: 'Tìm công việc...'
   },
   '/ho-so-du-an': {
     nhan: 'Hồ sơ dự án',
@@ -295,7 +311,11 @@ export default function ThanhPhanTopbar() {
           <div className="sm:hidden flex items-center gap-2.5 min-w-0">
             <button
               type="button"
-              onClick={() => setMoMenuMobile(!moMenuMobile)}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('ebms:toggle_mobile_sidebar'));
+                }
+              }}
               className="size-9 flex items-center justify-center rounded-[14px] bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 transition active:scale-95 shrink-0"
               aria-label="Mở menu"
             >
@@ -361,6 +381,34 @@ export default function ThanhPhanTopbar() {
             onClick={() => setMoMenuMobile(false)} 
           />
           <div className="fixed top-15 left-3 z-50 w-68 rounded-[26px] border border-slate-200/90 bg-white/95 backdrop-blur-2xl shadow-[0_16px_40px_rgba(15,23,42,0.16)] p-2 space-y-1 animate-in slide-in-from-top-2 fade-in duration-200 sm:hidden">
+            <Link
+              href="/ban-do-3d"
+              onClick={() => setMoMenuMobile(false)}
+              className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
+            >
+              <div className="size-9 rounded-[14px] bg-sky-500/15 text-sky-600 flex items-center justify-center shrink-0">
+                <MapPin className="size-[18px]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold leading-snug">Bản đồ địa bàn</div>
+                <div className="text-[11px] text-slate-400 leading-tight">102 xã/phường An Giang</div>
+              </div>
+            </Link>
+
+            <Link
+              href="/ban-lam-viec"
+              onClick={() => setMoMenuMobile(false)}
+              className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
+            >
+              <div className="size-9 rounded-[14px] bg-emerald-500/15 text-[#107555] flex items-center justify-center shrink-0">
+                <ListTodo className="size-[18px]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold leading-snug">Bàn làm việc</div>
+                <div className="text-[11px] text-slate-400 leading-tight">Tác nghiệp & công việc ngày</div>
+              </div>
+            </Link>
+
             <Link
               href="/ke-hoach"
               onClick={() => setMoMenuMobile(false)}
