@@ -162,7 +162,8 @@ const renderDanhMuc = (
 
   const laLanhDao =
     nguoiDungHienTai &&
-    (coQuyen(nguoiDungHienTai, 'lanh_dao.xem') ||
+    (coQuyen(nguoiDungHienTai, 'tong_quan.theo_doi_kinh_doanh') ||
+      coQuyen(nguoiDungHienTai, 'lanh_dao.xem') ||
       ['giam_doc', 'truong_phong', 'quan_tri_he_thong'].includes(nguoiDungHienTai.vai_tro as string));
 
   const danhMucTuyChinh = DANH_MUC_SIDEBAR.filter((m) => {

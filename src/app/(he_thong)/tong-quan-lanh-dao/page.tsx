@@ -26,7 +26,8 @@ import {
   ExternalLink,
   Layers,
   FileCheck,
-  Target
+  Target,
+  Clock
 } from 'lucide-react';
 import { useStoreXacThuc } from '../../../thu_vien/zustand/store_xac_thuc';
 import { coQuyen, layPhamViPhongBan } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
@@ -120,6 +121,7 @@ export default function TrangTongQuanLanhDao() {
   const duocPhepXem = useMemo(() => {
     if (!nguoiDungHienTai) return false;
     return (
+      coQuyen(nguoiDungHienTai, 'tong_quan.theo_doi_kinh_doanh') ||
       coQuyen(nguoiDungHienTai, 'lanh_dao.xem') ||
       ['giam_doc', 'truong_phong', 'quan_tri_he_thong'].includes(nguoiDungHienTai.vai_tro as string)
     );
@@ -244,11 +246,21 @@ export default function TrangTongQuanLanhDao() {
     const cuoiTuanISO = fmt(sun);
     const thangISO = ngayChon.slice(0, 7);
 
-    const lichHopLe = dsLichGap.filter((l) => l.trang_thai !== 'huy');
+    const lichHopLe = dsLichGap.filter((l) => l.trang_thai !== 'huy' && !l.da_xoa);
     const lichHomNay = lichHopLe.filter((l) => l.ngay === ngayChon);
     const lichTuanNay = lichHopLe.filter((l) => l.ngay >= dauTuanISO && l.ngay <= cuoiTuanISO);
     const lichThangNay = lichHopLe.filter((l) => l.ngay.startsWith(thangISO));
     const lichDaHoanThanhThang = lichThangNay.filter((l) => l.trang_thai === 'da_hoan_thanh');
+
+    // Lịch hẹn đã đến/qua ngày làm việc nhưng CHƯA cập nhật kết quả
+    const homNayISO = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+    const ngayMoc = ngayChon > homNayISO ? homNayISO : ngayChon;
+    const lichChuaCapNhatKQ = lichHopLe.filter((l) => {
+      if (l.ngay > ngayMoc) return false;
+      const chuaCoKetQua = !l.ket_qua || l.ket_qua.trim() === '';
+      const chuaXong = l.trang_thai !== 'da_hoan_thanh';
+      return chuaCoKetQua || chuaXong;
+    });
 
     // AI health count
     let soTot = 0;
@@ -275,6 +287,7 @@ export default function TrangTongQuanLanhDao() {
       lichTuanNay,
       lichThangNay,
       lichDaHoanThanhThang,
+      lichChuaCapNhatKQ,
       soTot,
       soCanhBao,
       soRuiRo
@@ -402,6 +415,38 @@ export default function TrangTongQuanLanhDao() {
             Tháng {ngayChon.slice(5, 7)}: <span className="font-black">{thongKeLanhDao.lichThangNay.length}</span>
           </button>
 
+          {/* Cảnh báo: Lịch hẹn chưa cập nhật KQ */}
+          <button
+            type="button"
+            onClick={() =>
+              setLichGapModal({
+                mo: true,
+                tieuDe: 'Lịch hẹn đã đến hạn nhưng CHƯA CẬP NHẬT KẾT QUẢ',
+                danhSachLich: thongKeLanhDao.lichChuaCapNhatKQ
+              })
+            }
+            className={cn(
+              'px-2.5 sm:px-3 py-1.5 rounded-xl text-phu font-bold transition active:scale-95 cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5 border',
+              thongKeLanhDao.lichChuaCapNhatKQ.length > 0
+                ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border-amber-300/80 shadow-2xs'
+                : 'bg-slate-100 text-slate-500 border-slate-200'
+            )}
+            title="Nhấp để xem danh sách lịch hẹn đã đến ngày/giờ nhưng nhân viên chưa ghi nhận kết quả"
+          >
+            <Clock className="size-3.5 text-amber-600" />
+            <span>Chưa có KQ:</span>
+            <span
+              className={cn(
+                'font-black px-1.5 py-0.2 rounded-full text-xs',
+                thongKeLanhDao.lichChuaCapNhatKQ.length > 0
+                  ? 'bg-amber-200/80 text-amber-950'
+                  : 'bg-slate-200 text-slate-600'
+              )}
+            >
+              {thongKeLanhDao.lichChuaCapNhatKQ.length}
+            </span>
+          </button>
+
           <Link
             href="/lich-cong-tac"
             className="inline-flex items-center gap-0.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-phu font-bold transition active:scale-95 whitespace-nowrap"
@@ -461,6 +506,7 @@ export default function TrangTongQuanLanhDao() {
                     <ODauBang className="text-center">Dự án</ODauBang>
                     <ODauBang className="text-center">Tiềm năng</ODauBang>
                     <ODauBang className="text-center">Sắp ký HĐ</ODauBang>
+                    <ODauBang className="text-center">Lịch chưa KQ</ODauBang>
                     <ODauBang className="text-right">Doanh số dự kiến</ODauBang>
                   </HangBang>
                 </ChuDeBang>
@@ -472,6 +518,9 @@ export default function TrangTongQuanLanhDao() {
                     );
                     const dsSapKyCuaNS = duAnCuaNS.filter((da) =>
                       ['dam_phan', 'bao_gia', 'ky_hop_dong'].includes(da.giai_doan)
+                    );
+                    const lichChuaKQCuaNS = thongKeLanhDao.lichChuaCapNhatKQ.filter(
+                      (l) => l.nguoi_phu_trach_id === ns.id || (l.nguoi_tham_gia_ids || []).includes(ns.id)
                     );
                     const giaTriDuAn = duAnCuaNS.reduce(
                       (sum, da) => sum + (Number(da.gia_tri_du_kien) || 0),
@@ -524,7 +573,7 @@ export default function TrangTongQuanLanhDao() {
                           )}
                         </OBang>
 
-                        {/* Cột 4: Dự án phụ trách */}
+                        {/* Cột 3: Dự án phụ trách */}
                         <OBang className="text-center">
                           <button
                             type="button"
@@ -542,7 +591,7 @@ export default function TrangTongQuanLanhDao() {
                           </button>
                         </OBang>
 
-                        {/* Cột 5: Tiềm năng cao */}
+                        {/* Cột 4: Tiềm năng cao */}
                         <OBang className="text-center">
                           <button
                             type="button"
@@ -566,7 +615,7 @@ export default function TrangTongQuanLanhDao() {
                           </button>
                         </OBang>
 
-                        {/* Cột 6: Sắp ký HĐ */}
+                        {/* Cột 5: Sắp ký HĐ */}
                         <OBang className="text-center">
                           <button
                             type="button"
@@ -587,6 +636,30 @@ export default function TrangTongQuanLanhDao() {
                           >
                             {dsSapKyCuaNS.length > 0 && <Award className="w-3 h-3 text-purple-600" />}
                             <span>{dsSapKyCuaNS.length}</span>
+                          </button>
+                        </OBang>
+
+                        {/* Cột 6: Lịch chưa cập nhật kết quả */}
+                        <OBang className="text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLichGapModal({
+                                mo: true,
+                                tieuDe: `Lịch hẹn chưa cập nhật KQ • ${ns.ho_va_ten}`,
+                                danhSachLich: lichChuaKQCuaNS
+                              });
+                            }}
+                            className={cn(
+                              'px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer text-phu inline-flex items-center gap-1',
+                              lichChuaKQCuaNS.length > 0
+                                ? 'bg-amber-100/90 hover:bg-amber-200 text-amber-800 ring-1 ring-amber-300/80'
+                                : 'bg-slate-100 text-slate-400'
+                            )}
+                            title="Xem danh sách lịch hẹn chưa cập nhật kết quả"
+                          >
+                            {lichChuaKQCuaNS.length > 0 && <Clock className="w-3 h-3 text-amber-600" />}
+                            <span>{lichChuaKQCuaNS.length}</span>
                           </button>
                         </OBang>
 
@@ -622,6 +695,9 @@ export default function TrangTongQuanLanhDao() {
                 );
                 const dsSapKyCuaNS = duAnCuaNS.filter((da) =>
                   ['dam_phan', 'bao_gia', 'ky_hop_dong'].includes(da.giai_doan)
+                );
+                const lichChuaKQCuaNS = thongKeLanhDao.lichChuaCapNhatKQ.filter(
+                  (l) => l.nguoi_phu_trach_id === ns.id || (l.nguoi_tham_gia_ids || []).includes(ns.id)
                 );
                 const giaTriDuAn = duAnCuaNS.reduce(
                   (sum, da) => sum + (Number(da.gia_tri_du_kien) || 0),
@@ -681,8 +757,8 @@ export default function TrangTongQuanLanhDao() {
                       </button>
                     </div>
 
-                    {/* Hàng 2: 3 chỉ số trọng tâm (Dự án, Tiềm năng, Sắp ký) */}
-                    <div className="grid grid-cols-3 gap-2 pt-1">
+                    {/* Hàng 2: 4 chỉ số trọng tâm (Dự án, Tiềm năng, Sắp ký, Chưa KQ) */}
+                    <div className="grid grid-cols-4 gap-1.5 pt-1">
                       <button
                         type="button"
                         onClick={() =>
@@ -692,7 +768,7 @@ export default function TrangTongQuanLanhDao() {
                             danhSachDuAn: duAnCuaNS
                           })
                         }
-                        className="bg-slate-100/80 border border-slate-200/60 py-1.5 px-1.5 rounded-xl text-center active:scale-95 transition cursor-pointer"
+                        className="bg-slate-100/80 border border-slate-200/60 py-1.5 px-1 rounded-xl text-center active:scale-95 transition cursor-pointer"
                       >
                         <p className="text-nhan font-bold text-slate-500 truncate">Dự án</p>
                         <p className="text-phu font-black text-slate-800 tabular-nums mt-0.5">{duAnCuaNS.length}</p>
@@ -708,7 +784,7 @@ export default function TrangTongQuanLanhDao() {
                           })
                         }
                         className={cn(
-                          'border py-1.5 px-1.5 rounded-xl text-center active:scale-95 transition cursor-pointer',
+                          'border py-1.5 px-1 rounded-xl text-center active:scale-95 transition cursor-pointer',
                           dsTiemNangCuaNS.length > 0
                             ? 'bg-amber-500/10 border-amber-200/70 text-amber-800'
                             : 'bg-slate-50 border-slate-200/50 text-slate-400'
@@ -728,7 +804,7 @@ export default function TrangTongQuanLanhDao() {
                           })
                         }
                         className={cn(
-                          'border py-1.5 px-1.5 rounded-xl text-center active:scale-95 transition cursor-pointer',
+                          'border py-1.5 px-1 rounded-xl text-center active:scale-95 transition cursor-pointer',
                           dsSapKyCuaNS.length > 0
                             ? 'bg-purple-500/10 border-purple-200/70 text-purple-800'
                             : 'bg-slate-50 border-slate-200/50 text-slate-400'
@@ -736,6 +812,26 @@ export default function TrangTongQuanLanhDao() {
                       >
                         <p className="text-nhan font-bold text-purple-600 truncate">Sắp ký</p>
                         <p className="text-phu font-black text-purple-800 tabular-nums mt-0.5">{dsSapKyCuaNS.length}</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setLichGapModal({
+                            mo: true,
+                            tieuDe: `Lịch hẹn chưa cập nhật KQ • ${ns.ho_va_ten}`,
+                            danhSachLich: lichChuaKQCuaNS
+                          })
+                        }
+                        className={cn(
+                          'border py-1.5 px-1 rounded-xl text-center active:scale-95 transition cursor-pointer',
+                          lichChuaKQCuaNS.length > 0
+                            ? 'bg-amber-500/15 border-amber-300 text-amber-800'
+                            : 'bg-slate-50 border-slate-200/50 text-slate-400'
+                        )}
+                      >
+                        <p className="text-nhan font-bold text-amber-700 truncate">Chưa KQ</p>
+                        <p className="text-phu font-black text-amber-800 tabular-nums mt-0.5">{lichChuaKQCuaNS.length}</p>
                       </button>
                     </div>
                   </TheMobile>
@@ -820,6 +916,7 @@ export default function TrangTongQuanLanhDao() {
                 lichGapModal.danhSachLich.map((lich) => {
                   const ns = dsNhanSu.find((x) => x.id === lich.nguoi_phu_trach_id);
                   const ttObj = DANH_SACH_TRANG_THAI_LICH_GAP.find((t) => t.key === lich.trang_thai);
+                  const chuaCoKQ = !lich.ket_qua?.trim() || lich.trang_thai !== 'da_hoan_thanh';
                   return (
                     <div
                       key={lich.id}
@@ -843,6 +940,16 @@ export default function TrangTongQuanLanhDao() {
                         {lich.noi_dung && (
                           <p className="text-phu text-slate-500 line-clamp-2">{lich.noi_dung}</p>
                         )}
+                        {lich.ket_qua?.trim() ? (
+                          <div className="text-phu text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-200/60 mt-1">
+                            <span className="font-bold text-slate-800">Kết quả:</span> {lich.ket_qua}
+                          </div>
+                        ) : chuaCoKQ ? (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200/80 text-amber-800 text-nhan font-bold mt-1">
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            <span>Chưa cập nhật kết quả làm việc</span>
+                          </div>
+                        ) : null}
                       </div>
 
                       {ttObj && (
