@@ -28,7 +28,8 @@ import {
   AlertTriangle,
   CornerUpLeft,
   Send,
-  XCircle
+  XCircle,
+  Circle
 } from 'lucide-react';
 import type {
   KeHoachTuan,
@@ -46,9 +47,9 @@ import {
   layCauHinhGiaiDoanTheoKey
 } from '../../thu_vien/cau_hinh/giai_doan_du_an';
 import { layKhoangNgayTuTuanISO } from '../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
+import { taoLichGapKHMoi } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
 import { cn } from '../../thu_vien/utils/cn';
-import ModalChotKetQuaTuan from './modal_chot_ket_qua_tuan';
 import DrawerHoSoThuGon, { type GoiYTaoLichHenNhanh } from './drawer_ho_so_thu_gon';
 import DrawerTroLyAISale, {
   phanTichRadarCanhBaoSale,
@@ -322,7 +323,12 @@ export default function BanLamViecHangNgay({
 
   // Công việc đang chọn để tác nghiệp ở Cột trái
   const [viecDangChonId, setViecDangChonId] = useState<string | null>(null);
-  const [itemChotKetQua, setItemChotKetQua] = useState<ItemKeHoachTuan | null>(null);
+
+  // Lịch hẹn công tác tác nghiệp
+  const [coHenLich, setCoHenLich] = useState(false);
+  const [ngayHenLich, setNgayHenLich] = useState('');
+  const [gioHenLich, setGioHenLich] = useState('09:00');
+  const [diaDiemHen, setDiaDiemHen] = useState('');
 
   // Trạng thái Trạm tác nghiệp inline
   const [doiTuongThucThiMap, setDoiTuongThucThiMap] = useState<
@@ -435,6 +441,10 @@ export default function BanLamViecHangNgay({
     setMoLinkCheckIn(false);
     setLinkDinhKemCheckIn('');
     setTenTaiLieuCheckIn('');
+    setCoHenLich(false);
+    setNgayHenLich('');
+    setGioHenLich('09:00');
+    setDiaDiemHen('');
     if (viecDangChon?.hinh_thuc === 'gap_mat') {
       setLoaiTacNghiepChon('gap_mat');
     } else if (viecDangChon?.du_an_id) {
@@ -871,10 +881,10 @@ export default function BanLamViecHangNgay({
   }, [khachHangDangTacNghiep, danhSachDuAn]);
 
   // Ghi nhận kết quả tương tác -> Đồng bộ toàn hệ thống
-  const xuLyGhiNhanKetQuaPanel = (danhDauXongLuon = false) => {
+  const xuLyGhiNhanKetQuaPanel = async (danhDauXongLuon = false) => {
     if (!viecDangChon) return;
     const text = noiDungCheckIn.trim();
-    if (!text && !danhDauXongLuon) {
+    if (!text && !danhDauXongLuon && !coHenLich) {
       inputCheckInRef.current?.focus();
       return;
     }
@@ -893,17 +903,90 @@ export default function BanLamViecHangNgay({
       null;
     const lhTuongTac = nguoiLienHeDangTacNghiep;
 
+    // Xử lý tự động tạo lịch hẹn công tác nếu bật hẹn lịch
+    let noiDungHenThem = '';
+    if (coHenLich && ngayHenLich) {
+      try {
+        const tenKhach =
+          khTuongTac?.ten_khach_hang || duAnTuongTac?.ten_du_an || 'Khách hàng';
+        const nguoiPhuTrach = nhanVienId || nguoiDungHienTai?.id || '';
+
+        await taoLichGapKHMoi({
+          tieu_de: `Gặp làm việc với ${tenKhach}`,
+          khach_hang_id: khTuongTac?.id || null,
+          ten_khach_hang: tenKhach,
+          nguoi_lien_he_id:
+            lhTuongTac?.id && lhTuongTac.id !== 'lh_item' ? lhTuongTac.id : null,
+          ten_nguoi_lien_he: lhTuongTac?.ho_va_ten || null,
+          so_dien_thoai:
+            lhTuongTac?.so_dien_thoai || khTuongTac?.so_dien_thoai || null,
+          nguoi_phu_trach_id: nguoiPhuTrach,
+          nguoi_tham_gia_ids: nguoiPhuTrach ? [nguoiPhuTrach] : [],
+          chi_nhanh_id: null,
+          ngay: ngayHenLich,
+          gio_bat_dau: gioHenLich || '09:00',
+          gio_ket_thuc: '10:30',
+          dia_diem: diaDiemHen.trim() || khTuongTac?.dia_chi || null,
+          noi_dung:
+            text ||
+            `Hẹn gặp trao đổi công việc (${
+              viecDangChon.hanh_dong_tuan || viecDangChon.noi_dung_tuan || ''
+            })`,
+          ket_qua: null,
+          trang_thai: 'sap_toi',
+          nguon_lead_id: null,
+          du_an_id: duAnTuongTac?.id || null,
+          nguoi_tao_id: nguoiDungHienTai?.id || nguoiPhuTrach
+        });
+
+        // Tự động sinh công việc vào đúng ngày hẹn trên Bàn làm việc
+        const itemViecHenMoi: ItemKeHoachTuan = {
+          id: `item_hen_${Date.now()}`,
+          ten_khach_hang_du_an: tenKhach,
+          noi_dung_tuan: `Gặp trực tiếp ${tenKhach}`,
+          hanh_dong_tuan: `Gặp trực tiếp ${tenKhach}`,
+          dau_ra_cam_ket: 'Chốt nội dung làm việc',
+          hinh_thuc: 'gap_mat',
+          gio_bat_dau: gioHenLich || '09:00',
+          gio_ket_thuc: '10:30',
+          dia_diem_hen: diaDiemHen.trim() || khTuongTac?.dia_chi || null,
+          ngay_du_kien: ngayHenLich,
+          cac_ngay_thuc_hien: [ngayHenLich],
+          khach_hang_id: khTuongTac?.id || null,
+          co_quan_doanh_nghiep: tenKhach,
+          du_an_id: duAnTuongTac?.id || null,
+          du_an_du_kien: duAnTuongTac?.ten_du_an || null,
+          nguoi_lien_he_id:
+            lhTuongTac?.id && lhTuongTac.id !== 'lh_item' ? lhTuongTac.id : null,
+          nguoi_lien_he: lhTuongTac?.ho_va_ten || null,
+          chuc_vu: lhTuongTac?.chuc_vu || null,
+          so_dien_thoai_lien_he: lhTuongTac?.so_dien_thoai || null,
+          ket_qua_mong_muon: 'Chốt nội dung làm việc',
+          da_hoan_thanh: false,
+          danh_sach_ket_qua: []
+        };
+        onThemNhanh(itemViecHenMoi);
+        noiDungHenThem = `[Hẹn gặp: ${ngayHenLich} lúc ${gioHenLich || '09:00'}${
+          diaDiemHen.trim() ? ` @ ${diaDiemHen.trim()}` : ''
+        }]`;
+      } catch (err) {
+        console.error('Lỗi khi tự động tạo lịch hẹn:', err);
+      }
+    }
+
+    const noiDungCuoiCung = [noiDungHenThem, text].filter(Boolean).join(' - ');
+
     const dsCu = viecDangChon.danh_sach_ket_qua ?? [];
     let dsMoi = [...dsCu];
 
-    if (text) {
+    if (noiDungCuoiCung) {
       const kqMoi: NhatKyKetQuaTuan = {
         id: `kq_${Date.now()}`,
         ngay_ghi_nhan: ngayChon,
-        noi_dung: text,
+        noi_dung: noiDungCuoiCung,
         nguoi_ghi_id: nguoiDungHienTai?.id || null,
         ten_nguoi_ghi: nguoiDungHienTai?.ho_va_ten || null,
-        loai_tac_nghiep: loaiTacNghiepChon,
+        loai_tac_nghiep: coHenLich ? 'gap_mat' : loaiTacNghiepChon,
         khach_hang_id: khTuongTac?.id || null,
         ten_khach_hang: khTuongTac?.ten_khach_hang || null,
         du_an_id: duAnTuongTac?.id || null,
@@ -928,7 +1011,8 @@ export default function BanLamViecHangNgay({
 
     onCapNhatTienDoInline(viecDangChon.id, {
       danh_sach_ket_qua: dsMoi,
-      ket_qua_thuc_te: dsMoi[0]?.noi_dung || viecDangChon.ket_qua_thuc_te || 'Đã hoàn thành',
+      ket_qua_thuc_te:
+        dsMoi[0]?.noi_dung || viecDangChon.ket_qua_thuc_te || 'Đã hoàn thành',
       da_hoan_thanh: daHoanThanhMoi,
       giai_doan_du_an_moi: giaiDoanDuAnChon || null,
       khach_hang_id: khTuongTac?.id || null,
@@ -938,6 +1022,10 @@ export default function BanLamViecHangNgay({
     });
 
     setNoiDungCheckIn('');
+    setCoHenLich(false);
+    setNgayHenLich('');
+    setGioHenLich('09:00');
+    setDiaDiemHen('');
     setGiaiDoanDuAnChon('');
     setLinkDinhKemCheckIn('');
     setTenTaiLieuCheckIn('');
@@ -1412,62 +1500,29 @@ export default function BanLamViecHangNgay({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setItemChotKetQua(item);
+                                onDoiNhanhHoanThanh(item.id, !daXong);
                               }}
                               className={cn(
-                                'mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer border',
-                                item.trang_thai_ket_qua === 'dat_muc_tieu' || (item.da_hoan_thanh && !item.trang_thai_ket_qua)
-                                  ? 'bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 border-emerald-500/30'
-                                  : item.trang_thai_ket_qua === 'do_dang'
-                                  ? 'bg-amber-500/15 text-amber-700 hover:bg-amber-500/25 border-amber-500/30'
-                                  : item.trang_thai_ket_qua === 'khong_dat'
-                                  ? 'bg-rose-500/15 text-rose-700 hover:bg-rose-500/25 border-rose-500/30'
-                                  : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border-border'
+                                'mt-0.5 size-5 rounded-full flex items-center justify-center shrink-0 transition-all border cursor-pointer',
+                                daXong
+                                  ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
+                                  : 'border-muted-foreground/30 text-transparent hover:border-emerald-500 hover:text-emerald-500/40'
                               )}
-                              title="Nhấp để chốt kết quả hoặc đổi trạng thái"
+                              title={daXong ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
                             >
-                              {item.trang_thai_ket_qua === 'dat_muc_tieu' || (item.da_hoan_thanh && !item.trang_thai_ket_qua) ? (
-                                <>
-                                  <CheckCircle2 className="size-3 text-emerald-600" />
-                                  <span>Đạt MT</span>
-                                </>
-                              ) : item.trang_thai_ket_qua === 'do_dang' ? (
-                                <>
-                                  <Clock className="size-3 text-amber-600" />
-                                  <span>Dở dang</span>
-                                </>
-                              ) : item.trang_thai_ket_qua === 'khong_dat' ? (
-                                <>
-                                  <XCircle className="size-3 text-rose-600" />
-                                  <span>Không đạt</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Clock className="size-3 text-muted-foreground" />
-                                  <span>Chốt KQ</span>
-                                </>
-                              )}
+                              <Check className="size-3.5 stroke-[3]" />
                             </button>
-                          ) : item.trang_thai_ket_qua === 'dat_muc_tieu' || daXong ? (
-                            <span className="mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 inline-flex items-center gap-1 shrink-0">
-                              <CheckCircle2 className="size-3 text-emerald-600" />
-                              <span>Đạt MT</span>
-                            </span>
-                          ) : item.trang_thai_ket_qua === 'do_dang' ? (
-                            <span className="mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 border border-amber-500/30 inline-flex items-center gap-1 shrink-0">
-                              <Clock className="size-3 text-amber-600" />
-                              <span>Dở dang</span>
-                            </span>
-                          ) : item.trang_thai_ket_qua === 'khong_dat' ? (
-                            <span className="mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 border border-rose-500/30 inline-flex items-center gap-1 shrink-0">
-                              <XCircle className="size-3 text-rose-600" />
-                              <span>Không đạt</span>
-                            </span>
                           ) : (
-                            <span className="mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground border border-border inline-flex items-center gap-1 shrink-0">
-                              <Clock className="size-3 text-muted-foreground" />
-                              <span>Đang làm</span>
-                            </span>
+                            <div
+                              className={cn(
+                                'mt-0.5 size-5 rounded-full flex items-center justify-center shrink-0 border',
+                                daXong
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : 'border-muted-foreground/30 text-transparent'
+                              )}
+                            >
+                              <Check className="size-3.5 stroke-[3]" />
+                            </div>
                           )}
 
                           <div className="min-w-0 flex-1 space-y-1">
@@ -1480,6 +1535,19 @@ export default function BanLamViecHangNgay({
                               >
                                 {tieuDe}
                               </span>
+                              {item.trang_thai_ket_qua === 'dat_muc_tieu' || daXong ? (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/25">
+                                  Đã xong
+                                </span>
+                              ) : item.trang_thai_ket_qua === 'do_dang' ? (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-700 border border-amber-500/25">
+                                  Dở dang
+                                </span>
+                              ) : item.trang_thai_ket_qua === 'khong_dat' ? (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-700 border border-rose-500/25">
+                                  Không đạt
+                                </span>
+                              ) : null}
                               {dsKetQua.length > 0 && (
                                 <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-semibold">
                                   {dsKetQua.length} kết quả
@@ -1564,232 +1632,354 @@ export default function BanLamViecHangNgay({
 
                       {/* KHU VỰC THAO TÁC TRỰC TIẾP NGAY TRONG VIỆC ĐANG MỞ */}
                       {dangMo && (
-                        <div className="px-4 pb-4 pt-1 pl-10 space-y-3 border-t border-border/40">
-                          {/* Banner nhắc đồng bộ lịch sử Khách hàng & Dự án */}
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/40 px-2.5 py-1.5 rounded-lg border border-border/50">
-                            <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0" />
-                            <span>Tự động đồng bộ vào </span>
-                            {khachHangDangTacNghiep || duAnDangTacNghiep ? (
-                              <span className="font-semibold text-foreground">
-                                Lịch sử {[khachHangDangTacNghiep?.ten_khach_hang, duAnDangTacNghiep?.ten_du_an].filter(Boolean).join(' · ')}
-                              </span>
-                            ) : (
-                              <span>Báo cáo ngày của bạn</span>
-                            )}
-                          </div>
-
+                        <div className="px-4 pb-4 pt-2 pl-10 space-y-3 border-t border-border/40 bg-muted/[0.02]">
                           {laSuaDuoc && (
-                            <div className="space-y-2 pt-1">
-                              {/* Thanh gắn Khách hàng / Dự án / Người liên hệ + Tạo nhanh */}
-                              <div className="flex items-center justify-between gap-2 flex-wrap">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  {khachHangDangTacNghiep && (
-                                    <div className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 text-xs font-bold overflow-hidden">
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          moHoSoKhachHangNhanh(khachHangDangTacNghiep)
-                                        }
-                                        className="px-2.5 py-1 inline-flex items-center gap-1.5 hover:bg-emerald-500/20 cursor-pointer"
-                                      >
-                                        <Building2 className="size-3.5 text-emerald-700" />
-                                        <span>{khachHangDangTacNghiep.ten_khach_hang}</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          if (
-                                            khCoDinhCuaViecChon?.id ===
-                                            khachHangDangTacNghiep.id
-                                          ) {
-                                            xuLyGoKhachHangKhoiItem(item);
-                                          }
-                                          setDoiTuongThucThiMap((prev) => ({
-                                            ...prev,
-                                            [item.id]: {
-                                              khachHang: null,
-                                              duAn: prev[item.id]?.duAn ?? null,
-                                              nguoiLienHe: null
-                                            }
-                                          }));
-                                        }}
-                                        className="px-1.5 py-1 hover:bg-rose-500/20 hover:text-rose-700 border-l border-emerald-500/25 cursor-pointer"
-                                        title="Gỡ khách hàng"
-                                      >
-                                        <X className="size-3" />
-                                      </button>
-                                    </div>
-                                  )}
+                            <div className="space-y-2.5">
+                              {/* Khung nhập kết quả / tác nghiệp tích hợp */}
+                              <div className="rounded-xl border border-border bg-card p-3 space-y-2.5 shadow-2xs focus-within:border-primary/60 transition-colors">
+                                {/* Ô nhập nội dung */}
+                                <textarea
+                                  ref={inputCheckInRef}
+                                  rows={2}
+                                  value={noiDungCheckIn}
+                                  onChange={(e) => setNoiDungCheckIn(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      xuLyGhiNhanKetQuaPanel(false);
+                                    }
+                                  }}
+                                  placeholder={
+                                    khachHangDangTacNghiep || duAnDangTacNghiep
+                                      ? `Nhập nhật ký / kết quả làm việc với ${
+                                          nguoiLienHeDangTacNghiep
+                                            ? `${nguoiLienHeDangTacNghiep.ho_va_ten} · `
+                                            : ''
+                                        }${
+                                          duAnDangTacNghiep?.ten_du_an ||
+                                          khachHangDangTacNghiep?.ten_khach_hang
+                                        }... (Enter để lưu)`
+                                      : 'Nhập nhật ký công việc / kết quả tác nghiệp hôm nay... (Enter để lưu)'
+                                  }
+                                  className="w-full bg-transparent text-xs font-medium text-foreground placeholder:text-muted-foreground/70 focus:outline-hidden resize-y min-h-[48px]"
+                                />
 
-                                  {duAnDangTacNghiep && (
-                                    <div className="inline-flex items-center rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-900 text-xs font-bold overflow-hidden">
-                                      <button
-                                        type="button"
-                                        onClick={() => moHoSoDuAnNhanh(duAnDangTacNghiep)}
-                                        className="px-2.5 py-1 inline-flex items-center gap-1.5 hover:bg-indigo-500/20 cursor-pointer"
-                                      >
-                                        <FolderKanban className="size-3.5 text-indigo-700" />
-                                        <span>{duAnDangTacNghiep.ten_du_an}</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          if (
-                                            daCoDinhCuaViecChon?.id ===
-                                            duAnDangTacNghiep.id
-                                          ) {
-                                            xuLyGoDuAnKhoiItem(item);
-                                          }
-                                          setDoiTuongThucThiMap((prev) => ({
-                                            ...prev,
-                                            [item.id]: {
-                                              khachHang:
-                                                prev[item.id]?.khachHang ??
-                                                khachHangDangTacNghiep,
-                                              duAn: null,
-                                              nguoiLienHe: prev[item.id]?.nguoiLienHe
-                                            }
-                                          }));
-                                        }}
-                                        className="px-1.5 py-1 hover:bg-rose-500/20 hover:text-rose-700 border-l border-indigo-500/25 cursor-pointer"
-                                        title="Gỡ dự án"
-                                      >
-                                        <X className="size-3" />
-                                      </button>
+                                {/* Form mini Đặt lịch hẹn (Hiển thị khi bật coHenLich) */}
+                                {coHenLich && (
+                                  <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                                        <Calendar className="size-3.5" />
+                                        <span>Thiết lập lịch hẹn công tác với khách hàng</span>
+                                      </span>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const d = new Date();
+                                            d.setDate(d.getDate() + 1);
+                                            setNgayHenLich(d.toISOString().slice(0, 10));
+                                          }}
+                                          className="px-2 py-0.5 rounded text-[10px] font-semibold bg-background hover:bg-muted text-muted-foreground border border-border cursor-pointer"
+                                        >
+                                          Ngày mai
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const d = new Date();
+                                            d.setDate(d.getDate() + 2);
+                                            setNgayHenLich(d.toISOString().slice(0, 10));
+                                          }}
+                                          className="px-2 py-0.5 rounded text-[10px] font-semibold bg-background hover:bg-muted text-muted-foreground border border-border cursor-pointer"
+                                        >
+                                          Ngày kia
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setCoHenLich(false)}
+                                          className="px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                                        >
+                                          Đóng
+                                        </button>
+                                      </div>
                                     </div>
-                                  )}
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                      <div>
+                                        <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
+                                          Ngày hẹn *
+                                        </label>
+                                        <input
+                                          type="date"
+                                          value={ngayHenLich}
+                                          onChange={(e) => setNgayHenLich(e.target.value)}
+                                          className="w-full h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
+                                          Giờ hẹn
+                                        </label>
+                                        <input
+                                          type="time"
+                                          value={gioHenLich}
+                                          onChange={(e) => setGioHenLich(e.target.value)}
+                                          className="w-full h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
+                                          Địa điểm
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={diaDiemHen}
+                                          onChange={(e) => setDiaDiemHen(e.target.value)}
+                                          placeholder={khachHangDangTacNghiep?.dia_chi || 'Tại trụ sở KH / Quán cafe...'}
+                                          className="w-full h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
 
-                                  {/* Chọn / Gắn Người liên hệ của Khách hàng đang tác nghiệp */}
-                                  {khachHangDangTacNghiep && (
-                                    <div className="inline-flex items-center gap-1">
+                                {/* Link đính kèm (Hiển thị khi bật moLinkCheckIn) */}
+                                {moLinkCheckIn && (
+                                  <div className="p-2 rounded-lg bg-muted/40 border border-border/60 flex items-center gap-2">
+                                    <Link2 className="size-3.5 text-muted-foreground shrink-0" />
+                                    <input
+                                      type="text"
+                                      value={linkDinhKemCheckIn}
+                                      onChange={(e) => setLinkDinhKemCheckIn(e.target.value)}
+                                      placeholder="Dán đường dẫn tài liệu / ảnh / file..."
+                                      className="flex-1 bg-transparent text-xs font-medium text-foreground focus:outline-hidden"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setMoLinkCheckIn(false)}
+                                      className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                                    >
+                                      Đóng
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Thanh công cụ tích hợp bên dưới textarea */}
+                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50 flex-wrap">
+                                  {/* Cụm công cụ bên trái */}
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {/* Chọn / Gắn Khách hàng hoặc Dự án */}
+                                    {khachHangDangTacNghiep || duAnDangTacNghiep ? (
+                                      <div className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 text-xs font-semibold overflow-hidden">
+                                        <button
+                                          type="button"
+                                          onClick={() => setMoTimDoiTuongTrongPanel(!moTimDoiTuongTrongPanel)}
+                                          className="px-2.5 py-1 inline-flex items-center gap-1.5 hover:bg-emerald-500/20 cursor-pointer"
+                                          title="Nhấp để đổi Khách hàng / Dự án"
+                                        >
+                                          <Building2 className="size-3.5 text-emerald-700 shrink-0" />
+                                          <span className="max-w-[150px] truncate">
+                                            {khachHangDangTacNghiep?.ten_khach_hang || duAnDangTacNghiep?.ten_du_an}
+                                          </span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (khCoDinhCuaViecChon?.id === khachHangDangTacNghiep?.id) {
+                                              xuLyGoKhachHangKhoiItem(item);
+                                            }
+                                            if (daCoDinhCuaViecChon?.id === duAnDangTacNghiep?.id) {
+                                              xuLyGoDuAnKhoiItem(item);
+                                            }
+                                            setDoiTuongThucThiMap((prev) => ({
+                                              ...prev,
+                                              [item.id]: {
+                                                khachHang: null,
+                                                duAn: null,
+                                                nguoiLienHe: null
+                                              }
+                                            }));
+                                          }}
+                                          className="px-1.5 py-1 hover:bg-rose-500/20 hover:text-rose-700 border-l border-emerald-500/25 cursor-pointer text-muted-foreground"
+                                          title="Gỡ đối tượng"
+                                        >
+                                          <X className="size-3" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setMoTimDoiTuongTrongPanel(!moTimDoiTuongTrongPanel)}
+                                        className="h-7 px-2.5 rounded-lg border border-dashed border-border hover:border-primary/50 bg-background hover:bg-primary/5 text-muted-foreground hover:text-primary text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                                      >
+                                        <Building2 className="size-3.5" />
+                                        <span>+ Gắn KH / Dự án</span>
+                                      </button>
+                                    )}
+
+                                    {/* Nếu có Khách hàng -> Cho phép chọn Người liên hệ */}
+                                    {khachHangDangTacNghiep && (
+                                      <div className="inline-flex items-center gap-1">
+                                        <select
+                                          value={nguoiLienHeDangTacNghiep?.id || ''}
+                                          onChange={(e) => {
+                                            const idChon = e.target.value;
+                                            const lhChon =
+                                              dsLienHeCuaKhDangTacNghiep.find((x) => x.id === idChon) || null;
+                                            setDoiTuongThucThiMap((prev) => ({
+                                              ...prev,
+                                              [item.id]: {
+                                                khachHang: prev[item.id]?.khachHang ?? khachHangDangTacNghiep,
+                                                duAn: prev[item.id]?.duAn ?? duAnDangTacNghiep,
+                                                nguoiLienHe: lhChon
+                                              }
+                                            }));
+                                            onCapNhatLichCongViec(item, {
+                                              nguoi_lien_he_id: lhChon?.id || null,
+                                              nguoi_lien_he: lhChon?.ho_va_ten || null,
+                                              chuc_vu: lhChon?.chuc_vu || null,
+                                              so_dien_thoai_lien_he: lhChon?.so_dien_thoai || null
+                                            });
+                                          }}
+                                          className="h-7 rounded-lg border border-border bg-background px-2 text-xs font-medium text-foreground max-w-[150px] truncate"
+                                          title="Chọn người liên hệ"
+                                        >
+                                          <option value="">-- Người liên hệ --</option>
+                                          {dsLienHeCuaKhDangTacNghiep.map((lh) => (
+                                            <option key={lh.id} value={lh.id}>
+                                              {lh.ho_va_ten}{lh.chuc_vu ? ` (${lh.chuc_vu})` : ''}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <button
+                                          type="button"
+                                          onClick={() => setMoModalThemLienHe(true)}
+                                          className="size-7 rounded-lg border border-border hover:border-primary/50 bg-background hover:bg-primary/5 text-muted-foreground hover:text-primary flex items-center justify-center cursor-pointer"
+                                          title="Thêm người liên hệ mới"
+                                        >
+                                          <Plus className="size-3" />
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    {/* Giai đoạn dự án (nếu có dự án) */}
+                                    {duAnDangTacNghiep && (
                                       <select
-                                        value={nguoiLienHeDangTacNghiep?.id || ''}
-                                        onChange={(e) => {
-                                          const idChon = e.target.value;
-                                          const lhChon =
-                                            dsLienHeCuaKhDangTacNghiep.find(
-                                              (x) => x.id === idChon
-                                            ) || null;
-                                          setDoiTuongThucThiMap((prev) => ({
-                                            ...prev,
-                                            [item.id]: {
-                                              khachHang:
-                                                prev[item.id]?.khachHang ??
-                                                khachHangDangTacNghiep,
-                                              duAn:
-                                                prev[item.id]?.duAn ?? duAnDangTacNghiep,
-                                              nguoiLienHe: lhChon
-                                            }
-                                          }));
-                                          onCapNhatLichCongViec(item, {
-                                            nguoi_lien_he_id: lhChon?.id || null,
-                                            nguoi_lien_he:
-                                              lhChon?.ho_va_ten || null,
-                                            chuc_vu: lhChon?.chuc_vu || null,
-                                            so_dien_thoai_lien_he:
-                                              lhChon?.so_dien_thoai || null
-                                          });
-                                        }}
-                                        className="h-7 rounded-lg border border-border bg-background px-2 text-[11px] font-bold text-foreground max-w-[210px] truncate"
-                                        title="Chọn người liên hệ của khách hàng"
+                                        value={giaiDoanDuAnChon || duAnDangTacNghiep.giai_doan}
+                                        onChange={(e) => setGiaiDoanDuAnChon(e.target.value)}
+                                        className="h-7 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 text-xs font-semibold text-indigo-800"
+                                        title="Giai đoạn dự án"
                                       >
-                                        <option value="">-- Người liên hệ --</option>
-                                        {dsLienHeCuaKhDangTacNghiep.map((lh) => (
-                                          <option key={lh.id} value={lh.id}>
-                                            {lh.ho_va_ten}
-                                            {lh.chuc_vu ? ` (${lh.chuc_vu})` : ''}
-                                            {lh.so_dien_thoai ? ` - ${lh.so_dien_thoai}` : ''}
+                                        {DANH_SACH_GIAI_DOAN_MAC_DINH.map((gd) => (
+                                          <option key={gd.key} value={gd.key}>
+                                            {gd.nhan_day_du}
                                           </option>
                                         ))}
                                       </select>
-                                      <button
-                                        type="button"
-                                        onClick={() => setMoModalThemLienHe(true)}
-                                        className="h-7 px-2 rounded-lg border border-border hover:border-primary/50 bg-background hover:bg-primary/5 text-[11px] font-semibold text-muted-foreground hover:text-primary inline-flex items-center gap-1 cursor-pointer"
-                                        title="Thêm người liên hệ mới cho khách hàng này"
-                                      >
-                                        <Plus className="size-3" />
-                                        <span>Liên hệ</span>
-                                      </button>
-                                    </div>
-                                  )}
+                                    )}
 
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setMoTimDoiTuongTrongPanel(!moTimDoiTuongTrongPanel)
-                                    }
-                                    className="h-7 px-2.5 rounded-lg border border-dashed border-border hover:border-primary/50 bg-background hover:bg-primary/5 text-muted-foreground hover:text-primary text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                                  >
-                                    <Search className="size-3" />
-                                    <span>
-                                      {khachHangDangTacNghiep || duAnDangTacNghiep
-                                        ? 'Đổi KH / Dự án'
-                                        : '+ Gắn Khách hàng / Dự án'}
-                                    </span>
-                                  </button>
-
-                                  {duAnDangTacNghiep && (
-                                    <select
-                                      value={
-                                        giaiDoanDuAnChon || duAnDangTacNghiep.giai_doan
-                                      }
-                                      onChange={(e) => setGiaiDoanDuAnChon(e.target.value)}
-                                      className="h-7 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 text-[11px] font-bold text-indigo-800"
+                                    {/* Nút bật Hẹn lịch */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const tiepTheo = !coHenLich;
+                                        setCoHenLich(tiepTheo);
+                                        if (tiepTheo && !ngayHenLich) {
+                                          const d = new Date();
+                                          d.setDate(d.getDate() + 1);
+                                          setNgayHenLich(d.toISOString().slice(0, 10));
+                                        }
+                                      }}
+                                      className={cn(
+                                        'h-7 px-2.5 rounded-lg border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer',
+                                        coHenLich
+                                          ? 'bg-primary text-primary-foreground border-primary'
+                                          : 'bg-muted/40 hover:bg-muted border-border text-muted-foreground hover:text-foreground'
+                                      )}
+                                      title="Bật tính năng đặt lịch hẹn gặp khách hàng"
                                     >
-                                      {DANH_SACH_GIAI_DOAN_MAC_DINH.map((gd) => (
-                                        <option key={gd.key} value={gd.key}>
-                                          {gd.nhan_day_du}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  )}
-                                </div>
+                                      <Calendar className="size-3.5" />
+                                      <span>Hẹn lịch</span>
+                                    </button>
 
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => onMoFormKhachHang(item)}
-                                    className="h-7 px-2 rounded-lg text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <UserPlus className="size-3" /> + KH mới
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      onMoFormDuAn({
-                                        itemTuan: item,
-                                        khachHangId: khachHangDangTacNghiep?.id || null
-                                      })
-                                    }
-                                    className="h-7 px-2 rounded-lg text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <FolderKanban className="size-3" /> + Dự án mới
-                                  </button>
+                                    {/* Nút bật Đính kèm link */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setMoLinkCheckIn(!moLinkCheckIn)}
+                                      className={cn(
+                                        'size-7 rounded-lg border flex items-center justify-center transition-colors cursor-pointer',
+                                        moLinkCheckIn || linkDinhKemCheckIn
+                                          ? 'bg-primary/10 border-primary/30 text-primary'
+                                          : 'bg-muted/40 hover:bg-muted border-border text-muted-foreground hover:text-foreground'
+                                      )}
+                                      title="Đính kèm tài liệu / link"
+                                    >
+                                      <Link2 className="size-3.5" />
+                                    </button>
+                                  </div>
+
+                                  {/* Cụm nút hành động bên phải */}
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => xuLyGhiNhanKetQuaPanel(false)}
+                                      disabled={!noiDungCheckIn.trim() && !coHenLich}
+                                      className="h-7 px-3 rounded-lg border border-border bg-background hover:bg-muted text-xs font-semibold text-foreground disabled:opacity-40 transition-colors cursor-pointer"
+                                      title="Lưu nhật ký mà không đóng công việc (tiếp tục gọi/làm việc khác)"
+                                    >
+                                      Lưu nhật ký
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => xuLyGhiNhanKetQuaPanel(true)}
+                                      className="h-7 px-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                                      title="Lưu kết quả và đánh dấu công việc đã hoàn thành"
+                                    >
+                                      <Check className="size-3.5 stroke-[2.5]" />
+                                      <span>Xong việc</span>
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
 
-                              {/* Dropdown chọn KH / Dự án từ danh bạ (có ô tìm kiếm) */}
+                              {/* Dropdown / Popup tìm đối tượng (Khách hàng & Dự án) */}
                               {moTimDoiTuongTrongPanel && (
-                                <div className="p-2.5 rounded-xl border border-border bg-card space-y-2 shadow-xs">
+                                <div className="p-3 rounded-xl border border-border bg-card space-y-2.5 shadow-sm">
                                   <div className="flex items-center gap-2">
                                     <div className="relative flex-1">
                                       <Search className="size-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                       <input
                                         type="text"
                                         value={tuKhoaDoiTuongPanel}
-                                        onChange={(e) =>
-                                          setTuKhoaDoiTuongPanel(e.target.value)
-                                        }
-                                        placeholder="Gõ tìm tên Khách hàng, SĐT, MST hoặc tên Dự án..."
+                                        onChange={(e) => setTuKhoaDoiTuongPanel(e.target.value)}
+                                        placeholder="Tìm Khách hàng (tên, SĐT, MST, địa chỉ) hoặc Dự án..."
                                         className="w-full h-8 rounded-lg border border-border bg-background pl-8 pr-2.5 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
                                         autoFocus
                                       />
                                     </div>
                                     <button
                                       type="button"
+                                      onClick={() => onMoFormKhachHang(item)}
+                                      className="h-8 px-2.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-semibold text-foreground inline-flex items-center gap-1 cursor-pointer shrink-0"
+                                    >
+                                      <UserPlus className="size-3.5" /> + KH mới
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        onMoFormDuAn({
+                                          itemTuan: item,
+                                          khachHangId: khachHangDangTacNghiep?.id || null
+                                        })
+                                      }
+                                      className="h-8 px-2.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-semibold text-foreground inline-flex items-center gap-1 cursor-pointer shrink-0"
+                                    >
+                                      <FolderKanban className="size-3.5" /> + Dự án mới
+                                    </button>
+                                    <button
+                                      type="button"
                                       onClick={() => setMoTimDoiTuongTrongPanel(false)}
-                                      className="h-8 px-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+                                      className="h-8 px-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
                                     >
                                       Đóng
                                     </button>
@@ -1821,10 +2011,7 @@ export default function BanLamViecHangNgay({
                                                 : k.ten_khach_hang
                                             });
                                             setMoTimDoiTuongTrongPanel(false);
-                                            setTimeout(
-                                              () => inputCheckInRef.current?.focus(),
-                                              50
-                                            );
+                                            setTimeout(() => inputCheckInRef.current?.focus(), 50);
                                           }}
                                           className="w-full text-left px-2.5 py-1.5 rounded-lg bg-background hover:bg-emerald-500/10 border border-border/60 text-xs cursor-pointer"
                                         >
@@ -1833,9 +2020,7 @@ export default function BanLamViecHangNgay({
                                           </div>
                                           {(k.so_dien_thoai || k.xa_phuong || k.dia_chi) && (
                                             <div className="text-[10px] text-muted-foreground truncate">
-                                              {[k.so_dien_thoai, k.xa_phuong || k.dia_chi]
-                                                .filter(Boolean)
-                                                .join(' · ')}
+                                              {[k.so_dien_thoai, k.xa_phuong || k.dia_chi].filter(Boolean).join(' · ')}
                                             </div>
                                           )}
                                         </button>
@@ -1847,9 +2032,7 @@ export default function BanLamViecHangNgay({
                                         Dự án ({ketQuaTimDoiTuongPanel.duAn.length})
                                       </div>
                                       {ketQuaTimDoiTuongPanel.duAn.map((d) => {
-                                        const khCuaDa = d.khach_hang_id
-                                          ? mapKH.get(d.khach_hang_id) || null
-                                          : null;
+                                        const khCuaDa = d.khach_hang_id ? mapKH.get(d.khach_hang_id) || null : null;
                                         return (
                                           <button
                                             key={d.id}
@@ -1871,16 +2054,11 @@ export default function BanLamViecHangNgay({
                                                 ten_khach_hang_du_an: d.ten_du_an
                                               });
                                               setMoTimDoiTuongTrongPanel(false);
-                                              setTimeout(
-                                                () => inputCheckInRef.current?.focus(),
-                                                50
-                                              );
+                                              setTimeout(() => inputCheckInRef.current?.focus(), 50);
                                             }}
                                             className="w-full text-left px-2.5 py-1.5 rounded-lg bg-background hover:bg-indigo-500/10 border border-border/60 text-xs cursor-pointer"
                                           >
-                                            <div className="font-semibold text-foreground truncate">
-                                              {d.ten_du_an}
-                                            </div>
+                                            <div className="font-semibold text-foreground truncate">{d.ten_du_an}</div>
                                             {khCuaDa && (
                                               <div className="text-[10px] text-muted-foreground truncate">
                                                 KH: {khCuaDa.ten_khach_hang}
@@ -1893,44 +2071,6 @@ export default function BanLamViecHangNgay({
                                   </div>
                                 </div>
                               )}
-
-                              {/* Ô nhập kết quả + Nút Lưu */}
-                              <div className="flex items-start gap-2">
-                                <textarea
-                                  ref={inputCheckInRef}
-                                  rows={2}
-                                  value={noiDungCheckIn}
-                                  onChange={(e) => setNoiDungCheckIn(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault();
-                                      xuLyGhiNhanKetQuaPanel(false);
-                                    }
-                                  }}
-                                  placeholder={
-                                    khachHangDangTacNghiep || duAnDangTacNghiep
-                                      ? `Nhập kết quả làm việc với ${
-                                          nguoiLienHeDangTacNghiep
-                                            ? `${nguoiLienHeDangTacNghiep.ho_va_ten} - `
-                                            : ''
-                                        }${
-                                          duAnDangTacNghiep?.ten_du_an ||
-                                          khachHangDangTacNghiep?.ten_khach_hang
-                                        }... (Enter để lưu)`
-                                      : 'Nhập kết quả làm việc... (Enter để lưu)'
-                                  }
-                                  className="flex-1 rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
-                                />
-                                <button
-                                  type="button"
-                                  disabled={!noiDungCheckIn.trim()}
-                                  onClick={() => xuLyGhiNhanKetQuaPanel(false)}
-                                  className="h-[58px] px-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 text-xs font-extrabold inline-flex items-center gap-1.5 shrink-0 cursor-pointer"
-                                >
-                                  <Send className="size-3.5" />
-                                  <span>Lưu</span>
-                                </button>
-                              </div>
                             </div>
                           )}
 
@@ -2387,20 +2527,6 @@ export default function BanLamViecHangNgay({
           }}
         />
       )}
-
-      {/* MODAL CHỐT KẾT QUẢ CÔNG VIỆC (3 TRẠNG THÁI + BẮT BUỘC KẾT QUẢ THỰC TẾ) */}
-      <ModalChotKetQuaTuan
-        mo={Boolean(itemChotKetQua)}
-        item={itemChotKetQua}
-        onDong={() => setItemChotKetQua(null)}
-        onLuu={async (itemId, trangThai, ketQuaThucTe) => {
-          if (onChotKetQua) {
-            await onChotKetQua(itemId, trangThai, ketQuaThucTe);
-          } else {
-            onDoiNhanhHoanThanh(itemId, trangThai === 'dat_muc_tieu');
-          }
-        }}
-      />
     </div>
   );
 }
