@@ -328,10 +328,40 @@ export default function DrawerChiTietDanhGia({
                     </div>
                   )}
 
-                  {/* Danh sách 9 tiêu chí soi chi tiết */}
+                  {/* Thống kê hoạt động cốt lõi */}
+                  {danhGiaDangXem.thong_ke_hoat_dong && (
+                    <div className="grid grid-cols-3 gap-2 text-center text-phu">
+                      <div className={cn(
+                        'p-2 rounded-xl border',
+                        danhGiaDangXem.thong_ke_hoat_dong.lich_chua_ket_qua > 0
+                          ? 'bg-amber-50 border-amber-200 text-amber-800'
+                          : 'bg-slate-50 border-slate-200 text-slate-600'
+                      )}>
+                        <p className="text-nhan font-bold text-amber-700">Lịch chưa KQ</p>
+                        <p className="font-black text-phu mt-0.5">{danhGiaDangXem.thong_ke_hoat_dong.lich_chua_ket_qua}</p>
+                      </div>
+
+                      <div className={cn(
+                        'p-2 rounded-xl border',
+                        danhGiaDangXem.thong_ke_hoat_dong.du_an_nguoi > 0
+                          ? 'bg-rose-50 border-rose-200 text-rose-800'
+                          : 'bg-slate-50 border-slate-200 text-slate-600'
+                      )}>
+                        <p className="text-nhan font-bold text-rose-700">Dự án nguội</p>
+                        <p className="font-black text-phu mt-0.5">{danhGiaDangXem.thong_ke_hoat_dong.du_an_nguoi}</p>
+                      </div>
+
+                      <div className="p-2 rounded-xl border bg-slate-50 border-slate-200 text-slate-700">
+                        <p className="text-nhan font-bold text-slate-500">Cam kết tuần</p>
+                        <p className="font-black text-phu mt-0.5">{danhGiaDangXem.thong_ke_hoat_dong.ty_le_hoan_thanh_cam_ket}%</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Danh sách 9 tiêu chí đồng hành & đánh giá chi tiết */}
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
-                      <span>Chi tiết các tiêu chí giám sát</span>
+                      <span>Chi tiết tiêu chí đồng hành & định hướng</span>
                       <span className="text-[11px] font-normal text-slate-400">
                         {tieuChiKeys.length} tiêu chí đã phân tích
                       </span>

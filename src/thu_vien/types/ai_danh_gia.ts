@@ -34,6 +34,41 @@ export interface AIDanhGiaNhanSu {
     sap_ky_hop_dong: number;
     tong_gia_tri_du_kien: number;
   };
+  thong_ke_hoat_dong?: {
+    lich_chua_ket_qua: number;
+    du_an_nguoi: number;
+    ty_le_hoan_thanh_cam_ket: number;
+  };
+  ngay_tao: string;
+  ngay_cap_nhat: string;
+}
+
+export interface AITongKetDieuHanh {
+  id: string; // `tong_ket_${ngay}`
+  ngay_tong_ket: string; // YYYY-MM-DD
+  tong_quan: string; // 2-3 câu ngắn gọn nhận định nhịp độ và bức tranh chung
+  tieu_chi: {
+    lich_chua_cap_nhat_kq: {
+      so_luong: number;
+      danh_sach_nhan_vien: string[];
+      nhan_xet_ai: string;
+    };
+    nhip_do_hoat_dong: {
+      tong_lich_hen: number;
+      ty_le_hoan_thanh_cam_ket: number;
+      nhan_xet_ai: string;
+    };
+    dong_chay_du_an: {
+      du_an_nguoi_dong_bang: number;
+      du_an_sap_ky: number;
+      nhan_xet_ai: string;
+    };
+    tien_do_muc_tieu: {
+      tong_gia_tri_pipeline: number;
+      nhan_xet_ai: string;
+    };
+  };
+  khuyen_nghi_dieu_hanh: string[]; // 2-3 hành động người quản lý nên can thiệp/hỗ trợ ngay
   ngay_tao: string;
   ngay_cap_nhat: string;
 }

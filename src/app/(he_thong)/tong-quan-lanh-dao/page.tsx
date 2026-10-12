@@ -53,7 +53,7 @@ import type { NhanSu, ChiNhanh, PhongBan } from '../../../thu_vien/types/nhan_su
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
 import type { LichGapKH } from '../../../thu_vien/types/lich_gap_kh';
 import { DANH_SACH_TRANG_THAI_LICH_GAP } from '../../../thu_vien/types/lich_gap_kh';
-import type { AIDanhGiaNhanSu, MucDoDanhGiaAI } from '../../../thu_vien/types/ai_danh_gia';
+import type { AIDanhGiaNhanSu, MucDoDanhGiaAI, AITongKetDieuHanh } from '../../../thu_vien/types/ai_danh_gia';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachHoSoDuAn } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import { danhSachLichGapKH } from '../../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
@@ -62,7 +62,8 @@ import { danhSachPhongBan } from '../../../dich_vu/co_cau_to_chuc/dich_vu_phong_
 import {
   danhSachAIDanhGia,
   langNgheThayDoiAIDanhGia,
-  kichHoatAIDanhGia
+  kichHoatAIDanhGia,
+  layAITongKetDieuHanh
 } from '../../../dich_vu/ai_danh_gia/dich_vu_ai_danh_gia';
 import type { KeHoachTuan, KeHoachThang } from '../../../thu_vien/types/ke_hoach';
 import {
@@ -96,6 +97,7 @@ export default function TrangTongQuanLanhDao() {
 
   // State tương tác AI & Drawer & Modal Drill-down
   const [dangChayAITatCa, setDangChayAITatCa] = useState(false);
+  const [tongKetAI, setTongKetAI] = useState<AITongKetDieuHanh | null>(null);
   const [nhanSuDangChon, setNhanSuDangChon] = useState<NhanSu | null>(null);
   const [duAnModal, setDuAnModal] = useState<{
     mo: boolean;
@@ -139,6 +141,7 @@ export default function TrangTongQuanLanhDao() {
     const unsubscribe = langNgheThayDoiAIDanhGia(ngayChon, (data) => {
       setDsDanhGiaAI(data);
     });
+    layAITongKetDieuHanh(ngayChon).then((tk) => setTongKetAI(tk));
     return () => unsubscribe();
   }, [ngayChon]);
 
@@ -148,7 +151,7 @@ export default function TrangTongQuanLanhDao() {
       const tuanHienTai = layTuanFromDateISO(ngayChon);
       const thangHienTai = ngayChon.slice(0, 7);
 
-      const [resNS, resDA, resCN, resPB, resAI, resKHTuan, resKHThang, resLichGap] = await Promise.all([
+      const [resNS, resDA, resCN, resPB, resAI, resKHTuan, resKHThang, resLichGap, resTongKet] = await Promise.all([
         danhSachNhanSu(),
         danhSachHoSoDuAn(),
         danhSachChiNhanh(),
@@ -156,7 +159,8 @@ export default function TrangTongQuanLanhDao() {
         danhSachAIDanhGia(ngayChon),
         danhSachKeHoachTuanTheoFilter(tuanHienTai),
         danhSachKeHoachThangTheoFilter(thangHienTai),
-        danhSachLichGapKH().catch(() => [])
+        danhSachLichGapKH().catch(() => []),
+        layAITongKetDieuHanh(ngayChon).catch(() => null)
       ]);
 
       const mangNS = Array.isArray(resNS) ? resNS : resNS?.mang || [];
@@ -173,6 +177,7 @@ export default function TrangTongQuanLanhDao() {
       setDsKeHoachTuan(resKHTuan || []);
       setDsKeHoachThang(resKHThang || []);
       setDsLichGap(mangLichGap);
+      setTongKetAI(resTongKet);
     } catch (e) {
       console.error('Lỗi khi tải dữ liệu lãnh đạo:', e);
     } finally {
@@ -262,6 +267,17 @@ export default function TrangTongQuanLanhDao() {
       return chuaCoKetQua || chuaXong;
     });
 
+    // Dự án bị "nguội": tiềm năng cao nhưng > 7 ngày chưa cập nhật tiến độ
+    const duAnNguoi = duAnTiemNangCao.filter((da) => {
+      const ngayCapNhat = da.ngay_cap_nhat || da.ngay_tao || '';
+      if (!ngayCapNhat) return true;
+      const diffDays = Math.floor(
+        (new Date(ngayMoc).getTime() - new Date(ngayCapNhat.slice(0, 10)).getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
+      return diffDays > 7;
+    });
+
     // AI health count
     let soTot = 0;
     let soCanhBao = 0;
@@ -282,6 +298,7 @@ export default function TrangTongQuanLanhDao() {
       duAnTiemNangCao,
       tongSapKyHD: duAnSapKyHD.length,
       duAnSapKyHD,
+      duAnNguoi,
       tongGiaTri,
       lichHomNay,
       lichTuanNay,
@@ -301,6 +318,9 @@ export default function TrangTongQuanLanhDao() {
     try {
       const res = await kichHoatAIDanhGia({ ngay_danh_gia: ngayChon });
       if (res.thanh_cong) {
+        if (res.tong_ket_dieu_hanh) {
+          setTongKetAI(res.tong_ket_dieu_hanh);
+        }
         await taiToanBoDuLieu();
       } else {
         alert(res.loi || 'Không thể quét AI toàn bộ');
@@ -478,6 +498,201 @@ export default function TrangTongQuanLanhDao() {
             {dangChayAITatCa ? 'Đang chạy...' : 'Đánh giá'}
           </Nut>
         </div>
+      </div>
+
+      {/* 2.5. Khối Tổng kết Điều hành AI Trong Ngày (Theo 4 nhóm tiêu chí cốt lõi) */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[var(--shadow-nhe)] p-4 sm:p-5 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <div className="size-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
+              <Sparkles className="size-4" />
+            </div>
+            <div>
+              <h2 className="font-bold text-noi-dung text-slate-900 flex items-center gap-2">
+                Tổng kết Điều hành AI Trong Ngày
+                <span className="text-nhan font-normal text-slate-400">({formatNgay(ngayChon)})</span>
+              </h2>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleChayAIToanBo}
+            disabled={dangChayAITatCa}
+            className="text-phu font-bold text-primary hover:text-primary-dam inline-flex items-center gap-1.5 cursor-pointer transition active:scale-95 disabled:opacity-50"
+            title="Kích hoạt AI tổng hợp lại dữ liệu toàn đội ngũ"
+          >
+            <RefreshCw className={cn('size-3.5', dangChayAITatCa && 'animate-spin')} />
+            <span>{dangChayAITatCa ? 'AI đang tổng hợp...' : 'Làm mới phân tích AI'}</span>
+          </button>
+        </div>
+
+        {/* Nhận định chung của AI */}
+        <div className="p-3.5 rounded-xl bg-slate-50/90 border border-slate-200/60 text-noi-dung text-slate-700 leading-relaxed">
+          {tongKetAI?.tong_quan ? (
+            <p className="font-medium text-slate-800">{tongKetAI.tong_quan}</p>
+          ) : (
+            <p className="text-slate-500 italic">
+              Nhấp &ldquo;Đánh giá&rdquo; hoặc &ldquo;Làm mới phân tích AI&rdquo; để mô hình AI tổng hợp chi tiết toàn bộ nhịp độ hoạt động và tiến độ của đội ngũ.
+            </p>
+          )}
+        </div>
+
+        {/* Lưới 4 Thẻ Tiêu Chí Điều Hành Cốt Lõi (Tương tác Drill-down) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 1. Lịch hẹn chưa cập nhật KQ */}
+          <div
+            onClick={() => {
+              if (thongKeLanhDao.lichChuaCapNhatKQ.length > 0) {
+                setLichGapModal({
+                  mo: true,
+                  tieuDe: 'Lịch hẹn đã đến hạn nhưng CHƯA CẬP NHẬT KẾT QUẢ',
+                  danhSachLich: thongKeLanhDao.lichChuaCapNhatKQ
+                });
+              }
+            }}
+            className={cn(
+              'p-3.5 rounded-xl border transition cursor-pointer select-none',
+              thongKeLanhDao.lichChuaCapNhatKQ.length > 0
+                ? 'bg-amber-500/5 hover:bg-amber-500/10 border-amber-200/80 active:scale-98'
+                : 'bg-slate-50/80 border-slate-200/60'
+            )}
+            title="Nhấp để xem danh sách lịch hẹn chưa có kết quả"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-nhan font-bold text-amber-800 flex items-center gap-1.5">
+                <Clock className="size-3.5 text-amber-600" />
+                Lịch chưa có KQ
+              </span>
+              <span
+                className={cn(
+                  'text-phu font-black px-2 py-0.5 rounded-full',
+                  thongKeLanhDao.lichChuaCapNhatKQ.length > 0
+                    ? 'bg-amber-200 text-amber-900'
+                    : 'bg-slate-200 text-slate-600'
+                )}
+              >
+                {thongKeLanhDao.lichChuaCapNhatKQ.length}
+              </span>
+            </div>
+            <p className="text-phu text-slate-600 line-clamp-2">
+              {tongKetAI?.tieu_chi?.lich_chua_cap_nhat_kq?.nhan_xet_ai ||
+                (thongKeLanhDao.lichChuaCapNhatKQ.length > 0
+                  ? `Có ${thongKeLanhDao.lichChuaCapNhatKQ.length} cuộc hẹn quá hạn cần đôn đốc cập nhật kết quả.`
+                  : 'Tất cả các cuộc hẹn đã diễn ra đều đã cập nhật kết quả.')}
+            </p>
+          </div>
+
+          {/* 2. Nhịp độ hoạt động */}
+          <div
+            onClick={() => {
+              setLichGapModal({
+                mo: true,
+                tieuDe: 'Lịch gặp khách hàng trong Tuần',
+                danhSachLich: thongKeLanhDao.lichTuanNay
+              });
+            }}
+            className="p-3.5 rounded-xl bg-purple-500/5 hover:bg-purple-500/10 border border-purple-200/80 transition cursor-pointer active:scale-98 select-none"
+            title="Nhấp để xem lịch gặp khách hàng trong tuần"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-nhan font-bold text-purple-800 flex items-center gap-1.5">
+                <Calendar className="size-3.5 text-purple-600" />
+                Nhịp độ hoạt động
+              </span>
+              <span className="text-phu font-black px-2 py-0.5 rounded-full bg-purple-200 text-purple-900">
+                {thongKeLanhDao.lichTuanNay.length} lịch/tuần
+              </span>
+            </div>
+            <p className="text-phu text-slate-600 line-clamp-2">
+              {tongKetAI?.tieu_chi?.nhip_do_hoat_dong?.nhan_xet_ai ||
+                `Đội ngũ có ${thongKeLanhDao.lichHomNay.length} lịch hẹn hôm nay và ${thongKeLanhDao.lichTuanNay.length} lịch hẹn trong tuần.`}
+            </p>
+          </div>
+
+          {/* 3. Dòng chảy dự án (Dự án nguội & Sắp ký) */}
+          <div
+            onClick={() => {
+              const danhSach = thongKeLanhDao.duAnNguoi.length > 0 ? thongKeLanhDao.duAnNguoi : thongKeLanhDao.duAnTiemNangCao;
+              setDuAnModal({
+                mo: true,
+                tieuDe: thongKeLanhDao.duAnNguoi.length > 0 ? 'Dự án tiềm năng bị nguội (> 7 ngày chưa tương tác)' : 'Dự án Tiềm năng cao',
+                danhSachDuAn: danhSach
+              });
+            }}
+            className="p-3.5 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-200/80 transition cursor-pointer active:scale-98 select-none"
+            title="Nhấp để xem các dự án tiềm năng và dự án bị nguội"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-nhan font-bold text-blue-800 flex items-center gap-1.5">
+                <FolderKanban className="size-3.5 text-blue-600" />
+                Dòng chảy dự án
+              </span>
+              <div className="flex items-center gap-1">
+                <span className="text-nhan font-extrabold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800" title="Sắp ký HĐ">
+                  {thongKeLanhDao.tongSapKyHD} sắp ký
+                </span>
+                {thongKeLanhDao.duAnNguoi.length > 0 && (
+                  <span className="text-nhan font-extrabold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-800" title="Dự án nguội > 7 ngày chưa tương tác">
+                    {thongKeLanhDao.duAnNguoi.length} nguội
+                  </span>
+                )}
+              </div>
+            </div>
+            <p className="text-phu text-slate-600 line-clamp-2">
+              {tongKetAI?.tieu_chi?.dong_chay_du_an?.nhan_xet_ai ||
+                (thongKeLanhDao.duAnNguoi.length > 0
+                  ? `Có ${thongKeLanhDao.duAnNguoi.length} dự án tiềm năng > 7 ngày chưa cập nhật, cần kích hoạt lại.`
+                  : `Đang có ${thongKeLanhDao.tongSapKyHD} dự án ở giai đoạn chuẩn bị chốt hợp đồng.`)}
+            </p>
+          </div>
+
+          {/* 4. Tiến độ mục tiêu & Pipeline */}
+          <div
+            onClick={() => {
+              setDuAnModal({
+                mo: true,
+                tieuDe: 'Toàn bộ Dự án Kinh doanh Đang Triển Khai',
+                danhSachDuAn: thongKeLanhDao.duAnPhuTrach
+              });
+            }}
+            className="p-3.5 rounded-xl bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-200/80 transition cursor-pointer active:scale-98 select-none"
+            title="Nhấp để xem toàn bộ dự án đang triển khai"
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-nhan font-bold text-emerald-800 flex items-center gap-1.5">
+                <Target className="size-3.5 text-emerald-600" />
+                Tiến độ mục tiêu
+              </span>
+              <span className="text-phu font-mono font-black text-primary">
+                {DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongGiaTri)}
+              </span>
+            </div>
+            <p className="text-phu text-slate-600 line-clamp-2">
+              {tongKetAI?.tieu_chi?.tien_do_muc_tieu?.nhan_xet_ai ||
+                `Tổng quy mô pipeline phụ trách đạt ${DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongGiaTri)} trên ${thongKeLanhDao.tongDuAnPhuTrach} dự án.`}
+            </p>
+          </div>
+        </div>
+
+        {/* Khuyến nghị điều hành ưu tiên cho Quản lý */}
+        {tongKetAI?.khuyen_nghi_dieu_hanh && tongKetAI.khuyen_nghi_dieu_hanh.length > 0 && (
+          <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center gap-2 text-phu text-slate-700">
+            <span className="font-bold text-purple-700 shrink-0 flex items-center gap-1">
+              <Sparkles className="size-3.5" /> Gợi ý hành động cho Quản lý:
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {tongKetAI.khuyen_nghi_dieu_hanh.map((kn, idx) => (
+                <span
+                  key={idx}
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-medium"
+                >
+                  {kn}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. Danh sách Đội Ngũ Kinh Doanh */}

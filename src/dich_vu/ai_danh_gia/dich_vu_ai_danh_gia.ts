@@ -13,7 +13,7 @@ import {
   type Unsubscribe
 } from 'firebase/firestore';
 import { firebaseFirestore as csdl } from '../../thu_vien/firebase/client_firebase';
-import type { AIDanhGiaNhanSu, CauHinhAIGemini } from '../../thu_vien/types/ai_danh_gia';
+import type { AIDanhGiaNhanSu, CauHinhAIGemini, AITongKetDieuHanh } from '../../thu_vien/types/ai_danh_gia';
 import { CAU_HINH_AI_MAC_DINH } from '../../thu_vien/types/ai_danh_gia';
 
 const COLLECTION_NAME = 'ai_danh_gia_nhan_su';
@@ -106,6 +106,7 @@ export const kichHoatAIDanhGia = async (thamSo: {
   thanh_cong: boolean;
   thong_diep?: string;
   du_lieu?: AIDanhGiaNhanSu | AIDanhGiaNhanSu[];
+  tong_ket_dieu_hanh?: AITongKetDieuHanh;
   loi?: string;
 }> => {
   try {
@@ -128,6 +129,27 @@ export const kichHoatAIDanhGia = async (thamSo: {
       thanh_cong: false,
       loi: error?.message || 'Không thể kết nối đến máy chủ AI'
     };
+  }
+};
+
+/**
+ * Lấy Bản Tổng Kết Điều Hành Toàn Đội Ngũ của AI theo ngày
+ */
+export const layAITongKetDieuHanh = async (
+  ngay?: string
+): Promise<AITongKetDieuHanh | null> => {
+  try {
+    const ngayMoc = ngay || new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+    const docRef = doc(csdl, COLLECTION_NAME, `tong_ket_${ngayMoc}`);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return null;
+    return {
+      id: docSnap.id,
+      ...docSnap.data()
+    } as AITongKetDieuHanh;
+  } catch (err) {
+    console.error('Lỗi lấy AI tổng kết điều hành:', err);
+    return null;
   }
 };
 
