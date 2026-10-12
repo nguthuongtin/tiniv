@@ -83,15 +83,20 @@ export default function MapDashboardPage() {
           }
         });
 
-        // Tạo map khách hàng theo tên chuẩn hóa
+        // Tạo map khách hàng theo tên chuẩn hóa và trường xã/phường
         const mapKhachTheoTen = new Map<string, any>();
+        // Ưu tiên 1: Khớp chính xác theo trường xa_phuong được chọn trong thông tin khách hàng
         dsKhach.forEach((kh) => {
-          const key = chuanHoaTenXa(kh.ten_khach_hang);
-          if (key) {
-            // Ưu tiên khách hàng cũ nếu có nhiều bản ghi
-            if (!mapKhachTheoTen.has(key)) {
-              mapKhachTheoTen.set(key, kh);
-            }
+          const keyXa = chuanHoaTenXa(kh.xa_phuong || '');
+          if (keyXa && !mapKhachTheoTen.has(keyXa)) {
+            mapKhachTheoTen.set(keyXa, kh);
+          }
+        });
+        // Ưu tiên 2: Khớp theo ten_khach_hang nếu chưa được gán bởi trường xa_phuong
+        dsKhach.forEach((kh) => {
+          const keyTen = chuanHoaTenXa(kh.ten_khach_hang);
+          if (keyTen && !mapKhachTheoTen.has(keyTen)) {
+            mapKhachTheoTen.set(keyTen, kh);
           }
         });
 
