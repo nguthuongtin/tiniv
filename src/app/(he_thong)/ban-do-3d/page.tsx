@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import Map3D, { CommuneCRMData, PROVINCES_LIST } from '@/thanh_phan/Map3D';
+import Map3D, { CommuneCRMData, rutGonTen, DANH_SACH_XA_TRUNG_TEN } from '@/thanh_phan/Map3D';
 import {
   danhSachKhachHang,
   capNhatKhachHang,
@@ -9,6 +9,7 @@ import {
   xoaCacheKhachHang,
 } from '@/dich_vu/khach_hang/dich_vu_khach_hang';
 import { danhSachNhanSu } from '@/dich_vu/nhan_su/dich_vu_nhan_su';
+import { danhSachPhongBan } from '@/dich_vu/co_cau_to_chuc/dich_vu_phong_ban';
 import { danhSachHoSoDuAn } from '@/dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import { danhSachNguoiLienHe } from '@/dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import useStoreXacThuc from '@/thu_vien/zustand/store_xac_thuc';
@@ -26,9 +27,32 @@ function chuanHoaTen(str: string): string {
   return s.trim().toLowerCase();
 }
 
+// Trích xuất Tỉnh từ thông tin khách hàng một cách thông minh
+function trichXuatTinh(kh: any): string {
+  if (kh.tinh_thanh && kh.tinh_thanh.trim()) {
+    const t = kh.tinh_thanh.trim().toLowerCase();
+    if (t.includes('an giang')) return 'an giang';
+    if (t.includes('cần thơ')) return 'cần thơ';
+    if (t.includes('đồng tháp')) return 'đồng tháp';
+    if (t.includes('vĩnh long')) return 'vĩnh long';
+    if (t.includes('cà mau')) return 'cà mau';
+    return t;
+  }
+  // Tìm trong tên đơn vị, địa chỉ hoặc ghi chú nếu có
+  const text = `${kh.ten_khach_hang || ''} ${kh.dia_chi || ''} ${kh.ghi_chu || ''}`.toLowerCase();
+  if (text.includes('an giang')) return 'an giang';
+  if (text.includes('cần thơ')) return 'cần thơ';
+  if (text.includes('đồng tháp')) return 'đồng tháp';
+  if (text.includes('vĩnh long')) return 'vĩnh long';
+  if (text.includes('cà mau')) return 'cà mau';
+  return '';
+}
+
 export default function MapDashboardPage() {
   const [crmData, setCrmData] = useState<CommuneCRMData[]>([]);
-  const [danhSachSale, setDanhSachSale] = useState<Array<{ id: string; ho_va_ten: string }>>([]);
+  const [danhSachSale, setDanhSachSale] = useState<
+    Array<{ id: string; ho_va_ten: string; ten_rut_gon?: string }>
+  >([]);
   const [selectedProvince, setSelectedProvince] = useState<string>('All');
   const [isLoading, setIsLoading] = useState(true);
   const { nguoiDungHienTai } = useStoreXacThuc();
@@ -40,22 +64,69 @@ export default function MapDashboardPage() {
         const geoRes = await fetch('/mientay.geojson');
         const geojson = await geoRes.json();
 
-        // 2. Tải Khách hàng, Nhân sự, Dự án, Người liên hệ từ CSDL
+        // 2. Tải Khách hàng, Nhân sự, Phòng ban, Dự án, Người liên hệ từ CSDL
         xoaCacheKhachHang();
-        const [khRes, nsRes, daRes, lhRes] = await Promise.all([
+        const [khRes, nsRes, pbRes, daRes, lhRes] = await Promise.all([
           danhSachKhachHang({ trang_thai: 'tat_ca', loai_khach_hang: 'tat_ca' }),
           danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong' }),
+          danhSachPhongBan(),
           danhSachHoSoDuAn({ trang_thai: 'tat_ca' }),
           danhSachNguoiLienHe(),
         ]);
 
         const dsKhach = khRes.mang || [];
         const dsNhanSu = nsRes.mang || [];
+        const dsPhongBan = pbRes.mang || [];
         const dsDuAn = daRes.mang || [];
         const dsLienHe = lhRes.mang || [];
 
-        // Lưu danh sách sale cho dropdown phân công
-        const sales = dsNhanSu.map((ns) => ({ id: ns.id, ho_va_ten: ns.ho_va_ten }));
+        // Tìm các phòng ban kinh doanh
+        const pbKdIds = new Set(
+          dsPhongBan
+            .filter((pb) => (pb.ten_phong_ban || '').toLowerCase().includes('kinh doanh'))
+            .map((pb) => pb.id)
+        );
+
+        // Lọc nhân sự: chỉ lấy NHÂN VIÊN PHÒNG KINH DOANH
+        // Loại trừ Giám đốc, Trưởng phòng, Quản trị hệ thống (theo chuẩn quản trị)
+        let salesKd = dsNhanSu.filter((ns) => {
+          const thuocPbKd = ns.phong_ban_id && pbKdIds.has(ns.phong_ban_id);
+          const laVaiTroKd = ns.vai_tro === 'nhan_vien_kinh_doanh';
+          if (!thuocPbKd && !laVaiTroKd) return false;
+
+          if (
+            ns.vai_tro === 'truong_phong' ||
+            ns.vai_tro === 'giam_doc' ||
+            ns.vai_tro === 'quan_tri_he_thong' ||
+            (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng') ||
+            (ns.chuc_vu || '').toLowerCase().includes('phó phòng')
+          ) {
+            return false;
+          }
+          return true;
+        });
+
+        // Fallback an toàn nếu chưa cấu hình phòng ban: lấy các bạn sale mặc định hoặc có vai trò kinh doanh
+        if (salesKd.length === 0) {
+          salesKd = dsNhanSu.filter((ns) => {
+            const laKd = ns.vai_tro === 'nhan_vien_kinh_doanh';
+            const ten = ns.ho_va_ten || '';
+            const thuocTeam = [
+              'Huỳnh Hoàng Bá',
+              'Huỳnh Thị Thanh Ngân',
+              'Lương Thị Cẩm Tú',
+              'Nguyễn Văn Cường Em',
+            ].some((m) => ten.includes(m) || m.includes(ten));
+            return laKd || thuocTeam;
+          });
+        }
+
+        // Lưu danh sách sale kinh doanh với tên rút gọn
+        const sales = salesKd.map((ns) => ({
+          id: ns.id,
+          ho_va_ten: ns.ho_va_ten,
+          ten_rut_gon: rutGonTen(ns.ho_va_ten),
+        }));
         setDanhSachSale(sales);
 
         // Map ID nhân sự sang Họ và tên
@@ -95,26 +166,34 @@ export default function MapDashboardPage() {
           }
         });
 
-        // Map khách hàng theo các cấp độ ưu tiên:
-        // Cấp 1: keyTinh_keyXa
-        // Cấp 2: keyXa
-        // Cấp 3: keyTen
+        // Map khách hàng theo các cấp độ ưu tiên chống trùng lặp giữa các tỉnh:
+        // Cấp 1: Mã ĐVHC (nếu có lưu)
+        // Cấp 2: Cặp Tỉnh + Xã: `${tinh}_${xa}`
+        // Cấp 3: Xã đơn thuần (CHỈ ÁP DỤNG cho các xã có tên DUY NHẤT, không nằm trong DANH_SACH_XA_TRUNG_TEN)
+        const mapKhachTheoMaXa = new Map<string, any>();
         const mapKhachTheoTinhXa = new Map<string, any>();
-        const mapKhachTheoXa = new Map<string, any>();
-        const mapKhachTheoTen = new Map<string, any>();
+        const mapKhachTheoXaDuyNhat = new Map<string, any>();
 
         dsKhach.forEach((kh) => {
-          const keyXa = chuanHoaTen(kh.xa_phuong || '');
-          const keyTinh = (kh.tinh_thanh || '').trim().toLowerCase();
+          // Trích xuất mã nếu có dạng [Mã: 12345] hoặc [Mã ĐVHC: 12345]
+          const matchMa = (kh.ghi_chu || '').match(/Mã(?:\s*ĐVHC)?:\s*(\d{5})/i);
+          if (matchMa && matchMa[1]) {
+            mapKhachTheoMaXa.set(matchMa[1], kh);
+          }
+
+          const keyXa = chuanHoaTen(kh.xa_phuong || kh.ten_khach_hang || '');
+          const keyTinh = trichXuatTinh(kh);
+
           if (keyTinh && keyXa) {
             mapKhachTheoTinhXa.set(`${keyTinh}_${keyXa}`, kh);
           }
-          if (keyXa && !mapKhachTheoXa.has(keyXa)) {
-            mapKhachTheoXa.set(keyXa, kh);
-          }
-          const keyTen = chuanHoaTen(kh.ten_khach_hang);
-          if (keyTen && !mapKhachTheoTen.has(keyTen)) {
-            mapKhachTheoTen.set(keyTen, kh);
+
+          // CHỈ map theo tên xã đơn thuần nếu tên xã này KHÔNG BỊ TRÙNG LẶP trên các tỉnh
+          // Điều này triệt tiêu hoàn toàn lỗi gán nhầm Phú Hữu, Châu Thành, An Bình... từ An Giang sang tỉnh khác!
+          if (keyXa && !DANH_SACH_XA_TRUNG_TEN.has(keyXa)) {
+            if (!mapKhachTheoXaDuyNhat.has(keyXa)) {
+              mapKhachTheoXaDuyNhat.set(keyXa, kh);
+            }
           }
         });
 
@@ -127,11 +206,17 @@ export default function MapDashboardPage() {
           const tenChuanXa = chuanHoaTen(tenXaGoc);
           const tenChuanTinh = tenTinhGoc.toLowerCase();
 
-          // Tìm khách hàng tương ứng
-          const kh =
-            mapKhachTheoTinhXa.get(`${tenChuanTinh}_${tenChuanXa}`) ||
-            mapKhachTheoXa.get(tenChuanXa) ||
-            mapKhachTheoTen.get(tenChuanXa);
+          // Tìm khách hàng tương ứng theo thứ tự chuẩn xác:
+          // 1. Theo mã xã (chính xác 100%)
+          // 2. Theo Cặp Tỉnh + Xã
+          // 3. Theo Xã (chỉ đối với xã có tên duy nhất không trùng)
+          let kh =
+            mapKhachTheoMaXa.get(maXa) ||
+            mapKhachTheoTinhXa.get(`${tenChuanTinh}_${tenChuanXa}`);
+
+          if (!kh && !DANH_SACH_XA_TRUNG_TEN.has(tenChuanXa)) {
+            kh = mapKhachTheoXaDuyNhat.get(tenChuanXa);
+          }
 
           let saleName = 'Chưa gán';
           let saleId: string | undefined = undefined;
@@ -194,6 +279,7 @@ export default function MapDashboardPage() {
             revenue: revenue,
             households: households,
             area_km2: area,
+            dan_so: danSo,
             reach_status: status,
             notes: notes,
             khach_hang_id: khId,
@@ -257,6 +343,8 @@ export default function MapDashboardPage() {
           targetItem.ten_day_du ||
           `UBND XÃ ${(targetItem.ten_xa || targetItem.id).toUpperCase()} - TỈNH ${(targetItem.ten_tinh || '').toUpperCase()}`;
 
+        const ghiChuKhoiTao = `[Mã ĐVHC: ${targetItem.ma_xa || targetItem.id}] ${newNotes || 'Khởi tạo từ bản đồ địa bàn'}`;
+
         const khMoi = await taoKhachHangMoi(
           {
             ten_khach_hang: tenKh,
@@ -264,7 +352,7 @@ export default function MapDashboardPage() {
             tinh_thanh: targetItem.ten_tinh || null,
             xa_phuong: targetItem.ten_xa || targetItem.id,
             nguoi_phu_trach_id: newSaleId || null,
-            ghi_chu: newNotes || 'Khởi tạo từ bản đồ địa bàn',
+            ghi_chu: ghiChuKhoiTao,
             trang_thai: 'hoat_dong',
           },
           nguoiDungHienTai ?? null
@@ -297,37 +385,19 @@ export default function MapDashboardPage() {
 
   return (
     <div className="flex flex-col h-[calc(100dvh-100px)] sm:h-[calc(100vh-5.5rem)] sm:space-y-3">
-      {/* Tiêu đề, Chọn Tỉnh & Tổng quan chỉ số trên Desktop */}
+      {/* Tiêu đề & Tổng quan chỉ số trên Desktop (Bộ lọc Tỉnh được đưa vào trong bản đồ) */}
       <div className="hidden sm:flex sm:items-center sm:justify-between gap-4 shrink-0">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <MapIcon className="size-6 text-sky-500" />
-            <span>Bản Đồ Địa Bàn Miền Tây</span>
-          </h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <MapIcon className="size-6 text-sky-500" />
+          <span>Bản Đồ Địa Bàn Miền Tây</span>
+        </h1>
 
-          {/* Chọn Tỉnh thành dạng Tabs nhỏ gọn */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
-            {PROVINCES_LIST.map((prov) => (
-              <button
-                key={prov}
-                type="button"
-                onClick={() => setSelectedProvince(prov)}
-                className={`px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer ${
-                  selectedProvince === prov
-                    ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-xs font-semibold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                }`}
-              >
-                {prov === 'All' ? 'Toàn Miền Tây' : prov}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Chỉ số địa bàn theo Tỉnh được chọn */}
+        {/* Chỉ số địa bàn theo Tỉnh đang chọn (Đồng bộ trực tiếp với bộ lọc bên trong bản đồ) */}
         <div className="flex items-center gap-2 text-xs shrink-0">
           <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
-            <span className="text-slate-400 block text-[10px]">Địa bàn</span>
+            <span className="text-slate-400 block text-[10px]">
+              {selectedProvince === 'All' ? 'Toàn Miền Tây' : selectedProvince}
+            </span>
             <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
               {communesInScope.length} xã/phường
             </span>
@@ -353,7 +423,7 @@ export default function MapDashboardPage() {
         </div>
       </div>
 
-      {/* Khu vực Bản Đồ */}
+      {/* Khu vực Bản Đồ với Bộ Lọc Tỉnh & Nút Full Screen tích hợp bên trong */}
       <div className="flex-1 w-full min-h-[450px] relative rounded-2xl overflow-hidden border border-slate-800 shadow-xl">
         {isLoading ? (
           <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-800 text-slate-400 text-sm gap-2">

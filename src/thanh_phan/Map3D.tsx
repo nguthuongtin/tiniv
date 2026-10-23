@@ -16,8 +16,10 @@ import {
   SlidersHorizontal,
   RotateCcw,
   CheckCircle,
-  Building2,
-  UserCheck
+  Maximize,
+  Minimize,
+  UserCheck,
+  AlertCircle
 } from 'lucide-react';
 
 export interface DuAnLienKet {
@@ -36,7 +38,7 @@ export interface NguoiLienHeLienKet {
 }
 
 export interface CommuneCRMData {
-  id: string; // Khóa duy nhất (ma_xa)
+  id: string; // Khóa duy nhất (ma_xa chuẩn 5 chữ số)
   ma_xa?: string;
   ten_xa?: string;
   ten_tinh?: string;
@@ -47,11 +49,18 @@ export interface CommuneCRMData {
   revenue: number;
   households: number;
   area_km2: number;
+  dan_so?: number;
   reach_status: 'Chưa tiếp cận' | 'Đang chăm sóc' | 'Đã chốt';
   notes?: string;
   khach_hang_id?: string;
   danh_sach_du_an: DuAnLienKet[];
   danh_sach_nguoi_lien_he: NguoiLienHeLienKet[];
+}
+
+export interface NhanSuSale {
+  id: string;
+  ho_va_ten: string;
+  ten_rut_gon?: string;
 }
 
 interface MapProps {
@@ -63,10 +72,30 @@ interface MapProps {
     newSaleId?: string,
     newSaleName?: string
   ) => Promise<void> | void;
-  danhSachSale?: Array<{ id: string; ho_va_ten: string }>;
+  danhSachSale?: NhanSuSale[];
   selectedProvince?: string;
   onSelectProvince?: (province: string) => void;
 }
+
+// Danh sách 33 tên xã bị trùng lặp trên 5 tỉnh Miền Tây
+export const DANH_SACH_XA_TRUNG_TEN = new Set([
+  'an bình', 'bình phú', 'châu thành', 'long bình', 'long hưng',
+  'tân hòa', 'tân long', 'tân phú', 'tân thành', 'tân thạnh',
+  'thạnh phú', 'thới sơn', 'trường xuân', 'vĩnh bình', 'đông hải',
+  'hòa bình', 'hòa thuận', 'hưng mỹ', 'mỹ thuận', 'phong thạnh',
+  'phú tân', 'phước long', 'tân an', 'khánh bình', 'long điền',
+  'long phú', 'nhơn mỹ', 'phú hữu', 'vĩnh hậu', 'vĩnh trạch',
+  'tân lộc', 'vĩnh lợi', 'vĩnh phước'
+]);
+
+// Màu badge phân biệt trực quan từng Tỉnh thành
+export const PROVINCE_BADGE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  'An Giang': { bg: 'bg-blue-950/80', text: 'text-blue-300', border: 'border-blue-700/60' },
+  'Cần Thơ': { bg: 'bg-emerald-950/80', text: 'text-emerald-300', border: 'border-emerald-700/60' },
+  'Đồng Tháp': { bg: 'bg-amber-950/80', text: 'text-amber-300', border: 'border-amber-700/60' },
+  'Vĩnh Long': { bg: 'bg-purple-950/80', text: 'text-purple-300', border: 'border-purple-700/60' },
+  'Cà Mau': { bg: 'bg-rose-950/80', text: 'text-rose-300', border: 'border-rose-700/60' },
+};
 
 export const SALE_COLORS: Record<string, string> = {
   'Huỳnh Hoàng Bá': '#3b82f6',
@@ -91,6 +120,22 @@ export function layMauSale(name: string): string {
   }
   const idx = Math.abs(hash) % DEFAULT_COLOR_PALETTE.length;
   return DEFAULT_COLOR_PALETTE[idx];
+}
+
+// Hàm rút ngắn tên nhân viên gọn gàng (1 - 2 từ cuối)
+export function rutGonTen(hoVaTen: string): string {
+  if (!hoVaTen) return '';
+  const parts = hoVaTen.trim().split(/\s+/);
+  if (parts.length <= 1) return hoVaTen;
+  const last = parts[parts.length - 1];
+  const secondLast = parts[parts.length - 2];
+  if (['em', 'bé', 'anh', 'con'].includes(last.toLowerCase())) {
+    return `${secondLast} ${last}`;
+  }
+  if (!['thị', 'văn', 'đình', 'hữu', 'ngọc', 'thanh'].includes(secondLast.toLowerCase())) {
+    return `${secondLast} ${last}`;
+  }
+  return last;
 }
 
 export const PROVINCES_LIST = [
@@ -175,11 +220,13 @@ export default function Map3D({
   selectedProvince = 'All',
   onSelectProvince,
 }: MapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
 
   const [activeToken] = useState<string>(() => layMapboxToken());
   const [mapError, setMapError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // States
   const [selectedFeature, setSelectedFeature] = useState<CommuneCRMData | null>(null);
@@ -190,9 +237,10 @@ export default function Map3D({
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
 
-  // Geometry cache & Selected feature ref
+  // Geometry cache (Key: ma_xa độc nhất)
   const communeGeomRef = useRef<Map<string, CommuneGeomInfo>>(new Map());
   const selectedIdRef = useRef<string | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   // State Tìm Kiếm Nhanh
   const [searchQuery, setSearchQuery] = useState('');
@@ -210,6 +258,45 @@ export default function Map3D({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Xử lý sự kiện Fullscreen
+  const toggleFullscreen = async () => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      try {
+        if (container.requestFullscreen) {
+          await container.requestFullscreen();
+        }
+      } catch (err) {
+        console.error('Lỗi khi bật toàn màn hình:', err);
+      }
+    } else {
+      try {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      } catch (err) {
+        console.error('Lỗi khi thoát toàn màn hình:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFull = !!document.fullscreenElement;
+      setIsFullscreen(isFull);
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.resize();
+        }
+      }, 150);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   // Đóng dropdown tìm kiếm khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -224,6 +311,7 @@ export default function Map3D({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Danh sách nhân viên phòng kinh doanh hiển thị
   const salesList = useMemo(() => {
     if (danhSachSale && danhSachSale.length > 0) {
       return danhSachSale.map((s) => s.ho_va_ten);
@@ -236,7 +324,7 @@ export default function Map3D({
     return Array.from(dynamic);
   }, [danhSachSale, crmData]);
 
-  // Danh sách xã gợi ý theo từ khóa tìm kiếm
+  // Danh sách gợi ý tìm kiếm: LUÔN HIỂN THỊ RÕ TỈNH THÀNH ĐỂ PHÂN BIỆT XÃ TRÙNG TÊN
   const filteredSearchList = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
@@ -244,10 +332,11 @@ export default function Map3D({
       .filter((c) => {
         const passProvince = selectedProvince === 'All' || c.ten_tinh === selectedProvince;
         if (!passProvince) return false;
-        const matchName = c.id.toLowerCase().includes(q) || (c.ten_xa && c.ten_xa.toLowerCase().includes(q));
+        const matchCode = c.id.toLowerCase().includes(q) || (c.ma_xa && c.ma_xa.includes(q));
+        const matchName = c.ten_xa && c.ten_xa.toLowerCase().includes(q);
         const matchProv = c.ten_tinh && c.ten_tinh.toLowerCase().includes(q);
         const matchSale = c.sale_name.toLowerCase().includes(q);
-        return matchName || matchProv || matchSale;
+        return matchCode || matchName || matchProv || matchSale;
       })
       .slice(0, 12);
   }, [searchQuery, crmData, selectedProvince]);
@@ -269,17 +358,26 @@ export default function Map3D({
     crmDataRef.current = crmData;
   }, [crmData]);
 
-  // Hàm chọn và tự động zoom + định vị đến xã
-  const chonVaDinhViXa = (identifier: string) => {
+  // Hàm chọn và tự động zoom + định vị đến xã bằng MÃ XÃ DUY NHẤT
+  const chonVaDinhViXa = (maXa: string, provinceHint?: string) => {
     const map = mapRef.current;
-    const geomInfo =
-      communeGeomRef.current.get(identifier.toLowerCase()) ||
-      communeGeomRef.current.get(identifier);
 
+    // 1. Tìm thông tin hình học: ưu tiên tuyệt đối theo ma_xa
+    let geomInfo = communeGeomRef.current.get(maXa);
+    if (!geomInfo && provinceHint) {
+      geomInfo = communeGeomRef.current.get(`${maXa.toLowerCase()}_${provinceHint.toLowerCase()}`);
+    }
+    if (!geomInfo) {
+      geomInfo = communeGeomRef.current.get(maXa.toLowerCase());
+    }
+
+    // 2. Tìm dữ liệu CRM theo mã xã
     const matched = crmDataRef.current.find(
       (c) =>
-        c.id.toLowerCase() === identifier.toLowerCase() ||
-        (c.ten_xa && c.ten_xa.toLowerCase() === identifier.toLowerCase())
+        c.id === maXa ||
+        c.ma_xa === maXa ||
+        (c.ten_xa?.toLowerCase() === maXa.toLowerCase() &&
+          (!provinceHint || c.ten_tinh?.toLowerCase() === provinceHint.toLowerCase()))
     );
 
     if (map && geomInfo) {
@@ -323,16 +421,17 @@ export default function Map3D({
       const props = geomInfo.properties;
       const loai = props.loai ? props.loai.toUpperCase() : 'XÃ';
       const fallbackData: CommuneCRMData = {
-        id: props.ma_xa || identifier,
+        id: props.ma_xa || maXa,
         ma_xa: props.ma_xa,
-        ten_xa: props.ten_xa || identifier,
+        ten_xa: props.ten_xa,
         ten_tinh: props.ten_tinh,
         ma_tinh: props.ma_tinh,
-        ten_day_du: `UBND ${loai} ${(props.ten_xa || identifier).toUpperCase()} - TỈNH ${(props.ten_tinh || '').toUpperCase()}`,
+        ten_day_du: `UBND ${loai} ${props.ten_xa?.toUpperCase()} - TỈNH ${props.ten_tinh?.toUpperCase()}`,
         sale_name: 'Chưa gán',
         revenue: 0,
         households: props.dan_so ? Math.round(Number(props.dan_so) / 4) : 0,
         area_km2: props.dtich_km2 ? Number(props.dtich_km2) : 0,
+        dan_so: props.dan_so ? Number(props.dan_so) : 0,
         reach_status: 'Chưa tiếp cận',
         notes: '',
         danh_sach_du_an: [],
@@ -411,21 +510,27 @@ export default function Map3D({
           const geomMap = new Map<string, CommuneGeomInfo>();
           geoCommunes.features.forEach((f: any, idx: number) => {
             const info = tinhToaDoXa(f, idx);
-            const name = (f.properties?.ten_xa || '').trim();
             const code = String(f.properties?.ma_xa || '').trim();
-            const prov = (f.properties?.ten_tinh || '').trim();
+            const name = (f.properties?.ten_xa || '').trim().toLowerCase();
+            const prov = (f.properties?.ten_tinh || '').trim().toLowerCase();
 
+            // 1. Khóa chính xác tuyệt đối: mã xã
             if (code) geomMap.set(code, info);
-            if (name) {
-              geomMap.set(name.toLowerCase(), info);
-              if (prov) {
-                geomMap.set(`${name} - ${prov}`.toLowerCase(), info);
-              }
+
+            // 2. Khóa kép: tên xã + tỉnh
+            if (name && prov) {
+              geomMap.set(`${name}_${prov}`, info);
+              geomMap.set(`${name} - ${prov}`, info);
+            }
+
+            // 3. Khóa tên đơn: CHỈ gán nếu tên xã này KHÔNG BỊ TRÙNG LẶP trên các tỉnh
+            if (name && !geomMap.has(name) && !DANH_SACH_XA_TRUNG_TEN.has(name)) {
+              geomMap.set(name, info);
             }
           });
           communeGeomRef.current = geomMap;
 
-          // Source xã phường
+          // Source xã phường (promoteId 'ma_xa' để feature-state dùng ma_xa duy nhất)
           if (!map.getSource('mientay-communes')) {
             map.addSource('mientay-communes', {
               type: 'geojson',
@@ -578,8 +683,6 @@ export default function Map3D({
           const feature = e.features[0];
           const props = feature.properties || {};
           const maXa = String(props.ma_xa || feature.id || '').trim();
-          const tenXa = (props.ten_xa || '').trim();
-          const tenTinh = (props.ten_tinh || '').trim();
 
           if (hoveredId !== null) {
             map.setFeatureState({ source: 'mientay-communes', id: hoveredId }, { hover: false });
@@ -589,24 +692,22 @@ export default function Map3D({
             map.setFeatureState({ source: 'mientay-communes', id: hoveredId }, { hover: true });
           }
 
-          const matched = crmDataRef.current.find(
-            (c) =>
-              c.id === maXa ||
-              (c.ten_xa && c.ten_xa.toLowerCase() === tenXa.toLowerCase() && c.ten_tinh === tenTinh)
-          );
+          // Khớp dữ liệu CRM CHÍNH XÁC theo mã xã
+          const matched = crmDataRef.current.find((c) => c.id === maXa || c.ma_xa === maXa);
 
           if (matched) {
             setHoveredCommune(matched);
           } else {
             setHoveredCommune({
-              id: maXa || tenXa,
+              id: maXa,
               ma_xa: maXa,
-              ten_xa: tenXa,
-              ten_tinh: tenTinh,
+              ten_xa: props.ten_xa,
+              ten_tinh: props.ten_tinh,
               sale_name: 'Chưa gán',
               revenue: 0,
               households: props.dan_so ? Math.round(Number(props.dan_so) / 4) : 0,
               area_km2: props.dtich_km2 ? Number(props.dtich_km2) : 0,
+              dan_so: props.dan_so ? Number(props.dan_so) : 0,
               reach_status: 'Chưa tiếp cận',
               danh_sach_du_an: [],
               danh_sach_nguoi_lien_he: [],
@@ -643,13 +744,10 @@ export default function Map3D({
         if (selectedId !== null) {
           map.setFeatureState({ source: 'mientay-communes', id: selectedId }, { selected: true });
         }
-        setSearchQuery(tenXa);
+        setSearchQuery(`${tenXa} (${tenTinh})`);
 
-        const matched = crmDataRef.current.find(
-          (c) =>
-            c.id === maXa ||
-            (c.ten_xa && c.ten_xa.toLowerCase() === tenXa.toLowerCase() && c.ten_tinh === tenTinh)
-        );
+        // Tìm chính xác theo mã xã
+        const matched = crmDataRef.current.find((c) => c.id === maXa || c.ma_xa === maXa);
 
         setSaveSuccess(false);
         if (matched) {
@@ -660,7 +758,7 @@ export default function Map3D({
         } else {
           const loai = props.loai ? props.loai.toUpperCase() : 'XÃ';
           const fallbackData: CommuneCRMData = {
-            id: maXa || tenXa,
+            id: maXa,
             ma_xa: maXa,
             ten_xa: tenXa,
             ten_tinh: tenTinh,
@@ -670,6 +768,7 @@ export default function Map3D({
             revenue: 0,
             households: props.dan_so ? Math.round(Number(props.dan_so) / 4) : 0,
             area_km2: props.dtich_km2 ? Number(props.dtich_km2) : 0,
+            dan_so: props.dan_so ? Number(props.dan_so) : 0,
             reach_status: 'Chưa tiếp cận',
             notes: '',
             danh_sach_du_an: [],
@@ -683,6 +782,8 @@ export default function Map3D({
       });
 
       return () => {
+        markersRef.current.forEach((m) => m.remove());
+        markersRef.current = [];
         map.remove();
         mapRef.current = null;
         setMapLoaded(false);
@@ -731,6 +832,74 @@ export default function Map3D({
     map.setPaintProperty('communes-fill', 'fill-color', colorExpr as any);
   }, [crmData, filterSale, filterStatus, selectedProvince, mapLoaded]);
 
+  // Cắm cờ VDCD vào các xã/phường đã có dự án
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    // Xóa cờ cũ trước khi vẽ lại
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    // Lọc danh sách xã có dự án theo tỉnh đang chọn
+    const xaCoDuAn = crmData.filter((item) => {
+      const passProvince = selectedProvince === 'All' || item.ten_tinh === selectedProvince;
+      return passProvince && item.danh_sach_du_an && item.danh_sach_du_an.length > 0;
+    });
+
+    xaCoDuAn.forEach((item) => {
+      let geom = communeGeomRef.current.get(item.id);
+      if (!geom && item.ma_xa) {
+        geom = communeGeomRef.current.get(item.ma_xa);
+      }
+      if (!geom && item.ten_xa && item.ten_tinh) {
+        geom = communeGeomRef.current.get(`${item.ten_xa.toLowerCase()}_${item.ten_tinh.toLowerCase()}`);
+      }
+      if (!geom) return;
+
+      const [lng, lat] = geom.center;
+      const count = item.danh_sach_du_an.length;
+
+      // Tạo HTML marker cây cờ VDCD với Logo chính thức từ /logo.png
+      const el = document.createElement('div');
+      el.className = 'group relative cursor-pointer select-none transition-transform hover:scale-125 z-10';
+      el.setAttribute('title', `${item.ten_xa} (${item.ten_tinh}): ${count} dự án VDCD (Nhấp để xem chi tiết)`);
+
+      el.innerHTML = `
+        <div style="display: flex; align-items: flex-end; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.8)); pointer-events: auto;">
+          <!-- Cán cờ thẳng đứng -->
+          <div style="width: 2.5px; height: 32px; background: linear-gradient(to bottom, #fde047, #e2e8f0, #ca8a04); border-radius: 9999px; position: relative;">
+            <div style="position: absolute; top: -3px; left: -2.5px; width: 7.5px; height: 7.5px; border-radius: 9999px; background: #eab308; border: 1px solid #fef08a; box-shadow: 0 0 5px rgba(234,179,8,0.9);"></div>
+          </div>
+          <!-- Lá cờ nền trắng ngà viền vàng kim gắn Logo VDCD -->
+          <div style="position: relative; margin-left: -1px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; background: #ffffff; padding: 2px 5px; border-radius: 0 4px 4px 0; border: 1.5px solid #eab308; border-left: none; box-shadow: 0 3px 8px rgba(0,0,0,0.5);">
+            <img src="/logo.png" alt="Logo VDCD" style="height: 18px; width: auto; max-width: 44px; object-fit: contain; display: block;" />
+            ${count > 1 ? `<span style="position: absolute; top: -6px; right: -6px; background: #dc2626; color: #ffffff; font-size: 9px; font-weight: 800; padding: 1px 4.5px; border-radius: 9999px; line-height: 1; border: 1.5px solid #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.4);">${count}</span>` : ''}
+          </div>
+        </div>
+      `;
+
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        chonVaDinhViXa(item.id, item.ten_tinh);
+      });
+
+      const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: 'bottom-left',
+      })
+        .setLngLat([lng, lat])
+        .addTo(map);
+
+      markersRef.current.push(marker);
+    });
+
+    return () => {
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+    };
+  }, [crmData, selectedProvince, mapLoaded]);
+
   // Lưu thông tin & gán nhân sự phụ trách
   const handleSaveCRM = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -770,37 +939,71 @@ export default function Map3D({
   };
 
   return (
-    <div className="relative w-full h-full min-h-[350px] rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl flex flex-col">
-      {/* 1. Thanh Thống Kê & Bộ Lọc Trên Desktop */}
-      <div className="hidden sm:flex z-20 bg-slate-900/95 backdrop-blur-md p-3 border-b border-slate-800 flex-wrap items-center justify-between gap-3 text-xs shrink-0">
-        {/* Phân bổ theo Sale */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-slate-400 uppercase tracking-wider text-[11px] mr-1">
-            Phân bổ địa bàn:
-          </span>
-          {salesList.map((sale) => (
-            <button
-              key={sale}
-              onClick={() => setFilterSale(filterSale === sale ? 'All' : sale)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-                filterSale === sale
-                  ? 'bg-slate-800 border-white text-white font-bold ring-1 ring-white/50'
-                  : 'bg-slate-900/80 border-slate-700/80 text-slate-300 hover:border-slate-500'
-              }`}
+    <div
+      ref={containerRef}
+      className={`relative w-full h-full rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl flex flex-col ${
+        isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none min-h-screen' : 'min-h-[350px]'
+      }`}
+    >
+      {/* 1. THANH ĐIỀU KHIỂN & BỘ LỌC BÊN TRONG BẢN ĐỒ (1 DÒNG DUY NHẤT) */}
+      <div className="hidden sm:flex z-20 bg-slate-900/95 backdrop-blur-md px-3 py-2 border-b border-slate-800 items-center justify-between gap-3 text-xs shrink-0 select-none">
+        {/* Khối Trái: Bộ lọc Tỉnh & Danh sách Sale rút gọn trên 1 dòng duy nhất */}
+        <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
+          {/* Bộ lọc Tỉnh tích hợp trực tiếp vào trong Bản đồ */}
+          <div className="flex items-center gap-1.5 shrink-0 bg-slate-800/90 py-1 px-2 rounded-lg border border-slate-700/80 shadow-xs">
+            <MapPin className="size-3.5 text-sky-400 shrink-0" />
+            <select
+              value={selectedProvince}
+              onChange={(e) => onSelectProvince?.(e.target.value)}
+              className="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer"
             >
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: layMauSale(sale) }} />
-              <span>{sale}</span>
-              <span className="bg-slate-800 px-1.5 py-0.2 rounded text-[10px] text-slate-400 ml-0.5">
-                {saleStats[sale] || 0}
-              </span>
-            </button>
-          ))}
+              <option value="All" className="bg-slate-900 text-slate-200">Toàn Miền Tây</option>
+              <option value="An Giang" className="bg-slate-900 text-slate-200">An Giang</option>
+              <option value="Cần Thơ" className="bg-slate-900 text-slate-200">Cần Thơ</option>
+              <option value="Đồng Tháp" className="bg-slate-900 text-slate-200">Đồng Tháp</option>
+              <option value="Vĩnh Long" className="bg-slate-900 text-slate-200">Vĩnh Long</option>
+              <option value="Cà Mau" className="bg-slate-900 text-slate-200">Cà Mau</option>
+            </select>
+          </div>
+
+          <div className="w-px h-5 bg-slate-800 shrink-0" />
+
+          {/* Danh sách Nhân viên Kinh Doanh (Tên rút gọn, 1 dòng duy nhất) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap py-0.5">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider shrink-0 mr-0.5">
+              Sale KD:
+            </span>
+            {salesList.map((sale) => {
+              const shortName = rutGonTen(sale);
+              const isSelected = filterSale === sale;
+              const color = layMauSale(sale);
+              return (
+                <button
+                  key={sale}
+                  type="button"
+                  onClick={() => setFilterSale(isSelected ? 'All' : sale)}
+                  title={`Lọc theo ${sale} (${saleStats[sale] || 0} địa bàn)`}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all shrink-0 cursor-pointer text-xs whitespace-nowrap ${
+                    isSelected
+                      ? 'bg-slate-800 border-white text-white font-bold ring-1 ring-white/50 shadow-sm'
+                      : 'bg-slate-900/80 border-slate-700/80 text-slate-300 hover:border-slate-500'
+                  }`}
+                >
+                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                  <span className="font-medium">{shortName}</span>
+                  <span className="bg-slate-800 px-1.5 py-0.2 rounded text-[10px] text-slate-400">
+                    {saleStats[sale] || 0}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Dropdowns Bộ lọc & Ô Tìm Kiếm Nhanh Trên Desktop */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Ô Tìm Kiếm Xã/Phường Nhanh & Tự Động Zoom */}
-          <div ref={searchRef} className="relative w-56 sm:w-64">
+        {/* Khối Phải: Tìm Kiếm, Lọc Trạng Thái, Nút Full Screen & Reset */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Ô Tìm Kiếm Xã/Phường Nhanh: Hiển thị kèm Tỉnh rõ ràng */}
+          <div ref={searchRef} className="relative w-44 lg:w-56">
             <div className="relative">
               <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -815,16 +1018,17 @@ export default function Map3D({
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     if (filteredSearchList.length > 0) {
-                      chonVaDinhViXa(filteredSearchList[0].id);
-                      setSearchQuery(filteredSearchList[0].ten_xa || filteredSearchList[0].id);
+                      const item = filteredSearchList[0];
+                      chonVaDinhViXa(item.id, item.ten_tinh);
+                      setSearchQuery(`${item.ten_xa} (${item.ten_tinh})`);
                       setIsSearching(false);
                     }
                   } else if (e.key === 'Escape') {
                     setIsSearching(false);
                   }
                 }}
-                placeholder="Tìm xã/phường miền Tây..."
-                className="w-full h-8 bg-slate-800/90 border border-slate-700 text-slate-200 pl-8 pr-7 rounded-lg text-xs placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30"
+                placeholder="Tìm xã/phường..."
+                className="w-full h-8 bg-slate-800/90 border border-slate-700 text-slate-200 pl-8 pr-7 rounded-lg text-xs placeholder:text-slate-500 focus:outline-none focus:border-sky-500"
               />
               {searchQuery && (
                 <button
@@ -842,41 +1046,59 @@ export default function Map3D({
               )}
             </div>
 
-            {/* Dropdown Gợi ý khi tìm kiếm */}
+            {/* Dropdown Gợi ý khi tìm kiếm: Hiển thị nhãn Tỉnh & Mã ĐVHC để phân biệt triệt để */}
             {isSearching && filteredSearchList.length > 0 && (
-              <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-50 divide-y divide-slate-800/60">
-                {filteredSearchList.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      chonVaDinhViXa(c.id);
-                      setSearchQuery(c.ten_xa || c.id);
-                      setIsSearching(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-800/80 transition flex items-center justify-between text-xs cursor-pointer group"
-                  >
-                    <div className="min-w-0 pr-2">
-                      <div className="font-semibold text-slate-200 group-hover:text-sky-400 truncate flex items-center gap-1.5">
-                        <MapPin className="size-3 text-sky-400 shrink-0" />
-                        <span>{c.ten_xa || c.id}</span>
-                        {c.ten_tinh && (
-                          <span className="text-[10px] text-slate-400 font-normal">
-                            ({c.ten_tinh})
-                          </span>
-                        )}
+              <div className="absolute right-0 mt-1 w-72 max-h-64 overflow-y-auto bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-50 divide-y divide-slate-800/60">
+                {filteredSearchList.map((c) => {
+                  const provColor = PROVINCE_BADGE_COLORS[c.ten_tinh || ''] || {
+                    bg: 'bg-slate-800',
+                    text: 'text-slate-300',
+                    border: 'border-slate-700',
+                  };
+                  const isTrungTen = DANH_SACH_XA_TRUNG_TEN.has((c.ten_xa || '').toLowerCase());
+
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        chonVaDinhViXa(c.id, c.ten_tinh);
+                        setSearchQuery(`${c.ten_xa} (${c.ten_tinh})`);
+                        setIsSearching(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-800/80 transition flex items-center justify-between text-xs cursor-pointer group"
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="font-semibold text-slate-200 group-hover:text-sky-400 truncate flex items-center gap-1.5">
+                          <MapPin className="size-3 text-sky-400 shrink-0" />
+                          <span>{c.ten_xa}</span>
+                          {c.ten_tinh && (
+                            <span
+                              className={`text-[10px] px-1.5 py-0.2 rounded font-medium border ${provColor.bg} ${provColor.text} ${provColor.border}`}
+                            >
+                              {c.ten_tinh}
+                            </span>
+                          )}
+                          {isTrungTen && (
+                            <span className="text-[9px] text-amber-400" title="Trùng tên ở tỉnh khác">
+                              •
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate pl-4.5 flex items-center gap-2 mt-0.5">
+                          <span>Mã: {c.ma_xa}</span>
+                          <span>•</span>
+                          <span>{c.sale_name !== 'Chưa gán' ? `Sale: ${rutGonTen(c.sale_name)}` : 'Chưa gán sale'}</span>
+                        </div>
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate pl-4.5">
-                        {c.sale_name !== 'Chưa gán' ? `Sale: ${c.sale_name}` : 'Chưa gán sale'}
-                      </div>
-                    </div>
-                    <span
-                      className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: layMauSale(c.sale_name) }}
-                      title={c.sale_name}
-                    />
-                  </button>
-                ))}
+                      <span
+                        className="size-2 rounded-full shrink-0"
+                        style={{ backgroundColor: layMauSale(c.sale_name) }}
+                        title={c.sale_name}
+                      />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -884,13 +1106,37 @@ export default function Map3D({
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="h-8 bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-2.5 text-xs focus:outline-none focus:border-blue-500 cursor-pointer"
+            className="h-8 bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-2 text-xs focus:outline-none focus:border-sky-500 cursor-pointer"
           >
             <option value="All">Tất cả trạng thái</option>
             <option value="Chưa tiếp cận">Chưa tiếp cận</option>
             <option value="Đang chăm sóc">Đang chăm sóc</option>
             <option value="Đã chốt">Đã chốt</option>
           </select>
+
+          {/* NÚT TOÀN MÀN HÌNH (FULL SCREEN) */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Thu nhỏ lại (Esc)' : 'Toàn màn hình (Full screen)'}
+            className={`h-8 px-2.5 rounded-lg border transition-all text-xs flex items-center gap-1.5 cursor-pointer font-medium ${
+              isFullscreen
+                ? 'bg-sky-600 hover:bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-600/30'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+            }`}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize className="size-3.5 text-white" />
+                <span className="hidden md:inline">Thu nhỏ</span>
+              </>
+            ) : (
+              <>
+                <Maximize className="size-3.5 text-sky-400" />
+                <span className="hidden md:inline">Toàn màn hình</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -900,6 +1146,7 @@ export default function Map3D({
 
         {/* Thanh điều khiển nổi trên Mobile */}
         <div className="sm:hidden absolute top-2.5 inset-x-2.5 z-30 flex items-center gap-2 pointer-events-auto">
+          {/* Ô Tìm Kiếm Nhanh */}
           <div ref={mobileSearchRef} className="relative flex-1">
             <div className="relative">
               <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -915,8 +1162,9 @@ export default function Map3D({
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     if (filteredSearchList.length > 0) {
-                      chonVaDinhViXa(filteredSearchList[0].id);
-                      setSearchQuery(filteredSearchList[0].ten_xa || filteredSearchList[0].id);
+                      const item = filteredSearchList[0];
+                      chonVaDinhViXa(item.id, item.ten_tinh);
+                      setSearchQuery(`${item.ten_xa} (${item.ten_tinh})`);
                       setIsSearching(false);
                     }
                   } else if (e.key === 'Escape') {
@@ -948,8 +1196,8 @@ export default function Map3D({
                     key={c.id}
                     type="button"
                     onClick={() => {
-                      chonVaDinhViXa(c.id);
-                      setSearchQuery(c.ten_xa || c.id);
+                      chonVaDinhViXa(c.id, c.ten_tinh);
+                      setSearchQuery(`${c.ten_xa} (${c.ten_tinh})`);
                       setIsSearching(false);
                     }}
                     className="w-full text-left px-3 py-2.5 active:bg-slate-800 transition flex items-center justify-between text-xs"
@@ -957,11 +1205,11 @@ export default function Map3D({
                     <div>
                       <div className="font-semibold text-white flex items-center gap-1.5">
                         <MapPin className="size-3 text-sky-400 shrink-0" />
-                        <span>{c.ten_xa || c.id}</span>
-                        {c.ten_tinh && <span className="text-[10px] text-slate-400">({c.ten_tinh})</span>}
+                        <span>{c.ten_xa}</span>
+                        {c.ten_tinh && <span className="text-[10px] text-sky-400">({c.ten_tinh})</span>}
                       </div>
                       <div className="text-[10px] text-slate-400 pl-4.5">
-                        {c.sale_name !== 'Chưa gán' ? `Sale: ${c.sale_name}` : 'Chưa gán sale'}
+                        Mã: {c.ma_xa} • {c.sale_name !== 'Chưa gán' ? `Sale: ${rutGonTen(c.sale_name)}` : 'Chưa gán sale'}
                       </div>
                     </div>
                     <span
@@ -974,10 +1222,21 @@ export default function Map3D({
             )}
           </div>
 
+          {/* Nút Fullscreen Mobile */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="h-9 w-9 rounded-full bg-slate-900/95 backdrop-blur-md border border-slate-700/90 text-white flex items-center justify-center shadow-xl shrink-0 cursor-pointer"
+            title="Toàn màn hình"
+          >
+            {isFullscreen ? <Minimize className="size-3.5 text-sky-400" /> : <Maximize className="size-3.5 text-sky-400" />}
+          </button>
+
+          {/* Nút Mở Bộ Lọc Mobile */}
           <button
             type="button"
             onClick={() => setMoBoLocMobile(true)}
-            className="h-9 px-3 rounded-full bg-slate-900/95 backdrop-blur-md border border-slate-700/90 text-white text-xs font-medium flex items-center gap-1.5 shadow-xl shrink-0"
+            className="h-9 px-3 rounded-full bg-slate-900/95 backdrop-blur-md border border-slate-700/90 text-white text-xs font-medium flex items-center gap-1.5 shadow-xl shrink-0 cursor-pointer"
           >
             <SlidersHorizontal className="size-3.5 text-sky-400" />
             <span>Lọc</span>
@@ -989,58 +1248,102 @@ export default function Map3D({
           type="button"
           onClick={resetMapView}
           className="absolute left-3 bottom-3 z-20 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white p-2 rounded-lg border border-slate-700/80 shadow-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-          title="Đặt lại góc nhìn bản đồ"
+          title="Đặt lại góc nhìn chuẩn"
         >
           <RotateCcw className="size-3.5" />
           <span className="hidden sm:inline">Góc nhìn chuẩn</span>
         </button>
 
-        {/* Hover Tooltip */}
+        {/* Hover Tooltip Mở Rộng: Hiển thị Diện tích (ha), Dân số, Tình trạng tiếp cận, Số dự án */}
         {tooltipPos && hoveredCommune && (
           <div
-            className="pointer-events-none absolute z-30 bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-lg p-2.5 shadow-2xl text-xs space-y-1 transform -translate-x-1/2 -translate-y-full mt--2 min-w-[200px]"
-            style={{ left: `${tooltipPos.x}px`, top: `${tooltipPos.y - 12}px` }}
+            className="pointer-events-none absolute z-30 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl p-3.5 shadow-2xl text-xs space-y-2 transform -translate-x-1/2 -translate-y-full min-w-[280px] max-w-[330px]"
+            style={{ left: `${tooltipPos.x}px`, top: `${tooltipPos.y - 14}px` }}
           >
-            <div className="font-bold text-white border-b border-slate-800 pb-1 flex items-center justify-between">
-              <span>{hoveredCommune.ten_xa || hoveredCommune.id}</span>
-              {hoveredCommune.ten_tinh && (
-                <span className="text-[10px] text-sky-400 font-normal">
+            {/* Tiêu đề Xã & Tỉnh */}
+            <div className="border-b border-slate-800 pb-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-sm text-white truncate">{hoveredCommune.ten_xa}</span>
+                <span className="text-[11px] text-sky-300 font-semibold px-2 py-0.5 rounded-md bg-sky-950/80 border border-sky-800/60 shrink-0">
                   {hoveredCommune.ten_tinh}
                 </span>
-              )}
+              </div>
+              <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-400">
+                <span>Mã ĐVHC:</span>
+                <span className="font-mono text-slate-300 font-medium">{hoveredCommune.ma_xa || hoveredCommune.id}</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Sale phụ trách:</span>
-              <span className="font-medium text-slate-200 flex items-center gap-1">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: layMauSale(hoveredCommune.sale_name) }}
-                />
-                {hoveredCommune.sale_name}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Trạng thái:</span>
-              <span
-                className={`font-semibold ${
-                  hoveredCommune.reach_status === 'Đã chốt'
-                    ? 'text-emerald-400'
-                    : hoveredCommune.reach_status === 'Đang chăm sóc'
-                    ? 'text-amber-400'
-                    : 'text-slate-400'
-                }`}
-              >
-                {hoveredCommune.reach_status}
-              </span>
-            </div>
-            {hoveredCommune.danh_sach_du_an && hoveredCommune.danh_sach_du_an.length > 0 && (
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">Số dự án:</span>
-                <span className="font-semibold text-blue-400">
-                  {hoveredCommune.danh_sach_du_an.length} dự án
+
+            {/* Bảng thông số chi tiết */}
+            <div className="space-y-1.5 pt-0.5">
+              {/* 1. Diện tích (ha) */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Diện tích:</span>
+                <span className="font-semibold text-slate-200">
+                  {((hoveredCommune.area_km2 || 0) * 100).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} ha
+                  <span className="text-[11px] font-normal text-slate-400 ml-1">
+                    ({(hoveredCommune.area_km2 || 0).toLocaleString('vi-VN')} km²)
+                  </span>
                 </span>
               </div>
-            )}
+
+              {/* 2. Dân số */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Dân số:</span>
+                <span className="font-semibold text-slate-200">
+                  {(
+                    hoveredCommune.dan_so ||
+                    (hoveredCommune.households ? hoveredCommune.households * 4 : 0)
+                  ).toLocaleString('vi-VN')} người
+                  {hoveredCommune.households > 0 && (
+                    <span className="text-[11px] font-normal text-slate-400 ml-1">
+                      (~{hoveredCommune.households.toLocaleString('vi-VN')} hộ)
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              {/* 3. Tình trạng tiếp cận */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Tình trạng tiếp cận:</span>
+                <span
+                  className={`font-semibold px-2 py-0.5 rounded text-[11px] border ${
+                    hoveredCommune.reach_status === 'Đã chốt'
+                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
+                      : hoveredCommune.reach_status === 'Đang chăm sóc'
+                      ? 'bg-amber-950/80 text-amber-300 border-amber-700/60'
+                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                  }`}
+                >
+                  {hoveredCommune.reach_status}
+                </span>
+              </div>
+
+              {/* 4. Số dự án (Cắm cờ VDCD) */}
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                <span className="text-slate-400">Số dự án:</span>
+                {hoveredCommune.danh_sach_du_an && hoveredCommune.danh_sach_du_an.length > 0 ? (
+                  <span className="font-bold text-amber-300 flex items-center gap-1.5 bg-red-950/70 px-2 py-0.5 rounded-md border border-red-700/80 shadow-xs">
+                    <img src="/logo.png" alt="VDCD" className="h-3.5 w-auto object-contain bg-white/95 rounded-xs px-1 py-0.5" />
+                    <span>{hoveredCommune.danh_sach_du_an.length} dự án (VDCD)</span>
+                  </span>
+                ) : (
+                  <span className="text-slate-500 font-medium">0 dự án</span>
+                )}
+              </div>
+
+              {/* 5. Sale phụ trách */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Sale phụ trách:</span>
+                <span className="font-medium text-slate-200 flex items-center gap-1.5">
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: layMauSale(hoveredCommune.sale_name) }}
+                  />
+                  <span>{hoveredCommune.sale_name}</span>
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1053,27 +1356,49 @@ export default function Map3D({
             {/* Header Drawer */}
             <div className="p-4 border-b border-slate-800 flex items-start justify-between bg-slate-800/60">
               <div className="min-w-0 flex-1 pr-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] text-sky-400 font-semibold uppercase tracking-wider">
-                    {selectedFeature.ten_tinh || 'Miền Tây'}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Badge Tỉnh nổi bật */}
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-sky-950/90 text-sky-300 border border-sky-700/60 flex items-center gap-1">
+                    <MapPin className="size-3" />
+                    {selectedFeature.ten_tinh}
                   </span>
+
+                  {/* Mã ĐVHC chính thức */}
+                  {selectedFeature.ma_xa && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                      Mã: {selectedFeature.ma_xa}
+                    </span>
+                  )}
+
+                  {/* Cảnh báo tên trùng nếu có */}
+                  {DANH_SACH_XA_TRUNG_TEN.has((selectedFeature.ten_xa || '').toLowerCase()) && (
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60 flex items-center gap-1"
+                      title="Tên này có ở tỉnh khác trong Miền Tây. Hệ thống đã phân định chuẩn xác theo Tỉnh và Mã ĐVHC."
+                    >
+                      <AlertCircle className="size-2.5" />
+                      Trùng tên
+                    </span>
+                  )}
+
                   {selectedFeature.khach_hang_id ? (
                     <Link
                       href={`/khach-hang/${selectedFeature.khach_hang_id}`}
-                      className="text-[11px] text-slate-400 hover:text-sky-300 inline-flex items-center gap-0.5 transition-colors"
+                      className="text-[11px] text-slate-400 hover:text-sky-300 inline-flex items-center gap-0.5 transition-colors ml-auto"
                       title="Mở hồ sơ khách hàng đầy đủ"
                     >
                       <ExternalLink className="size-3" />
                       <span>Xem hồ sơ KH</span>
                     </Link>
                   ) : (
-                    <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">
+                    <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 ml-auto">
                       Chưa tạo KH
                     </span>
                   )}
                 </div>
-                <h3 className="text-base font-bold text-white mt-1 leading-snug break-words">
-                  {selectedFeature.ten_day_du || selectedFeature.ten_xa || selectedFeature.id}
+
+                <h3 className="text-base font-bold text-white mt-2 leading-snug break-words">
+                  {selectedFeature.ten_day_du || `${selectedFeature.ten_xa} - Tỉnh ${selectedFeature.ten_tinh}`}
                 </h3>
               </div>
               <button
@@ -1238,7 +1563,7 @@ export default function Map3D({
                 {/* Chọn Nhân Sự Phụ Trách */}
                 <div>
                   <label className="block text-[11px] text-slate-400 mb-1">
-                    Nhân sự phụ trách địa bàn
+                    Nhân viên kinh doanh phụ trách
                   </label>
                   <select
                     value={editSaleId}
@@ -1352,7 +1677,7 @@ export default function Map3D({
               {/* Lọc theo Sale */}
               <div className="space-y-2">
                 <span className="text-slate-400 block text-[11px] font-semibold uppercase tracking-wider">
-                  Nhân sự phụ trách
+                  Nhân viên kinh doanh
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -1379,7 +1704,7 @@ export default function Map3D({
                     >
                       <span className="flex items-center gap-1.5 truncate">
                         <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: layMauSale(sale) }} />
-                        <span className="truncate">{sale}</span>
+                        <span className="truncate">{rutGonTen(sale)}</span>
                       </span>
                       <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 shrink-0">
                         {saleStats[sale] || 0}
