@@ -1,19 +1,25 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import Map3D, { CommuneCRMData } from '@/thanh_phan/Map3D';
-import { danhSachKhachHang, capNhatKhachHang, xoaCacheKhachHang } from '@/dich_vu/khach_hang/dich_vu_khach_hang';
+import React, { useState, useEffect, useMemo } from 'react';
+import Map3D, { CommuneCRMData, PROVINCES_LIST } from '@/thanh_phan/Map3D';
+import {
+  danhSachKhachHang,
+  capNhatKhachHang,
+  taoKhachHangMoi,
+  xoaCacheKhachHang,
+} from '@/dich_vu/khach_hang/dich_vu_khach_hang';
 import { danhSachNhanSu } from '@/dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachHoSoDuAn } from '@/dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import { danhSachNguoiLienHe } from '@/dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import useStoreXacThuc from '@/thu_vien/zustand/store_xac_thuc';
+import { Map as MapIcon } from 'lucide-react';
 
 // Chuẩn hóa tên xã để khớp hoàn hảo giữa CRM, Excel và GeoJSON
-function chuanHoaTenXa(str: string): string {
+function chuanHoaTen(str: string): string {
   if (!str) return '';
   let s = str.trim();
-  s = s.replace(/-\s*TỈNH\s+AN\s+GIANG/gi, '');
-  s = s.replace(/-\s*AN\s+GIANG/gi, '');
+  s = s.replace(/-\s*TỈNH\s+[A-ZÀ-Ỹa-zà-ỹ\s]+/gi, '');
+  s = s.replace(/-\s*TP\s+[A-ZÀ-Ỹa-zà-ỹ\s]+/gi, '');
   s = s.replace(/UBND\s+/gi, '');
   s = s.replace(/UBD\s+/gi, '');
   s = s.replace(/(Xã|Phường|Thị trấn)\s+/gi, '');
@@ -22,14 +28,16 @@ function chuanHoaTenXa(str: string): string {
 
 export default function MapDashboardPage() {
   const [crmData, setCrmData] = useState<CommuneCRMData[]>([]);
+  const [danhSachSale, setDanhSachSale] = useState<Array<{ id: string; ho_va_ten: string }>>([]);
+  const [selectedProvince, setSelectedProvince] = useState<string>('All');
   const [isLoading, setIsLoading] = useState(true);
   const { nguoiDungHienTai } = useStoreXacThuc();
 
   useEffect(() => {
     async function loadData() {
       try {
-        // 1. Tải GeoJSON 102 xã của An Giang
-        const geoRes = await fetch('/angiang.geojson');
+        // 1. Tải GeoJSON 495 xã Miền Tây
+        const geoRes = await fetch('/mientay.geojson');
         const geojson = await geoRes.json();
 
         // 2. Tải Khách hàng, Nhân sự, Dự án, Người liên hệ từ CSDL
@@ -45,6 +53,10 @@ export default function MapDashboardPage() {
         const dsNhanSu = nsRes.mang || [];
         const dsDuAn = daRes.mang || [];
         const dsLienHe = lhRes.mang || [];
+
+        // Lưu danh sách sale cho dropdown phân công
+        const sales = dsNhanSu.map((ns) => ({ id: ns.id, ho_va_ten: ns.ho_va_ten }));
+        setDanhSachSale(sales);
 
         // Map ID nhân sự sang Họ và tên
         const mapNhanSu: Record<string, string> = {};
@@ -83,36 +95,51 @@ export default function MapDashboardPage() {
           }
         });
 
-        // Tạo map khách hàng theo tên chuẩn hóa và trường xã/phường
+        // Map khách hàng theo các cấp độ ưu tiên:
+        // Cấp 1: keyTinh_keyXa
+        // Cấp 2: keyXa
+        // Cấp 3: keyTen
+        const mapKhachTheoTinhXa = new Map<string, any>();
+        const mapKhachTheoXa = new Map<string, any>();
         const mapKhachTheoTen = new Map<string, any>();
-        // Ưu tiên 1: Khớp chính xác theo trường xa_phuong được chọn trong thông tin khách hàng
+
         dsKhach.forEach((kh) => {
-          const keyXa = chuanHoaTenXa(kh.xa_phuong || '');
-          if (keyXa && !mapKhachTheoTen.has(keyXa)) {
-            mapKhachTheoTen.set(keyXa, kh);
+          const keyXa = chuanHoaTen(kh.xa_phuong || '');
+          const keyTinh = (kh.tinh_thanh || '').trim().toLowerCase();
+          if (keyTinh && keyXa) {
+            mapKhachTheoTinhXa.set(`${keyTinh}_${keyXa}`, kh);
           }
-        });
-        // Ưu tiên 2: Khớp theo ten_khach_hang nếu chưa được gán bởi trường xa_phuong
-        dsKhach.forEach((kh) => {
-          const keyTen = chuanHoaTenXa(kh.ten_khach_hang);
+          if (keyXa && !mapKhachTheoXa.has(keyXa)) {
+            mapKhachTheoXa.set(keyXa, kh);
+          }
+          const keyTen = chuanHoaTen(kh.ten_khach_hang);
           if (keyTen && !mapKhachTheoTen.has(keyTen)) {
             mapKhachTheoTen.set(keyTen, kh);
           }
         });
 
-        // 3. Khớp từng xã trong GeoJSON với khách hàng, dự án và người liên hệ
+        // 3. Khớp từng xã trong GeoJSON Miền Tây với khách hàng, dự án và người liên hệ
         const result: CommuneCRMData[] = geojson.features.map((f: any, idx: number) => {
           const props = f.properties || {};
+          const maXa = String(props.ma_xa || '').trim();
           const tenXaGoc = (props.ten_xa || '').trim();
-          const tenChuan = chuanHoaTenXa(tenXaGoc);
+          const tenTinhGoc = (props.ten_tinh || '').trim();
+          const tenChuanXa = chuanHoaTen(tenXaGoc);
+          const tenChuanTinh = tenTinhGoc.toLowerCase();
 
-          const kh = mapKhachTheoTen.get(tenChuan);
+          // Tìm khách hàng tương ứng
+          const kh =
+            mapKhachTheoTinhXa.get(`${tenChuanTinh}_${tenChuanXa}`) ||
+            mapKhachTheoXa.get(tenChuanXa) ||
+            mapKhachTheoTen.get(tenChuanXa);
 
           let saleName = 'Chưa gán';
+          let saleId: string | undefined = undefined;
           let status: CommuneCRMData['reach_status'] = 'Chưa tiếp cận';
           let notes = '';
           let revenue = 0;
-          let tenDayDu = `UBND XÃ ${tenXaGoc.toUpperCase()} - TỈNH AN GIANG`;
+          const loai = props.loai ? props.loai.toUpperCase() : 'XÃ';
+          let tenDayDu = `UBND ${loai} ${tenXaGoc.toUpperCase()} - TỈNH ${tenTinhGoc.toUpperCase()}`;
           let khId: string | undefined = undefined;
           let duAnCuaXa: any[] = [];
           let lienHeCuaXa: any[] = [];
@@ -122,14 +149,13 @@ export default function MapDashboardPage() {
             tenDayDu = kh.ten_khach_hang;
             if (kh.nguoi_phu_trach_id && mapNhanSu[kh.nguoi_phu_trach_id]) {
               saleName = mapNhanSu[kh.nguoi_phu_trach_id];
+              saleId = kh.nguoi_phu_trach_id;
             }
             notes = kh.ghi_chu || '';
 
-            // Lấy danh sách dự án & người liên hệ
             duAnCuaXa = mapDuAnTheoKH.get(kh.id) || [];
             lienHeCuaXa = mapLienHeTheoKH.get(kh.id) || [];
 
-            // Xác định doanh số & trạng thái tiếp cận
             if (duAnCuaXa.length > 0) {
               status = 'Đang chăm sóc';
               revenue = duAnCuaXa.reduce(
@@ -142,7 +168,11 @@ export default function MapDashboardPage() {
             if (noteLower.includes('chốt') || noteLower.includes('ký')) {
               status = 'Đã chốt';
               if (revenue === 0) revenue = 450_000_000 + ((idx * 43) % 400) * 1_000_000;
-            } else if (noteLower.includes('đã gặp') || noteLower.includes('đang đề xuất') || noteLower.includes('liên hệ')) {
+            } else if (
+              noteLower.includes('đã gặp') ||
+              noteLower.includes('đang đề xuất') ||
+              noteLower.includes('liên hệ')
+            ) {
               status = 'Đang chăm sóc';
               if (revenue === 0) revenue = 150_000_000 + ((idx * 27) % 200) * 1_000_000;
             }
@@ -153,9 +183,14 @@ export default function MapDashboardPage() {
           const area = Number(props.dtich_km2) || 45;
 
           return {
-            id: tenXaGoc, // Khớp chính xác với ten_xa trong GeoJSON
+            id: maXa || tenXaGoc,
+            ma_xa: maXa,
+            ten_xa: tenXaGoc,
+            ten_tinh: tenTinhGoc,
+            ma_tinh: String(props.ma_tinh || ''),
             ten_day_du: tenDayDu,
             sale_name: saleName,
+            sale_id: saleId,
             revenue: revenue,
             households: households,
             area_km2: area,
@@ -170,7 +205,7 @@ export default function MapDashboardPage() {
         setCrmData(result);
         setIsLoading(false);
       } catch (err) {
-        console.error('Lỗi khi nạp dữ liệu bản đồ:', err);
+        console.error('Lỗi khi nạp dữ liệu bản đồ miền Tây:', err);
         setIsLoading(false);
       }
     }
@@ -178,13 +213,18 @@ export default function MapDashboardPage() {
     loadData();
   }, []);
 
+  // Cập nhật CRM và gán nhân sự phụ trách
   const handleUpdateCRM = async (
     communeId: string,
     newStatus: CommuneCRMData['reach_status'],
-    newNotes: string
+    newNotes: string,
+    newSaleId?: string,
+    newSaleName?: string
   ) => {
-    // 1. Cập nhật state UI
     const targetItem = crmData.find((d) => d.id === communeId);
+    const resolvedSaleName = newSaleName || (newSaleId ? 'Đã gán' : 'Chưa gán');
+
+    // 1. Cập nhật state UI ngay lập tức
     setCrmData((prev) =>
       prev.map((item) =>
         item.id === communeId
@@ -192,45 +232,105 @@ export default function MapDashboardPage() {
               ...item,
               reach_status: newStatus,
               notes: newNotes,
+              sale_id: newSaleId || undefined,
+              sale_name: newSaleId ? resolvedSaleName : 'Chưa gán',
             }
           : item
       )
     );
 
-    // 2. Nếu đã có trong CRM thì lưu vào Firestore
-    if (targetItem?.khach_hang_id) {
-      try {
+    // 2. Lưu vào CSDL Firestore
+    try {
+      if (targetItem?.khach_hang_id) {
+        // Đã có khách hàng -> Cập nhật
         await capNhatKhachHang(
           {
             id: targetItem.khach_hang_id,
             ghi_chu: newNotes,
+            nguoi_phu_trach_id: newSaleId || null,
           },
           nguoiDungHienTai ?? null
         );
-      } catch (err) {
-        console.error('Lỗi khi cập nhật khách hàng:', err);
+      } else if (targetItem) {
+        // Chưa có trong CSDL khách hàng -> Tự động khởi tạo khách hàng mới
+        const tenKh =
+          targetItem.ten_day_du ||
+          `UBND XÃ ${(targetItem.ten_xa || targetItem.id).toUpperCase()} - TỈNH ${(targetItem.ten_tinh || '').toUpperCase()}`;
+
+        const khMoi = await taoKhachHangMoi(
+          {
+            ten_khach_hang: tenKh,
+            loai_khach_hang: 'to_chuc',
+            tinh_thanh: targetItem.ten_tinh || null,
+            xa_phuong: targetItem.ten_xa || targetItem.id,
+            nguoi_phu_trach_id: newSaleId || null,
+            ghi_chu: newNotes || 'Khởi tạo từ bản đồ địa bàn',
+            trang_thai: 'hoat_dong',
+          },
+          nguoiDungHienTai ?? null
+        );
+
+        // Cập nhật lại khach_hang_id vào state
+        if (khMoi?.id) {
+          setCrmData((prev) =>
+            prev.map((item) =>
+              item.id === communeId ? { ...item, khach_hang_id: khMoi.id } : item
+            )
+          );
+        }
       }
+    } catch (err) {
+      console.error('Lỗi khi cập nhật/khởi tạo khách hàng từ bản đồ:', err);
     }
   };
 
-  const countDaChot = crmData.filter((d) => d.reach_status === 'Đã chốt').length;
-  const countDangChamSoc = crmData.filter((d) => d.reach_status === 'Đang chăm sóc').length;
-  const countDaGanSale = crmData.filter((d) => d.sale_name !== 'Chưa gán').length;
-  const tongSoDuAn = crmData.reduce((acc, d) => acc + (d.danh_sach_du_an?.length || 0), 0);
+  // Thống kê theo phạm vi tỉnh được chọn
+  const communesInScope = useMemo(() => {
+    if (selectedProvince === 'All') return crmData;
+    return crmData.filter((c) => c.ten_tinh === selectedProvince);
+  }, [crmData, selectedProvince]);
+
+  const countDaChot = communesInScope.filter((d) => d.reach_status === 'Đã chốt').length;
+  const countDangChamSoc = communesInScope.filter((d) => d.reach_status === 'Đang chăm sóc').length;
+  const countDaGanSale = communesInScope.filter((d) => d.sale_name !== 'Chưa gán').length;
+  const tongSoDuAn = communesInScope.reduce((acc, d) => acc + (d.danh_sach_du_an?.length || 0), 0);
 
   return (
     <div className="flex flex-col h-[calc(100dvh-100px)] sm:h-[calc(100vh-5.5rem)] sm:space-y-3">
-      {/* Tiêu đề & Tổng quan chỉ số (Chỉ hiển thị trên Desktop để dành toàn bộ không gian cho Map trên Mobile) */}
+      {/* Tiêu đề, Chọn Tỉnh & Tổng quan chỉ số trên Desktop */}
       <div className="hidden sm:flex sm:items-center sm:justify-between gap-4 shrink-0">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">
-          Bản Đồ Địa Bàn Phụ Trách
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <MapIcon className="size-6 text-sky-500" />
+            <span>Bản Đồ Địa Bàn Miền Tây</span>
+          </h1>
 
-        {/* Chỉ số địa bàn trên Desktop */}
-        <div className="flex items-center gap-2.5 text-xs shrink-0">
+          {/* Chọn Tỉnh thành dạng Tabs nhỏ gọn */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+            {PROVINCES_LIST.map((prov) => (
+              <button
+                key={prov}
+                type="button"
+                onClick={() => setSelectedProvince(prov)}
+                className={`px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer ${
+                  selectedProvince === prov
+                    ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                {prov === 'All' ? 'Toàn Miền Tây' : prov}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Chỉ số địa bàn theo Tỉnh được chọn */}
+        <div className="flex items-center gap-2 text-xs shrink-0">
           <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
             <span className="text-slate-400 block text-[10px]">Địa bàn</span>
-            <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">102 xã/phường</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+              {communesInScope.length} xã/phường
+            </span>
           </div>
           <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
             <span className="text-slate-400 block text-[10px]">Dự án</span>
@@ -238,7 +338,9 @@ export default function MapDashboardPage() {
           </div>
           <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
             <span className="text-slate-400 block text-[10px]">Đã gán sale</span>
-            <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">{countDaGanSale}</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+              {countDaGanSale}
+            </span>
           </div>
           <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
             <span className="text-slate-400 block text-[10px]">Đang chăm sóc</span>
@@ -251,14 +353,21 @@ export default function MapDashboardPage() {
         </div>
       </div>
 
-      {/* Khu vực Bản Đồ 2D */}
+      {/* Khu vực Bản Đồ */}
       <div className="flex-1 w-full min-h-[450px] relative rounded-2xl overflow-hidden border border-slate-800 shadow-xl">
         {isLoading ? (
-          <div className="w-full h-full flex items-center justify-center bg-slate-900 rounded-xl border border-slate-800 text-slate-400 text-sm">
-            Đang tải dữ liệu địa bàn An Giang...
+          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 rounded-xl border border-slate-800 text-slate-400 text-sm gap-2">
+            <div className="w-6 h-6 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+            <span>Đang nạp dữ liệu địa bàn 5 tỉnh Miền Tây...</span>
           </div>
         ) : (
-          <Map3D crmData={crmData} onUpdateCRM={handleUpdateCRM} />
+          <Map3D
+            crmData={crmData}
+            onUpdateCRM={handleUpdateCRM}
+            danhSachSale={danhSachSale}
+            selectedProvince={selectedProvince}
+            onSelectProvince={setSelectedProvince}
+          />
         )}
       </div>
     </div>

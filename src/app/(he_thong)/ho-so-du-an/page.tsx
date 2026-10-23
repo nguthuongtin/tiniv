@@ -72,7 +72,15 @@ import {
   ThanhSoLieu,
   KhungDanhSach,
   PhanTrang,
-  NutIcon
+  NutIcon,
+  Bang,
+  ChuDeBang,
+  ThanBang,
+  HangBang,
+  ODauBang,
+  OBang,
+  DanhSachTheMobile,
+  TheMobile
 } from '../../../thanh_phan/ui';
 import { DANH_SACH_GIAI_DOAN_MAC_DINH, layCauHinhGiaiDoanTheoKey, layDanhSachGiaiDoan } from '../../../thu_vien/cau_hinh/giai_doan_du_an';
 import { langNgheCauHinhGiaiDoanDuAn } from '../../../dich_vu/cau_hinh/dich_vu_cau_hinh_giai_doan_du_an';
@@ -96,20 +104,60 @@ const TEN_GIAI_DOAN_MAC_DINH: Record<
   DANH_SACH_GIAI_DOAN_MAC_DINH.map(x => [x.key, { nhan: x.nhan_day_du, kieu: x.kieu }])
 );
 
+const GD_COLORS: Record<string, { badge: string; dotBg: string }> = {
+  moi_tao: { badge: 'bg-violet-50 text-violet-700 border-violet-200/80', dotBg: 'bg-violet-600' },
+  tiep_can: { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200/80', dotBg: 'bg-indigo-600' },
+  khao_sat: { badge: 'bg-emerald-50 text-emerald-800 border-emerald-300/80', dotBg: 'bg-emerald-500' },
+  len_giai_phap: { badge: 'bg-sky-50 text-sky-700 border-sky-200/80', dotBg: 'bg-sky-500' },
+  bao_gia: { badge: 'bg-amber-50 text-amber-700 border-amber-200/80', dotBg: 'bg-amber-500' },
+  dam_phan: { badge: 'bg-orange-50 text-orange-700 border-orange-200/80', dotBg: 'bg-orange-500' },
+  ky_hop_dong: { badge: 'bg-teal-50 text-teal-700 border-teal-200/80', dotBg: 'bg-teal-500' },
+  trien_khai: { badge: 'bg-blue-50 text-blue-700 border-blue-200/80', dotBg: 'bg-blue-600' },
+  nghiem_thu: { badge: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200/80', dotBg: 'bg-fuchsia-600' },
+  hoan_thanh: { badge: 'bg-emerald-50 text-emerald-800 border-emerald-300/80', dotBg: 'bg-emerald-500' },
+  tam_dung: { badge: 'bg-slate-50 text-slate-700 border-slate-200/80', dotBg: 'bg-slate-500' },
+  huy: { badge: 'bg-rose-50 text-rose-700 border-rose-200/80', dotBg: 'bg-rose-500' }
+};
+
 const DINH_DANG_TIEN_NGAN_GON = (v: number | null | undefined): string => {
   const n = Number(v) || 0;
   if (n === 0) return '0 ₫';
-  const ty = Math.floor(n / 1_000_000_000);
-  const duSauTy = Math.round((n % 1_000_000_000) / 1_000_000);
-  if (ty >= 1) {
-    if (duSauTy === 0) return `${ty} tỷ`;
-    return `${ty} tỷ ${duSauTy} triệu`;
+  if (n >= 1_000_000_000) {
+    const soTy = n / 1_000_000_000;
+    const dinhDang = Number(soTy.toFixed(2)).toString().replace('.', ',');
+    return `${dinhDang} tỷ`;
   }
-  const trieu = Math.round(n / 1_000_000);
-  if (trieu >= 1) return `${trieu} triệu`;
-  const nghin = Math.round(n / 1_000);
-  if (nghin >= 1) return `${nghin} nghìn`;
+  if (n >= 1_000_000) {
+    const soTrieu = n / 1_000_000;
+    const dinhDang = Number(soTrieu.toFixed(2)).toString().replace('.', ',');
+    return `${dinhDang} triệu`;
+  }
+  if (n >= 1_000) {
+    const soNghin = n / 1_000;
+    const dinhDang = Number(soNghin.toFixed(1)).toString().replace('.', ',');
+    return `${dinhDang} nghìn`;
+  }
   return `${n} ₫`;
+};
+
+const MAP_TIEM_NANG: Record<string, { nhan: string; lop: string }> = {
+  rat_cao: { nhan: 'Rất cao', lop: 'bg-rose-50 text-rose-700 border-rose-200/80' },
+  cao: { nhan: 'Cao', lop: 'bg-amber-50 text-amber-700 border-amber-200/80' },
+  trung_binh: { nhan: 'Trung bình', lop: 'bg-sky-50 text-sky-700 border-sky-200/80' },
+  thap: { nhan: 'Thấp', lop: 'bg-slate-100 text-slate-600 border-slate-200/80' },
+  rat_thap: { nhan: 'Rất thấp', lop: 'bg-slate-50 text-slate-500 border-slate-200/60' }
+};
+
+const tinhSoNgayCapNhat = (ngayStr: string | null | undefined): string => {
+  if (!ngayStr) return '';
+  const hnay = new Date();
+  const ngay = new Date(ngayStr);
+  if (isNaN(ngay.getTime())) return '';
+  const diffMs = Math.max(0, hnay.getTime() - ngay.getTime());
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays === 0) return 'Hôm nay';
+  if (diffDays === 1) return '1 ngày trước';
+  return `${diffDays} ngày trước`;
 };
 
 interface ThongBaoToast {
@@ -577,118 +625,242 @@ function TrangHoSoDuAn() {
             />
           }
         >
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4 p-3.5 sm:p-5 bg-slate-50/50">
-            {danhSachTrangHienTai.map((hda, index) => {
-              const kh = hda.khach_hang_id ? dsKhachHang.find((k) => k.id === hda.khach_hang_id) ?? null : null;
-              const idLead = hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id;
-              const nguoiLead = idLead ? dsNhanSu.find((n) => n.id === idLead) ?? null : null;
-              const gd = tenGiaiDoan[hda.giai_doan] ?? { nhan: String(hda.giai_doan) };
-              const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
-              const duocChon = dsDuAnDaChonIds.has(hda.id);
-              const giaTri = laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong);
+          {/* Bảng danh sách trên Desktop / PC */}
+          <div className="hidden sm:block">
+            <Bang>
+              <ChuDeBang>
+                <HangBang className="border-slate-200/80 hover:bg-transparent">
+                  <ODauBang className="w-10 px-3 text-center">
+                    <input
+                      type="checkbox"
+                      checked={daChonHetTrang}
+                      onChange={chonTatCaTrang}
+                      className="custom-check"
+                      title="Chọn tất cả dự án trang này"
+                    />
+                  </ODauBang>
+                  <ODauBang className="w-12 px-3 text-center">STT</ODauBang>
+                  <ODauBang className="min-w-[220px] max-w-[280px] px-3.5">Dự án & Khách hàng</ODauBang>
+                  <ODauBang className="w-28 px-3 text-right">Giá trị</ODauBang>
+                  <ODauBang className="min-w-[300px] max-w-[440px] px-3.5">Tiến độ mới nhất</ODauBang>
+                  <ODauBang className="w-32 px-3">Giai đoạn</ODauBang>
+                  <ODauBang className="w-28 px-3 text-center">Tiềm năng</ODauBang>
+                  <ODauBang className="w-28 px-3">Phụ trách</ODauBang>
+                  <ODauBang className="w-24 px-3 text-right">Thao tác</ODauBang>
+                </HangBang>
+              </ChuDeBang>
+              <ThanBang>
+                {danhSachTrangHienTai.map((hda, index) => {
+                  const kh = hda.khach_hang_id ? dsKhachHang.find((k) => k.id === hda.khach_hang_id) ?? null : null;
+                  const idLead = hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id;
+                  const nguoiLead = idLead ? dsNhanSu.find((n) => n.id === idLead) ?? null : null;
+                  const gd = tenGiaiDoan[hda.giai_doan] ?? { nhan: String(hda.giai_doan) };
+                  const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
+                  const duocChon = dsDuAnDaChonIds.has(hda.id);
+                  const giaTri = laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong);
+                  const styleColor = hda.trang_thai === 'da_xoa'
+                    ? { badge: 'bg-rose-50 text-rose-700 border-rose-200/80', dotBg: 'bg-rose-500' }
+                    : (GD_COLORS[hda.giai_doan] || { badge: 'bg-slate-100 text-slate-600 border-slate-200/80', dotBg: 'bg-slate-400' });
+                  const tdMoiNhat = groupTienDoMoiNhatTheoDuAn.get(hda.id);
+                  const thoiGianCapNhatTd = tdMoiNhat ? tinhSoNgayCapNhat(tdMoiNhat.ngay_cap_nhat || tdMoiNhat.ngay_tao) : '';
+                  const tiemNang = MAP_TIEM_NANG[hda.muc_do_tiem_nang];
 
-              const gdColors: Record<string, { badge: string; dotBg: string; barWidth: string }> = {
-                moi_tao: { badge: 'bg-violet-50 text-violet-700 border-violet-200/80', dotBg: 'bg-violet-600', barWidth: '15%' },
-                tiep_can: { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200/80', dotBg: 'bg-indigo-600', barWidth: '25%' },
-                khao_sat: { badge: 'bg-emerald-50 text-emerald-800 border-emerald-300/80', dotBg: 'bg-emerald-500', barWidth: '35%' },
-                len_giai_phap: { badge: 'bg-sky-50 text-sky-700 border-sky-200/80', dotBg: 'bg-sky-500', barWidth: '50%' },
-                bao_gia: { badge: 'bg-amber-50 text-amber-700 border-amber-200/80', dotBg: 'bg-amber-500', barWidth: '65%' },
-                dam_phan: { badge: 'bg-orange-50 text-orange-700 border-orange-200/80', dotBg: 'bg-orange-500', barWidth: '80%' },
-                ky_hop_dong: { badge: 'bg-teal-50 text-teal-700 border-teal-200/80', dotBg: 'bg-teal-500', barWidth: '90%' },
-                trien_khai: { badge: 'bg-blue-50 text-blue-700 border-blue-200/80', dotBg: 'bg-blue-600', barWidth: '95%' },
-                nghiem_thu: { badge: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200/80', dotBg: 'bg-fuchsia-600', barWidth: '98%' },
-                hoan_thanh: { badge: 'bg-emerald-50 text-emerald-800 border-emerald-300/80', dotBg: 'bg-emerald-500', barWidth: '100%' },
-                tam_dung: { badge: 'bg-slate-50 text-slate-700 border-slate-200/80', dotBg: 'bg-slate-500', barWidth: '50%' },
-                huy: { badge: 'bg-rose-50 text-rose-700 border-rose-200/80', dotBg: 'bg-rose-500', barWidth: '10%' },
-              };
-              const styleColor = hda.trang_thai === 'da_xoa' ? { badge: 'bg-rose-50 text-rose-700 border-rose-200/80', dotBg: 'bg-rose-500', barWidth: '0%' } : (gdColors[hda.giai_doan] || { badge: 'bg-slate-100 text-slate-600 border-slate-200/80', dotBg: 'bg-slate-400', barWidth: '0%' });
+                  return (
+                    <HangBang
+                      key={hda.id}
+                      className={cn(
+                        hda.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/40',
+                        duocChon && 'bg-emerald-50/30'
+                      )}
+                    >
+                      {/* Checkbox */}
+                      <OBang className="w-10 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={duocChon}
+                          onChange={() => toggleChonDuAn(hda.id)}
+                          className="custom-check"
+                        />
+                      </OBang>
 
-              return (
-                <article
-                  key={hda.id}
-                  className={cn(
-                    "bg-white rounded-[var(--radius-card)] border border-slate-200/80 p-3.5 sm:p-4 shadow-nhe hover:border-emerald-300/80 transition-all duration-200 relative group flex flex-col",
-                    hda.trang_thai === 'da_xoa' && 'opacity-60 bg-slate-50/50 grayscale-[30%]',
-                    duocChon && 'border-emerald-500/80 ring-1 ring-emerald-500/20 bg-emerald-50/10'
-                  )}
-                >
-                  <div className="flex items-start gap-2.5 flex-1">
-                    <label className="pt-0.5 cursor-pointer flex items-center">
-                      <input type="checkbox" checked={duocChon} onChange={() => toggleChonDuAn(hda.id)} className="custom-check" />
-                    </label>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                        <span className="text-nhan font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200/60 leading-none tabular-nums">
-                          #{stt < 10 ? `0${stt}` : stt}
+                      {/* STT */}
+                      <OBang className="w-12 px-3 text-center text-[13px] font-medium text-slate-400 tabular-nums">
+                        {stt}
+                      </OBang>
+
+                      {/* Tên dự án & Khách hàng */}
+                      <OBang className="px-3.5 py-2.5">
+                        <Link
+                          href={`/ho-so-du-an/${hda.id}`}
+                          className="font-semibold text-slate-900 text-[13px] hover:text-emerald-700 transition-colors line-clamp-1 block"
+                        >
+                          {hda.ten_du_an}
+                        </Link>
+                        {kh ? (
+                          <div className="flex items-center gap-1.5 text-[12px] font-normal text-slate-500 truncate max-w-[260px] mt-0.5" title={kh.ten_khach_hang}>
+                            <Building2 className="size-3.5 shrink-0 text-slate-400" />
+                            <span className="truncate">{kh.ten_khach_hang}</span>
+                          </div>
+                        ) : hda.ma_ho_so ? (
+                          <span className="text-[11px] font-mono text-slate-400 mt-0.5 block">
+                            {hda.ma_ho_so}
+                          </span>
+                        ) : null}
+                      </OBang>
+
+                      {/* Giá trị */}
+                      <OBang className="px-3 py-2.5 text-right whitespace-nowrap">
+                        <span className="font-bold text-emerald-700 text-[13px] tabular-nums">
+                          {giaTri}
                         </span>
-                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-nhan font-semibold border", styleColor.badge)}>
+                      </OBang>
+
+                      {/* Tiến độ mới nhất (rộng hơn, 2 dòng + thời gian) */}
+                      <OBang className="px-3.5 py-2.5">
+                        {tdMoiNhat ? (
+                          <div className="space-y-1">
+                            <p
+                              className="text-[13px] text-slate-700 leading-snug line-clamp-2"
+                              title={tdMoiNhat.tinh_hinh_hien_tai}
+                            >
+                              {tdMoiNhat.tinh_hinh_hien_tai}
+                            </p>
+                            {thoiGianCapNhatTd && (
+                              <div className="text-[12px] text-slate-400 flex items-center gap-1 tabular-nums">
+                                <Clock className="size-3 text-slate-400 shrink-0" />
+                                <span>{thoiGianCapNhatTd}</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[13px] text-slate-400 italic">
+                            Chưa cập nhật {hda.ngay_tao ? `(${tinhSoNgayCapNhat(hda.ngay_tao)})` : ''}
+                          </span>
+                        )}
+                      </OBang>
+
+                      {/* Giai đoạn */}
+                      <OBang className="px-3 py-2.5 whitespace-nowrap">
+                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium border", styleColor.badge)}>
                           <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5", styleColor.dotBg, hda.giai_doan === 'moi_tao' && 'animate-pulse')}></span>
                           {hda.trang_thai === 'da_xoa' ? 'Đã xóa' : gd.nhan}
                         </span>
-                        <span className="ml-auto text-nhan text-slate-400 font-medium truncate">
-                          {hda.ngay_tao ? formatNgay(hda.ngay_tao.slice(0, 10)) : 'Hôm nay'}
+                      </OBang>
+
+                      {/* Tiềm năng */}
+                      <OBang className="px-3 py-2.5 text-center whitespace-nowrap">
+                        {tiemNang ? (
+                          <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium border", tiemNang.lop)}>
+                            {tiemNang.nhan}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic text-[13px]">—</span>
+                        )}
+                      </OBang>
+
+                      {/* Phụ trách (ngay trước Thao tác) */}
+                      <OBang className="px-3 py-2.5 whitespace-nowrap">
+                        {nguoiLead ? (
+                          <div className="flex items-center gap-1.5 truncate max-w-[120px]" title={nguoiLead.ho_va_ten}>
+                            <DaiDien ten={nguoiLead.ho_va_ten} kich_thuoc="sm" />
+                            <span className="text-[13px] font-medium text-slate-700 truncate">
+                              {nguoiLead.ho_va_ten.split(' ').pop()}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[12px] text-slate-400 italic">Chưa gán</span>
+                        )}
+                      </OBang>
+
+                      {/* Thao tác */}
+                      <OBang className="px-3 py-2.5 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-0.5 justify-end">
+                          <NutIcon icon={Eye} tieu_de="Xem chi tiết" href={`/ho-so-du-an/${hda.id}`} />
+                          <NutIcon icon={Pencil} tieu_de="Chỉnh sửa" onClick={() => moSua(hda)} />
+                          {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc ? (
+                            <NutIcon
+                              icon={RotateCcw}
+                              tieu_de="Khôi phục"
+                              mau="primary"
+                              disabled={dangXuLyKhac === hda.id}
+                              onClick={() => xuLyKhoiPhuc(hda)}
+                            />
+                          ) : coQuyenXoa ? (
+                            <NutIcon
+                              icon={Trash2}
+                              tieu_de="Xóa"
+                              mau="loi"
+                              disabled={dangXuLyKhac === hda.id}
+                              onClick={() => xuLyXoa(hda)}
+                            />
+                          ) : null}
+                        </div>
+                      </OBang>
+                    </HangBang>
+                  );
+                })}
+              </ThanBang>
+            </Bang>
+          </div>
+
+          {/* Danh sách thẻ tinh gọn trên Mobile */}
+          <DanhSachTheMobile>
+            {danhSachTrangHienTai.map((hda) => {
+              const kh = hda.khach_hang_id ? dsKhachHang.find((k) => k.id === hda.khach_hang_id) ?? null : null;
+              const idLead = hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id;
+              const nguoiLead = idLead ? dsNhanSu.find((n) => n.id === idLead) ?? null : null;
+              const giaTri = laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong);
+
+              return (
+                <TheMobile
+                  key={hda.id}
+                  mo_di={hda.trang_thai === 'da_xoa'}
+                  onClick={() => router.push(`/ho-so-du-an/${hda.id}`)}
+                  className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-emerald-300/80 transition-all cursor-pointer active:scale-[0.99] flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Hàng 1: Tên dự án & Ngày tạo */}
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 flex-1">
+                        {hda.ten_du_an}
+                      </h3>
+                      <span className="text-xs text-slate-400 font-medium shrink-0 pt-0.5 tabular-nums">
+                        {hda.ngay_tao ? formatNgay(hda.ngay_tao.slice(0, 10)) : '—'}
+                      </span>
+                    </div>
+
+                    {/* Hàng 2: Khách hàng */}
+                    {kh && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-xs sm:text-[13px] font-medium text-slate-500 truncate">
+                        <Building2 className="size-3.5 shrink-0 text-slate-400" />
+                        <span className="truncate">{kh.ten_khach_hang}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Hàng 3: Làm nổi bật số tiền & Người phụ trách */}
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <div className="flex items-baseline gap-1.5 min-w-0">
+                      <span className="text-xs text-slate-400 font-medium shrink-0">Giá trị:</span>
+                      <span className="text-[15px] sm:text-base font-black text-emerald-600 tracking-tight tabular-nums truncate">
+                        {giaTri}
+                      </span>
+                    </div>
+                    {nguoiLead ? (
+                      <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                        <DaiDien ten={nguoiLead.ho_va_ten} kich_thuoc="sm" />
+                        <span className="text-xs font-semibold text-slate-700 truncate max-w-[100px]">
+                          {nguoiLead.ho_va_ten.split(' ').pop()}
                         </span>
                       </div>
-
-                      <Link href={`/ho-so-du-an/${hda.id}`}>
-                        <h3 className="text-noi-dung font-bold text-slate-900 leading-snug line-clamp-2 mt-1 hover:text-primary transition-colors">
-                          {hda.ten_du_an}
-                        </h3>
-                      </Link>
-
-                      {kh && (
-                        <div className="mt-1 flex items-center gap-1.5 text-phu font-medium text-slate-500 truncate">
-                          <Building2 className="size-3.5 shrink-0 text-slate-400" />
-                          <span className="truncate">{kh.ten_khach_hang}</span>
-                        </div>
-                      )}
-
-                      <div className="mt-3 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                        <div className={cn("h-full rounded-full transition-all", styleColor.dotBg)} style={{ width: styleColor.barWidth }}></div>
-                      </div>
-                    </div>
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">Chưa gán</span>
+                    )}
                   </div>
-
-                  <div className="mt-3 pt-2.5 border-t border-slate-100/90 flex items-center justify-between gap-2">
-                    <div className="px-2.5 py-0.5 rounded-lg bg-emerald-50/80 text-emerald-800 border border-emerald-200/80 font-bold text-phu tabular-nums truncate max-w-[130px]">
-                      {giaTri}
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {nguoiLead ? (
-                        <div className="flex items-center gap-1.5 mr-1">
-                          <DaiDien ten={nguoiLead.ho_va_ten} kich_thuoc="sm" />
-                          <span className="text-phu font-medium text-slate-600 truncate max-w-[90px]">
-                            {nguoiLead.ho_va_ten.split(' ').pop()}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-nhan text-slate-400 italic mr-1">Chưa gán</span>
-                      )}
-                      <NutIcon icon={Eye} tieu_de="Xem chi tiết" href={`/ho-so-du-an/${hda.id}`} />
-                      <NutIcon icon={Pencil} tieu_de="Chỉnh sửa" onClick={() => moSua(hda)} />
-                      {hda.trang_thai === 'da_xoa' && coQuyenKhoiPhuc ? (
-                        <NutIcon
-                          icon={RotateCcw}
-                          tieu_de="Khôi phục"
-                          mau="primary"
-                          disabled={dangXuLyKhac === hda.id}
-                          onClick={() => xuLyKhoiPhuc(hda)}
-                        />
-                      ) : coQuyenXoa ? (
-                        <NutIcon
-                          icon={Trash2}
-                          tieu_de="Xóa"
-                          mau="loi"
-                          disabled={dangXuLyKhac === hda.id}
-                          onClick={() => xuLyXoa(hda)}
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-                </article>
+                </TheMobile>
               );
             })}
-          </div>
+          </DanhSachTheMobile>
         </KhungDanhSach>
       )}
 
