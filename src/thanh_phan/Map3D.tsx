@@ -353,10 +353,26 @@ export default function Map3D({
     return counts;
   }, [crmData, selectedProvince]);
 
+  // Map tra cứu nhanh CRM O(1) theo mã xã và tên xã - tối ưu tốc độ xử lý
+  const crmDataMap = useMemo(() => {
+    const map = new Map<string, CommuneCRMData>();
+    crmData.forEach((c) => {
+      map.set(c.id, c);
+      if (c.ma_xa) map.set(c.ma_xa, c);
+      if (c.ten_xa && c.ten_tinh) {
+        map.set(`${c.ten_xa.toLowerCase()}_${c.ten_tinh.toLowerCase()}`, c);
+      }
+    });
+    return map;
+  }, [crmData]);
+
   const crmDataRef = useRef(crmData);
+  const crmDataMapRef = useRef(crmDataMap);
+
   useEffect(() => {
     crmDataRef.current = crmData;
-  }, [crmData]);
+    crmDataMapRef.current = crmDataMap;
+  }, [crmData, crmDataMap]);
 
   // Hàm chọn và tự động zoom + định vị đến xã bằng MÃ XÃ DUY NHẤT
   const chonVaDinhViXa = (maXa: string, provinceHint?: string) => {
@@ -371,14 +387,11 @@ export default function Map3D({
       geomInfo = communeGeomRef.current.get(maXa.toLowerCase());
     }
 
-    // 2. Tìm dữ liệu CRM theo mã xã
-    const matched = crmDataRef.current.find(
-      (c) =>
-        c.id === maXa ||
-        c.ma_xa === maXa ||
-        (c.ten_xa?.toLowerCase() === maXa.toLowerCase() &&
-          (!provinceHint || c.ten_tinh?.toLowerCase() === provinceHint.toLowerCase()))
-    );
+    // 2. Tìm dữ liệu CRM theo mã xã (Tra cứu O(1))
+    let matched = crmDataMapRef.current.get(maXa);
+    if (!matched && provinceHint) {
+      matched = crmDataMapRef.current.get(`${maXa.toLowerCase()}_${provinceHint.toLowerCase()}`);
+    }
 
     if (map && geomInfo) {
       if (selectedIdRef.current !== null) {
@@ -675,7 +688,7 @@ export default function Map3D({
       let hoveredId: string | null = null;
       let selectedId: string | null = null;
 
-      // Xử lý di chuột (Hover Tooltip)
+      // Xử lý di chuột (Hover Tooltip Tối Ưu Tốc Độ - Không re-render lặp lại khi chuột trong cùng 1 xã)
       map.on('mousemove', 'communes-fill', (e) => {
         map.getCanvas().style.cursor = 'pointer';
 
@@ -684,35 +697,40 @@ export default function Map3D({
           const props = feature.properties || {};
           const maXa = String(props.ma_xa || feature.id || '').trim();
 
-          if (hoveredId !== null) {
-            map.setFeatureState({ source: 'mientay-communes', id: hoveredId }, { hover: false });
-          }
-          hoveredId = maXa || null;
-          if (hoveredId !== null) {
-            map.setFeatureState({ source: 'mientay-communes', id: hoveredId }, { hover: true });
+          // Chỉ đổi feature-state và cập nhật hoveredCommune khi di chuyển sang XÃ MỚI
+          if (hoveredId !== maXa) {
+            if (hoveredId !== null) {
+              map.setFeatureState({ source: 'mientay-communes', id: hoveredId }, { hover: false });
+            }
+            hoveredId = maXa || null;
+            if (hoveredId !== null) {
+              map.setFeatureState({ source: 'mientay-communes', id: hoveredId }, { hover: true });
+            }
+
+            // Tra cứu O(1) qua Map thay vì Array.find O(N)
+            const matched = crmDataMapRef.current.get(maXa);
+
+            if (matched) {
+              setHoveredCommune(matched);
+            } else {
+              setHoveredCommune({
+                id: maXa,
+                ma_xa: maXa,
+                ten_xa: props.ten_xa,
+                ten_tinh: props.ten_tinh,
+                sale_name: 'Chưa gán',
+                revenue: 0,
+                households: props.dan_so ? Math.round(Number(props.dan_so) / 4) : 0,
+                area_km2: props.dtich_km2 ? Number(props.dtich_km2) : 0,
+                dan_so: props.dan_so ? Number(props.dan_so) : 0,
+                reach_status: 'Chưa tiếp cận',
+                danh_sach_du_an: [],
+                danh_sach_nguoi_lien_he: [],
+              });
+            }
           }
 
-          // Khớp dữ liệu CRM CHÍNH XÁC theo mã xã
-          const matched = crmDataRef.current.find((c) => c.id === maXa || c.ma_xa === maXa);
-
-          if (matched) {
-            setHoveredCommune(matched);
-          } else {
-            setHoveredCommune({
-              id: maXa,
-              ma_xa: maXa,
-              ten_xa: props.ten_xa,
-              ten_tinh: props.ten_tinh,
-              sale_name: 'Chưa gán',
-              revenue: 0,
-              households: props.dan_so ? Math.round(Number(props.dan_so) / 4) : 0,
-              area_km2: props.dtich_km2 ? Number(props.dtich_km2) : 0,
-              dan_so: props.dan_so ? Number(props.dan_so) : 0,
-              reach_status: 'Chưa tiếp cận',
-              danh_sach_du_an: [],
-              danh_sach_nguoi_lien_he: [],
-            });
-          }
+          // Cập nhật tọa độ hiển thị tooltip mượt mà
           setTooltipPos({ x: e.point.x, y: e.point.y });
         }
       });
@@ -727,7 +745,7 @@ export default function Map3D({
         setTooltipPos(null);
       });
 
-      // Xử lý bấm chọn xã (Click)
+      // Xử lý bấm chọn xã (Click - Tra cứu O(1))
       map.on('click', 'communes-fill', (e) => {
         if (!e.features || e.features.length === 0) return;
         const feature = e.features[0];
@@ -746,8 +764,8 @@ export default function Map3D({
         }
         setSearchQuery(`${tenXa} (${tenTinh})`);
 
-        // Tìm chính xác theo mã xã
-        const matched = crmDataRef.current.find((c) => c.id === maXa || c.ma_xa === maXa);
+        // Tìm chính xác O(1) theo mã xã
+        const matched = crmDataMapRef.current.get(maXa);
 
         setSaveSuccess(false);
         if (matched) {
@@ -832,7 +850,7 @@ export default function Map3D({
     map.setPaintProperty('communes-fill', 'fill-color', colorExpr as any);
   }, [crmData, filterSale, filterStatus, selectedProvince, mapLoaded]);
 
-  // Cắm cờ VDCD vào các xã/phường đã có dự án
+  // Cắm cờ VDCD vào các xã/phường đã có dự án (đồng bộ theo Tỉnh và Nhân viên Sale)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
@@ -841,10 +859,12 @@ export default function Map3D({
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    // Lọc danh sách xã có dự án theo tỉnh đang chọn
+    // Lọc danh sách xã có dự án theo Tỉnh, Nhân viên Sale và Trạng thái đang chọn
     const xaCoDuAn = crmData.filter((item) => {
       const passProvince = selectedProvince === 'All' || item.ten_tinh === selectedProvince;
-      return passProvince && item.danh_sach_du_an && item.danh_sach_du_an.length > 0;
+      const passSale = filterSale === 'All' || item.sale_name === filterSale;
+      const passStatus = filterStatus === 'All' || item.reach_status === filterStatus;
+      return passProvince && passSale && passStatus && item.danh_sach_du_an && item.danh_sach_du_an.length > 0;
     });
 
     xaCoDuAn.forEach((item) => {
@@ -860,13 +880,14 @@ export default function Map3D({
       const [lng, lat] = geom.center;
       const count = item.danh_sach_du_an.length;
 
-      // Tạo HTML marker cây cờ VDCD với Logo chính thức từ /logo.png
+      // Tạo HTML marker cây cờ VDCD - TUYỆT ĐỐI KHÔNG đặt transform lên el gốc để tránh xung đột với translate của Mapbox
       const el = document.createElement('div');
-      el.className = 'group relative cursor-pointer select-none transition-transform hover:scale-125 z-10';
+      el.className = 'cursor-pointer select-none';
+      el.style.zIndex = '15';
       el.setAttribute('title', `${item.ten_xa} (${item.ten_tinh}): ${count} dự án VDCD (Nhấp để xem chi tiết)`);
 
       el.innerHTML = `
-        <div style="display: flex; align-items: flex-end; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.8)); pointer-events: auto;">
+        <div class="vdcd-flag-card" style="display: flex; align-items: flex-end; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.85)); pointer-events: auto; transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: bottom left;">
           <!-- Cán cờ thẳng đứng -->
           <div style="width: 2.5px; height: 32px; background: linear-gradient(to bottom, #fde047, #e2e8f0, #ca8a04); border-radius: 9999px; position: relative;">
             <div style="position: absolute; top: -3px; left: -2.5px; width: 7.5px; height: 7.5px; border-radius: 9999px; background: #eab308; border: 1px solid #fef08a; box-shadow: 0 0 5px rgba(234,179,8,0.9);"></div>
@@ -878,6 +899,22 @@ export default function Map3D({
           </div>
         </div>
       `;
+
+      // Hiệu ứng hover phóng to nhẹ trên thẻ con bên trong (không làm ảnh hưởng transform gốc của Marker)
+      const card = el.querySelector('.vdcd-flag-card') as HTMLElement;
+      if (card) {
+        card.addEventListener('mouseenter', (e) => {
+          card.style.transform = 'scale(1.22) translateY(-3px)';
+          setHoveredCommune(item);
+          const rect = mapContainerRef.current?.getBoundingClientRect();
+          if (rect) {
+            setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+          }
+        });
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = 'scale(1) translateY(0)';
+        });
+      }
 
       el.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -898,7 +935,7 @@ export default function Map3D({
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
     };
-  }, [crmData, selectedProvince, mapLoaded]);
+  }, [crmData, selectedProvince, filterSale, filterStatus, mapLoaded]);
 
   // Lưu thông tin & gán nhân sự phụ trách
   const handleSaveCRM = async (e: React.FormEvent) => {

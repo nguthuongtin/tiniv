@@ -60,13 +60,10 @@ export default function MapDashboardPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        // 1. Tải GeoJSON 495 xã Miền Tây
-        const geoRes = await fetch('/mientay.geojson');
-        const geojson = await geoRes.json();
-
-        // 2. Tải Khách hàng, Nhân sự, Phòng ban, Dự án, Người liên hệ từ CSDL
+        // Tải đồng thời GeoJSON 495 xã Miền Tây cùng dữ liệu từ CSDL để tối ưu tốc độ tối đa
         xoaCacheKhachHang();
-        const [khRes, nsRes, pbRes, daRes, lhRes] = await Promise.all([
+        const [geojson, khRes, nsRes, pbRes, daRes, lhRes] = await Promise.all([
+          fetch('/mientay.geojson').then((r) => r.json()),
           danhSachKhachHang({ trang_thai: 'tat_ca', loai_khach_hang: 'tat_ca' }),
           danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong' }),
           danhSachPhongBan(),
