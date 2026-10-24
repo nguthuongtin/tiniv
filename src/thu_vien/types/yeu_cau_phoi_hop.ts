@@ -56,44 +56,44 @@ export const NHAN_TRANG_THAI_YEU_CAU: Record<
 > = {
   cho_tpkd_duyet: {
     label: 'Chờ tiếp nhận',
-    mauBadge: 'bg-muted text-muted-foreground border-border',
-    textClass: 'text-muted-foreground',
+    mauBadge: 'bg-amber-50 text-amber-800 border-amber-200',
+    textClass: 'text-amber-800',
     moTa: 'Đang chờ tiếp nhận và phân công xử lý'
   },
   cho_khth_thuc_hien: {
     label: 'Đang xử lý',
-    mauBadge: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20',
-    textClass: 'text-blue-700 dark:text-blue-400',
+    mauBadge: 'bg-sky-50 text-sky-800 border-sky-200',
+    textClass: 'text-sky-800',
     moTa: 'Nhân sự được phân công đang xử lý hồ sơ'
   },
   cho_tpkd_duyet_ket_qua: {
     label: 'Chờ duyệt kết quả',
-    mauBadge: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
-    textClass: 'text-amber-700 dark:text-amber-400',
+    mauBadge: 'bg-purple-50 text-purple-800 border-purple-200',
+    textClass: 'text-purple-800',
     moTa: 'Đã nộp kết quả, đang chờ phê duyệt'
   },
   cho_lanh_dao_duyet: {
     label: 'Chờ duyệt kết quả',
-    mauBadge: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
-    textClass: 'text-amber-700 dark:text-amber-400',
+    mauBadge: 'bg-purple-50 text-purple-800 border-purple-200',
+    textClass: 'text-purple-800',
     moTa: 'Đã nộp kết quả, đang chờ phê duyệt'
   },
   da_phe_duyet: {
     label: 'Đã duyệt',
-    mauBadge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
-    textClass: 'text-emerald-700 dark:text-emerald-400',
+    mauBadge: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    textClass: 'text-emerald-800',
     moTa: 'Đã được phê duyệt kết quả'
   },
   yeu_cau_chinh_sua: {
     label: 'Cần chỉnh sửa',
-    mauBadge: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20',
-    textClass: 'text-rose-700 dark:text-rose-400',
+    mauBadge: 'bg-rose-50 text-rose-800 border-rose-200',
+    textClass: 'text-rose-800',
     moTa: 'Yêu cầu rà soát và chỉnh sửa lại'
   },
   da_hoan_thanh: {
     label: 'Hoàn tất',
-    mauBadge: 'bg-muted text-muted-foreground border-border',
-    textClass: 'text-muted-foreground',
+    mauBadge: 'bg-slate-100 text-slate-700 border-slate-200',
+    textClass: 'text-slate-700',
     moTa: 'Đã hoàn tất quy trình'
   }
 };

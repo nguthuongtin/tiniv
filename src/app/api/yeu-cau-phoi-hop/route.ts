@@ -352,10 +352,11 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE: Xóa mềm yêu cầu
+// DELETE: Xóa mềm yêu cầu (Chỉ người tạo mới được quyền xóa)
 export async function DELETE(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get('id');
+    const nguoiXoaId = req.nextUrl.searchParams.get('nguoi_xoa_id');
     if (!id) {
       return NextResponse.json(
         { thanh_cong: false, thong_diep: 'Thiếu ID yêu cầu' },
@@ -364,10 +365,91 @@ export async function DELETE(req: NextRequest) {
     }
 
     const db = adminFirestore();
-    await db.collection(TEN_COLLECTION).doc(id).update({
+    const docRef = db.collection(TEN_COLLECTION).doc(id);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return NextResponse.json(
+        { thanh_cong: false, thong_diep: 'Không tìm thấy yêu cầu' },
+        { status: 404 }
+      );
+    }
+
+    const dataYC = docSnap.data() || {};
+
+    // RÀNG BUỘC BẢO MẬT: Chỉ người tạo mới được quyền xóa yêu cầu đó
+    if (nguoiXoaId && dataYC.nguoi_tao_id && dataYC.nguoi_tao_id !== nguoiXoaId) {
+      return NextResponse.json(
+        { thanh_cong: false, thong_diep: 'Chỉ người tạo yêu cầu mới có quyền xóa yêu cầu này.' },
+        { status: 403 }
+      );
+    }
+
+    const nowISO = new Date().toISOString();
+    await docRef.update({
       trang_thai_du_lieu: 'da_xoa',
-      ngay_cap_nhat: new Date().toISOString()
+      ngay_cap_nhat: nowISO
     });
+
+    // Dọn dẹp dòng tiến độ tương ứng trong hồ sơ dự án
+    if (dataYC.du_an_id) {
+      try {
+        const snapTD = await db
+          .collection('tien_do_du_an')
+          .where('du_an_id', '==', dataYC.du_an_id)
+          .where('trang_thai_du_lieu', '==', 'hoat_dong')
+          .get();
+
+        for (const d of snapTD.docs) {
+          const val = d.data();
+          if (
+            val.tinh_hinh_hien_tai &&
+            (val.tinh_hinh_hien_tai.includes(dataYC.noi_dung_yeu_cau) ||
+              val.tinh_hinh_hien_tai.includes('yêu cầu'))
+          ) {
+            await d.ref.update({
+              trang_thai_du_lieu: 'da_xoa',
+              ngay_cap_nhat: nowISO
+            });
+          }
+        }
+      } catch (eTD) {
+        console.warn('[DELETE yeu-cau-phoi-hop] Không thể dọn tiến độ:', eTD);
+      }
+    }
+
+    // Dọn dẹp dòng chi tiết trong báo cáo công việc của người tạo
+    if (dataYC.nguoi_tao_id) {
+      try {
+        const snapBC = await db
+          .collection('bao_cao_cong_viec')
+          .where('nhan_vien_id', '==', dataYC.nguoi_tao_id)
+          .where('trang_thai_du_lieu', '==', 'hoat_dong')
+          .get();
+
+        for (const d of snapBC.docs) {
+          const dataBC = d.data();
+          if (Array.isArray(dataBC.danh_sach_chi_tiet)) {
+            const dsConLai = dataBC.danh_sach_chi_tiet.filter(
+              (ct: any) =>
+                !(
+                  ct.du_an_id === dataYC.du_an_id &&
+                  typeof ct.noi_dung === 'string' &&
+                  (ct.noi_dung.includes(dataYC.noi_dung_yeu_cau) || ct.noi_dung.includes('yêu cầu'))
+                )
+            );
+            if (dsConLai.length !== dataBC.danh_sach_chi_tiet.length) {
+              await d.ref.update({
+                danh_sach_chi_tiet: dsConLai,
+                ngay_cap_nhat: nowISO
+              });
+            }
+          }
+        }
+      } catch (eBC) {
+        console.warn('[DELETE yeu-cau-phoi-hop] Không thể dọn báo cáo:', eBC);
+      }
+    }
 
     return NextResponse.json({
       thanh_cong: true

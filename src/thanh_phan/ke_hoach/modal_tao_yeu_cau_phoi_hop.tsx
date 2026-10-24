@@ -121,15 +121,15 @@ export default function ModalTaoYeuCauPhoiHop({
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 sm:p-6 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
       {/* Background card với màu nền trắng/dark tuyệt đối */}
-      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4 text-slate-900 dark:text-slate-100">
+      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xl space-y-4 text-slate-900">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Sparkles className="size-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
+              <h3 className="text-base font-bold text-slate-900 leading-snug">
                 Tạo yêu cầu phối hợp
               </h3>
               <p className="text-xs text-slate-500">
@@ -140,14 +140,14 @@ export default function ModalTaoYeuCauPhoiHop({
           <button
             type="button"
             onClick={onDong}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="size-5" />
           </button>
         </div>
 
         {loi && (
-          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium">
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
             {loi}
           </div>
         )}
@@ -155,16 +155,16 @@ export default function ModalTaoYeuCauPhoiHop({
         <form onSubmit={handleGui} className="space-y-4">
           {/* Dự án áp dụng - Searchable Combobox */}
           <div className="space-y-1.5 relative">
-            <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <FolderKanban className="size-3.5 text-primary" />
               <span>Dự án áp dụng *</span>
             </label>
 
             {duAnChon && !moDropdownDuAn ? (
-              <div className="h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between gap-2 text-xs font-semibold">
+              <div className="h-10 px-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2 text-xs font-semibold">
                 <div className="flex items-center gap-2 truncate">
                   <FolderKanban className="size-4 text-primary shrink-0" />
-                  <span className="truncate text-slate-900 dark:text-slate-100 font-bold">{duAnChon.ten_du_an}</span>
+                  <span className="truncate text-slate-900 font-bold">{duAnChon.ten_du_an}</span>
                 </div>
                 {!duAnMacDinh && (
                   <button
@@ -193,7 +193,7 @@ export default function ModalTaoYeuCauPhoiHop({
                     }}
                     onFocus={() => setMoDropdownDuAn(true)}
                     placeholder="Gõ tên hoặc mã dự án để tìm kiếm..."
-                    className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8.5 pr-8 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-slate-400"
+                    className="w-full h-10 rounded-xl border border-slate-200 bg-white pl-8.5 pr-8 text-xs text-slate-900 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-slate-400"
                     autoFocus
                   />
                   <ChevronDown className="size-3.5 absolute right-3 top-3 text-slate-400 pointer-events-none" />
@@ -205,7 +205,7 @@ export default function ModalTaoYeuCauPhoiHop({
                       className="fixed inset-0 z-30"
                       onClick={() => setMoDropdownDuAn(false)}
                     />
-                    <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-56 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl divide-y divide-slate-100 dark:divide-slate-700">
+                    <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl divide-y divide-slate-100">
                       {dsDuAnLoc.length === 0 ? (
                         <div className="p-3 text-center text-xs text-slate-500 italic">
                           Không tìm thấy dự án phù hợp
@@ -219,10 +219,10 @@ export default function ModalTaoYeuCauPhoiHop({
                               setMoDropdownDuAn(false);
                               setLoi('');
                             }}
-                            className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/60 cursor-pointer transition text-xs flex items-center justify-between gap-2"
+                            className="p-2.5 hover:bg-slate-50 cursor-pointer transition text-xs flex items-center justify-between gap-2"
                           >
                             <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">
+                              <div className="font-semibold text-slate-900 truncate">
                                 {d.ten_du_an}
                               </div>
                               {d.ma_ho_so && (
@@ -246,7 +246,7 @@ export default function ModalTaoYeuCauPhoiHop({
 
           {/* Nội dung yêu cầu */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+            <label className="text-xs font-bold text-slate-800 block">
               Nội dung yêu cầu *
             </label>
             <textarea
@@ -254,7 +254,7 @@ export default function ModalTaoYeuCauPhoiHop({
               value={noiDung}
               onChange={(e) => setNoiDung(e.target.value)}
               placeholder="Nhập nội dung cần hỗ trợ hoặc phối hợp..."
-              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none placeholder:text-slate-400"
+              className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none placeholder:text-slate-400"
               required
             />
           </div>
@@ -262,7 +262,7 @@ export default function ModalTaoYeuCauPhoiHop({
           {/* Link Google Drive đầu vào */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <Link2 className="size-3.5 text-slate-400" />
                 <span>Link Google Drive tài liệu (nếu có)</span>
               </label>
@@ -273,14 +273,14 @@ export default function ModalTaoYeuCauPhoiHop({
               value={linkDrive}
               onChange={(e) => setLinkDrive(e.target.value)}
               placeholder="https://drive.google.com/..."
-              className="w-full h-9.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-slate-400"
+              className="w-full h-9.5 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-slate-400"
             />
           </div>
 
           {/* Hạn hoàn thành */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <Calendar className="size-3.5 text-slate-400" />
                 <span>Thời hạn hoàn thành</span>
               </label>
@@ -294,7 +294,7 @@ export default function ModalTaoYeuCauPhoiHop({
                     key={chip.nhan}
                     type="button"
                     onClick={() => setNgayNhanh(chip.so)}
-                    className="px-2 py-0.5 rounded-md text-[10.5px] font-medium border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer transition"
+                    className="px-2 py-0.5 rounded-md text-[10.5px] font-medium border border-slate-200 hover:bg-slate-100 text-slate-600 cursor-pointer transition"
                   >
                     {chip.nhan}
                   </button>
@@ -305,17 +305,17 @@ export default function ModalTaoYeuCauPhoiHop({
               type="date"
               value={hanXong}
               onChange={(e) => setHanXong(e.target.value)}
-              className="w-full h-9.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20"
+              className="w-full h-9.5 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20"
             />
           </div>
 
           {/* Footer buttons */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={onDong}
               disabled={dangGui}
-              className="h-9 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="h-9 px-4 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Hủy
             </button>

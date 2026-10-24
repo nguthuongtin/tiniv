@@ -143,13 +143,9 @@ export const langNgheYeuCauPhoiHop = (
         const data = await res.json();
         if (data?.thanh_cong && Array.isArray(data.mang)) {
           const tuServer = data.mang as YeuCauPhoiHop[];
-          const local = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
-          const mapDoc = new Map<string, YeuCauPhoiHop>();
-          local.forEach((x) => mapDoc.set(x.id, x));
-          tuServer.forEach((x) => mapDoc.set(x.id, x));
-          const hopNhat = Array.from(mapDoc.values());
-          ghiCacheLocal(hopNhat);
-          callback(hopNhat.sort((a, b) => new Date(b.ngay_tao).getTime() - new Date(a.ngay_tao).getTime()));
+          // Lấy server làm chuẩn tuyệt đối: mọi yêu cầu bị xóa trên server sẽ lập tức biến mất trên mọi máy
+          ghiCacheLocal(tuServer);
+          callback(tuServer.sort((a, b) => new Date(b.ngay_tao).getTime() - new Date(a.ngay_tao).getTime()));
           return;
         }
       }
@@ -171,10 +167,10 @@ export const langNgheYeuCauPhoiHop = (
     window.addEventListener('ebms_cap_nhat_yeu_cau_phoi_hop', handleCustomEvent);
   }
 
-  // Polling server định kỳ 6 giây
+  // Đồng bộ máy chủ định kỳ 3 giây để cập nhật tức thời khi người khác xóa hoặc sửa
   const intervalId = setInterval(() => {
     void taiServerVaCapNhat();
-  }, 6000);
+  }, 3000);
 
   return () => {
     clearInterval(intervalId);
@@ -388,10 +384,23 @@ export const xoaYeuCauPhoiHop = async (
   phatSuKienCapNhat();
 
   try {
-    await fetch(`/api/yeu-cau-phoi-hop?id=${encodeURIComponent(yeuCauId)}`, {
+    const params = new URLSearchParams({ id: yeuCauId });
+    if (nguoiThucHien?.id) {
+      params.append('nguoi_xoa_id', nguoiThucHien.id);
+    }
+    const res = await fetch(`/api/yeu-cau-phoi-hop?${params.toString()}`, {
       method: 'DELETE'
     });
-  } catch {}
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      if (errData?.thong_diep) {
+        throw new Error(errData.thong_diep);
+      }
+    }
+  } catch (err: any) {
+    console.warn('[xoaYeuCauPhoiHop] Lỗi xóa yêu cầu:', err);
+    throw err;
+  }
 
   return true;
 };
