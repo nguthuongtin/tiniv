@@ -125,7 +125,8 @@ type TenCollection =
   | 'kho_tai_lieu'
   | 'ai_danh_gia_nhan_su'
   | 'leads'
-  | 'lich_gap_kh';
+  | 'lich_gap_kh'
+  | 'yeu_cau_phoi_hop';
 
 export const thamChieuCollection = (ten: TenCollection): CollectionReference => {
   return collection(csdl, ten);

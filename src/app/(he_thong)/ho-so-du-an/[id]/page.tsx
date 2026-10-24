@@ -95,6 +95,9 @@ import { duocXemHoSoDuAn, coQuyen } from '../../../../thu_vien/phan_quyen/kiem_t
 import useStoreXacThuc from '../../../../thu_vien/zustand/store_xac_thuc';
 import { ModalLyDoHuyDuAn } from '../../../../thanh_phan/ho_so_du_an/modal_ly_do_huy_du_an';
 import { ModalHuongDanDatTen } from '../../../../thanh_phan/chung/modal_huong_dan_dat_ten';
+import ModalTaoYeuCauPhoiHop from '../../../../thanh_phan/ke_hoach/modal_tao_yeu_cau_phoi_hop';
+import HopYeuCauPhoiHop from '../../../../thanh_phan/ke_hoach/hop_yeu_cau_phoi_hop';
+import { langNgheYeuCauPhoiHop, type YeuCauPhoiHop } from '../../../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
 import { formatNgay } from '../../../../thu_vien/utils/format_ngay';
 import { formatTien, dinhDangSoPhanNgan, giaiMaSoPhanNgan } from '../../../../thu_vien/utils/format_tien';
 import { cn } from '../../../../thu_vien/utils/cn';
@@ -111,7 +114,7 @@ import {
   O_Nhap
 } from '../../../../thanh_phan/ui';
 
-type TenTab = 'tien_do' | 'tai_lieu' | 'thong_tin';
+type TenTab = 'tien_do' | 'yeu_cau' | 'tai_lieu' | 'thong_tin';
 
 const DS_TAB: { key: TenTab; nhan: string; bieuTuong: any; dem?: number }[] = [
   { key: 'tien_do', nhan: 'Nhật ký & Tiến độ', bieuTuong: Activity },
@@ -218,6 +221,7 @@ export default function TrangChiTietHoSoDuAn() {
   const [moModalXoa, setMoModalXoa] = useState(false);
   const [dangXuLyChuyenGiaiDoan, setDangXuLyChuyenGiaiDoan] = useState(false);
   const [moModalQuyChuan, setMoModalQuyChuan] = useState(false);
+  const [moModalYeuCau, setMoModalYeuCau] = useState(false);
 
   // Toast notifications
   const [dsToast, setDsToast] = useState<{ id: number; dang: 'thanh_cong' | 'loi'; noi_dung: string }[]>([]);
@@ -367,6 +371,17 @@ export default function TrangChiTietHoSoDuAn() {
     } finally {
       setDangTai(false);
     }
+  }, [id]);
+
+  const [moModalTaoYeuCau, setMoModalTaoYeuCau] = useState(false);
+  const [dsYeuCauDA, setDsYeuCauDA] = useState<YeuCauPhoiHop[]>([]);
+
+  useEffect(() => {
+    if (!id) return;
+    const unsub = langNgheYeuCauPhoiHop((ds) => {
+      setDsYeuCauDA(ds.filter((x) => x.du_an_id === id));
+    });
+    return () => unsub();
   }, [id]);
 
   const [dangChinhSua, setDangChinhSua] = useState(false);
@@ -1805,6 +1820,18 @@ export default function TrangChiTietHoSoDuAn() {
           </div>
         </div>
       )}
+
+      <ModalTaoYeuCauPhoiHop
+        mo={moModalTaoYeuCau}
+        onDong={() => setMoModalTaoYeuCau(false)}
+        duAnMacDinh={hda}
+        danhSachDuAn={hda ? [hda] : []}
+        nguoiDungHienTai={nguoiDungHienTai}
+        onTaoThanhCong={(yc) => {
+          setDsYeuCauDA((prev) => [yc, ...prev.filter((x) => x.id !== yc.id)]);
+          themToast('thanh_cong', 'Đã tạo yêu cầu phối hợp cho dự án');
+        }}
+      />
 
       {/* Toast notifications */}
       <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2.5 w-[340px] max-w-[calc(100vw-2rem)] pointer-events-none">

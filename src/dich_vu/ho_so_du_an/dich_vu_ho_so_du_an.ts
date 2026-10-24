@@ -122,6 +122,26 @@ const sapXepVaLocThem = (mang: HoSoDuAn[], loc?: DieuKienLocHoSoDuAn): HoSoDuAn[
   });
 };
 
+const LOCAL_STORAGE_HDA_KEY = 'ebms_hda_cache_v1';
+
+const docCacheLocalHDA = (): HoSoDuAn[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_HDA_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const ghiCacheLocalHDA = (item: HoSoDuAn) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const list = docCacheLocalHDA().filter((x) => x.id !== item.id);
+    localStorage.setItem(LOCAL_STORAGE_HDA_KEY, JSON.stringify([item, ...list]));
+  } catch {}
+};
+
 let _rawCacheHDA: { mang: HoSoDuAn[]; ts: number } | null = null;
 let _dangTaiHDAPromise: Promise<HoSoDuAn[]> | null = null;
 const CACHE_TTL_HDA = 10 * 60 * 1000; // 10 phút
@@ -177,15 +197,28 @@ export const layChiTietHoSoDuAn = async (id: string): Promise<HoSoDuAn | null> =
     const cached = _rawCacheHDA.mang.find((x) => x.id === id);
     if (cached) return cached;
   }
-  const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, id));
-  if (!snap.exists()) return null;
-  const hda = chuyenDoiDocThanhDoiTuong(snap.id, snap.data());
-  if (_rawCacheHDA) {
-    const idx = _rawCacheHDA.mang.findIndex((x) => x.id === id);
-    if (idx >= 0) _rawCacheHDA.mang[idx] = hda;
-    else _rawCacheHDA.mang.unshift(hda);
+  const localList = docCacheLocalHDA();
+  const localFound = localList.find((x) => x.id === id);
+
+  try {
+    const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, id));
+    if (!snap.exists()) return localFound || null;
+    const hda = chuyenDoiDocThanhDoiTuong(snap.id, snap.data());
+    if (_rawCacheHDA) {
+      const idx = _rawCacheHDA.mang.findIndex((x) => x.id === id);
+      if (idx >= 0) _rawCacheHDA.mang[idx] = hda;
+      else _rawCacheHDA.mang.unshift(hda);
+    }
+    ghiCacheLocalHDA(hda);
+    return hda;
+  } catch (err) {
+    console.warn('[layChiTietHoSoDuAn] Lỗi getDoc kết nối Firestore, dùng cache:', err);
+    if (_rawCacheHDA) {
+      const c = _rawCacheHDA.mang.find((x) => x.id === id);
+      if (c) return c;
+    }
+    return localFound || null;
   }
-  return hda;
 };
 
 export interface TaoMoiHoSoDuAnDTO {
@@ -313,8 +346,13 @@ export const capNhatHoSoDuAn = async (
     }
   });
   patchRaw.ngay_cap_nhat = now;
-  await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
+  try {
+    await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
+  } catch (err) {
+    console.warn('[capNhatHoSoDuAn] Không thể kết nối Firestore backend, lưu local cache:', err);
+  }
   const moi = { ...hienTai, ...patchRaw } as HoSoDuAn;
+  ghiCacheLocalHDA(moi);
   if (_rawCacheHDA) {
     const idx = _rawCacheHDA.mang.findIndex((x) => x.id === moi.id);
     const mangMoi = [..._rawCacheHDA.mang];

@@ -5,6 +5,8 @@ import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useStoreXacThuc } from '../thu_vien/zustand/store_xac_thuc';
+import { langNgheYeuCauPhoiHop, type YeuCauPhoiHop } from '../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
+import { cn } from '../thu_vien/utils/cn';
 import {
   Home,
   ChevronRight,
@@ -238,6 +240,39 @@ export default function ThanhPhanTopbar() {
   const pathname = usePathname() ?? '/';
   const { nguoiDungHienTai, thucHienDangXuat } = useStoreXacThuc();
   const [moMenuMobile, setMoMenuMobile] = React.useState(false);
+  const [moDropdownThongBao, setMoDropdownThongBao] = React.useState(false);
+  const [dsYeuCau, setDsYeuCau] = React.useState<YeuCauPhoiHop[]>([]);
+
+  React.useEffect(() => {
+    const huy = langNgheYeuCauPhoiHop((ds) => setDsYeuCau(ds));
+    return () => huy();
+  }, []);
+
+  const vaiTro = nguoiDungHienTai?.vai_tro || '';
+  const userId = nguoiDungHienTai?.id || '';
+
+  const dsViecCho = React.useMemo(() => {
+    const laLanhDaoHoacAdmin = vaiTro === 'giam_doc' || vaiTro === 'quan_tri_he_thong';
+    const laTPKD = laLanhDaoHoacAdmin || vaiTro === 'truong_phong';
+
+    return dsYeuCau.filter((yc) => {
+      if (yc.trang_thai_du_lieu === 'da_xoa' || yc.trang_thai === 'da_hoan_thanh') return false;
+      // 1. Chờ tiếp nhận
+      if (laTPKD && yc.trang_thai === 'cho_tpkd_duyet') return true;
+      // 2. Chờ xử lý hoặc cần sửa lại
+      if (yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') {
+        const duocGiao = Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) && yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId);
+        if (duocGiao || laLanhDaoHoacAdmin) return true;
+        return false;
+      }
+      // 3. Chờ duyệt kết quả
+      if (laTPKD && (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet')) return true;
+      // 4. Đã duyệt -> người tạo nhận kết quả hoàn tất
+      if (yc.trang_thai === 'da_phe_duyet' && (yc.nguoi_tao_id === userId || laTPKD)) return true;
+      return false;
+    });
+  }, [dsYeuCau, vaiTro, userId]);
+
   const { thongTin, laChiTiet, tieuDeChiTiet } = timThongTinTrang(pathname);
   const PageIcon = thongTin.icon;
   const ParentIcon = thongTin.parent?.icon;
@@ -258,90 +293,52 @@ export default function ThanhPhanTopbar() {
           {laChiTiet && thongTin.parent && (
             <Link
               href={thongTin.parent.href}
-              className="size-8 rounded-[14px] bg-slate-100/90 hover:bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 transition-colors active:scale-95 border border-slate-200/60"
-              title={`Quay lại ${thongTin.parent.nhan}`}
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-500 hover:text-slate-900 transition-colors shrink-0"
             >
-              <ChevronLeft className="size-4.5" strokeWidth={2.5} />
+              {ParentIcon && <ParentIcon className="size-4" />}
+              <span className="hidden sm:inline">{thongTin.parent.nhan}</span>
+              <ChevronRight className="size-3.5 text-slate-400" />
             </Link>
           )}
 
-          {/* Breadcrumb trên Desktop (sm trở lên) */}
-          <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-1.5 text-[13.5px] min-w-0">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium shrink-0"
-              title="Trang chủ Tổng quan"
-            >
-              <Home className="size-4 text-slate-400" strokeWidth={2} />
-              <span>Tổng quan</span>
-            </Link>
-
-            {pathname !== '/' && (
-              <>
-                <ChevronRight className="size-3.5 text-slate-300 shrink-0" strokeWidth={2} />
-
-                {laChiTiet && thongTin.parent ? (
-                  <>
-                    <Link
-                      href={thongTin.parent.href}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors font-medium shrink-0"
-                    >
-                      {ParentIcon && <ParentIcon className="size-3.5 text-slate-400 shrink-0" strokeWidth={2} />}
-                      <span>{thongTin.parent.nhan}</span>
-                    </Link>
-
-                    <ChevronRight className="size-3.5 text-slate-300 shrink-0" strokeWidth={2} />
-
-                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-900 px-2 py-1 rounded-lg bg-slate-100/80 border border-slate-200/50 truncate max-w-[260px] tracking-tight">
-                      <PageIcon className="size-3.5 text-[#107555] shrink-0" strokeWidth={2.2} />
-                      <span className="truncate">{tieuDeChiTiet ?? thongTin.nhan}</span>
-                    </span>
-                  </>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-900 px-2 py-1 rounded-lg bg-slate-100/80 border border-slate-200/50 truncate tracking-tight">
-                    <PageIcon className="size-3.5 text-[#107555] shrink-0" strokeWidth={2.2} />
-                    <span className="truncate">{thongTin.nhan}</span>
-                  </span>
-                )}
-              </>
-            )}
-          </nav>
-
-          {/* Tiêu đề thanh Topbar trên Mobile (One UI 9 gọn gàng, không bị cắt chữ) */}
-          <div className="sm:hidden flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
             <button
               type="button"
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new CustomEvent('ebms:toggle_mobile_sidebar'));
-                }
-              }}
-              className="size-9 flex items-center justify-center rounded-[14px] bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 transition active:scale-95 shrink-0"
-              aria-label="Mở menu"
+              onClick={() => setMoMenuMobile(!moMenuMobile)}
+              className="sm:hidden inline-flex items-center justify-center size-8.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 active:scale-95 transition shrink-0"
+              aria-label="Menu"
             >
-              <Menu className="size-4.5" strokeWidth={2.4} />
+              <Menu className="size-4" />
             </button>
-            <span className="inline-flex items-center gap-1.5 font-extrabold text-slate-900 text-[15px] tracking-tight whitespace-nowrap">
-              <PageIcon className="size-4 text-[#107555] shrink-0" strokeWidth={2.3} />
-              <span>{tieuDeChiTiet ?? thongTin.nhan_mobile ?? thongTin.nhan}</span>
-            </span>
+
+            <div className="size-8 sm:size-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+              <PageIcon className="size-4 sm:size-4.5" />
+            </div>
+
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 truncate">
+                {laChiTiet && tieuDeChiTiet ? tieuDeChiTiet : thongTin.nhan}
+              </h1>
+              <p className="text-[11px] text-slate-400 truncate hidden md:block">
+                {thongTin.mo_ta}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Tên nhân sự trên Mobile/Desktop */}
+        {/* Right side actions */}
+        <div className="flex items-center gap-2 shrink-0">
           <Link
             href="/tai-khoan"
-            className="flex items-center gap-2 pl-2 sm:pl-3 sm:border-l sm:border-slate-200/80 py-1 rounded-full hover:bg-slate-50 transition"
+            className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-slate-200/70 bg-white hover:bg-slate-50 transition"
           >
-            <div className="flex flex-col items-end justify-center">
-              <span className="text-[12.5px] sm:text-[13px] font-bold text-slate-800 leading-none whitespace-nowrap">
-                <span className="hidden sm:inline">{nguoiDungHienTai?.ho_va_ten || 'Tài khoản'}</span>
-                <span className="sm:hidden">{getTenNgan(nguoiDungHienTai?.ho_va_ten)}</span>
-              </span>
-              <span className="hidden sm:block text-[11px] text-slate-500 font-medium mt-0.5">
-                {nguoiDungHienTai?.vai_tro === 'giam_doc' ? 'Giám đốc' : 
-                 nguoiDungHienTai?.vai_tro === 'truong_phong' ? 'Trưởng phòng' : 
+            <div className="text-right">
+              <div className="text-xs font-bold text-slate-900 leading-tight">
+                {getTenNgan(nguoiDungHienTai?.ho_va_ten)}
+              </div>
+              <span className="text-[10px] text-slate-400">
+                {nguoiDungHienTai?.vai_tro === 'giam_doc' ? 'Giám đốc' :
+                 nguoiDungHienTai?.vai_tro === 'truong_phong' ? 'Trưởng phòng' :
                  nguoiDungHienTai?.vai_tro === 'quan_tri_he_thong' ? 'Quản trị' : 'Nhân viên'}
               </span>
             </div>
@@ -350,15 +347,96 @@ export default function ThanhPhanTopbar() {
             </div>
           </Link>
 
-          <button
-            type="button"
-            className="hidden md:inline-flex items-center justify-center size-9.5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition relative shadow-2xs active:scale-95"
-            aria-label="Thông báo"
-          >
-            <Bell className="size-4" strokeWidth={2} />
-            <span className="absolute top-2 right-2 size-2 rounded-full bg-[#FF3B30] ring-2 ring-white" />
-          </button>
-          
+          {/* Bell notification */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMoDropdownThongBao(!moDropdownThongBao)}
+              className={cn(
+                "inline-flex items-center justify-center size-9.5 rounded-xl border transition relative shadow-2xs active:scale-95 cursor-pointer",
+                dsViecCho.length > 0
+                  ? "border-amber-400 bg-amber-50 text-amber-700 ring-2 ring-amber-400/30"
+                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+              )}
+              aria-label="Thông báo việc cần xử lý"
+              title={dsViecCho.length > 0 ? `Có ${dsViecCho.length} yêu cầu cần xử lý` : 'Thông báo'}
+            >
+              <Bell className="size-4" strokeWidth={2} />
+              {dsViecCho.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-red-600 text-white font-extrabold text-[10px] flex items-center justify-center animate-bounce shadow-xs">
+                  {dsViecCho.length}
+                </span>
+              )}
+            </button>
+
+            {moDropdownThongBao && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setMoDropdownThongBao(false)}
+                />
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl border border-slate-200 bg-white shadow-2xl p-3.5 space-y-2.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span className="font-bold text-xs text-slate-900">
+                        Yêu cầu cần xử lý ({dsViecCho.length})
+                      </span>
+                    </div>
+                    <Link
+                      href="/ke-hoach"
+                      onClick={() => setMoDropdownThongBao(false)}
+                      className="text-[11px] font-semibold text-emerald-700 hover:underline"
+                    >
+                      Mở Bàn làm việc
+                    </Link>
+                  </div>
+
+                  {dsViecCho.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-slate-400">
+                      Không có yêu cầu nào đang chờ xử lý.
+                    </div>
+                  ) : (
+                    <div className="max-h-72 overflow-y-auto space-y-1.5 divide-y divide-slate-100">
+                      {dsViecCho.map((yc) => (
+                        <Link
+                          key={yc.id}
+                          href="/ke-hoach"
+                          onClick={() => setMoDropdownThongBao(false)}
+                          className="block pt-2 first:pt-0 hover:bg-slate-50 p-2 rounded-xl transition"
+                        >
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-indigo-700 truncate max-w-[200px]">
+                              {yc.ten_du_an}
+                            </span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
+                              {yc.trang_thai === 'cho_tpkd_duyet'
+                                ? 'Chờ tiếp nhận'
+                                : yc.trang_thai === 'cho_khth_thuc_hien'
+                                ? 'Đang xử lý'
+                                : (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet')
+                                ? 'Chờ duyệt'
+                                : yc.trang_thai === 'yeu_cau_chinh_sua'
+                                ? 'Cần sửa lại'
+                                : 'Đã duyệt'}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-800 font-medium truncate mt-1">
+                            {yc.noi_dung_yeu_cau}
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
+                            <span>{yc.ten_nguoi_tao}</span>
+                            <span>Hạn: {yc.han_hoan_thanh || 'Không'}</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
           {thongTin.nut_them && (
             <button
               type="button"
@@ -494,4 +572,3 @@ export default function ThanhPhanTopbar() {
     </>
   );
 }
-

@@ -40,6 +40,7 @@ import {
 import { doiGiaiDoanHoSoDuAn } from '../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import { danhSachNguoiLienHe } from '../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import { ModalNguoiLienHe } from '../khach_hang/modal_nguoi_lien_he';
+import ModalTaoYeuCauPhoiHop from './modal_tao_yeu_cau_phoi_hop';
 
 export interface GoiYTaoLichHenNhanh {
   khach_hang_id?: string | null;
@@ -138,6 +139,7 @@ export default function DrawerHoSoThuGon({
   // State Modal Thêm / Sửa Người liên hệ ngay tại chỗ
   const [moModalLienHe, setMoModalLienHe] = useState(false);
   const [lienHeDangSua, setLienHeDangSua] = useState<NguoiLienHe | null>(null);
+  const [moModalYeuCau, setMoModalYeuCau] = useState(false);
 
   // Khách hàng tương ứng (khi đang xem Dự án hoặc xem Khách hàng)
   const khachHangHienTai = useMemo(() => {
@@ -887,6 +889,26 @@ export default function DrawerHoSoThuGon({
           </div>
         ) : null}
       </Ban_Ve>
+
+      {duAn && (
+        <ModalTaoYeuCauPhoiHop
+          mo={moModalYeuCau}
+          onDong={() => setMoModalYeuCau(false)}
+          duAnMacDinh={duAn}
+          danhSachDuAn={danhSachDuAn}
+          nguoiDungHienTai={nguoiDungHienTai}
+          onTaoThanhCong={(yc) => {
+            if (onDaCapNhatTienDoDuAn && duAn) {
+              onDaCapNhatTienDoDuAn({
+                duAn,
+                noiDung: `[Yêu cầu phối hợp] ${yc.noi_dung_yeu_cau}`,
+                linkTaiLieu: yc.link_drive_dau_vao || null,
+                tenTaiLieu: yc.link_drive_dau_vao ? 'Tài liệu Drive' : null
+              });
+            }
+          }}
+        />
+      )}
 
       {/* Modal Thêm / Sửa Người liên hệ chuẩn hệ thống */}
       {khachHangHienTai && (

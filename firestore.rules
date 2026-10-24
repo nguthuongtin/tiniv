@@ -315,6 +315,9 @@ service cloud.firestore {
       allow delete: if (laNhanVien() && resource.data.nguoi_tao_id == request.auth.uid)
         || laQuanTriHeThong();
     }
+    // ========== 26. Collection: yeu_cau_phoi_hop ==========
+    match /yeu_cau_phoi_hop/{id} {
+      allow read, write: if request.auth != null;
+    }
   }
 }
-

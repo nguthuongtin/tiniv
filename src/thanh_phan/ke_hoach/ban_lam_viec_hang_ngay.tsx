@@ -26,10 +26,15 @@ import {
   Link2,
   ExternalLink,
   AlertTriangle,
-  CornerUpLeft,
   Send,
   XCircle,
-  Circle
+  Circle,
+  BellRing,
+  Flame,
+  ChevronDown,
+  ChevronUp,
+  CalendarPlus,
+  Loader2
 } from 'lucide-react';
 import type {
   KeHoachTuan,
@@ -46,16 +51,23 @@ import {
   DANH_SACH_GIAI_DOAN_MAC_DINH,
   layCauHinhGiaiDoanTheoKey
 } from '../../thu_vien/cau_hinh/giai_doan_du_an';
-import { layKhoangNgayTuTuanISO } from '../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
-import { taoLichGapKHMoi } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
+import {
+  layKhoangNgayTuTuanISO,
+  ghiNhanCheckInVaoBaoCaoNgay
+} from '../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
+import { taoLichGapKHMoi, capNhatLichGapKH } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
+import { taoTienDoDuAnMoi } from '../../dich_vu/ho_so_du_an/dich_vu_tien_do_du_an';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
 import { cn } from '../../thu_vien/utils/cn';
 import DrawerHoSoThuGon, { type GoiYTaoLichHenNhanh } from './drawer_ho_so_thu_gon';
-import DrawerTroLyAISale, {
-  phanTichRadarCanhBaoSale,
-  type LoaiCanhBaoSale
-} from './drawer_tro_ly_ai_sale';
 import { ModalNguoiLienHe } from '../khach_hang/modal_nguoi_lien_he';
+import HopYeuCauPhoiHop from './hop_yeu_cau_phoi_hop';
+import ModalTaoYeuCauPhoiHop from './modal_tao_yeu_cau_phoi_hop';
+import {
+  danhSachYeuCauPhoiHop,
+  langNgheYeuCauPhoiHop,
+  type YeuCauPhoiHop
+} from '../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
 import { danhSachNguoiLienHe as taiDanhSachNguoiLienHe } from '../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 
 export interface CapNhatLichPayload {
@@ -100,6 +112,7 @@ interface Props {
   onXoaCongViec: (itemId: string) => void;
   onCheckIn1Cham: (item: ItemKeHoachTuan) => void;
   onSuaCongViec?: (item: ItemKeHoachTuan) => void;
+  onSuaNoiDungCongViec?: (itemId: string, noiDungMoi: string) => Promise<void> | void;
   onDoiNhanhHoanThanh: (itemId: string, daXong: boolean) => void;
   onChotKetQua?: (
     itemId: string,
@@ -231,6 +244,27 @@ export const kiemTraViecThuocNgay = (item: ItemKeHoachTuan, ngayISO: string): bo
   return cacNgay.includes(ngayISO);
 };
 
+const xoaDauTiengViet = (str: string): string => {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase();
+};
+
+interface MentionItem {
+  id: string;
+  loai: 'nguoi_lien_he' | 'khach_hang' | 'du_an';
+  tieuDe: string;
+  phuDe?: string;
+  badge?: string;
+  nguoiLienHe?: NguoiLienHe;
+  khachHang?: KhachHang;
+  duAn?: HoSoDuAn;
+}
+
 export default function BanLamViecHangNgay({
   keHoachTuan,
   keHoachThang,
@@ -248,6 +282,7 @@ export default function BanLamViecHangNgay({
   onThemNhanh,
   onXoaCongViec,
   onSuaCongViec,
+  onSuaNoiDungCongViec,
   onDoiNhanhHoanThanh,
   onChotKetQua,
   onCapNhatLichCongViec,
@@ -310,16 +345,228 @@ export default function BanLamViecHangNgay({
     khachHang: null
   });
 
-  // Trợ lý AI Drawer
-  const [moDrawerTroLyAI, setMoDrawerTroLyAI] = useState(false);
+  // Thêm nhanh việc vào Hôm nay
+  // Trạng thái sửa nội dung trực tiếp trên dòng
+  const [idDangSua, setIdDangSua] = useState<string | null>(null);
+  const [noiDungDangSua, setNoiDungDangSua] = useState('');
 
-  // Thêm nhanh việc vào Hôm nay (Cột trái) và Rổ tuần (Cột phải)
+  const xuLyLuuSuaInline = async (item: ItemKeHoachTuan) => {
+    const text = noiDungDangSua.trim();
+    if (!text) return;
+    setIdDangSua(null);
+    if (onSuaNoiDungCongViec) {
+      await onSuaNoiDungCongViec(item.id, text);
+    } else if (onCapNhatLichCongViec) {
+      onCapNhatLichCongViec(item, {
+        ten_khach_hang_du_an: text
+      });
+    }
+  };
+
+  // Render 1 dòng công việc tự nhiên kết hợp các Link đến Khách hàng, Dự án, Người liên hệ, Lịch hẹn
+  const renderDongNoiDung1Dong = (item: ItemKeHoachTuan) => {
+    const rawText = (
+      item.ket_qua_thuc_te ||
+      item.hanh_dong_tuan ||
+      item.noi_dung_tuan ||
+      item.ten_khach_hang_du_an ||
+      'Công việc'
+    ).trim();
+
+    const kh = timKhachHangCuaItem(item);
+    const da = timDuAnCuaItem(item);
+    const tenLh = item.nguoi_lien_he?.trim();
+    const tenKh = (kh?.ten_khach_hang || item.co_quan_doanh_nghiep || '').trim();
+    const tenDa = (da?.ten_du_an || item.du_an_du_kien || '').trim();
+    const isLich = item.id.startsWith('tuan_lich_');
+
+    let fullText = rawText;
+    if (tenKh && !fullText.toLowerCase().includes(tenKh.toLowerCase())) {
+      if (tenLh && fullText.includes(tenLh)) {
+        fullText = fullText.replace(tenLh, `${tenLh} - ${tenKh}`);
+      } else {
+        fullText = `${fullText} - ${tenKh}`;
+      }
+    }
+
+    if (tenDa && !fullText.toLowerCase().includes(tenDa.toLowerCase())) {
+      fullText = `${fullText} (Dự án: ${tenDa})`;
+    }
+
+    interface EntityMatch {
+      type: 'nguoi_lien_he' | 'khach_hang' | 'du_an';
+      text: string;
+      startIndex: number;
+      endIndex: number;
+    }
+
+    const entities: { text: string; type: 'nguoi_lien_he' | 'khach_hang' | 'du_an' }[] = [];
+    if (tenKh) entities.push({ text: tenKh, type: 'khach_hang' });
+    if (tenDa) entities.push({ text: tenDa, type: 'du_an' });
+    if (tenLh) entities.push({ text: tenLh, type: 'nguoi_lien_he' });
+
+    entities.sort((a, b) => b.text.length - a.text.length);
+
+    const matches: EntityMatch[] = [];
+    entities.forEach((ent) => {
+      if (!ent.text) return;
+      const idx = fullText.toLowerCase().indexOf(ent.text.toLowerCase());
+      if (idx !== -1) {
+        const conflict = matches.some(
+          (m) =>
+            (idx >= m.startIndex && idx < m.endIndex) ||
+            (idx + ent.text.length > m.startIndex && idx + ent.text.length <= m.endIndex)
+        );
+        if (!conflict) {
+          matches.push({
+            type: ent.type,
+            text: fullText.slice(idx, idx + ent.text.length),
+            startIndex: idx,
+            endIndex: idx + ent.text.length
+          });
+        }
+      }
+    });
+
+    matches.sort((a, b) => a.startIndex - b.startIndex);
+
+    const segments: React.ReactNode[] = [];
+    let curIdx = 0;
+
+    matches.forEach((m, mIdx) => {
+      if (m.startIndex > curIdx) {
+        segments.push(fullText.slice(curIdx, m.startIndex));
+      }
+
+      if (m.type === 'khach_hang') {
+        segments.push(
+          <button
+            key={`kh_${mIdx}`}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (kh) {
+                setHoSoThuGonState({ mo: true, cheDo: 'khach_hang', khachHang: kh, duAn: null });
+              }
+            }}
+            className="font-bold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer inline-flex items-center gap-0.5 mx-0.5 transition-colors"
+            title="Nhấp để xem hồ sơ Khách hàng / Xã"
+          >
+            <Building2 className="size-3 text-emerald-600 inline shrink-0 -mt-0.5" />
+            <span>{m.text}</span>
+          </button>
+        );
+      } else if (m.type === 'du_an') {
+        segments.push(
+          <button
+            key={`da_${mIdx}`}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (da) {
+                setHoSoThuGonState({ mo: true, cheDo: 'du_an', duAn: da, khachHang: null });
+              }
+            }}
+            className="font-bold text-indigo-700 hover:text-indigo-800 hover:underline cursor-pointer inline-flex items-center gap-0.5 mx-0.5 transition-colors"
+            title="Nhấp để xem hồ sơ Dự án"
+          >
+            <FolderKanban className="size-3 text-indigo-600 inline shrink-0 -mt-0.5" />
+            <span>{m.text}</span>
+          </button>
+        );
+      } else if (m.type === 'nguoi_lien_he') {
+        segments.push(
+          <button
+            key={`lh_${mIdx}`}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (kh) {
+                setHoSoThuGonState({ mo: true, cheDo: 'khach_hang', khachHang: kh, duAn: null });
+              }
+            }}
+            className="font-bold text-blue-700 hover:text-blue-800 hover:underline cursor-pointer inline-flex items-center gap-0.5 mx-0.5 transition-colors"
+            title={`Người liên hệ${item.so_dien_thoai_lien_he ? `: ${item.so_dien_thoai_lien_he}` : ''}`}
+          >
+            <Users className="size-3 text-blue-600 inline shrink-0 -mt-0.5" />
+            <span>{m.text}</span>
+          </button>
+        );
+      }
+
+      curIdx = m.endIndex;
+    });
+
+    if (curIdx < fullText.length) {
+      segments.push(fullText.slice(curIdx));
+    }
+
+    return (
+      <span className="text-sm font-medium text-foreground leading-normal break-words">
+        {segments}
+        {isLich && (
+          <a
+            href="/lich-cong-tac"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 font-semibold text-amber-700 hover:text-amber-800 hover:underline ml-2 text-xs shrink-0"
+            title="Nhấp để xem Lịch công tác"
+          >
+            <CalendarClock className="size-3 text-amber-600 shrink-0" />
+            <span>Lịch hẹn{item.gio_bat_dau ? ` (${item.gio_bat_dau})` : ''}</span>
+          </a>
+        )}
+      </span>
+    );
+  };
+
   const [noiDungThemHomNay, setNoiDungThemHomNay] = useState('');
-  const [noiDungThemRoTuan, setNoiDungThemRoTuan] = useState('');
   const [khachHangThemNhanh, setKhachHangThemNhanh] = useState<KhachHang | null>(null);
   const [duAnThemNhanh, setDuAnThemNhanh] = useState<HoSoDuAn | null>(null);
+  const [nguoiLienHeThemNhanh, setNguoiLienHeThemNhanh] = useState<NguoiLienHe | null>(null);
   const [moChonDoiTuongThemNhanh, setMoChonDoiTuongThemNhanh] = useState(false);
   const [tuKhoaThemNhanh, setTuKhoaThemNhanh] = useState('');
+
+  // Yêu cầu phối hợp phòng ban
+  const [danhSachYeuCau, setDanhSachYeuCau] = useState<YeuCauPhoiHop[]>([]);
+  const [moModalTaoYeuCau, setMoModalTaoYeuCau] = useState(false);
+  const [duAnChoYeuCau, setDuAnChoYeuCau] = useState<HoSoDuAn | null>(null);
+
+  useEffect(() => {
+    danhSachYeuCauPhoiHop().then((ds) => setDanhSachYeuCau(ds)).catch(() => {});
+    const huyLangNghe = langNgheYeuCauPhoiHop((ds) => setDanhSachYeuCau(ds));
+    return () => {
+      huyLangNghe();
+    };
+  }, []);
+
+    // Mention phím tắt @ và # cho ô thêm việc
+  const [trangThaiMention, setTrangThaiMention] = useState<{
+    mo: boolean;
+    kyTuKichHoat: '@' | '#' | null;
+    viTriBatDau: number;
+    tuKhoa: string;
+  }>({ mo: false, kyTuKichHoat: null, viTriBatDau: -1, tuKhoa: '' });
+  const [chiSoHighlightMention, setChiSoHighlightMention] = useState(0);
+  const inputThemHomNayRef = useRef<HTMLInputElement>(null);
+  const khungMentionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const xuLyClickNgoaiMention = (e: MouseEvent) => {
+      if (khungMentionRef.current && !khungMentionRef.current.contains(e.target as Node)) {
+        setTrangThaiMention((prev) => (prev.mo ? { ...prev, mo: false } : prev));
+      }
+    };
+    document.addEventListener('mousedown', xuLyClickNgoaiMention);
+    return () => document.removeEventListener('mousedown', xuLyClickNgoaiMention);
+  }, []);
+
+  // Modal Báo cáo kết quả Lịch hẹn
+  const [lichHenDangBaoCao, setLichHenDangBaoCao] = useState<LichGapKH | null>(null);
+  const [noiDungBaoCaoLichHen, setNoiDungBaoCaoLichHen] = useState('');
+  const [dangLuuBaoCaoLichHen, setDangLuuBaoCaoLichHen] = useState(false);
+
+  // Mở rộng/thu gọn Banner nhắc việc thông minh
+  const [moRongCanhBao, setMoRongCanhBao] = useState(true);
 
   // Công việc đang chọn để tác nghiệp ở Cột trái
   const [viecDangChonId, setViecDangChonId] = useState<string | null>(null);
@@ -377,18 +624,6 @@ export default function BanLamViecHangNgay({
   // Danh sách việc của ngày đang chọn
   const dsViecNgayChon = useMemo(() => {
     return ds.filter((item) => kiemTraViecThuocNgay(item, ngayChon));
-  }, [ds, ngayChon]);
-
-  // Rổ việc tuần: TẤT CẢ việc chưa hoàn thành trong tuần mà chưa nằm trong ngày đang chọn
-  // (Bao gồm cả việc chưa xếp ngày VÀ việc đã làm ở ngày trước nhưng chưa bấm hoàn thành!)
-  const dsRoViecTuan = useMemo(() => {
-    return ds.filter((item) => {
-      const daXong = Boolean(
-        item.da_hoan_thanh || (item as any).trang_thai_vat_chung === 'da_lay'
-      );
-      if (daXong) return false;
-      return !kiemTraViecThuocNgay(item, ngayChon);
-    });
   }, [ds, ngayChon]);
 
   // Lịch hẹn khách hàng của ngày đang chọn
@@ -484,36 +719,105 @@ export default function BanLamViecHangNgay({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Radar cảnh báo cho Sale
-  const danhSachCanhBaoRadar = useMemo(() => {
-    return phanTichRadarCanhBaoSale({
-      nhanVienId: nhanVienId || nguoiDungHienTai?.id || '',
-      homNayISO,
-      keHoachTuan,
-      keHoachThang,
-      danhSachDuAn,
-      danhSachTienDo: danhSachTienDoDuAn,
-      danhSachKhachHang,
-      danhSachNguoiLienHe,
-      danhSachLichGap
+  // Danh sách lịch hẹn đã đến hoặc quá ngày hẹn nhưng chưa có kết quả (cần báo cáo ngay)
+  const dsLichHenCanBaoCao = useMemo(() => {
+    return danhSachLichGap.filter((l) => {
+      if (nhanVienId && l.nguoi_phu_trach_id !== nhanVienId) return false;
+      return l.ngay <= homNayISO && l.trang_thai === 'sap_toi';
     });
-  }, [
-    nhanVienId,
-    nguoiDungHienTai?.id,
-    homNayISO,
-    keHoachTuan,
-    keHoachThang,
-    danhSachDuAn,
-    danhSachTienDoDuAn,
-    danhSachKhachHang,
-    danhSachNguoiLienHe,
-    danhSachLichGap
-  ]);
+  }, [danhSachLichGap, homNayISO, nhanVienId]);
 
-  const soChiDaoMoi = useMemo(
-    () => danhSachCanhBaoRadar.filter((c) => c.loai === 'chi_dao_lanh_dao').length,
-    [danhSachCanhBaoRadar]
-  );
+  // Danh sách dự án đang theo dõi nhưng >= 7 ngày chưa có tương tác / cập nhật mới
+  const dsDuAnDongBang = useMemo(() => {
+    return danhSachDuAn
+      .filter((d) => {
+        if (d.trang_thai === 'da_xoa') return false;
+        if (['hoan_thanh', 'tam_dung', 'huy'].includes(String(d.giai_doan))) return false;
+        if (nhanVienId && d.nguoi_phu_trach_id !== nhanVienId && d.nguoi_quan_ly_id !== nhanVienId) {
+          return false;
+        }
+        const ngayCu = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
+        if (!ngayCu) return false;
+        const diff = Math.floor(
+          (new Date(`${homNayISO}T00:00:00`).getTime() - new Date(`${ngayCu}T00:00:00`).getTime()) /
+            86400000
+        );
+        return diff >= 7;
+      })
+      .map((d) => {
+        const ngayCu = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
+        const soNgay = Math.floor(
+          (new Date(`${homNayISO}T00:00:00`).getTime() - new Date(`${ngayCu}T00:00:00`).getTime()) /
+            86400000
+        );
+        return {
+          id: d.id,
+          tieu_de: `Dự án ${soNgay} ngày chưa tương tác: ${d.ten_du_an}`,
+          noi_dung: `Giai đoạn "${d.giai_doan}", ${soNgay} ngày qua chưa có cập nhật tiến độ mới.`,
+          du_an_id: d.id,
+          soNgay
+        };
+      });
+  }, [danhSachDuAn, nhanVienId, homNayISO]);
+
+  const tongSoNhacNho = dsLichHenCanBaoCao.length + dsDuAnDongBang.length;
+
+  // Danh sách Người liên hệ của khách hàng đang chọn trong ô thêm việc nhanh
+  const dsLienHeCuaKhThemNhanh = useMemo(() => {
+    if (!khachHangThemNhanh) return [];
+    return danhSachNguoiLienHe.filter((lh) => lh.khach_hang_id === khachHangThemNhanh.id);
+  }, [khachHangThemNhanh, danhSachNguoiLienHe]);
+
+  // Xử lý báo cáo kết quả cuộc gặp & tự động đồng bộ vào Báo cáo ngày + Khách hàng/Dự án
+  const xuLyLuuBaoCaoLichHen = async () => {
+    if (!lichHenDangBaoCao || !noiDungBaoCaoLichHen.trim()) return;
+    setDangLuuBaoCaoLichHen(true);
+    try {
+      const now = new Date().toISOString();
+      const kqSach = noiDungBaoCaoLichHen.trim();
+
+      // 1. Cập nhật trạng thái lịch hẹn sang đã hoàn thành
+      await capNhatLichGapKH(lichHenDangBaoCao.id, {
+        trang_thai: 'da_hoan_thanh',
+        ket_qua: kqSach
+      });
+
+      // 2. Tự động ghi vào Báo cáo công việc ngày hôm nay
+      const nvId = nhanVienId || nguoiDungHienTai?.id;
+      if (nvId) {
+        await ghiNhanCheckInVaoBaoCaoNgay({
+          nhanVienId: nvId,
+          chiNhanhId: (nguoiDungHienTai as any)?.chi_nhanh_id || null,
+          phongBanId: (nguoiDungHienTai as any)?.phong_ban_id || null,
+          ngayBaoCao: homNayISO,
+          duAnId: lichHenDangBaoCao.du_an_id || null,
+          tenKhachHangDuAn: lichHenDangBaoCao.ten_khach_hang || lichHenDangBaoCao.tieu_de,
+          noiDungKetQua: `Kết quả cuộc gặp [${lichHenDangBaoCao.tieu_de}]: ${kqSach}`,
+          nguoiThucHien: nguoiDungHienTai ? { id: nguoiDungHienTai.id } : { id: nvId }
+        });
+      }
+
+      // 3. Nếu cuộc gặp thuộc dự án, tự động tạo 1 mốc tiến độ dự án
+      if (lichHenDangBaoCao.du_an_id && nvId) {
+        await taoTienDoDuAnMoi({
+          du_an_id: lichHenDangBaoCao.du_an_id,
+          tinh_hinh_hien_tai: `Kết quả cuộc gặp: ${lichHenDangBaoCao.tieu_de} — ${kqSach}`,
+          nguoi_tao_id: nvId
+        }).catch(() => {});
+      }
+
+      // 4. Cập nhật state trực tiếp để UI phản hồi ngay lập tức
+      lichHenDangBaoCao.trang_thai = 'da_hoan_thanh';
+      lichHenDangBaoCao.ket_qua = kqSach;
+
+      setLichHenDangBaoCao(null);
+      setNoiDungBaoCaoLichHen('');
+    } catch (err: any) {
+      alert(err?.message || 'Có lỗi khi lưu kết quả cuộc hẹn.');
+    } finally {
+      setDangLuuBaoCaoLichHen(false);
+    }
+  };
 
   // Tìm thực thể của 1 công việc
   const timDuAnCuaItem = (item: ItemKeHoachTuan): HoSoDuAn | null => {
@@ -667,9 +971,180 @@ export default function BanLamViecHangNgay({
     return [...dsKH, ...dsDA];
   }, [tuKhoaThemNhanh, danhSachKhachHang, danhSachDuAn]);
 
-  // Thao tác thêm nhanh việc vào Hôm nay (Cột trái)
+  // Danh sách gợi ý khi gõ @ hoặc #
+  const danhSachGoiYMention = useMemo<MentionItem[]>(() => {
+    if (!trangThaiMention.mo || !trangThaiMention.kyTuKichHoat) return [];
+
+    const rawQ = trangThaiMention.tuKhoa.trim();
+    const qKhongDau = xoaDauTiengViet(rawQ);
+
+    if (trangThaiMention.kyTuKichHoat === '@') {
+      const ketQua: MentionItem[] = [];
+
+      // 1. Tìm Người liên hệ
+      for (const lh of danhSachNguoiLienHe) {
+        const ten = lh.ho_va_ten || '';
+        const chucVu = lh.chuc_vu || '';
+        const sdt = lh.so_dien_thoai || '';
+        const kh = lh.khach_hang_id ? mapKH.get(lh.khach_hang_id) : undefined;
+        const tenKH = kh?.ten_khach_hang || '';
+
+        const match =
+          !rawQ ||
+          xoaDauTiengViet(ten).includes(qKhongDau) ||
+          xoaDauTiengViet(chucVu).includes(qKhongDau) ||
+          xoaDauTiengViet(tenKH).includes(qKhongDau) ||
+          sdt.includes(rawQ);
+
+        if (match) {
+          ketQua.push({
+            id: `nlh_${lh.id}`,
+            loai: 'nguoi_lien_he',
+            tieuDe: ten,
+            phuDe: [chucVu, tenKH, sdt].filter(Boolean).join(' • '),
+            badge: 'Người liên hệ',
+            nguoiLienHe: lh,
+            khachHang: kh
+          });
+        }
+        if (ketQua.length >= 6) break;
+      }
+
+      // 2. Tìm Khách hàng / Xã phường
+      for (const kh of danhSachKhachHang) {
+        const ten = kh.ten_khach_hang || '';
+        const diaChi = kh.dia_chi || '';
+        const match =
+          !rawQ ||
+          xoaDauTiengViet(ten).includes(qKhongDau) ||
+          xoaDauTiengViet(diaChi).includes(qKhongDau);
+
+        if (match) {
+          ketQua.push({
+            id: `kh_${kh.id}`,
+            loai: 'khach_hang',
+            tieuDe: ten,
+            phuDe: diaChi || undefined,
+            badge: 'Xã / Khách hàng',
+            khachHang: kh
+          });
+        }
+        if (ketQua.length >= 10) break;
+      }
+
+      return ketQua;
+    }
+
+    if (trangThaiMention.kyTuKichHoat === '#') {
+      const ketQua: MentionItem[] = [];
+
+      // Tìm Dự án
+      for (const da of danhSachDuAn) {
+        const ten = da.ten_du_an || '';
+        const ma = da.ma_ho_so || '';
+        const kh = da.khach_hang_id ? mapKH.get(da.khach_hang_id) : undefined;
+        const tenKH = kh?.ten_khach_hang || '';
+
+        const match =
+          !rawQ ||
+          xoaDauTiengViet(ten).includes(qKhongDau) ||
+          xoaDauTiengViet(ma).includes(qKhongDau) ||
+          xoaDauTiengViet(tenKH).includes(qKhongDau);
+
+        if (match) {
+          ketQua.push({
+            id: `da_${da.id}`,
+            loai: 'du_an',
+            tieuDe: ten,
+            phuDe: [ma, tenKH].filter(Boolean).join(' • '),
+            badge: 'Dự án',
+            duAn: da,
+            khachHang: kh
+          });
+        }
+        if (ketQua.length >= 8) break;
+      }
+
+      return ketQua;
+    }
+
+    return [];
+  }, [trangThaiMention, danhSachNguoiLienHe, danhSachKhachHang, danhSachDuAn, mapKH]);
+
+  const xuLyThayDoiNoiDungThem = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNoiDungThemHomNay(val);
+
+    const conTro = e.target.selectionStart ?? val.length;
+    const chuoiTruocConTro = val.slice(0, conTro);
+
+    const match = chuoiTruocConTro.match(/(?:^|\s)([@#])([^\s@#]*)$/);
+    if (match) {
+      const kyTu = match[1] as '@' | '#';
+      const tuKhoa = match[2];
+      const viTri = chuoiTruocConTro.lastIndexOf(kyTu);
+      setTrangThaiMention({
+        mo: true,
+        kyTuKichHoat: kyTu,
+        viTriBatDau: viTri,
+        tuKhoa: tuKhoa
+      });
+      setChiSoHighlightMention(0);
+    } else {
+      if (trangThaiMention.mo) {
+        setTrangThaiMention({ mo: false, kyTuKichHoat: null, viTriBatDau: -1, tuKhoa: '' });
+      }
+    }
+  };
+
+  const chonMucMention = (item: MentionItem) => {
+    const { viTriBatDau, tuKhoa } = trangThaiMention;
+    const doDaiThayThe = 1 + tuKhoa.length;
+
+    let chuoiChen = '';
+    if (item.loai === 'nguoi_lien_he') {
+      if (item.nguoiLienHe) {
+        setNguoiLienHeThemNhanh(item.nguoiLienHe);
+      }
+      if (item.khachHang) {
+        setKhachHangThemNhanh(item.khachHang);
+      }
+      chuoiChen = `${item.tieuDe} `;
+    } else if (item.loai === 'khach_hang') {
+      if (item.khachHang) {
+        setKhachHangThemNhanh(item.khachHang);
+      }
+      chuoiChen = `${item.tieuDe} `;
+    } else if (item.loai === 'du_an') {
+      if (item.duAn) {
+        setDuAnThemNhanh(item.duAn);
+        if (item.khachHang) {
+          setKhachHangThemNhanh(item.khachHang);
+        }
+      }
+      chuoiChen = `${item.tieuDe} `;
+    }
+
+    const phanDau = noiDungThemHomNay.slice(0, viTriBatDau);
+    const phanSau = noiDungThemHomNay.slice(viTriBatDau + doDaiThayThe);
+    const noiDungMoi = phanDau + chuoiChen + phanSau;
+    setNoiDungThemHomNay(noiDungMoi);
+
+    setTrangThaiMention({ mo: false, kyTuKichHoat: null, viTriBatDau: -1, tuKhoa: '' });
+
+    setTimeout(() => {
+      if (inputThemHomNayRef.current) {
+        inputThemHomNayRef.current.focus();
+        const viTriConTroMoi = phanDau.length + chuoiChen.length;
+        inputThemHomNayRef.current.setSelectionRange(viTriConTroMoi, viTriConTroMoi);
+      }
+    }, 20);
+  };
+
+  // Thao tác thêm nhanh việc vào Hôm nay (Cột trái) - Nhập là nhập kết quả đã hoàn thành
   const xuLyThemNhanhHomNay = () => {
-    if (!noiDungThemHomNay.trim()) return;
+    const noiDungKetQua = noiDungThemHomNay.trim();
+    if (!noiDungKetQua) return;
     const idMoi = `tuan_${Date.now()}`;
     const kh =
       khachHangThemNhanh ||
@@ -684,73 +1159,45 @@ export default function BanLamViecHangNgay({
       co_quan_doanh_nghiep: kh?.ten_khach_hang || null,
       du_an_id: da?.id || null,
       du_an_du_kien: da?.ten_du_an || null,
-      ten_khach_hang_du_an: da?.ten_du_an || kh?.ten_khach_hang || noiDungThemHomNay.trim(),
-      hanh_dong_tuan: noiDungThemHomNay.trim(),
-      noi_dung_tuan: noiDungThemHomNay.trim(),
-      ket_qua_mong_muon: '',
-      dau_ra_cam_ket: '',
+      ten_khach_hang_du_an: da?.ten_du_an || kh?.ten_khach_hang || noiDungKetQua,
+      hanh_dong_tuan: noiDungKetQua,
+      noi_dung_tuan: noiDungKetQua,
+      ket_qua_thuc_te: noiDungKetQua,
+      nguoi_lien_he_id: nguoiLienHeThemNhanh?.id || null,
+      nguoi_lien_he: nguoiLienHeThemNhanh?.ho_va_ten || null,
+      chuc_vu: nguoiLienHeThemNhanh?.chuc_vu || null,
+      so_dien_thoai_lien_he: nguoiLienHeThemNhanh?.so_dien_thoai || null,
+      ket_qua_mong_muon: noiDungKetQua,
+      dau_ra_cam_ket: noiDungKetQua,
       ngay_du_kien: ngayChon,
       cac_ngay_thuc_hien: [ngayChon],
-      da_hoan_thanh: false,
-      danh_sach_ket_qua: []
+      da_hoan_thanh: true,
+      ngay_hoan_thanh: ngayChon,
+      trang_thai_ket_qua: 'dat_muc_tieu',
+      danh_sach_ket_qua: [
+        {
+          id: `kq_${Date.now()}`,
+          ngay_ghi_nhan: ngayChon,
+          noi_dung: noiDungKetQua,
+          khach_hang_id: kh?.id || null,
+          ten_khach_hang: kh?.ten_khach_hang || null,
+          du_an_id: da?.id || null,
+          ten_du_an: da?.ten_du_an || null,
+          nguoi_lien_he_id: nguoiLienHeThemNhanh?.id || null,
+          ten_nguoi_lien_he: nguoiLienHeThemNhanh?.ho_va_ten || null
+        }
+      ]
     };
     onThemNhanh(itemMoi);
     setNoiDungThemHomNay('');
     setKhachHangThemNhanh(null);
     setDuAnThemNhanh(null);
+    setNguoiLienHeThemNhanh(null);
     setMoChonDoiTuongThemNhanh(false);
-    setViecDangChonId(idMoi);
+    setViecDangChonId(null);
   };
 
-  // Thêm nhanh việc vào Rổ tuần (chưa định ngày)
-  const xuLyThemNhanhRoTuan = () => {
-    if (!noiDungThemRoTuan.trim()) return;
-    const idMoi = `tuan_${Date.now()}`;
-    const itemMoi: ItemKeHoachTuan = {
-      id: idMoi,
-      loai_hanh_dong: 'phat_sinh',
-      hinh_thuc: 'goi_dien',
-      ten_khach_hang_du_an: noiDungThemRoTuan.trim(),
-      co_quan_doanh_nghiep: null,
-      hanh_dong_tuan: noiDungThemRoTuan.trim(),
-      noi_dung_tuan: noiDungThemRoTuan.trim(),
-      ket_qua_mong_muon: '',
-      dau_ra_cam_ket: '',
-      ngay_du_kien: null,
-      cac_ngay_thuc_hien: [],
-      da_hoan_thanh: false,
-      danh_sach_ket_qua: []
-    };
-    onThemNhanh(itemMoi);
-    setNoiDungThemRoTuan('');
-  };
-
-  // Kéo 1 việc từ Rổ tuần vào Ngày đang chọn và mở ngay ở Cột trái
-  const xuLyKeoVaoNgayChon = (item: ItemKeHoachTuan) => {
-    const hienTai = layDanhSachNgayCuaViec(item);
-    const moi = Array.from(new Set([...hienTai, ngayChon])).sort();
-    onCapNhatLichCongViec(item, {
-      cac_ngay_thuc_hien: moi,
-      ngay_du_kien: item.ngay_du_kien || ngayChon
-    });
-    setViecDangChonId(item.id);
-    setTimeout(() => inputCheckInRef.current?.focus(), 80);
-  };
-
-  // Trả việc về Rổ việc tuần (Bỏ khỏi ngày đang chọn)
-  const xuLyTraVeRoTuan = (item: ItemKeHoachTuan) => {
-    const hienTai = layDanhSachNgayCuaViec(item);
-    const conLai = hienTai.filter((d) => d !== ngayChon);
-    if (viecDangChonId === item.id) {
-      setViecDangChonId(null);
-    }
-    onCapNhatLichCongViec(item, {
-      cac_ngay_thuc_hien: conLai,
-      ngay_du_kien: conLai[0] || null
-    });
-  };
-
-  // Bật / tắt 1 ngày trong tuần cho công việc đang chọn
+  // Bật / tắt 1 ngày cho công việc đang chọn
   const xuLyBatTatNgayCuaViec = (item: ItemKeHoachTuan, iso: string) => {
     const hienTai = layDanhSachNgayCuaViec(item);
     const daCo = hienTai.includes(iso);
@@ -1275,39 +1722,152 @@ export default function BanLamViecHangNgay({
                 </div>
               )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => setMoDrawerTroLyAI(true)}
-              className={cn(
-                'h-9 px-3 rounded-xl border text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shrink-0',
-                soChiDaoMoi > 0
-                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-800 hover:bg-amber-500/20'
-                  : danhSachCanhBaoRadar.length > 0
-                  ? 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/15'
-                  : 'border-border bg-background text-foreground hover:bg-muted'
-              )}
-            >
-              <Sparkles className="size-3.5 text-primary" />
-              <span>Nhắc việc AI</span>
-              {danhSachCanhBaoRadar.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-extrabold">
-                  {danhSachCanhBaoRadar.length}
-                </span>
-              )}
-            </button>
           </div>
         </div>
       </div>
 
       {/* ================================================================= */}
-      {/* BỐ CỤC 2 CỘT: TRÁI TO (VIỆC HÔM NAY & MỌI THAO TÁC) - PHẢI NHỎ (RỔ VIỆC TUẦN) */}
+      {/* TRUNG TÂM NHẮC VIỆC & CẢNH BÁO TÁC NGHIỆP TRỰC DIỆN (LỊCH HẸN CHỜ BÁO CÁO, DỰ ÁN ĐÓNG BĂNG) */}
       {/* ================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        {/* =============================================================== */}
-        {/* CỘT TRÁI (8/12): VIỆC HÔM NAY — TẤT CẢ THAO TÁC NẰM TẠI ĐÂY     */}
-        {/* =============================================================== */}
-        <div className="lg:col-span-8">
+      {tongSoNhacNho > 0 && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.04] p-3.5 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="flex size-7 rounded-xl bg-amber-500/20 text-amber-700 items-center justify-center shrink-0">
+                <BellRing className="size-4 animate-pulse" />
+              </span>
+              <div>
+                <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <span>Nhắc việc & Cảnh báo tác nghiệp</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-extrabold">
+                    {tongSoNhacNho}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Các cuộc hẹn cần báo cáo kết quả và dự án cần đẩy nhanh tiến độ
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setMoRongCanhBao(!moRongCanhBao)}
+              className="text-xs text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted cursor-pointer flex items-center gap-1 font-medium"
+            >
+              <span>{moRongCanhBao ? 'Thu gọn' : 'Xem chi tiết'}</span>
+              {moRongCanhBao ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            </button>
+          </div>
+
+          {moRongCanhBao && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
+              {/* 1. Lịch hẹn quá hạn cần báo cáo kết quả */}
+              {dsLichHenCanBaoCao.map((lich) => (
+                <div
+                  key={`warn_lich_${lich.id}`}
+                  className="p-2.5 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] flex items-start justify-between gap-2 shadow-2xs"
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-600 text-white shrink-0">
+                        Chờ báo cáo
+                      </span>
+                      <span className="text-xs font-bold text-rose-950 truncate">
+                        {lich.ten_khach_hang || lich.tieu_de}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-rose-900/80 line-clamp-1">
+                      Hẹn ngày {lich.ngay} ({lich.gio_bat_dau}) {lich.ten_nguoi_lien_he ? `• Gặp ${lich.ten_nguoi_lien_he}` : ''}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLichHenDangBaoCao(lich);
+                      setNoiDungBaoCaoLichHen('');
+                    }}
+                    className="h-7 px-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shrink-0 cursor-pointer shadow-xs transition flex items-center gap-1"
+                  >
+                    <span>Báo cáo KQ</span>
+                  </button>
+                </div>
+              ))}
+
+              {/* 2. Dự án đóng băng / lâu chưa cập nhật */}
+              {dsDuAnDongBang.map((c) => (
+                <div
+                  key={`warn_radar_${c.id}`}
+                  className="p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/[0.06] flex items-start justify-between gap-2 shadow-2xs"
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-indigo-600 text-white shrink-0">
+                        Dự án im ắng
+                      </span>
+                      <span className="text-xs font-bold text-indigo-950 truncate">
+                        {c.tieu_de}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-indigo-900/80 line-clamp-1">
+                      {c.noi_dung}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {c.du_an_id && mapDuAn.get(c.du_an_id) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const da = mapDuAn.get(c.du_an_id!);
+                          if (da) {
+                            setDuAnThemNhanh(da);
+                            if (da.khach_hang_id) {
+                              setKhachHangThemNhanh(mapKH.get(da.khach_hang_id) || null);
+                            }
+                            setNoiDungThemHomNay(`Liên hệ thúc đẩy dự án ${da.ten_du_an}`);
+                          }
+                        }}
+                        className="h-7 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-xs transition"
+                        title="Đưa dự án này vào việc hôm nay"
+                      >
+                        + Việc hôm nay
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================================================================= */}
+      {/* HỘP VIỆC CẦN XỬ LÝ / YÊU CẦU PHỐI HỢP LIÊN PHÒNG BAN              */}
+      {/* ================================================================= */}
+      <HopYeuCauPhoiHop
+        danhSachYeuCau={danhSachYeuCau}
+        nguoiDungHienTai={nguoiDungHienTai}
+        onXoaYeuCau={(ycId) => { setDanhSachYeuCau((prev) => prev.filter((x) => x.id !== ycId)); }}
+        onCapNhatYeuCau={(ycCapNhat) => {
+          setDanhSachYeuCau((prev) =>
+            prev.map((x) => (x.id === ycCapNhat.id ? ycCapNhat : x))
+          );
+        }}
+        onMoModalTaoYeuCau={() => {
+          setDuAnChoYeuCau(duAnThemNhanh || null);
+          setMoModalTaoYeuCau(true);
+        }}
+        onMoChiTietDuAn={(daId) => {
+          const da = danhSachDuAn.find((d) => d.id === daId);
+          if (da) {
+            setHoSoThuGonState({ mo: true, cheDo: 'du_an', duAn: da, khachHang: null });
+          }
+        }}
+      />
+
+      {/* ================================================================= */}
+      {/* VIỆC HÔM NAY — TẤT CẢ THAO TÁC NẰM TẠI ĐÂY                      */}
+      {/* ================================================================= */}
+      <div className="w-full">
           <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
             {/* Header Việc hôm nay + Ô thêm nhanh */}
             <div className="p-4 border-b border-border bg-muted/15 space-y-3">
@@ -1323,26 +1883,126 @@ export default function BanLamViecHangNgay({
                   )}
                 </div>
                 <span className="text-xs font-bold text-muted-foreground">
-                  {soViecNgayDaXong}/{dsViecNgayChon.length} hoàn thành
+                  {dsViecNgayChon.length} công việc
                 </span>
               </div>
 
               {laSuaDuoc && (
                 <div className="space-y-2">
+                  {/* Hàng ô nhập chính + Dropdown Mention @ / # */}
                   <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={noiDungThemHomNay}
-                      onChange={(e) => setNoiDungThemHomNay(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          xuLyThemNhanhHomNay();
-                        }
-                      }}
-                      placeholder="+ Thêm việc làm hôm nay rồi nhấn Enter..."
-                      className="flex-1 h-9 rounded-xl border border-border bg-background px-3 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
-                    />
+                    <div ref={khungMentionRef} className="relative flex-1">
+                      <input
+                        ref={inputThemHomNayRef}
+                        type="text"
+                        value={noiDungThemHomNay}
+                        onChange={xuLyThayDoiNoiDungThem}
+                        onKeyDown={(e) => {
+                          if (trangThaiMention.mo && danhSachGoiYMention.length > 0) {
+                            if (e.key === 'ArrowDown') {
+                              e.preventDefault();
+                              setChiSoHighlightMention((prev) => (prev + 1) % danhSachGoiYMention.length);
+                              return;
+                            }
+                            if (e.key === 'ArrowUp') {
+                              e.preventDefault();
+                              setChiSoHighlightMention((prev) => (prev - 1 + danhSachGoiYMention.length) % danhSachGoiYMention.length);
+                              return;
+                            }
+                            if (e.key === 'Enter' || e.key === 'Tab') {
+                              e.preventDefault();
+                              const mucDangChon = danhSachGoiYMention[chiSoHighlightMention];
+                              if (mucDangChon) {
+                                chonMucMention(mucDangChon);
+                              }
+                              return;
+                            }
+                            if (e.key === 'Escape') {
+                              e.preventDefault();
+                              setTrangThaiMention({ mo: false, kyTuKichHoat: null, viTriBatDau: -1, tuKhoa: '' });
+                              return;
+                            }
+                          }
+
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            xuLyThemNhanhHomNay();
+                          }
+                        }}
+                        placeholder="+ Nhập kết quả công việc hôm nay (gõ @ gắn Người/Xã, # gắn Dự án) rồi nhấn Enter..."
+                        className="w-full h-9 rounded-xl border border-border bg-background px-3 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary shadow-2xs"
+                      />
+
+                      {/* Dropdown Gợi ý Mention @ và # */}
+                      {trangThaiMention.mo && (
+                        <div className="absolute left-0 top-full mt-1.5 w-full max-w-lg z-50 rounded-2xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                          <div className="px-2.5 py-1 text-[11px] font-bold text-muted-foreground flex items-center justify-between border-b border-border/50">
+                            <span className="flex items-center gap-1.5">
+                              <span className="px-1.5 py-0.2 rounded bg-primary/10 text-primary font-mono font-bold">
+                                {trangThaiMention.kyTuKichHoat}
+                              </span>
+                              {trangThaiMention.kyTuKichHoat === '@'
+                                ? 'Gợi ý Người liên hệ & Khách hàng/Xã'
+                                : 'Gợi ý Dự án'}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground/80 font-normal">
+                              ↑ ↓ chọn • Enter chốt • Esc hủy
+                            </span>
+                          </div>
+
+                          {danhSachGoiYMention.length === 0 ? (
+                            <div className="p-3 text-center text-xs text-muted-foreground">
+                              Không tìm thấy kết quả phù hợp {trangThaiMention.tuKhoa ? `với "${trangThaiMention.tuKhoa}"` : ''}
+                            </div>
+                          ) : (
+                            <div className="max-h-60 overflow-y-auto space-y-0.5">
+                              {danhSachGoiYMention.map((item, idx) => {
+                                const isHighlight = idx === chiSoHighlightMention;
+                                return (
+                                  <button
+                                    key={item.id}
+                                    type="button"
+                                    onMouseEnter={() => setChiSoHighlightMention(idx)}
+                                    onClick={() => chonMucMention(item)}
+                                    className={cn(
+                                      'w-full text-left px-3 py-2 rounded-xl transition flex items-center gap-2.5 cursor-pointer',
+                                      isHighlight
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'hover:bg-muted/60 text-foreground'
+                                    )}
+                                  >
+                                    <div className="size-7 rounded-lg flex items-center justify-center shrink-0 text-xs bg-muted/80">
+                                      {item.loai === 'nguoi_lien_he' ? (
+                                        <Users className="size-3.5 text-emerald-600" />
+                                      ) : item.loai === 'khach_hang' ? (
+                                        <Building2 className="size-3.5 text-amber-600" />
+                                      ) : (
+                                        <FolderKanban className="size-3.5 text-indigo-600" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="text-xs font-bold truncate flex items-center gap-1.5">
+                                        <span className="truncate">{item.tieuDe}</span>
+                                        {item.badge && (
+                                          <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-muted text-muted-foreground shrink-0">
+                                            {item.badge}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {item.phuDe && (
+                                        <div className="text-[11px] text-muted-foreground truncate">
+                                          {item.phuDe}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Nút gắn KH / Dự án trước khi thêm */}
                     <button
@@ -1374,16 +2034,144 @@ export default function BanLamViecHangNgay({
                       )}
                     </button>
 
+                    {/* Nút Đặt lịch hẹn mở trực tiếp FormLichGapModal */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const kh =
+                          khachHangThemNhanh ||
+                          (duAnThemNhanh?.khach_hang_id ? mapKH.get(duAnThemNhanh.khach_hang_id) : null);
+                        onMoTaoLichHenGoiY?.({
+                          khach_hang_id: kh?.id || null,
+                          ten_khach_hang: kh?.ten_khach_hang || '',
+                          nguoi_lien_he_id: nguoiLienHeThemNhanh?.id || null,
+                          ten_nguoi_lien_he: nguoiLienHeThemNhanh?.ho_va_ten || null,
+                          so_dien_thoai: nguoiLienHeThemNhanh?.so_dien_thoai || null,
+                          noi_dung: noiDungThemHomNay.trim() || undefined,
+                          dia_diem: kh?.dia_chi || undefined
+                        });
+                      }}
+                      className="h-9 px-2.5 rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground text-xs font-medium inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                      title="Mở form đặt lịch hẹn gặp khách hàng"
+                    >
+                      <CalendarClock className="size-3.5 text-primary" />
+                      <span className="hidden sm:inline">Đặt lịch hẹn</span>
+                    </button>
+
+                    {/* Nút Gửi yêu cầu phối hợp dự án */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDuAnChoYeuCau(duAnThemNhanh || null);
+                        setMoModalTaoYeuCau(true);
+                      }}
+                      className="h-9 px-3 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                      title="Gửi yêu cầu phối hợp liên phòng ban cho dự án"
+                    >
+                      <Sparkles className="size-3.5 text-amber-600" />
+                      <span>⚡ Yêu cầu phối hợp</span>
+                    </button>
+
                     {noiDungThemHomNay.trim() && (
                       <button
                         type="button"
                         onClick={xuLyThemNhanhHomNay}
-                        className="h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shrink-0 cursor-pointer"
+                        className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0 cursor-pointer shadow-xs flex items-center gap-1.5 transition"
                       >
-                        Thêm
+                        <Check className="size-3.5" />
+                        <span>Lưu kết quả</span>
                       </button>
                     )}
                   </div>
+
+                  {/* Hiển thị các Chip đối tượng đã được gắn qua phím tắt @/# */}
+                  {(khachHangThemNhanh || duAnThemNhanh || nguoiLienHeThemNhanh) && (
+                    <div className="flex items-center gap-1.5 flex-wrap text-xs pt-0.5">
+                      <span className="text-[11px] text-muted-foreground font-medium">Đã gắn:</span>
+                      {khachHangThemNhanh && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-800 text-[11px] font-semibold border border-emerald-500/20">
+                          <Building2 className="size-3 text-emerald-600" />
+                          <span>{khachHangThemNhanh.ten_khach_hang}</span>
+                          <button
+                            type="button"
+                            onClick={() => setKhachHangThemNhanh(null)}
+                            className="hover:text-rose-600 ml-0.5 cursor-pointer"
+                            title="Gỡ khách hàng"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      )}
+                      {duAnThemNhanh && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-800 text-[11px] font-semibold border border-indigo-500/20">
+                          <FolderKanban className="size-3 text-indigo-600" />
+                          <span>{duAnThemNhanh.ten_du_an}</span>
+                          <button
+                            type="button"
+                            onClick={() => setDuAnThemNhanh(null)}
+                            className="hover:text-rose-600 ml-0.5 cursor-pointer"
+                            title="Gỡ dự án"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      )}
+                      {nguoiLienHeThemNhanh && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-sky-500/10 text-sky-800 text-[11px] font-semibold border border-sky-500/20">
+                          <Users className="size-3 text-sky-600" />
+                          <span>
+                            {nguoiLienHeThemNhanh.ho_va_ten}
+                            {nguoiLienHeThemNhanh.chuc_vu ? ` (${nguoiLienHeThemNhanh.chuc_vu})` : ''}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setNguoiLienHeThemNhanh(null)}
+                            className="hover:text-rose-600 ml-0.5 cursor-pointer"
+                            title="Gỡ người liên hệ"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Gợi ý danh sách Người liên hệ khi đã gắn Khách hàng/Xã */}
+                  {khachHangThemNhanh && dsLienHeCuaKhThemNhanh.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5 text-xs bg-muted/30 p-2 rounded-xl border border-border/60">
+                      <span className="text-muted-foreground text-[11px] font-semibold flex items-center gap-1 shrink-0">
+                        <Users className="size-3 text-emerald-600" /> Người liên hệ:
+                      </span>
+                      {dsLienHeCuaKhThemNhanh.map((lh) => {
+                        const isChon = nguoiLienHeThemNhanh?.id === lh.id;
+                        return (
+                          <button
+                            key={lh.id}
+                            type="button"
+                            onClick={() => setNguoiLienHeThemNhanh(isChon ? null : lh)}
+                            className={cn(
+                              'px-2 py-0.5 rounded-md text-xs font-medium border transition cursor-pointer flex items-center gap-1',
+                              isChon
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                : 'bg-background text-foreground border-border hover:border-emerald-500/50'
+                            )}
+                          >
+                            <span>{lh.ho_va_ten}</span>
+                            {lh.chuc_vu && <span className="opacity-75 text-[10px]">({lh.chuc_vu})</span>}
+                          </button>
+                        );
+                      })}
+                      {nguoiLienHeThemNhanh && (
+                        <button
+                          type="button"
+                          onClick={() => setNguoiLienHeThemNhanh(null)}
+                          className="text-[11px] text-rose-500 hover:underline ml-auto cursor-pointer"
+                        >
+                          Bỏ chọn
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Panel chọn nhanh Khách hàng / Dự án khi thêm việc */}
                   {moChonDoiTuongThemNhanh && (
@@ -1457,887 +2245,184 @@ export default function BanLamViecHangNgay({
               )}
             </div>
 
-            {/* Danh sách công việc hôm nay & Khu vực thao tác trực tiếp */}
+            {/* Danh sách Lịch hẹn / Công tác trong ngày đang chọn */}
+            {dsLichGapNgayChon.length > 0 && (
+              <div className="p-3.5 bg-primary/[0.03] border-b border-border/70 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                    <CalendarClock className="size-3.5" />
+                    <span>Lịch hẹn / Công tác trong ngày ({dsLichGapNgayChon.length})</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {dsLichGapNgayChon.map((lich) => {
+                    const daXong = lich.trang_thai === 'da_hoan_thanh';
+                    return (
+                      <div
+                        key={`ngay_lich_${lich.id}`}
+                        className={cn(
+                          'p-2.5 rounded-xl border text-xs space-y-1 transition',
+                          daXong
+                            ? 'bg-emerald-500/[0.05] border-emerald-500/20 text-emerald-950'
+                            : 'bg-card border-border text-foreground shadow-2xs'
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-[11px] font-bold text-primary">
+                            {lich.gio_bat_dau} - {lich.gio_ket_thuc}
+                          </span>
+                          <span
+                            className={cn(
+                              'px-1.5 py-0.2 rounded text-[10px] font-bold',
+                              daXong
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-blue-600 text-white'
+                            )}
+                          >
+                            {daXong ? 'Đã xong' : 'Sắp tới'}
+                          </span>
+                        </div>
+                        <div className="font-bold truncate text-foreground">
+                          {lich.ten_khach_hang || lich.tieu_de}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+                          {lich.ten_nguoi_lien_he && <span>Gặp: {lich.ten_nguoi_lien_he}</span>}
+                          {lich.dia_diem && <span>• {lich.dia_diem}</span>}
+                        </div>
+                        {lich.ket_qua ? (
+                          <div className="text-[11px] text-emerald-700 italic border-t border-emerald-500/20 pt-1 line-clamp-1">
+                            Kết quả: {lich.ket_qua}
+                          </div>
+                        ) : (
+                          <div className="pt-1 border-t border-border/50 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLichHenDangBaoCao(lich);
+                                setNoiDungBaoCaoLichHen('');
+                              }}
+                              className="text-[11px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-1"
+                            >
+                              <span>Báo cáo kết quả cuộc gặp</span>
+                              <ArrowRight className="size-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Danh sách công việc hôm nay */}
             {dsViecNgayChon.length === 0 ? (
               <div className="p-10 text-center text-xs text-muted-foreground">
-                Chưa có việc nào trong ngày {dinhDangNgayNgan(ngayChon)}. Bấm chọn từ Rổ việc tuần bên phải hoặc nhập mới ở trên.
+                Chưa có việc nào trong ngày {dinhDangNgayNgan(ngayChon)}. Nhập công việc / kết quả đã thực hiện ở trên.
               </div>
             ) : (
-              <div className="divide-y divide-border/70">
-                {dsViecNgayChon.map((item) => {
-                  const dangMo = item.id === viecDangChon?.id;
-                  const daXong = Boolean(
-                    item.da_hoan_thanh || (item as any).trang_thai_vat_chung === 'da_lay'
-                  );
-                  const tieuDe =
-                    item.hanh_dong_tuan ||
-                    item.noi_dung_tuan ||
-                    item.ten_khach_hang_du_an ||
-                    'Công việc';
-                  const dauRa = item.ket_qua_mong_muon || item.dau_ra_cam_ket;
-                  const khCoDinh = timKhachHangCuaItem(item);
-                  const daCoDinh = timDuAnCuaItem(item);
-                  const dsKetQua = item.danh_sach_ket_qua || [];
+              <div className="divide-y divide-border/60">
+                {dsViecNgayChon.map((item, idx) => {
+                  const dangSua = idDangSua === item.id;
 
                   return (
                     <div
                       key={item.id}
-                      className={cn(
-                        'transition-colors',
-                        dangMo ? 'bg-primary/[0.03]' : 'hover:bg-muted/30'
-                      )}
+                      className="p-3 sm:px-4 flex items-center justify-between gap-3 hover:bg-muted/20 transition-colors"
                     >
-                      {/* Dòng tiêu đề công việc */}
-                      <div
-                        onClick={() =>
-                          setViecDangChonId(dangMo ? null : item.id)
-                        }
-                        className="p-3.5 flex items-start justify-between gap-3 cursor-pointer"
-                      >
-                        <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                          {laSuaDuoc ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDoiNhanhHoanThanh(item.id, !daXong);
+                      {/* Cột trái: STT + Nội dung công việc 1 dòng duy nhất có Link */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="size-6 rounded-full bg-slate-100 text-slate-600 font-bold text-xs flex items-center justify-center shrink-0">
+                          {idx + 1}
+                        </span>
+
+                        {dangSua ? (
+                          <div className="flex items-center gap-2 flex-1 min-w-0 py-0.5">
+                            <input
+                              type="text"
+                              value={noiDungDangSua}
+                              onChange={(e) => setNoiDungDangSua(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  xuLyLuuSuaInline(item);
+                                } else if (e.key === 'Escape') {
+                                  setIdDangSua(null);
+                                }
                               }}
-                              className={cn(
-                                'mt-0.5 size-5 rounded-full flex items-center justify-center shrink-0 transition-all border cursor-pointer',
-                                daXong
-                                  ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
-                                  : 'border-muted-foreground/30 text-transparent hover:border-emerald-500 hover:text-emerald-500/40'
-                              )}
-                              title={daXong ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
-                            >
-                              <Check className="size-3.5 stroke-[3]" />
-                            </button>
-                          ) : (
-                            <div
-                              className={cn(
-                                'mt-0.5 size-5 rounded-full flex items-center justify-center shrink-0 border',
-                                daXong
-                                  ? 'bg-emerald-600 text-white border-emerald-600'
-                                  : 'border-muted-foreground/30 text-transparent'
-                              )}
-                            >
-                              <Check className="size-3.5 stroke-[3]" />
-                            </div>
-                          )}
-
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span
-                                className={cn(
-                                  'text-sm font-semibold text-foreground leading-snug',
-                                  daXong && 'line-through text-muted-foreground'
-                                )}
-                              >
-                                {tieuDe}
-                              </span>
-                              {item.trang_thai_ket_qua === 'dat_muc_tieu' || daXong ? (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/25">
-                                  Đã xong
-                                </span>
-                              ) : item.trang_thai_ket_qua === 'do_dang' ? (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-700 border border-amber-500/25">
-                                  Dở dang
-                                </span>
-                              ) : item.trang_thai_ket_qua === 'khong_dat' ? (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-700 border border-rose-500/25">
-                                  Không đạt
-                                </span>
-                              ) : null}
-                              {dsKetQua.length > 0 && (
-                                <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-semibold">
-                                  {dsKetQua.length} kết quả
-                                </span>
-                              )}
-                            </div>
-
-                            {dauRa && dauRa !== tieuDe && (
-                              <div className="text-xs text-muted-foreground">
-                                Đầu ra cam kết: <span className="font-medium text-foreground">{dauRa}</span>
-                              </div>
-                            )}
-
-                            {!dangMo && (khCoDinh || daCoDinh || item.nguoi_lien_he || dsKetQua[0]) && (
-                              <div className="flex items-center gap-2 flex-wrap pt-0.5">
-                                {khCoDinh && (
-                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
-                                    <Building2 className="size-3 text-emerald-600" />
-                                    <span>{khCoDinh.ten_khach_hang}</span>
-                                  </span>
-                                )}
-                                {daCoDinh && (
-                                  <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
-                                    <FolderKanban className="size-3 text-indigo-600" />
-                                    <span>{daCoDinh.ten_du_an}</span>
-                                  </span>
-                                )}
-                                {item.nguoi_lien_he && (
-                                  <span className="inline-flex items-center gap-1 text-xs text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
-                                    <Users className="size-3 text-slate-400" />
-                                    <span>{item.nguoi_lien_he}{item.so_dien_thoai_lien_he ? ` (${item.so_dien_thoai_lien_he})` : ''}</span>
-                                  </span>
-                                )}
-                                {dsKetQua[0] && (
-                                  <span className="text-xs text-muted-foreground truncate max-w-[360px]">
-                                    — {dsKetQua[0].noi_dung}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Nút thao tác nhanh góc phải của dòng việc */}
-                        {laSuaDuoc && (
-                          <div
-                            className="flex items-center gap-1 shrink-0"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {!daXong && (
-                              <button
-                                type="button"
-                                onClick={() => xuLyTraVeRoTuan(item)}
-                                className="h-7 px-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-medium inline-flex items-center gap-1 cursor-pointer"
-                                title="Trả việc này về lại Rổ việc tuần bên phải"
-                              >
-                                <CornerUpLeft className="size-3.5" />
-                                <span className="hidden sm:inline">Để lại rổ</span>
-                              </button>
-                            )}
-                            {onSuaCongViec && (
-                              <button
-                                type="button"
-                                onClick={() => onSuaCongViec(item)}
-                                className="size-7 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center cursor-pointer"
-                                title="Sửa"
-                              >
-                                <Pencil className="size-3.5" />
-                              </button>
-                            )}
+                              className="flex-1 h-8 rounded-lg border border-primary bg-background px-2.5 text-xs font-medium text-foreground focus:outline-hidden shadow-2xs"
+                              autoFocus
+                            />
                             <button
                               type="button"
-                              onClick={() => onXoaCongViec(item.id)}
-                              className="size-7 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 inline-flex items-center justify-center cursor-pointer"
-                              title="Xóa"
+                              onClick={() => xuLyLuuSuaInline(item)}
+                              className="size-7 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center cursor-pointer transition-colors shadow-2xs shrink-0"
+                              title="Lưu nội dung (Enter)"
                             >
-                              <Trash2 className="size-3.5" />
+                              <Check className="size-3.5 stroke-[2.5]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIdDangSua(null)}
+                              className="size-7 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors shrink-0"
+                              title="Hủy (Esc)"
+                            >
+                              <X className="size-3.5" />
                             </button>
                           </div>
-                        )}
-                      </div>
-
-                      {/* KHU VỰC THAO TÁC TRỰC TIẾP NGAY TRONG VIỆC ĐANG MỞ */}
-                      {dangMo && (
-                        <div className="px-4 pb-4 pt-2 pl-10 space-y-3 border-t border-border/40 bg-muted/[0.02]">
-                          {laSuaDuoc && (
-                            <div className="space-y-2.5">
-                              {/* Khung nhập kết quả / tác nghiệp tích hợp */}
-                              <div className="rounded-xl border border-border bg-card p-3 space-y-2.5 shadow-2xs focus-within:border-primary/60 transition-colors">
-                                {/* Ô nhập nội dung */}
-                                <textarea
-                                  ref={inputCheckInRef}
-                                  rows={2}
-                                  value={noiDungCheckIn}
-                                  onChange={(e) => setNoiDungCheckIn(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault();
-                                      xuLyGhiNhanKetQuaPanel(false);
-                                    }
-                                  }}
-                                  placeholder={
-                                    khachHangDangTacNghiep || duAnDangTacNghiep
-                                      ? `Nhập nhật ký / kết quả làm việc với ${
-                                          nguoiLienHeDangTacNghiep
-                                            ? `${nguoiLienHeDangTacNghiep.ho_va_ten} · `
-                                            : ''
-                                        }${
-                                          duAnDangTacNghiep?.ten_du_an ||
-                                          khachHangDangTacNghiep?.ten_khach_hang
-                                        }... (Enter để lưu)`
-                                      : 'Nhập nhật ký công việc / kết quả tác nghiệp hôm nay... (Enter để lưu)'
-                                  }
-                                  className="w-full bg-transparent text-xs font-medium text-foreground placeholder:text-muted-foreground/70 focus:outline-hidden resize-y min-h-[48px]"
-                                />
-
-                                {/* Form mini Đặt lịch hẹn (Hiển thị khi bật coHenLich) */}
-                                {coHenLich && (
-                                  <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[11px] font-bold text-primary flex items-center gap-1.5">
-                                        <Calendar className="size-3.5" />
-                                        <span>Thiết lập lịch hẹn công tác với khách hàng</span>
-                                      </span>
-                                      <div className="flex items-center gap-1">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const d = new Date();
-                                            d.setDate(d.getDate() + 1);
-                                            setNgayHenLich(d.toISOString().slice(0, 10));
-                                          }}
-                                          className="px-2 py-0.5 rounded text-[10px] font-semibold bg-background hover:bg-muted text-muted-foreground border border-border cursor-pointer"
-                                        >
-                                          Ngày mai
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const d = new Date();
-                                            d.setDate(d.getDate() + 2);
-                                            setNgayHenLich(d.toISOString().slice(0, 10));
-                                          }}
-                                          className="px-2 py-0.5 rounded text-[10px] font-semibold bg-background hover:bg-muted text-muted-foreground border border-border cursor-pointer"
-                                        >
-                                          Ngày kia
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => setCoHenLich(false)}
-                                          className="px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
-                                        >
-                                          Đóng
-                                        </button>
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                      <div>
-                                        <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
-                                          Ngày hẹn *
-                                        </label>
-                                        <input
-                                          type="date"
-                                          value={ngayHenLich}
-                                          onChange={(e) => setNgayHenLich(e.target.value)}
-                                          className="w-full h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
-                                          Giờ hẹn
-                                        </label>
-                                        <input
-                                          type="time"
-                                          value={gioHenLich}
-                                          onChange={(e) => setGioHenLich(e.target.value)}
-                                          className="w-full h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="text-[10px] font-semibold text-muted-foreground block mb-0.5">
-                                          Địa điểm
-                                        </label>
-                                        <input
-                                          type="text"
-                                          value={diaDiemHen}
-                                          onChange={(e) => setDiaDiemHen(e.target.value)}
-                                          placeholder={khachHangDangTacNghiep?.dia_chi || 'Tại trụ sở KH / Quán cafe...'}
-                                          className="w-full h-7 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Link đính kèm (Hiển thị khi bật moLinkCheckIn) */}
-                                {moLinkCheckIn && (
-                                  <div className="p-2 rounded-lg bg-muted/40 border border-border/60 flex items-center gap-2">
-                                    <Link2 className="size-3.5 text-muted-foreground shrink-0" />
-                                    <input
-                                      type="text"
-                                      value={linkDinhKemCheckIn}
-                                      onChange={(e) => setLinkDinhKemCheckIn(e.target.value)}
-                                      placeholder="Dán đường dẫn tài liệu / ảnh / file..."
-                                      className="flex-1 bg-transparent text-xs font-medium text-foreground focus:outline-hidden"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => setMoLinkCheckIn(false)}
-                                      className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
-                                    >
-                                      Đóng
-                                    </button>
-                                  </div>
-                                )}
-
-                                {/* Thanh công cụ tích hợp bên dưới textarea */}
-                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50 flex-wrap">
-                                  {/* Cụm công cụ bên trái */}
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    {/* Chọn / Gắn Khách hàng hoặc Dự án */}
-                                    {khachHangDangTacNghiep || duAnDangTacNghiep ? (
-                                      <div className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 text-xs font-semibold overflow-hidden">
-                                        <button
-                                          type="button"
-                                          onClick={() => setMoTimDoiTuongTrongPanel(!moTimDoiTuongTrongPanel)}
-                                          className="px-2.5 py-1 inline-flex items-center gap-1.5 hover:bg-emerald-500/20 cursor-pointer"
-                                          title="Nhấp để đổi Khách hàng / Dự án"
-                                        >
-                                          <Building2 className="size-3.5 text-emerald-700 shrink-0" />
-                                          <span className="max-w-[150px] truncate">
-                                            {khachHangDangTacNghiep?.ten_khach_hang || duAnDangTacNghiep?.ten_du_an}
-                                          </span>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            if (khCoDinhCuaViecChon?.id === khachHangDangTacNghiep?.id) {
-                                              xuLyGoKhachHangKhoiItem(item);
-                                            }
-                                            if (daCoDinhCuaViecChon?.id === duAnDangTacNghiep?.id) {
-                                              xuLyGoDuAnKhoiItem(item);
-                                            }
-                                            setDoiTuongThucThiMap((prev) => ({
-                                              ...prev,
-                                              [item.id]: {
-                                                khachHang: null,
-                                                duAn: null,
-                                                nguoiLienHe: null
-                                              }
-                                            }));
-                                          }}
-                                          className="px-1.5 py-1 hover:bg-rose-500/20 hover:text-rose-700 border-l border-emerald-500/25 cursor-pointer text-muted-foreground"
-                                          title="Gỡ đối tượng"
-                                        >
-                                          <X className="size-3" />
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => setMoTimDoiTuongTrongPanel(!moTimDoiTuongTrongPanel)}
-                                        className="h-7 px-2.5 rounded-lg border border-dashed border-border hover:border-primary/50 bg-background hover:bg-primary/5 text-muted-foreground hover:text-primary text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                                      >
-                                        <Building2 className="size-3.5" />
-                                        <span>+ Gắn KH / Dự án</span>
-                                      </button>
-                                    )}
-
-                                    {/* Nếu có Khách hàng -> Cho phép chọn Người liên hệ */}
-                                    {khachHangDangTacNghiep && (
-                                      <div className="inline-flex items-center gap-1">
-                                        <select
-                                          value={nguoiLienHeDangTacNghiep?.id || ''}
-                                          onChange={(e) => {
-                                            const idChon = e.target.value;
-                                            const lhChon =
-                                              dsLienHeCuaKhDangTacNghiep.find((x) => x.id === idChon) || null;
-                                            setDoiTuongThucThiMap((prev) => ({
-                                              ...prev,
-                                              [item.id]: {
-                                                khachHang: prev[item.id]?.khachHang ?? khachHangDangTacNghiep,
-                                                duAn: prev[item.id]?.duAn ?? duAnDangTacNghiep,
-                                                nguoiLienHe: lhChon
-                                              }
-                                            }));
-                                            onCapNhatLichCongViec(item, {
-                                              nguoi_lien_he_id: lhChon?.id || null,
-                                              nguoi_lien_he: lhChon?.ho_va_ten || null,
-                                              chuc_vu: lhChon?.chuc_vu || null,
-                                              so_dien_thoai_lien_he: lhChon?.so_dien_thoai || null
-                                            });
-                                          }}
-                                          className="h-7 rounded-lg border border-border bg-background px-2 text-xs font-medium text-foreground max-w-[150px] truncate"
-                                          title="Chọn người liên hệ"
-                                        >
-                                          <option value="">-- Người liên hệ --</option>
-                                          {dsLienHeCuaKhDangTacNghiep.map((lh) => (
-                                            <option key={lh.id} value={lh.id}>
-                                              {lh.ho_va_ten}{lh.chuc_vu ? ` (${lh.chuc_vu})` : ''}
-                                            </option>
-                                          ))}
-                                        </select>
-                                        <button
-                                          type="button"
-                                          onClick={() => setMoModalThemLienHe(true)}
-                                          className="size-7 rounded-lg border border-border hover:border-primary/50 bg-background hover:bg-primary/5 text-muted-foreground hover:text-primary flex items-center justify-center cursor-pointer"
-                                          title="Thêm người liên hệ mới"
-                                        >
-                                          <Plus className="size-3" />
-                                        </button>
-                                      </div>
-                                    )}
-
-                                    {/* Giai đoạn dự án (nếu có dự án) */}
-                                    {duAnDangTacNghiep && (
-                                      <select
-                                        value={giaiDoanDuAnChon || duAnDangTacNghiep.giai_doan}
-                                        onChange={(e) => setGiaiDoanDuAnChon(e.target.value)}
-                                        className="h-7 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 text-xs font-semibold text-indigo-800"
-                                        title="Giai đoạn dự án"
-                                      >
-                                        {DANH_SACH_GIAI_DOAN_MAC_DINH.map((gd) => (
-                                          <option key={gd.key} value={gd.key}>
-                                            {gd.nhan_day_du}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    )}
-
-                                    {/* Nút bật Hẹn lịch */}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const tiepTheo = !coHenLich;
-                                        setCoHenLich(tiepTheo);
-                                        if (tiepTheo && !ngayHenLich) {
-                                          const d = new Date();
-                                          d.setDate(d.getDate() + 1);
-                                          setNgayHenLich(d.toISOString().slice(0, 10));
-                                        }
-                                      }}
-                                      className={cn(
-                                        'h-7 px-2.5 rounded-lg border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer',
-                                        coHenLich
-                                          ? 'bg-primary text-primary-foreground border-primary'
-                                          : 'bg-muted/40 hover:bg-muted border-border text-muted-foreground hover:text-foreground'
-                                      )}
-                                      title="Bật tính năng đặt lịch hẹn gặp khách hàng"
-                                    >
-                                      <Calendar className="size-3.5" />
-                                      <span>Hẹn lịch</span>
-                                    </button>
-
-                                    {/* Nút bật Đính kèm link */}
-                                    <button
-                                      type="button"
-                                      onClick={() => setMoLinkCheckIn(!moLinkCheckIn)}
-                                      className={cn(
-                                        'size-7 rounded-lg border flex items-center justify-center transition-colors cursor-pointer',
-                                        moLinkCheckIn || linkDinhKemCheckIn
-                                          ? 'bg-primary/10 border-primary/30 text-primary'
-                                          : 'bg-muted/40 hover:bg-muted border-border text-muted-foreground hover:text-foreground'
-                                      )}
-                                      title="Đính kèm tài liệu / link"
-                                    >
-                                      <Link2 className="size-3.5" />
-                                    </button>
-                                  </div>
-
-                                  {/* Cụm nút hành động bên phải */}
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => xuLyGhiNhanKetQuaPanel(false)}
-                                      disabled={!noiDungCheckIn.trim() && !coHenLich}
-                                      className="h-7 px-3 rounded-lg border border-border bg-background hover:bg-muted text-xs font-semibold text-foreground disabled:opacity-40 transition-colors cursor-pointer"
-                                      title="Lưu nhật ký mà không đóng công việc (tiếp tục gọi/làm việc khác)"
-                                    >
-                                      Lưu nhật ký
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => xuLyGhiNhanKetQuaPanel(true)}
-                                      className="h-7 px-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-                                      title="Lưu kết quả và đánh dấu công việc đã hoàn thành"
-                                    >
-                                      <Check className="size-3.5 stroke-[2.5]" />
-                                      <span>Xong việc</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Dropdown / Popup tìm đối tượng (Khách hàng & Dự án) */}
-                              {moTimDoiTuongTrongPanel && (
-                                <div className="p-3 rounded-xl border border-border bg-card space-y-2.5 shadow-sm">
-                                  <div className="flex items-center gap-2">
-                                    <div className="relative flex-1">
-                                      <Search className="size-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                      <input
-                                        type="text"
-                                        value={tuKhoaDoiTuongPanel}
-                                        onChange={(e) => setTuKhoaDoiTuongPanel(e.target.value)}
-                                        placeholder="Tìm Khách hàng (tên, SĐT, MST, địa chỉ) hoặc Dự án..."
-                                        className="w-full h-8 rounded-lg border border-border bg-background pl-8 pr-2.5 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
-                                        autoFocus
-                                      />
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => onMoFormKhachHang(item)}
-                                      className="h-8 px-2.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-semibold text-foreground inline-flex items-center gap-1 cursor-pointer shrink-0"
-                                    >
-                                      <UserPlus className="size-3.5" /> + KH mới
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        onMoFormDuAn({
-                                          itemTuan: item,
-                                          khachHangId: khachHangDangTacNghiep?.id || null
-                                        })
-                                      }
-                                      className="h-8 px-2.5 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-semibold text-foreground inline-flex items-center gap-1 cursor-pointer shrink-0"
-                                    >
-                                      <FolderKanban className="size-3.5" /> + Dự án mới
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setMoTimDoiTuongTrongPanel(false)}
-                                      className="h-8 px-2 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
-                                    >
-                                      Đóng
-                                    </button>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[220px] overflow-y-auto">
-                                    <div className="space-y-1">
-                                      <div className="text-[10px] font-bold uppercase text-muted-foreground px-1">
-                                        Khách hàng ({ketQuaTimDoiTuongPanel.khachHang.length})
-                                      </div>
-                                      {ketQuaTimDoiTuongPanel.khachHang.map((k) => (
-                                        <button
-                                          key={k.id}
-                                          type="button"
-                                          onClick={() => {
-                                            setDoiTuongThucThiMap((prev) => ({
-                                              ...prev,
-                                              [item.id]: {
-                                                khachHang: k,
-                                                duAn: null,
-                                                nguoiLienHe: undefined
-                                              }
-                                            }));
-                                            onCapNhatLichCongViec(item, {
-                                              khach_hang_id: k.id,
-                                              co_quan_doanh_nghiep: k.ten_khach_hang,
-                                              ten_khach_hang_du_an: item.hanh_dong_tuan
-                                                ? `${k.ten_khach_hang} - ${item.hanh_dong_tuan}`
-                                                : k.ten_khach_hang
-                                            });
-                                            setMoTimDoiTuongTrongPanel(false);
-                                            setTimeout(() => inputCheckInRef.current?.focus(), 50);
-                                          }}
-                                          className="w-full text-left px-2.5 py-1.5 rounded-lg bg-background hover:bg-emerald-500/10 border border-border/60 text-xs cursor-pointer"
-                                        >
-                                          <div className="font-semibold text-foreground truncate">
-                                            {k.ten_khach_hang}
-                                          </div>
-                                          {(k.so_dien_thoai || k.xa_phuong || k.dia_chi) && (
-                                            <div className="text-[10px] text-muted-foreground truncate">
-                                              {[k.so_dien_thoai, k.xa_phuong || k.dia_chi].filter(Boolean).join(' · ')}
-                                            </div>
-                                          )}
-                                        </button>
-                                      ))}
-                                    </div>
-
-                                    <div className="space-y-1">
-                                      <div className="text-[10px] font-bold uppercase text-muted-foreground px-1">
-                                        Dự án ({ketQuaTimDoiTuongPanel.duAn.length})
-                                      </div>
-                                      {ketQuaTimDoiTuongPanel.duAn.map((d) => {
-                                        const khCuaDa = d.khach_hang_id ? mapKH.get(d.khach_hang_id) || null : null;
-                                        return (
-                                          <button
-                                            key={d.id}
-                                            type="button"
-                                            onClick={() => {
-                                              setDoiTuongThucThiMap((prev) => ({
-                                                ...prev,
-                                                [item.id]: {
-                                                  khachHang: khCuaDa,
-                                                  duAn: d,
-                                                  nguoiLienHe: undefined
-                                                }
-                                              }));
-                                              onCapNhatLichCongViec(item, {
-                                                du_an_id: d.id,
-                                                du_an_du_kien: d.ten_du_an,
-                                                khach_hang_id: khCuaDa?.id || null,
-                                                co_quan_doanh_nghiep: khCuaDa?.ten_khach_hang || null,
-                                                ten_khach_hang_du_an: d.ten_du_an
-                                              });
-                                              setMoTimDoiTuongTrongPanel(false);
-                                              setTimeout(() => inputCheckInRef.current?.focus(), 50);
-                                            }}
-                                            className="w-full text-left px-2.5 py-1.5 rounded-lg bg-background hover:bg-indigo-500/10 border border-border/60 text-xs cursor-pointer"
-                                          >
-                                            <div className="font-semibold text-foreground truncate">{d.ten_du_an}</div>
-                                            {khCuaDa && (
-                                              <div className="text-[10px] text-muted-foreground truncate">
-                                                KH: {khCuaDa.ten_khach_hang}
-                                              </div>
-                                            )}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Danh sách kết quả đã ghi nhận của việc này */}
-                          {dsKetQua.length > 0 && (
-                            <div className="space-y-1.5 pt-1">
-                              {dsKetQua.map((kq) => {
-                                const dangSuaDongNay =
-                                  dangSuaKetQua?.itemId === item.id &&
-                                  dangSuaKetQua?.kqId === kq.id;
-                                const khCuaKq = kq.khach_hang_id
-                                  ? mapKH.get(kq.khach_hang_id) || null
-                                  : null;
-                                const daCuaKq = kq.du_an_id
-                                  ? mapDuAn.get(kq.du_an_id) || null
-                                  : null;
-
-                                return (
-                                  <div
-                                    key={kq.id}
-                                    className="p-2.5 rounded-xl border border-border bg-background flex items-start justify-between gap-2 text-xs"
-                                  >
-                                    <div className="min-w-0 flex-1 space-y-1">
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        <span className="text-[10px] font-mono text-muted-foreground">
-                                          {dinhDangNgayNgan(kq.ngay_ghi_nhan)}
-                                        </span>
-
-                                        {(khCuaKq || kq.ten_khach_hang) && (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              khCuaKq && moHoSoKhachHangNhanh(khCuaKq)
-                                            }
-                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 font-bold text-[11px] cursor-pointer"
-                                          >
-                                            <Building2 className="size-3 shrink-0" />
-                                            <span>
-                                              {khCuaKq?.ten_khach_hang || kq.ten_khach_hang}
-                                            </span>
-                                          </button>
-                                        )}
-
-                                        {(daCuaKq || kq.ten_du_an) && (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              daCuaKq && moHoSoDuAnNhanh(daCuaKq)
-                                            }
-                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-800 font-bold text-[11px] cursor-pointer"
-                                          >
-                                            <FolderKanban className="size-3 shrink-0" />
-                                            <span>
-                                              {daCuaKq?.ten_du_an || kq.ten_du_an}
-                                            </span>
-                                          </button>
-                                        )}
-
-                                        {kq.ten_nguoi_lien_he && (
-                                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-foreground font-semibold text-[11px]">
-                                            <Users className="size-3 shrink-0 text-muted-foreground" />
-                                            <span>
-                                              {kq.ten_nguoi_lien_he}
-                                              {kq.so_dien_thoai_lien_he
-                                                ? ` (${kq.so_dien_thoai_lien_he})`
-                                                : ''}
-                                            </span>
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      {dangSuaDongNay ? (
-                                        <div className="flex items-center gap-1.5">
-                                          <input
-                                            type="text"
-                                            value={dangSuaKetQua.noiDung}
-                                            onChange={(e) =>
-                                              setDangSuaKetQua({
-                                                ...dangSuaKetQua,
-                                                noiDung: e.target.value
-                                              })
-                                            }
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                xuLyLuuSuaKetQuaInline(item);
-                                              } else if (e.key === 'Escape') {
-                                                setDangSuaKetQua(null);
-                                              }
-                                            }}
-                                            className="flex-1 h-7 rounded border border-primary bg-background px-2 text-xs"
-                                            autoFocus
-                                          />
-                                          <button
-                                            type="button"
-                                            onClick={() => xuLyLuuSuaKetQuaInline(item)}
-                                            className="h-7 px-2 rounded bg-primary text-primary-foreground text-[11px] font-bold"
-                                          >
-                                            Lưu
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <div className="text-foreground font-medium">
-                                          {kq.noi_dung}
-                                        </div>
-                                      )}
-
-                                      {kq.chi_dao?.noi_dung && (
-                                        <div className="text-[11px] text-amber-800 font-semibold">
-                                          Chỉ đạo ({kq.chi_dao.ten_nguoi_chi_dao || 'Lãnh đạo'}):{' '}
-                                          {kq.chi_dao.noi_dung}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {laSuaDuoc && !dangSuaDongNay && (
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        {khCuaKq && !daCuaKq && (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              onMoTaoDuAnChoKH
-                                                ? onMoTaoDuAnChoKH(khCuaKq, item)
-                                                : onMoFormDuAn({
-                                                    itemTuan: item,
-                                                    khachHangId: khCuaKq.id
-                                                  })
-                                            }
-                                            className="h-6 px-1.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-800 text-[10px] font-bold cursor-pointer"
-                                          >
-                                            + Dự án
-                                          </button>
-                                        )}
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            setDangSuaKetQua({
-                                              itemId: item.id,
-                                              kqId: kq.id,
-                                              noiDung: kq.noi_dung
-                                            })
-                                          }
-                                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
-                                        >
-                                          <Edit2 className="size-3" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            xuLyXoaKetQuaInline(item, kq.id)
-                                          }
-                                          className="p-1 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 cursor-pointer"
-                                        >
-                                          <Trash2 className="size-3" />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* =============================================================== */}
-        {/* CỘT PHẢI (4/12): RỔ VIỆC TUẦN — DANH SÁCH ĐƠN GIẢN               */}
-        {/* =============================================================== */}
-        <div className="lg:col-span-4 lg:sticky lg:top-4">
-          <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
-            <div className="p-3.5 border-b border-border bg-muted/15 space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-extrabold text-sm text-foreground">
-                  Rổ việc tuần ({dsRoViecTuan.length})
-                </span>
-              </div>
-
-              {laSuaDuoc && (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    value={noiDungThemRoTuan}
-                    onChange={(e) => setNoiDungThemRoTuan(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        xuLyThemNhanhRoTuan();
-                      }
-                    }}
-                    placeholder="+ Thêm việc vào rổ tuần..."
-                    className="flex-1 h-8 rounded-xl border border-border bg-background px-2.5 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary"
-                  />
-                  {noiDungThemRoTuan.trim() && (
-                    <button
-                      type="button"
-                      onClick={xuLyThemNhanhRoTuan}
-                      className="h-8 px-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shrink-0 cursor-pointer"
-                    >
-                      Thêm
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {dsRoViecTuan.length === 0 ? (
-              <div className="p-6 text-center text-xs text-muted-foreground">
-                Không có việc nào chờ trong rổ tuần.
-              </div>
-            ) : (
-              <div className="divide-y divide-border/60 max-h-[540px] overflow-y-auto">
-                {dsRoViecTuan.map((item) => {
-                  const tieuDe =
-                    item.hanh_dong_tuan ||
-                    item.noi_dung_tuan ||
-                    item.ten_khach_hang_du_an ||
-                    'Công việc tuần';
-                  const cacNgay = layDanhSachNgayCuaViec(item);
-                  const soKq = item.danh_sach_ket_qua?.length || 0;
-                  const daLamDo = cacNgay.length > 0 || soKq > 0;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-3 flex items-center justify-between gap-2.5 hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="min-w-0 flex-1 space-y-0.5">
-                        <div className="text-xs font-bold text-foreground truncate">
-                          {tieuDe}
-                        </div>
-                        {daLamDo && (
-                          <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-muted-foreground">
-                            {soKq > 0 && (
-                              <span className="font-bold text-primary">
-                                Đã ghi {soKq} kết quả
-                              </span>
-                            )}
-                            {cacNgay.length > 0 && (
-                              <span className="font-mono">
-                                {soKq > 0 ? '· ' : ''}
-                                {cacNgay.map((d) => dinhDangNgayNgan(d)).join(', ')}
-                              </span>
-                            )}
+                        ) : (
+                          <div className="min-w-0 flex-1">
+                            {renderDongNoiDung1Dong(item)}
                           </div>
                         )}
                       </div>
 
-                      {laSuaDuoc && (
-                        <button
-                          type="button"
-                          onClick={() => xuLyKeoVaoNgayChon(item)}
-                          className={cn(
-                            'h-7 px-2.5 rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer',
-                            daLamDo
-                              ? 'bg-amber-500/15 hover:bg-amber-500 text-amber-800 hover:text-white'
-                              : 'bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground'
+                      {/* Cột phải: Thao tác (Sửa trực tiếp, Xóa) */}
+                      {laSuaDuoc && !dangSua && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          {timDuAnCuaItem(item) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const da = timDuAnCuaItem(item);
+                                setDuAnChoYeuCau(da || null);
+                                setNoiDungThemHomNay(
+                                  (item.ket_qua_thuc_te || item.hanh_dong_tuan || item.noi_dung_tuan || '').trim()
+                                );
+                                setMoModalTaoYeuCau(true);
+                              }}
+                              className="size-7 rounded-lg hover:bg-amber-500/15 text-amber-600 hover:text-amber-700 inline-flex items-center justify-center cursor-pointer transition-colors"
+                              title="Tạo yêu cầu phối hợp cho dự án này"
+                            >
+                              <Sparkles className="size-3.5" />
+                            </button>
                           )}
-                        >
-                          {daLamDo ? '+ Làm tiếp' : '+ Làm'}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIdDangSua(item.id);
+                              setNoiDungDangSua(
+                                item.ket_qua_thuc_te ||
+                                item.hanh_dong_tuan ||
+                                item.noi_dung_tuan ||
+                                item.ten_khach_hang_du_an ||
+                                ''
+                              );
+                            }}
+                            className="size-7 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center cursor-pointer transition-colors"
+                            title="Sửa trực tiếp nội dung công việc"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onXoaCongViec(item.id)}
+                            className="size-7 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 inline-flex items-center justify-center cursor-pointer transition-colors"
+                            title="Xóa công việc"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
@@ -2346,11 +2431,22 @@ export default function BanLamViecHangNgay({
             )}
           </div>
         </div>
-      </div>
 
       {/* ================================================================= */}
       {/* DRAWER HỒ SƠ THU GỌN (XEM & TƯƠNG TÁC KHÁCH HÀNG / DỰ ÁN TẠI CHỖ) */}
       {/* ================================================================= */}
+      <ModalTaoYeuCauPhoiHop
+        mo={moModalTaoYeuCau}
+        onDong={() => setMoModalTaoYeuCau(false)}
+        duAnMacDinh={duAnChoYeuCau}
+        danhSachDuAn={danhSachDuAn}
+        noiDungGoiY={noiDungThemHomNay.trim()}
+        nguoiDungHienTai={nguoiDungHienTai}
+        onTaoThanhCong={(ycMoi) => {
+          setDanhSachYeuCau((prev) => [ycMoi, ...prev.filter((x) => x.id !== ycMoi.id)]);
+        }}
+      />
+
       <DrawerHoSoThuGon
         mo={hoSoThuGonState.mo}
         onDong={() => setHoSoThuGonState((prev) => ({ ...prev, mo: false }))}
@@ -2427,77 +2523,6 @@ export default function BanLamViecHangNgay({
         onDaThayDoiNguoiLienHe={onTaiLaiNguoiLienHe}
       />
 
-      {/* ================================================================= */}
-      {/* DRAWER TRỢ LÝ AI & RADAR CẢNH BÁO CHO SALE                         */}
-      {/* ================================================================= */}
-      <DrawerTroLyAISale
-        mo={moDrawerTroLyAI}
-        onDong={() => setMoDrawerTroLyAI(false)}
-        nhanVienId={nhanVienId || nguoiDungHienTai?.id || ''}
-        homNayISO={homNayISO}
-        danhSachCanhBaoHeThong={danhSachCanhBaoRadar}
-        danhSachDuAn={danhSachDuAn}
-        danhSachKhachHang={danhSachKhachHang}
-        keHoachTuan={keHoachTuan}
-        onMoHoSoDuAn={(da) => {
-          setMoDrawerTroLyAI(false);
-          moHoSoDuAnNhanh(da);
-        }}
-        onMoHoSoKhachHang={(kh) => {
-          setMoDrawerTroLyAI(false);
-          moHoSoKhachHangNhanh(kh);
-        }}
-        onMoTaoLichHen={(goiY) => {
-          setMoDrawerTroLyAI(false);
-          onMoTaoLichHenGoiY?.(goiY, viecDangChon);
-        }}
-        onDuaVaoViecHomNay={({ duAn, khachHang, itemTuan, goiYHanhDong }) => {
-          setMoDrawerTroLyAI(false);
-          if (itemTuan) {
-            xuLyKeoVaoNgayChon(itemTuan);
-            return;
-          }
-          const idMoi = `tuan_${Date.now()}`;
-          const tenKH =
-            khachHang?.ten_khach_hang ||
-            (duAn?.khach_hang_id
-              ? mapKH.get(duAn.khach_hang_id)?.ten_khach_hang
-              : undefined) ||
-            duAn?.ten_du_an ||
-            'Công việc mới';
-          const hanhDong =
-            goiYHanhDong ||
-            (duAn
-              ? `Tương tác & cập nhật tiến độ dự án: ${duAn.ten_du_an}`
-              : `Liên hệ chăm sóc khách hàng: ${tenKH}`);
-          const itemMoi: ItemKeHoachTuan = {
-            id: idMoi,
-            loai_hanh_dong: 'phat_sinh',
-            hinh_thuc: 'goi_dien',
-            ten_khach_hang_du_an: tenKH,
-            co_quan_doanh_nghiep: khachHang?.ten_khach_hang || null,
-            khach_hang_id: khachHang?.id || duAn?.khach_hang_id || null,
-            du_an_id: duAn?.id || null,
-            du_an_du_kien: duAn?.ten_du_an || null,
-            hanh_dong_tuan: hanhDong,
-            noi_dung_tuan: hanhDong,
-            ket_qua_mong_muon: hanhDong,
-            dau_ra_cam_ket: hanhDong,
-            ngay_du_kien: ngayChon,
-            cac_ngay_thuc_hien: [ngayChon],
-            da_hoan_thanh: false,
-            danh_sach_ket_qua: []
-          };
-          onThemNhanh(itemMoi);
-          setViecDangChonId(idMoi);
-        }}
-        onCheckInItemTuan={(item) => {
-          setMoDrawerTroLyAI(false);
-          setViecDangChonId(item.id);
-          setTimeout(() => inputCheckInRef.current?.focus(), 80);
-        }}
-      />
-
       {khachHangDangTacNghiep && (
         <ModalNguoiLienHe
           mo={moModalThemLienHe}
@@ -2526,6 +2551,79 @@ export default function BanLamViecHangNgay({
             onTaiLaiNguoiLienHe?.();
           }}
         />
+      )}
+
+      {/* Modal Báo cáo kết quả lịch hẹn quá hạn / hôm nay */}
+      {lichHenDangBaoCao && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600">
+                  Báo cáo kết quả cuộc gặp
+                </span>
+                <h3 className="text-base font-bold text-foreground mt-0.5">
+                  {lichHenDangBaoCao.ten_khach_hang || lichHenDangBaoCao.tieu_de}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Lịch hẹn ngày {lichHenDangBaoCao.ngay} ({lichHenDangBaoCao.gio_bat_dau} - {lichHenDangBaoCao.gio_ket_thuc})
+                  {lichHenDangBaoCao.ten_nguoi_lien_he ? ` • Gặp ${lichHenDangBaoCao.ten_nguoi_lien_he}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLichHenDangBaoCao(null)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-foreground">
+                Kết quả / Diễn biến cuộc gặp thực tế:
+              </label>
+              <textarea
+                value={noiDungBaoCaoLichHen}
+                onChange={(e) => setNoiDungBaoCaoLichHen(e.target.value)}
+                placeholder="Ví dụ: Đã gặp anh Nam PCT xã, thống nhất tuần sau ký duyệt phương án và gửi tờ trình..."
+                className="w-full h-28 rounded-xl border border-border bg-background p-3 text-xs text-foreground focus:outline-hidden focus:border-primary resize-none"
+                autoFocus
+              />
+              <p className="text-[11px] text-muted-foreground">
+                * Kết quả này sẽ tự động được ghi nhận vào Báo cáo công việc hôm nay và hồ sơ Khách hàng/Dự án.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setLichHenDangBaoCao(null)}
+                className="h-9 px-3.5 rounded-xl border border-border text-xs font-medium text-foreground hover:bg-muted cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={!noiDungBaoCaoLichHen.trim() || dangLuuBaoCaoLichHen}
+                onClick={xuLyLuuBaoCaoLichHen}
+                className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                {dangLuuBaoCaoLichHen ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    <span>Đang lưu...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="size-3.5" />
+                    <span>Lưu & Hoàn thành</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

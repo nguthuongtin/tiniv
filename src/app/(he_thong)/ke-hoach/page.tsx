@@ -2,13 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CalendarDays,
   Loader2,
   Users,
-  CalendarRange,
   ChevronLeft,
   ChevronRight,
-  LayoutDashboard,
   ListTodo
 } from 'lucide-react';
 import { cn } from '../../../thu_vien/utils/cn';
@@ -37,22 +34,14 @@ import {
   luuKeHoachTuan,
   layThangHienTaiISO,
   layTuanHienTaiISO,
-  layTuanFromDateISO,
-  danhSachKeHoachThangTheoFilter,
-  danhSachKeHoachTuanTheoFilter
+  layTuanFromDateISO
 } from '../../../dich_vu/ke_hoach/dich_vu_ke_hoach';
 import {
   layBaoCaoKeHoachTuan,
   luuBaoCaoKeHoachTuan,
   layBaoCaoKeHoachThang,
-  luuBaoCaoKeHoachThang,
-  danhSachBaoCaoTuanTheoFilter,
-  danhSachBaoCaoThangTheoFilter
+  luuBaoCaoKeHoachThang
 } from '../../../dich_vu/ke_hoach/dich_vu_bao_cao_ke_hoach';
-import {
-  xuatExcelKeHoachTuan,
-  xuatExcelKeHoachThang
-} from '../../../dich_vu/ke_hoach/dich_vu_xuat_excel_ke_hoach';
 import {
   dongBoTuDongBaoCaoTuan,
   dongBoTuDongBaoCaoThang,
@@ -60,7 +49,9 @@ import {
   dongBoCongViecTuanSangLichGap,
   dongBoLichGapSangKeHoachTuanVaBaoCaoNgay,
   superSyncCheckIn1Cham,
-  layKhoangNgayTuTuanISO
+  layKhoangNgayTuTuanISO,
+  dongBoXoaCheckInKhoiBaoCaoNgay,
+  dongBoSuaCheckInBaoCaoNgayVaDuAn
 } from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
@@ -83,22 +74,15 @@ import { danhSachNguoiLienHe, xoaCacheNguoiLienHe } from '../../../dich_vu/nguoi
 import {
   danhSachLichGapKH,
   taoLichGapKHMoi,
+  xoaLichGapKH,
   type TaoMoiLichGapDTO
 } from '../../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
 import Bo_Cuc_Trang from '../../../thanh_phan/ui/bo_cuc_trang';
 
-import BangKeHoachThang from '../../../thanh_phan/ke_hoach/bang_ke_hoach_thang';
-import BangKeHoachTuan from '../../../thanh_phan/ke_hoach/bang_ke_hoach_tuan';
 import BanLamViecHangNgay from '../../../thanh_phan/ke_hoach/ban_lam_viec_hang_ngay';
 import type { GoiYTaoLichHenNhanh } from '../../../thanh_phan/ke_hoach/drawer_ho_so_thu_gon';
-import FormDiaBanDrawer from '../../../thanh_phan/ke_hoach/form_dia_ban_drawer';
 import FormTacChienTuanDrawer from '../../../thanh_phan/ke_hoach/form_tac_chien_tuan_drawer';
 import FormCapNhatTienDoTuan from '../../../thanh_phan/ke_hoach/form_cap_nhat_tien_do_tuan';
-import FormCapNhatKetQuaThang from '../../../thanh_phan/ke_hoach/form_cap_nhat_ket_qua_thang';
-import DrawerTongKetTuan from '../../../thanh_phan/ke_hoach/drawer_tong_ket_tuan';
-import DrawerTongKetThang from '../../../thanh_phan/ke_hoach/drawer_tong_ket_thang';
-import BangTongQuanTeamTuan from '../../../thanh_phan/ke_hoach/bang_tong_quan_team_tuan';
-import BangTongQuanTeamThang from '../../../thanh_phan/ke_hoach/bang_tong_quan_team_thang';
 import FormKhachHangDrawer from '../../../thanh_phan/khach_hang/form_khach_hang_drawer';
 import FormHoSoDuAnDrawer from '../../../thanh_phan/ho_so_du_an/form_ho_so_du_an_drawer';
 import FormLichGapModal from '../../../thanh_phan/lich_gap_kh/form_lich_gap_modal';
@@ -153,16 +137,14 @@ export default function TrangKeHoachNVKD() {
 export function NoiDungKeHoachNVKD({
   tabKhoiTao
 }: {
-  tabKhoiTao?: 'ban_lam_viec' | 'thang' | 'tuan' | 'team_tuan' | 'team_thang';
+  tabKhoiTao?: string;
 } = {}) {
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
   const laQuanLyHoacGiamDoc =
     ['quan_tri_he_thong', 'giam_doc', 'truong_phong'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
     coQuyen(nguoiDungHienTai, 'ke_hoach.duyet');
 
-  const [tabHienTai, setTabHienTai] = useState<'ban_lam_viec' | 'thang' | 'tuan' | 'team_tuan' | 'team_thang'>(
-    tabKhoiTao || 'ban_lam_viec'
-  );
+  const homNayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [dangTai, setDangTai] = useState(true);
 
   // Time selectors
@@ -185,17 +167,7 @@ export function NoiDungKeHoachNVKD({
   const [keHoachTuan, setKeHoachTuan] = useState<KeHoachTuan | null>(null);
   const [baoCaoTuan, setBaoCaoTuan] = useState<BaoCaoKeHoachTuan | null>(null);
   const [baoCaoThang, setBaoCaoThang] = useState<BaoCaoKeHoachThang | null>(null);
-
-  // Data states team (dành cho Sếp)
-  const [dsKeHoachTeamTuan, setDsKeHoachTeamTuan] = useState<KeHoachTuan[]>([]);
-  const [dsBaoCaoTeamTuan, setDsBaoCaoTeamTuan] = useState<BaoCaoKeHoachTuan[]>([]);
-  const [dsKeHoachTeamThang, setDsKeHoachTeamThang] = useState<KeHoachThang[]>([]);
-  const [dsBaoCaoTeamThang, setDsBaoCaoTeamThang] = useState<BaoCaoKeHoachThang[]>([]);
-
-  // Drawers Thêm/Sửa kế hoạch
-  const [moDrawerThang, setMoDrawerThang] = useState(false);
-  const [dangSuaThang, setDangSuaThang] = useState<ItemKeHoachThang | null>(null);
-
+  // Drawers Thêm/Sửa công việc
   const [moDrawerTuan, setMoDrawerTuan] = useState(false);
   const [dangSuaTuan, setDangSuaTuan] = useState<ItemKeHoachTuan | null>(null);
   const [ngayMacDinhDrawerTuan, setNgayMacDinhDrawerTuan] = useState<string>('');
@@ -227,30 +199,9 @@ export function NoiDungKeHoachNVKD({
   const [goiYLichCongTac, setGoiYLichCongTac] = useState<GoiYTaoLichHenNhanh | null>(null);
   const [dangXuLyLichCongTac, setDangXuLyLichCongTac] = useState(false);
 
-  // Drawers Cập nhật tiến độ / thực tế thu (Tap nhanh)
+  // Drawers Cập nhật tiến độ
   const [moCapNhatTienDoTuan, setMoCapNhatTienDoTuan] = useState(false);
   const [itemTuanDangCapNhat, setItemTuanDangCapNhat] = useState<ItemKeHoachTuan | null>(null);
-
-  const [moCapNhatThucTeThang, setMoCapNhatThucTeThang] = useState(false);
-  const [itemThangDangCapNhat, setItemThangDangCapNhat] = useState<ItemKeHoachThang | null>(null);
-
-  // Drawers Tổng kết báo cáo tuần / tháng
-  const [moDrawerTongKetTuan, setMoDrawerTongKetTuan] = useState(false);
-  const [moDrawerTongKetThang, setMoDrawerTongKetThang] = useState(false);
-
-  // Định tuyến tab mặc định theo vai trò (nếu không truyền tabKhoiTao)
-  useEffect(() => {
-    if (tabKhoiTao) return;
-    if (laQuanLyHoacGiamDoc) {
-      if (tabHienTai === 'tuan' || tabHienTai === 'thang' || tabHienTai === 'ban_lam_viec') {
-        setTabHienTai('team_tuan');
-      }
-    } else {
-      if (tabHienTai === 'team_tuan' || tabHienTai === 'team_thang') {
-        setTabHienTai('ban_lam_viec');
-      }
-    }
-  }, [laQuanLyHoacGiamDoc, tabKhoiTao]);
 
   const phamVi = useMemo(() => {
     return layPhamViPhongBan(nguoiDungHienTai);
@@ -318,56 +269,32 @@ export function NoiDungKeHoachNVKD({
 
   const taiKinhDoanhPlan = useCallback(async () => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
+    if (!targetId) return;
     setDangTai(true);
     try {
-      if (tabHienTai === 'thang') {
-        if (!targetId) return;
-        const [resKH, resBC] = await Promise.all([
-          layKeHoachThang(targetId, thangChon),
-          layBaoCaoKeHoachThang(targetId, thangChon)
-        ]);
-        setKeHoachThang(resKH);
-        setBaoCaoThang(resBC);
-      } else if (tabHienTai === 'tuan' || tabHienTai === 'ban_lam_viec') {
-        if (!targetId) return;
-        const { tuNgay, denNgay } = layKhoangNgayTuTuanISO(tuanChon);
-        const [resKH, resBC, resThang, resLich] = await Promise.all([
-          layKeHoachTuan(targetId, tuanChon),
-          layBaoCaoKeHoachTuan(targetId, tuanChon),
-          layKeHoachThang(targetId, thangChon),
-          danhSachLichGapKH({
-            nguoi_phu_trach_id: targetId,
-            tu_ngay: tuNgay,
-            den_ngay: denNgay
-          })
-        ]);
-        setKeHoachTuan(resKH);
-        setBaoCaoTuan(resBC);
-        setDsLichGap(resLich);
-        if (resThang) {
-          setKeHoachThang(resThang);
-        }
-      } else if (tabHienTai === 'team_tuan') {
-        const [resKH, resBC] = await Promise.all([
-          danhSachKeHoachTuanTheoFilter(tuanChon),
-          danhSachBaoCaoTuanTheoFilter(tuanChon)
-        ]);
-        setDsKeHoachTeamTuan(resKH);
-        setDsBaoCaoTeamTuan(resBC);
-      } else if (tabHienTai === 'team_thang') {
-        const [resKH, resBC] = await Promise.all([
-          danhSachKeHoachThangTheoFilter(thangChon),
-          danhSachBaoCaoThangTheoFilter(thangChon)
-        ]);
-        setDsKeHoachTeamThang(resKH);
-        setDsBaoCaoTeamThang(resBC);
+      const { tuNgay, denNgay } = layKhoangNgayTuTuanISO(tuanChon);
+      const [resKH, resBC, resThang, resLich] = await Promise.all([
+        layKeHoachTuan(targetId, tuanChon),
+        layBaoCaoKeHoachTuan(targetId, tuanChon),
+        layKeHoachThang(targetId, thangChon),
+        danhSachLichGapKH({
+          nguoi_phu_trach_id: targetId,
+          tu_ngay: tuNgay,
+          den_ngay: denNgay
+        })
+      ]);
+      setKeHoachTuan(resKH);
+      setBaoCaoTuan(resBC);
+      setDsLichGap(resLich);
+      if (resThang) {
+        setKeHoachThang(resThang);
       }
     } catch (err) {
       console.error(err);
     } finally {
       setDangTai(false);
     }
-  }, [nhanVienChonId, nguoiDungHienTai, tabHienTai, thangChon, tuanChon]);
+  }, [nhanVienChonId, nguoiDungHienTai, thangChon, tuanChon]);
 
   useEffect(() => {
     void taiKinhDoanhPlan();
@@ -561,10 +488,21 @@ export function NoiDungKeHoachNVKD({
 
     setKeHoachTuan(res);
 
-    // Tự động đồng bộ sang Báo cáo Tuần & Lịch công tác (không chặn UI)
+    // Tự động đồng bộ sang Báo cáo Tuần & Lịch công tác & Báo cáo ngày (không chặn UI)
     void (async () => {
       const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
       if (bcDongBo) setBaoCaoTuan(bcDongBo);
+
+      if (item.da_hoan_thanh && item.ket_qua_thuc_te) {
+        await superSyncCheckIn1Cham({
+          item,
+          nhanVienId: targetId,
+          ngayBaoCao: item.ngay_hoan_thanh || ngayTacChien,
+          noiDungKetQua: item.ket_qua_thuc_te,
+          trangThaiCongViec: 'da_hoan_thanh',
+          nguoiThucHien: nguoiDungHienTai
+        });
+      }
 
       if (item.ngay_du_kien && item.hinh_thuc === 'gap_mat') {
         await dongBoCongViecTuanSangLichGap({
@@ -586,9 +524,29 @@ export function NoiDungKeHoachNVKD({
   };
 
   const xuLyXoaItemTuan = async (itemId: string) => {
-    if (!confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
+    if (!confirm('Bạn có chắc muốn xóa công việc này?')) return;
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
     if (!targetId || !keHoachTuan) return;
+
+    const itemBiXoa = keHoachTuan.danh_sach_tac_chien.find((x) => x.id === itemId);
+
+    if (itemId.startsWith('tuan_lich_')) {
+      const lichId = itemId.replace('tuan_lich_', '');
+      try {
+        await xoaLichGapKH(lichId, nguoiDungHienTai?.id);
+      } catch (err) {
+        console.warn('Lỗi xóa lịch gặp đồng bộ:', err);
+      }
+    }
+
+    if (itemBiXoa) {
+      await dongBoXoaCheckInKhoiBaoCaoNgay({
+        nhanVienId: targetId,
+        ngayBaoCao: itemBiXoa.ngay_du_kien || new Date().toISOString().slice(0, 10),
+        item: itemBiXoa,
+        nguoiThucHien: nguoiDungHienTai
+      });
+    }
 
     const nv = dsNhanSu.find((x) => x.id === targetId);
     const dsMoi = keHoachTuan.danh_sach_tac_chien.filter((x) => x.id !== itemId);
@@ -607,6 +565,69 @@ export function NoiDungKeHoachNVKD({
     setKeHoachTuan(res);
     const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
     if (bcDongBo) setBaoCaoTuan(bcDongBo);
+  };
+
+  const xuLySuaNoiDungItemTuan = async (itemId: string, noiDungMoi: string) => {
+    const targetId = nhanVienChonId || nguoiDungHienTai?.id;
+    if (!targetId || !keHoachTuan) return;
+
+    const nv = dsNhanSu.find((x) => x.id === targetId);
+    const itemCu = keHoachTuan.danh_sach_tac_chien.find((x) => x.id === itemId);
+    if (!itemCu) return;
+
+    const noiDungCu = itemCu.ket_qua_thuc_te || itemCu.hanh_dong_tuan || itemCu.noi_dung_tuan || '';
+    const nowISO = new Date().toISOString();
+
+    const dsKq = [...(itemCu.danh_sach_ket_qua ?? [])];
+    if (dsKq.length > 0) {
+      dsKq[0] = { ...dsKq[0], noi_dung: noiDungMoi, ngay_chinh_sua_gan_nhat: nowISO };
+    } else {
+      dsKq.push({
+        id: `kq_${Date.now()}`,
+        ngay_ghi_nhan: itemCu.ngay_du_kien || nowISO.slice(0, 10),
+        noi_dung: noiDungMoi,
+        nguoi_ghi_id: nguoiDungHienTai?.id || targetId,
+        ten_nguoi_ghi: nguoiDungHienTai?.ho_va_ten || null
+      });
+    }
+
+    const itemCapNhat: ItemKeHoachTuan = {
+      ...itemCu,
+      hanh_dong_tuan: noiDungMoi,
+      noi_dung_tuan: noiDungMoi,
+      ket_qua_thuc_te: noiDungMoi,
+      danh_sach_ket_qua: dsKq,
+      ngay_cap_nhat_tien_do: nowISO
+    };
+
+    const dsMoi = keHoachTuan.danh_sach_tac_chien.map((x) =>
+      x.id === itemId ? itemCapNhat : x
+    );
+
+    setKeHoachTuan((prev) => (prev ? { ...prev, danh_sach_tac_chien: dsMoi } : prev));
+
+    const res = await luuKeHoachTuan(
+      {
+        id: keHoachTuan.id,
+        tuan: tuanChon,
+        nhan_vien_id: targetId,
+        danh_sach_tac_chien: dsMoi
+      },
+      nguoiDungHienTai
+    );
+    setKeHoachTuan(res);
+
+    const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
+    if (bcDongBo) setBaoCaoTuan(bcDongBo);
+
+    await dongBoSuaCheckInBaoCaoNgayVaDuAn({
+      item: itemCapNhat,
+      nhanVienId: targetId,
+      ngayBaoCao: itemCu.ngay_du_kien || nowISO.slice(0, 10),
+      noiDungCu,
+      noiDungMoi,
+      nguoiThucHien: nguoiDungHienTai
+    });
   };
 
   const xuLyDoiVatChung = async (itemId: string, daLay: boolean) => {
@@ -786,6 +807,13 @@ export function NoiDungKeHoachNVKD({
       const thMoi = layThangTuTuanISO(tuanMoi);
       if (thMoi !== thangChon) setThangChon(thMoi);
     }
+  };
+
+  const doiNgayTroi = (delta: number) => {
+    const d = new Date(ngayTacChien);
+    d.setDate(d.getDate() + delta);
+    const ngayMoi = d.toISOString().slice(0, 10);
+    xuLyDoiNgayTacChien(ngayMoi);
   };
 
   // Điều phối Kéo - Thả lịch tuần & Cập nhật ngày thực hiện / liên kết Dự án
@@ -1244,10 +1272,7 @@ export function NoiDungKeHoachNVKD({
     }
   ) => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
-    const keHoachMucTieu =
-      tabHienTai === 'team_tuan'
-        ? dsKeHoachTeamTuan.find((k) => k.nhan_vien_id === targetId) || keHoachTuan
-        : keHoachTuan;
+    const keHoachMucTieu = keHoachTuan;
 
     if (!targetId || !keHoachMucTieu) return;
 
@@ -1296,24 +1321,13 @@ export function NoiDungKeHoachNVKD({
       nguoiDungHienTai
     );
 
-    if (tabHienTai === 'team_tuan') {
-      setDsKeHoachTeamTuan((prev) => prev.map((k) => (k.id === res.id ? res : k)));
-    } else {
-      setKeHoachTuan(res);
-    }
+    setKeHoachTuan(res);
 
     // Super-Sync: Tự động đồng bộ sang Báo cáo Tuần, Báo cáo Ngày, Timeline Dự án, Pipeline & Lịch công tác
     void (async () => {
       const bcDongBo = await dongBoTuDongBaoCaoTuan(res, nv || nguoiDungHienTai);
       if (bcDongBo) {
-        if (tabHienTai === 'team_tuan') {
-          setDsBaoCaoTeamTuan((prev) => {
-            const exists = prev.some((b) => b.id === bcDongBo.id);
-            return exists ? prev.map((b) => (b.id === bcDongBo.id ? bcDongBo : b)) : [...prev, bcDongBo];
-          });
-        } else {
-          setBaoCaoTuan(bcDongBo);
-        }
+        setBaoCaoTuan(bcDongBo);
       }
 
       if (itemDaCapNhat) {
@@ -1407,80 +1421,21 @@ export function NoiDungKeHoachNVKD({
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-border print:hidden">
-        {/* Main View Switcher: Hôm nay -> Tuần này -> Tháng này */}
-        <div className="flex items-center gap-1 bg-muted/70 p-1 rounded-xl flex-wrap">
-          <button
-            type="button"
-            onClick={() => setTabHienTai('ban_lam_viec')}
-            className={cn(
-              'h-8.5 px-3 sm:px-4 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer',
-              tabHienTai === 'ban_lam_viec'
-                ? 'bg-background text-primary shadow-xs font-bold'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <ListTodo className="size-4" /> Hôm nay
-          </button>
-          <button
-            type="button"
-            onClick={() => setTabHienTai('tuan')}
-            className={cn(
-              'h-8.5 px-3 sm:px-4 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer',
-              tabHienTai === 'tuan'
-                ? 'bg-background text-foreground shadow-xs font-bold'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <CalendarRange className="size-4" /> Kế hoạch tuần
-          </button>
-          <button
-            type="button"
-            onClick={() => setTabHienTai('thang')}
-            className={cn(
-              'h-8.5 px-3 sm:px-4 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer',
-              tabHienTai === 'thang'
-                ? 'bg-background text-foreground shadow-xs font-bold'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <CalendarDays className="size-4" /> Mục tiêu tháng
-          </button>
-
-          {laQuanLyHoacGiamDoc && (
-            <>
-              <div className="h-4 w-px bg-border/80 mx-1 hidden sm:block" />
-              <button
-                type="button"
-                onClick={() => setTabHienTai('team_tuan')}
-                className={cn(
-                  'h-8.5 px-3 sm:px-4 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer',
-                  tabHienTai === 'team_tuan'
-                    ? 'bg-background text-foreground shadow-xs font-bold'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Users className="size-4" /> Điều hành Tuần
-              </button>
-              <button
-                type="button"
-                onClick={() => setTabHienTai('team_thang')}
-                className={cn(
-                  'h-8.5 px-3 sm:px-4 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer',
-                  tabHienTai === 'team_thang'
-                    ? 'bg-background text-foreground shadow-xs font-bold'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <LayoutDashboard className="size-4" /> Điều hành Tháng
-              </button>
-            </>
-          )}
+        {/* Tiêu đề trang Bàn làm việc */}
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <ListTodo className="size-5" />
+          </div>
+          <div>
+            <h1 className="text-base font-bold text-foreground">Bàn làm việc</h1>
+            <p className="text-xs text-muted-foreground">Tác nghiệp & công việc hàng ngày</p>
+          </div>
         </div>
 
-        {/* Filters: Nhân viên & Time Selectors */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {laQuanLyHoacGiamDoc && (tabHienTai === 'ban_lam_viec' || tabHienTai === 'tuan' || tabHienTai === 'thang') && (
-            <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2.5 h-9 shadow-xs">
+        {/* Filters: Nhân viên (cho Quản lý) & Bộ chọn ngày */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {laQuanLyHoacGiamDoc && (
+            <div className="flex items-center gap-1.5 bg-background border border-border rounded-xl px-2.5 h-9 shadow-2xs">
               <Users className="size-3.5 text-muted-foreground" />
               <select
                 value={nhanVienChonId}
@@ -1496,70 +1451,40 @@ export function NoiDungKeHoachNVKD({
             </div>
           )}
 
-          {tabHienTai === 'thang' || tabHienTai === 'team_thang' ? (
-            <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-1.5 h-9 shadow-xs">
+          {/* Bộ chọn ngày làm việc */}
+          <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-1.5 h-9 shadow-2xs">
+            {ngayTacChien !== homNayISO && (
               <button
                 type="button"
-                onClick={() => doiThangTroi(-1)}
-                className="size-7 rounded-lg hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                title="Tháng trước"
+                onClick={() => xuLyDoiNgayTacChien(homNayISO)}
+                className="h-7 px-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-bold transition-colors cursor-pointer mr-0.5"
               >
-                <ChevronLeft className="size-4" />
+                Hôm nay
               </button>
-              <input
-                type="month"
-                value={thangChon}
-                onChange={(e) => setThangChon(e.target.value)}
-                className="h-7 border-0 bg-transparent px-2 text-xs font-semibold text-foreground focus:ring-0 cursor-pointer"
-              />
-              <button
-                type="button"
-                onClick={() => doiThangTroi(1)}
-                className="size-7 rounded-lg hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                title="Tháng sau"
-              >
-                <ChevronRight className="size-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 bg-background border border-border rounded-xl px-1.5 h-9 shadow-xs">
-              <input
-                type="month"
-                value={thangChon}
-                onChange={(e) => xuLyDoiThang(e.target.value)}
-                className="h-7 border-0 bg-transparent px-1.5 text-xs font-semibold text-foreground focus:ring-0 cursor-pointer"
-                title="Chọn tháng"
-              />
-              <div className="h-4 w-px bg-border/80 my-auto" />
-              <button
-                type="button"
-                onClick={() => doiTuanTroi(-1)}
-                className="size-7 rounded-lg hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                title="Tuần trước"
-              >
-                <ChevronLeft className="size-4" />
-              </button>
-              <select
-                value={tuanChon}
-                onChange={(e) => setTuanChon(e.target.value)}
-                className="h-7 border-0 bg-transparent px-1 text-xs font-semibold text-foreground cursor-pointer"
-              >
-                {dsTuanTrongThang.map((t) => (
-                  <option key={t.val} value={t.val} className="text-foreground bg-background">
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => doiTuanTroi(1)}
-                className="size-7 rounded-lg hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                title="Tuần sau"
-              >
-                <ChevronRight className="size-4" />
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={() => doiNgayTroi(-1)}
+              className="size-7 rounded-lg hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              title="Ngày trước"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <input
+              type="date"
+              value={ngayTacChien}
+              onChange={(e) => e.target.value && xuLyDoiNgayTacChien(e.target.value)}
+              className="h-7 border-0 bg-transparent px-1.5 text-xs font-semibold text-foreground focus:ring-0 cursor-pointer font-mono"
+            />
+            <button
+              type="button"
+              onClick={() => doiNgayTroi(1)}
+              className="size-7 rounded-lg hover:bg-muted inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              title="Ngày sau"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1568,7 +1493,7 @@ export function NoiDungKeHoachNVKD({
           <Loader2 className="size-6 animate-spin text-primary" strokeWidth={2.25} />
           <span className="font-semibold text-xs">Đang tải dữ liệu...</span>
         </div>
-      ) : tabHienTai === 'ban_lam_viec' ? (
+      ) : (
         <BanLamViecHangNgay
           keHoachTuan={keHoachTuan}
           keHoachThang={keHoachThang}
@@ -1585,14 +1510,10 @@ export function NoiDungKeHoachNVKD({
           laSuaDuoc={laSuaDuoc}
           onThemNhanh={xuLyLuuItemTuan}
           onXoaCongViec={xuLyXoaItemTuan}
+          onSuaNoiDungCongViec={xuLySuaNoiDungItemTuan}
           onCheckIn1Cham={(item) => {
             setItemTuanDangCapNhat(item);
             setMoCapNhatTienDoTuan(true);
-          }}
-          onSuaCongViec={(item) => {
-            setDangSuaTuan(item);
-            setMucTieuThangMacDinhId(null);
-            setMoDrawerTuan(true);
           }}
           onDoiNhanhHoanThanh={xuLyDoiVatChung}
           onChotKetQua={xuLyChotKetQuaTuan}
@@ -1662,113 +1583,9 @@ export function NoiDungKeHoachNVKD({
               .catch(() => {});
           }}
         />
-      ) : tabHienTai === 'thang' ? (
-        <BangKeHoachThang
-          keHoach={keHoachThang}
-          keHoachTuan={keHoachTuan}
-          baoCao={baoCaoThang}
-          laSuaDuoc={laSuaDuoc}
-          onThemMoi={() => {
-            setDangSuaThang(null);
-            setMoDrawerThang(true);
-          }}
-          onThemNhanh={xuLyLuuItemThang}
-          onSuaItem={(item) => {
-            setDangSuaThang(item);
-            setMoDrawerThang(true);
-          }}
-          onXoaItem={xuLyXoaItemThang}
-          onCapNhatThucTe={(item) => {
-            setItemThangDangCapNhat(item);
-            setMoCapNhatThucTeThang(true);
-          }}
-          onTaoViecTuanTuMucTieu={(mt) => {
-            setDangSuaTuan(null);
-            setMucTieuThangMacDinhId(mt.id);
-            setNgayMacDinhDrawerTuan('');
-            setMoDrawerTuan(true);
-          }}
-          onMoDrawerTongKet={() => setMoDrawerTongKetThang(true)}
-          onLuuGhiChuBaoCao={xuLyLuuGhiChuBaoCaoThang}
-          onXuatExcel={() => void xuatExcelKeHoachThang(keHoachThang, nhanVienDangXem, thangChon, dsKhachHang)}
-        />
-      ) : tabHienTai === 'tuan' ? (
-        <BangKeHoachTuan
-          keHoach={keHoachTuan}
-          baoCao={baoCaoTuan}
-          laSuaDuoc={laSuaDuoc}
-          onThemMoi={() => {
-            setDangSuaTuan(null);
-            setMucTieuThangMacDinhId(null);
-            setNgayMacDinhDrawerTuan('');
-            setHinhThucMacDinhDrawerTuan('goi_dien');
-            setLoaiHanhDongMacDinhDrawerTuan(undefined);
-            setMoDrawerTuan(true);
-          }}
-          onThemNhanh={xuLyLuuItemTuan}
-          onSuaItem={(item) => {
-            setDangSuaTuan(item);
-            setMucTieuThangMacDinhId(null);
-            setMoDrawerTuan(true);
-          }}
-          onXoaItem={xuLyXoaItemTuan}
-          onDoiVatChung={xuLyDoiVatChung}
-          onChotKetQua={xuLyChotKetQuaTuan}
-          onCapNhatTienDo={(item) => {
-            setViecChonMacDinhId(item.id);
-            setTabHienTai('ban_lam_viec');
-          }}
-          onLamHomNay={(item) => {
-            const hienTai = item.cac_ngay_thuc_hien ?? (item.ngay_du_kien ? [item.ngay_du_kien] : []);
-            const moi = Array.from(new Set([...hienTai, ngayTacChien])).sort();
-            void xuLyCapNhatLichCongViec(item, {
-              cac_ngay_thuc_hien: moi,
-              ngay_du_kien: item.ngay_du_kien || ngayTacChien
-            });
-            setViecChonMacDinhId(item.id);
-            setTabHienTai('ban_lam_viec');
-          }}
-          onMoDrawerTongKet={() => setMoDrawerTongKetTuan(true)}
-          onLuuGhiChuBaoCao={xuLyLuuGhiChuBaoCaoTuan}
-          onXuatExcel={() => void xuatExcelKeHoachTuan(keHoachTuan, nhanVienDangXem, tuanChon, dsKhachHang)}
-          danhSachMucTieuThang={keHoachThang?.danh_sach_dia_ban ?? []}
-        />
-      ) : tabHienTai === 'team_tuan' ? (
-        <BangTongQuanTeamTuan
-          danhSachNhanSu={dsNhanSuTeam}
-          danhSachKeHoach={dsKeHoachTeamTuan}
-          danhSachBaoCao={dsBaoCaoTeamTuan}
-          danhSachDuAn={dsHoSoDuAn}
-          danhSachKhachHang={dsKhachHang}
-          tuan={tuanChon}
-          onChonCongViec={(nvId, item) => {
-            setNhanVienChonId(nvId);
-            setItemTuanDangCapNhat(item);
-            setMoCapNhatTienDoTuan(true);
-          }}
-        />
-      ) : (
-        <BangTongQuanTeamThang
-          danhSachNhanSu={dsNhanSuTeam}
-          danhSachKeHoach={dsKeHoachTeamThang}
-          danhSachBaoCao={dsBaoCaoTeamThang}
-          danhSachDuAn={dsHoSoDuAn}
-          danhSachKhachHang={dsKhachHang}
-          thang={thangChon}
-        />
       )}
 
-      {/* Drawers Thêm/Sửa mục tiêu */}
-      <FormDiaBanDrawer
-        mo={moDrawerThang}
-        onDong={() => setMoDrawerThang(false)}
-        dangSua={dangSuaThang}
-        danhSachDuAn={dsHoSoDuAn}
-        danhSachKhachHang={dsKhachHang}
-        danhSachNguoiLienHe={dsNguoiLienHe}
-        onLuu={xuLyLuuItemThang}
-      />
-
+      {/* Drawer Sửa công việc */}
       <FormTacChienTuanDrawer
         mo={moDrawerTuan}
         onDong={() => {
@@ -1787,7 +1604,7 @@ export function NoiDungKeHoachNVKD({
         onLuu={xuLyLuuItemTuan}
       />
 
-      {/* Drawers chuẩn hệ thống gọi từ Thanh Thao tác nhanh & Hồ sơ thu gọn (Khách hàng, Dự án, Lịch công tác) */}
+      {/* Drawers chuẩn hệ thống: Khách hàng, Dự án, Lịch hẹn */}
       <FormKhachHangDrawer
         mo={moDrawerKhachHang}
         khi_dong={() => {
@@ -1853,42 +1670,12 @@ export function NoiDungKeHoachNVKD({
         dang_xu_ly={dangXuLyLichCongTac}
       />
 
-      {/* Drawers Tap cập nhật nhanh tiến độ & kết quả thực tế */}
+      {/* Drawer Cập nhật tiến độ */}
       <FormCapNhatTienDoTuan
         mo={moCapNhatTienDoTuan}
         onDong={() => setMoCapNhatTienDoTuan(false)}
         item={itemTuanDangCapNhat}
         onLuu={xuLyCapNhatTienDoTuan}
-      />
-
-      <FormCapNhatKetQuaThang
-        mo={moCapNhatThucTeThang}
-        onDong={() => setMoCapNhatThucTeThang(false)}
-        item={itemThangDangCapNhat}
-        onLuu={xuLyCapNhatThucTeThang}
-      />
-
-      {/* Drawers Tổng kết báo cáo tuần / tháng & Xuất PDF */}
-      <DrawerTongKetTuan
-        mo={moDrawerTongKetTuan}
-        onDong={() => setMoDrawerTongKetTuan(false)}
-        keHoach={keHoachTuan}
-        baoCaoHienTai={baoCaoTuan}
-        nhanVien={nhanVienDangXem}
-        tuan={tuanChon}
-        onLuuBaoCao={xuLyLuuBaoCaoTuan}
-        danhSachKhachHang={dsKhachHang}
-      />
-
-      <DrawerTongKetThang
-        mo={moDrawerTongKetThang}
-        onDong={() => setMoDrawerTongKetThang(false)}
-        keHoach={keHoachThang}
-        baoCaoHienTai={baoCaoThang}
-        nhanVien={nhanVienDangXem}
-        thang={thangChon}
-        onLuuBaoCao={xuLyLuuBaoCaoThang}
-        danhSachKhachHang={dsKhachHang}
       />
     </Bo_Cuc_Trang>
   );

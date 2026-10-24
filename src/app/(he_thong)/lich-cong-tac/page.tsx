@@ -44,7 +44,7 @@ import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nh
 import FormLichGapModal, {
   type GiaTriMacDinhLichGap
 } from '../../../thanh_phan/lich_gap_kh/form_lich_gap_modal';
-import { dongBoLichGapSangKeHoachTuanVaBaoCaoNgay } from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
+import { dongBoLichGapSangKeHoachTuanVaBaoCaoNgay, dongBoXoaLichGapSangKeHoachTuan } from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import { Bo_Cuc_Trang, Nut, DaiDien, ThanhSoLieu } from '../../../thanh_phan/ui';
 
 type CheDoXem = 'tuan' | 'thang' | 'danh_sach';
@@ -445,7 +445,16 @@ export default function TrangLichCongTac() {
   const handleXoaLich = async (id: string, tenKH: string) => {
     if (!confirm(`Bạn có chắc muốn xóa lịch gặp "${tenKH}"?`)) return;
     try {
+      const lichCanXoa = dsLich.find((l) => l.id === id);
       await xoaLichGapKH(id, nguoiDungHienTai?.id);
+      if (lichCanXoa) {
+        await dongBoXoaLichGapSangKeHoachTuan({
+          lichId: id,
+          nhanVienId: lichCanXoa.nguoi_phu_trach_id,
+          ngayISO: lichCanXoa.ngay,
+          nguoiThucHien: nguoiDungHienTai
+        });
+      }
       setMoModal(false);
       setLichDangSua(null);
       await taiDanhSachLich();
