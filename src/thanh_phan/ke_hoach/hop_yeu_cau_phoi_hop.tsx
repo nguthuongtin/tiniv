@@ -40,7 +40,7 @@ import {
 import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachPhongBan } from '../../dich_vu/co_cau_to_chuc/dich_vu_phong_ban';
 
-type TabYeuCau = 'tat_ca' | 'cho_tiep_nhan' | 'dang_xu_ly' | 'cho_duyet' | 'da_duyet' | 'hoan_thanh';
+type TabYeuCau = 'dang_chay' | 'cho_tiep_nhan' | 'dang_xu_ly' | 'cho_duyet' | 'da_duyet' | 'hoan_thanh' | 'tat_ca';
 
 interface Props {
   danhSachYeuCau: YeuCauPhoiHop[];
@@ -60,7 +60,10 @@ export default function HopYeuCauPhoiHop({
   onMoModalTaoYeuCau
 }: Props) {
   const [moToanBo, setMoToanBo] = useState(false);
-  const [tabHienTai, setTabHienTai] = useState<TabYeuCau>('tat_ca');
+  const [tabHienTai, setTabHienTai] = useState<TabYeuCau>('dang_chay');
+  const [tuKhoaTim, setTuKhoaTim] = useState('');
+  const [trangHienTai, setTrangHienTai] = useState(1);
+  const SO_MUC_MOI_TRANG = 15;
   const [yeuCauDangXemLichSu, setYeuCauDangXemLichSu] = useState<YeuCauPhoiHop | null>(null);
 
   // 1. Modal tiếp nhận & phân công nhân sự
@@ -211,7 +214,10 @@ export default function HopYeuCauPhoiHop({
       }
     }
 
+    const dangChay = choTiepNhan + dangXuLy + choDuyet + daDuyet;
+
     return {
+      dang_chay: dangChay,
       tat_ca: dsNguon.length,
       cho_tiep_nhan: choTiepNhan,
       dang_xu_ly: dangXuLy,
@@ -221,9 +227,9 @@ export default function HopYeuCauPhoiHop({
     };
   }, [dsNguon]);
 
-  // Lọc theo Tab đang chọn
-  const dsHienThi = useMemo(() => {
-    if (tabHienTai === 'tat_ca') return dsNguon;
+  // Lọc theo Tab đang chọn (mặc định 'dang_chay' loại trừ việc đã xong)
+  const dsTheoTab = useMemo(() => {
+    if (tabHienTai === 'dang_chay') return dsNguon.filter((yc) => yc.trang_thai !== 'da_hoan_thanh');
     if (tabHienTai === 'cho_tiep_nhan') return dsNguon.filter((yc) => yc.trang_thai === 'cho_tpkd_duyet');
     if (tabHienTai === 'dang_xu_ly') return dsNguon.filter((yc) => yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua');
     if (tabHienTai === 'cho_duyet') return dsNguon.filter((yc) => yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet');
@@ -231,6 +237,29 @@ export default function HopYeuCauPhoiHop({
     if (tabHienTai === 'hoan_thanh') return dsNguon.filter((yc) => yc.trang_thai === 'da_hoan_thanh');
     return dsNguon;
   }, [dsNguon, tabHienTai]);
+
+  // Lọc theo từ khóa tìm kiếm
+  const dsSauLoc = useMemo(() => {
+    const kw = tuKhoaTim.trim().toLowerCase();
+    if (!kw) return dsTheoTab;
+    return dsTheoTab.filter((yc) => {
+      return (
+        (yc.ten_du_an && yc.ten_du_an.toLowerCase().includes(kw)) ||
+        (yc.noi_dung_yeu_cau && yc.noi_dung_yeu_cau.toLowerCase().includes(kw)) ||
+        (yc.ten_nguoi_tao && yc.ten_nguoi_tao.toLowerCase().includes(kw)) ||
+        (yc.ten_khach_hang && yc.ten_khach_hang.toLowerCase().includes(kw)) ||
+        (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
+          yc.danh_sach_ten_nhan_su_thuc_hien.some((ten) => ten.toLowerCase().includes(kw)))
+      );
+    });
+  }, [dsTheoTab, tuKhoaTim]);
+
+  // Tính toán phân trang
+  const tongSoTrang = Math.max(1, Math.ceil(dsSauLoc.length / SO_MUC_MOI_TRANG));
+  const dsHienThi = useMemo(() => {
+    const batDau = (trangHienTai - 1) * SO_MUC_MOI_TRANG;
+    return dsSauLoc.slice(batDau, batDau + SO_MUC_MOI_TRANG);
+  }, [dsSauLoc, trangHienTai]);
 
   // Map ID phòng ban sang tên
   const mapTenPhongBan = useMemo(() => {
@@ -475,12 +504,13 @@ export default function HopYeuCauPhoiHop({
   };
 
   const danhSachTabs: { key: TabYeuCau; nhan: string; count: number; badgeColor?: string }[] = [
-    { key: 'tat_ca', nhan: 'Tất cả', count: thongKeTabs.tat_ca },
+    { key: 'dang_chay', nhan: 'Đang hoạt động', count: thongKeTabs.dang_chay, badgeColor: thongKeTabs.dang_chay > 0 ? 'bg-primary/20 text-primary font-bold' : undefined },
     { key: 'cho_tiep_nhan', nhan: 'Chờ tiếp nhận', count: thongKeTabs.cho_tiep_nhan, badgeColor: thongKeTabs.cho_tiep_nhan > 0 ? 'bg-amber-500 text-white animate-pulse' : undefined },
     { key: 'dang_xu_ly', nhan: 'Đang xử lý', count: thongKeTabs.dang_xu_ly, badgeColor: thongKeTabs.dang_xu_ly > 0 ? 'bg-blue-600 text-white' : undefined },
     { key: 'cho_duyet', nhan: 'Chờ duyệt kết quả', count: thongKeTabs.cho_duyet, badgeColor: thongKeTabs.cho_duyet > 0 ? 'bg-purple-600 text-white animate-pulse' : undefined },
     { key: 'da_duyet', nhan: 'Đã duyệt', count: thongKeTabs.da_duyet, badgeColor: thongKeTabs.da_duyet > 0 ? 'bg-emerald-600 text-white' : undefined },
-    { key: 'hoan_thanh', nhan: 'Hoàn tất', count: thongKeTabs.hoan_thanh }
+    { key: 'hoan_thanh', nhan: 'Lịch sử / Đã xong', count: thongKeTabs.hoan_thanh },
+    { key: 'tat_ca', nhan: 'Tất cả', count: thongKeTabs.tat_ca }
   ];
 
   return (
@@ -535,7 +565,10 @@ export default function HopYeuCauPhoiHop({
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setTabHienTai(tab.key)}
+                onClick={() => {
+                  setTabHienTai(tab.key);
+                  setTrangHienTai(1);
+                }}
                 className={cn(
                   'h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-all shrink-0',
                   dangChon
@@ -559,6 +592,40 @@ export default function HopYeuCauPhoiHop({
               </button>
             );
           })}
+        </div>
+
+        {/* Thanh tìm kiếm nhanh */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={tuKhoaTim}
+              onChange={(e) => {
+                setTuKhoaTim(e.target.value);
+                setTrangHienTai(1);
+              }}
+              placeholder="Tìm theo tên dự án, nội dung yêu cầu, người tạo..."
+              className="w-full h-8 pl-8 pr-7 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/60 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-primary transition"
+            />
+            {tuKhoaTim && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTuKhoaTim('');
+                  setTrangHienTai(1);
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="size-3" />
+              </button>
+            )}
+          </div>
+          {dsSauLoc.length > 0 && (
+            <span className="text-[11px] text-slate-400 whitespace-nowrap shrink-0">
+              {dsSauLoc.length} yêu cầu
+            </span>
+          )}
         </div>
 
         {/* Danh sách yêu cầu */}
@@ -786,6 +853,64 @@ export default function HopYeuCauPhoiHop({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Thanh phân trang sạch đẹp, tối giản */}
+        {tongSoTrang > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 px-1 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
+            <div>
+              Hiển thị <strong>{(trangHienTai - 1) * SO_MUC_MOI_TRANG + 1}</strong> – <strong>{Math.min(trangHienTai * SO_MUC_MOI_TRANG, dsSauLoc.length)}</strong> trong tổng số <strong>{dsSauLoc.length}</strong> yêu cầu
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={trangHienTai === 1}
+                onClick={() => setTrangHienTai((p) => Math.max(1, p - 1))}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer"
+              >
+                Trước
+              </button>
+              {Array.from({ length: tongSoTrang }, (_, i) => i + 1).map((soTrang) => {
+                if (
+                  soTrang === 1 ||
+                  soTrang === tongSoTrang ||
+                  (soTrang >= trangHienTai - 1 && soTrang <= trangHienTai + 1)
+                ) {
+                  return (
+                    <button
+                      key={soTrang}
+                      type="button"
+                      onClick={() => setTrangHienTai(soTrang)}
+                      className={cn(
+                        'size-7 rounded-lg text-xs font-semibold transition cursor-pointer',
+                        trangHienTai === soTrang
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
+                      )}
+                    >
+                      {soTrang}
+                    </button>
+                  );
+                }
+                if (soTrang === trangHienTai - 2 || soTrang === trangHienTai + 2) {
+                  return (
+                    <span key={soTrang} className="px-1 text-slate-400">
+                      ...
+                    </span>
+                  );
+                }
+                return null;
+              })}
+              <button
+                type="button"
+                disabled={trangHienTai === tongSoTrang}
+                onClick={() => setTrangHienTai((p) => Math.min(tongSoTrang, p + 1))}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer"
+              >
+                Sau
+              </button>
+            </div>
           </div>
         )}
       </div>

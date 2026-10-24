@@ -4,6 +4,29 @@ import { guiThongBaoTelegram } from '@/dich_vu/thong_bao/dich_vu_telegram';
 
 const TEN_COLLECTION = 'yeu_cau_phoi_hop';
 
+function taoCauHanhDongTuNhien(noiDung: string): string {
+  const clean = noiDung.trim();
+  const lower = clean.toLowerCase();
+
+  if (
+    lower.startsWith('gửi') ||
+    lower.startsWith('lập') ||
+    lower.startsWith('xin') ||
+    lower.startsWith('yêu cầu') ||
+    lower.startsWith('khảo sát') ||
+    lower.startsWith('chuẩn bị') ||
+    lower.startsWith('liên hệ')
+  ) {
+    return clean;
+  }
+
+  if (lower.startsWith('báo giá')) {
+    return `Gửi yêu cầu ${clean.charAt(0).toLowerCase() + clean.slice(1)}`;
+  }
+
+  return `Gửi yêu cầu phối hợp: ${clean}`;
+}
+
 // GET: Lấy danh sách yêu cầu phối hợp
 export async function GET(req: NextRequest) {
   try {
@@ -86,12 +109,15 @@ export async function POST(req: NextRequest) {
       `• Dự án: ${body.ten_du_an || body.du_an_id}\n• Người tạo: ${body.ten_nguoi_tao || 'Kinh doanh'}\n• Nội dung: ${body.noi_dung_yeu_cau}`
     ).catch(() => {});
 
-    // Đồng thời ghi 1 dòng tiến độ vào hồ sơ dự án
+    // Câu hành động tự nhiên, không máy móc (VD: "Gửi yêu cầu báo giá...", "Gửi yêu cầu phối hợp...")
+    const cauHanhDong = taoCauHanhDongTuNhien(body.noi_dung_yeu_cau);
+
+    // 1. Đồng thời ghi 1 dòng tiến độ vào hồ sơ dự án
     try {
       await db.collection('tien_do_du_an').add({
         du_an_id: body.du_an_id,
-        tinh_hinh_hien_tai: `[Yêu cầu phối hợp]: ${body.noi_dung_yeu_cau}`,
-        hanh_dong_tiep_theo: 'Chờ tiếp nhận & phân công xử lý',
+        tinh_hinh_hien_tai: cauHanhDong,
+        hanh_dong_tiep_theo: 'Bộ phận chuyên môn tiếp nhận và xử lý kết quả',
         deadline_hanh_dong: body.han_hoan_thanh || null,
         link_tai_lieu: body.link_drive_dau_vao || null,
         ten_tai_lieu: body.link_drive_dau_vao ? 'Tài liệu đầu vào (Google Drive)' : null,
@@ -106,6 +132,52 @@ export async function POST(req: NextRequest) {
       });
     } catch (eTD) {
       console.warn('[API yeu-cau-phoi-hop] Không thể thêm dòng tiến độ dự án:', eTD);
+    }
+
+    // 2. Tự động đưa hành động vào Báo cáo công việc trong ngày của nhân viên
+    if (body.nguoi_tao_id) {
+      try {
+        const homNay = nowISO.split('T')[0];
+        const bcSnap = await db
+          .collection('bao_cao_cong_viec')
+          .where('nhan_vien_id', '==', body.nguoi_tao_id)
+          .where('ngay_bao_cao', '==', homNay)
+          .where('trang_thai_du_lieu', '==', 'hoat_dong')
+          .limit(1)
+          .get();
+
+        const chiTietMoi = {
+          du_an_id: body.du_an_id,
+          noi_dung: cauHanhDong
+        };
+
+        if (!bcSnap.empty) {
+          const docBC = bcSnap.docs[0];
+          const dataBC = docBC.data() || {};
+          const dsChiTietCu = Array.isArray(dataBC.danh_sach_chi_tiet) ? dataBC.danh_sach_chi_tiet : [];
+
+          await docBC.ref.update({
+            danh_sach_chi_tiet: [...dsChiTietCu, chiTietMoi],
+            ngay_cap_nhat: nowISO
+          });
+        } else {
+          await db.collection('bao_cao_cong_viec').add({
+            ngay_bao_cao: homNay,
+            nhan_vien_id: body.nguoi_tao_id,
+            chi_nhanh_id: body.chi_nhanh_id || null,
+            phong_ban_id: body.phong_ban_id || null,
+            danh_sach_chi_tiet: [chiTietMoi],
+            kho_khan: null,
+            trang_thai: 'da_gui',
+            nguoi_tao_id: body.nguoi_tao_id,
+            ngay_tao: nowISO,
+            ngay_cap_nhat: nowISO,
+            trang_thai_du_lieu: 'hoat_dong'
+          });
+        }
+      } catch (eBC) {
+        console.warn('[API yeu-cau-phoi-hop] Không thể tự động thêm vào báo cáo công việc:', eBC);
+      }
     }
 
     return NextResponse.json({

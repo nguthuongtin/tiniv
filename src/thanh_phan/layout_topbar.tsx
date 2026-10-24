@@ -531,7 +531,7 @@ export default function ThanhPhanTopbar() {
                     </div>
                   ) : (
                     <div className="max-h-72 overflow-y-auto space-y-1.5 divide-y divide-slate-100">
-                      {dsViecCho.map((yc) => (
+                      {dsViecCho.slice(0, 8).map((yc) => (
                         <Link
                           key={yc.id}
                           href="/ke-hoach"
@@ -563,6 +563,17 @@ export default function ThanhPhanTopbar() {
                           </div>
                         </Link>
                       ))}
+                      {dsViecCho.length > 8 && (
+                        <div className="pt-2 text-center">
+                          <Link
+                            href="/ke-hoach"
+                            onClick={() => setMoDropdownThongBao(false)}
+                            className="inline-block text-[11px] font-semibold text-emerald-700 hover:underline py-1"
+                          >
+                            Xem thêm {dsViecCho.length - 8} yêu cầu khác trong Bàn làm việc →
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
