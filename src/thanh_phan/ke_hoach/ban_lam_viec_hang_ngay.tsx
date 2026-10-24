@@ -2444,6 +2444,28 @@ export default function BanLamViecHangNgay({
         nguoiDungHienTai={nguoiDungHienTai}
         onTaoThanhCong={(ycMoi) => {
           setDanhSachYeuCau((prev) => [ycMoi, ...prev.filter((x) => x.id !== ycMoi.id)]);
+          // Tự động bổ sung vào danh sách công việc hôm nay của Sale để tiện theo dõi
+          const idMoi = `tuan_yc_${Date.now()}`;
+          const tieuDeViec = `[Yêu cầu]: ${ycMoi.noi_dung_yeu_cau}`;
+          const itemMoi: ItemKeHoachTuan = {
+            id: idMoi,
+            loai_hanh_dong: 'phat_sinh',
+            hinh_thuc: 'khac',
+            khach_hang_id: ycMoi.khach_hang_id || null,
+            co_quan_doanh_nghiep: ycMoi.ten_khach_hang || null,
+            du_an_id: ycMoi.du_an_id,
+            du_an_du_kien: ycMoi.ten_du_an,
+            ten_khach_hang_du_an: ycMoi.ten_du_an,
+            hanh_dong_tuan: tieuDeViec,
+            noi_dung_tuan: tieuDeViec,
+            ket_qua_mong_muon: 'Hoàn tất yêu cầu phối hợp',
+            dau_ra_cam_ket: 'Hoàn tất yêu cầu phối hợp',
+            ngay_du_kien: ngayChon,
+            cac_ngay_thuc_hien: [ngayChon],
+            da_hoan_thanh: false,
+            trang_thai_ket_qua: 'dang_thuc_hien'
+          };
+          onThemNhanh(itemMoi);
         }}
       />
 
