@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminFirestore } from '@/thu_vien/firebase/admin_firebase';
 import { guiThongBaoTelegram } from '@/dich_vu/thong_bao/dich_vu_telegram';
+import { guiWebPushChoNhanSu } from '@/dich_vu/thong_bao/dich_vu_web_push_server';
 
 const TEN_COLLECTION = 'yeu_cau_phoi_hop';
 
@@ -180,6 +181,29 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 3. Gửi Web Push trực tiếp tới điện thoại lãnh đạo & trưởng phòng (kể cả khi đã tắt app)
+    try {
+      const snapLD = await db
+        .collection('nguoi_dung')
+        .where('vai_tro', 'in', ['giam_doc', 'truong_phong', 'quan_tri_he_thong'])
+        .where('trang_thai_du_lieu', '==', 'hoat_dong')
+        .get();
+      const dsNhanIds = snapLD.docs
+        .map((d) => d.id)
+        .filter((uid) => uid !== body.nguoi_tao_id);
+
+      if (dsNhanIds.length > 0) {
+        guiWebPushChoNhanSu(
+          dsNhanIds,
+          '🔔 Yêu cầu phối hợp mới',
+          `${body.ten_du_an || 'Dự án'}: ${body.noi_dung_yeu_cau}`,
+          '/ke-hoach'
+        ).catch(() => {});
+      }
+    } catch (eWP) {
+      console.warn('[WebPush POST] Không thể gửi push:', eWP);
+    }
+
     return NextResponse.json({
       thanh_cong: true,
       du_lieu: yeuCauMoi
@@ -256,6 +280,58 @@ export async function PUT(req: NextRequest) {
         `🔄 CẬP NHẬT YÊU CẦU PHỐI HỢP`,
         `• Dự án: ${hienTai.ten_du_an || hienTai.du_an_id}\n• Trạng thái mới: ${ttMoi}${body.ghi_chu_phan_hoi ? `\n• Ghi chú: ${body.ghi_chu_phan_hoi}` : ''}`
       ).catch(() => {});
+
+      // Gửi Web Push trực tiếp tới điện thoại (kể cả khi đã đóng app/khóa màn hình)
+      const tenDuAn = hienTai.ten_du_an || 'Dự án';
+      const noiDung = body.ghi_chu_phan_hoi || hienTai.noi_dung_yeu_cau || '';
+
+      if (body.trang_thai === 'cho_khth_thuc_hien') {
+        const dsNS = body.danh_sach_nhan_su_thuc_hien_ids || hienTai.danh_sach_nhan_su_thuc_hien_ids || [];
+        if (Array.isArray(dsNS) && dsNS.length > 0) {
+          guiWebPushChoNhanSu(
+            dsNS,
+            '📋 Bạn được phân công nhiệm vụ',
+            `${tenDuAn}: ${noiDung}`,
+            '/ke-hoach'
+          ).catch(() => {});
+        }
+      } else if (body.trang_thai === 'yeu_cau_chinh_sua') {
+        const dsNS = body.danh_sach_nhan_su_thuc_hien_ids || hienTai.danh_sach_nhan_su_thuc_hien_ids || [];
+        if (Array.isArray(dsNS) && dsNS.length > 0) {
+          guiWebPushChoNhanSu(
+            dsNS,
+            '⚠️ Yêu cầu cần chỉnh sửa lại',
+            `${tenDuAn}: ${noiDung}`,
+            '/ke-hoach'
+          ).catch(() => {});
+        }
+      } else if (body.trang_thai === 'cho_tpkd_duyet_ket_qua' || body.trang_thai === 'cho_lanh_dao_duyet') {
+        db.collection('nguoi_dung')
+          .where('vai_tro', 'in', ['giam_doc', 'truong_phong', 'quan_tri_he_thong'])
+          .where('trang_thai_du_lieu', '==', 'hoat_dong')
+          .get()
+          .then((snap) => {
+            const ids = snap.docs.map((d) => d.id);
+            if (ids.length > 0) {
+              guiWebPushChoNhanSu(
+                ids,
+                '📝 Kết quả chờ duyệt nghiệm thu',
+                `${tenDuAn}: ${noiDung}`,
+                '/ke-hoach'
+              ).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      } else if (body.trang_thai === 'da_phe_duyet') {
+        if (hienTai.nguoi_tao_id) {
+          guiWebPushChoNhanSu(
+            [hienTai.nguoi_tao_id],
+            '✅ Kết quả đã hoàn tất',
+            `${tenDuAn}: Kết quả phối hợp đã được duyệt, sẵn sàng lấy.`,
+            '/ke-hoach'
+          ).catch(() => {});
+        }
+      }
     }
 
     const duLieuCapNhat = {

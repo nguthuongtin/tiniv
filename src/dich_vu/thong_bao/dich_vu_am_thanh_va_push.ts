@@ -77,10 +77,60 @@ function taoNotificationDonGian(tieuDe: string, noiDung: string, duongDan: strin
   } catch {}
 }
 
+import { VAPID_PUBLIC_KEY } from './cau_hinh_web_push';
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 /**
- * Yêu cầu người dùng cấp quyền thông báo trên thiết bị
+ * Đăng ký Push Token với hệ điều hành điện thoại & lưu về server
  */
-export async function xinQuyenThongBaoTrinhDuyet(): Promise<NotificationPermission> {
+export async function dangKyNhanPushNen(userId: string): Promise<boolean> {
+  if (typeof window === 'undefined' || !userId) return false;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if (!reg.pushManager) return false;
+
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+
+    if (sub) {
+      await fetch('/api/thong-bao/dang-ky-thiet-bi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          subscription: sub.toJSON(),
+          thiet_bi: navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop'
+        })
+      });
+      return true;
+    }
+  } catch (err) {
+    console.warn('[WebPush] Lỗi đăng ký nhận Push nền:', err);
+  }
+  return false;
+}
+
+/**
+ * Yêu cầu người dùng cấp quyền thông báo trên thiết bị & tự động liên kết Push nền
+ */
+export async function xinQuyenThongBaoTrinhDuyet(userId?: string): Promise<NotificationPermission> {
   if (typeof window === 'undefined' || !('Notification' in window)) {
     return 'denied';
   }
@@ -91,6 +141,9 @@ export async function xinQuyenThongBaoTrinhDuyet(): Promise<NotificationPermissi
         'TiniPMS',
         'Đã bật thông báo thành công trên thiết bị của bạn!'
       );
+      if (userId) {
+        void dangKyNhanPushNen(userId);
+      }
     }
     return permission;
   } catch {

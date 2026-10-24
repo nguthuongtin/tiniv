@@ -9,7 +9,8 @@ import { langNgheYeuCauPhoiHop, type YeuCauPhoiHop } from '../dich_vu/yeu_cau_ph
 import {
   phatChuongThongBao,
   phatThongBaoTrinhDuyet,
-  xinQuyenThongBaoTrinhDuyet
+  xinQuyenThongBaoTrinhDuyet,
+  dangKyNhanPushNen
 } from '../dich_vu/thong_bao/dich_vu_am_thanh_va_push';
 import { cn } from '../thu_vien/utils/cn';
 import {
@@ -262,19 +263,22 @@ export default function ThanhPhanTopbar() {
   const daKhoiTaoRef = React.useRef(false);
   const danhSachCuRef = React.useRef<Map<string, string>>(new Map());
 
+  const vaiTro = nguoiDungHienTai?.vai_tro || '';
+  const userId = nguoiDungHienTai?.id || '';
+
   React.useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       setQuyenThongBao(Notification.permission);
+      if (Notification.permission === 'granted' && userId) {
+        void dangKyNhanPushNen(userId);
+      }
     }
-  }, []);
+  }, [userId]);
 
   React.useEffect(() => {
     const huy = langNgheYeuCauPhoiHop((ds) => setDsYeuCau(ds));
     return () => huy();
   }, []);
-
-  const vaiTro = nguoiDungHienTai?.vai_tro || '';
-  const userId = nguoiDungHienTai?.id || '';
 
   const dsViecCho = React.useMemo(() => {
     const laLanhDaoHoacAdmin = vaiTro === 'giam_doc' || vaiTro === 'quan_tri_he_thong';
@@ -368,7 +372,7 @@ export default function ThanhPhanTopbar() {
   }, [toastHienTai]);
 
   const batQuyenThongBao = async () => {
-    const perm = await xinQuyenThongBaoTrinhDuyet();
+    const perm = await xinQuyenThongBaoTrinhDuyet(userId);
     setQuyenThongBao(perm);
     if (perm === 'granted') {
       phatChuongThongBao();
