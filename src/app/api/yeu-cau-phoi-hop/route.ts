@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminFirestore } from '@/thu_vien/firebase/admin_firebase';
+import { guiThongBaoTelegram } from '@/dich_vu/thong_bao/dich_vu_telegram';
 
 const TEN_COLLECTION = 'yeu_cau_phoi_hop';
 
@@ -78,6 +79,12 @@ export async function POST(req: NextRequest) {
     };
 
     await db.collection(TEN_COLLECTION).doc(id).set(yeuCauMoi);
+
+    // Gửi thông báo Telegram nếu có cấu hình
+    guiThongBaoTelegram(
+      '🔔 YÊU CẦU PHỐI HỢP MỚI',
+      `• Dự án: ${body.ten_du_an || body.du_an_id}\n• Người tạo: ${body.ten_nguoi_tao || 'Kinh doanh'}\n• Nội dung: ${body.noi_dung_yeu_cau}`
+    ).catch(() => {});
 
     // Đồng thời ghi 1 dòng tiến độ vào hồ sơ dự án
     try {
@@ -158,6 +165,26 @@ export async function PUT(req: NextRequest) {
     }
 
     await docRef.update(patch);
+
+    // Gửi thông báo Telegram cập nhật trạng thái
+    if (body.trang_thai && body.trang_thai !== hienTai.trang_thai) {
+      const tenTrangThaiMap: Record<string, string> = {
+        cho_tpkd_duyet: 'Chờ tiếp nhận & giao việc',
+        cho_khth_thuc_hien: 'Đang xử lý / Đã phân công',
+        cho_tpkd_duyet_ket_qua: 'Chờ duyệt kết quả',
+        cho_lanh_dao_duyet: 'Chờ duyệt kết quả',
+        yeu_cau_chinh_sua: 'Cần chỉnh sửa lại',
+        da_phe_duyet: 'Đã duyệt - Kết quả sẵn sàng',
+        da_hoan_thanh: 'Đã hoàn tất',
+        can_chinh_sua: 'Cần chỉnh sửa lại',
+        hoan_thanh: 'Đã hoàn tất'
+      };
+      const ttMoi = tenTrangThaiMap[body.trang_thai] || body.trang_thai;
+      guiThongBaoTelegram(
+        `🔄 CẬP NHẬT YÊU CẦU PHỐI HỢP`,
+        `• Dự án: ${hienTai.ten_du_an || hienTai.du_an_id}\n• Trạng thái mới: ${ttMoi}${body.ghi_chu_phan_hoi ? `\n• Ghi chú: ${body.ghi_chu_phan_hoi}` : ''}`
+      ).catch(() => {});
+    }
 
     const duLieuCapNhat = {
       ...hienTai,

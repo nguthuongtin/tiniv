@@ -1,10 +1,10 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { X, Save, ListTodo, Edit3, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Save, ListTodo, Edit3, AlertCircle, Loader2, Search, FolderKanban, Check, ChevronDown } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
 import { Nut } from '../../thanh_phan/ui';
 import type {
@@ -71,11 +71,34 @@ export default function FormCongViecDrawer({
   dsDuAn = [],
   dsNhanSu = []
 }: FormCongViecDrawerProps) {
+
+  
+
   const form = useForm<GiaTriForm>({
     resolver: zodResolver(SCHEMA_CONG_VIEC),
     defaultValues: GIA_TRI_MAC_DINH,
     mode: 'onTouched'
   });
+
+const [tuKhoaDA, setTuKhoaDA] = useState('');
+  const [moDropdownDA, setMoDropdownDA] = useState(false);
+
+  const duAnDangChonId = form.watch('du_an_id');
+  const duAnDangChon = useMemo(() => {
+    if (!duAnDangChonId) return null;
+    return dsDuAn.find((d) => d.id === duAnDangChonId) || null;
+  }, [duAnDangChonId, dsDuAn]);
+
+  const dsDALoc = useMemo(() => {
+    if (!tuKhoaDA.trim()) return dsDuAn.slice(0, 40);
+    const kw = tuKhoaDA.toLowerCase().trim();
+    return dsDuAn
+      .filter((d) =>
+        d.ten_du_an.toLowerCase().includes(kw) ||
+        (d.ma_ho_so && d.ma_ho_so.toLowerCase().includes(kw))
+      )
+      .slice(0, 40);
+  }, [dsDuAn, tuKhoaDA]);
 
   useEffect(() => {
     if (!mo) return;
@@ -193,20 +216,97 @@ export default function FormCongViecDrawer({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">
-                Dự án liên quan
+              <label className="block text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
+                <FolderKanban className="size-3.5 text-primary" />
+                <span>Dự án liên quan</span>
               </label>
-              <select
-                className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                {...form.register('du_an_id')}
-              >
-                <option value="">(Không gắn dự án)</option>
-                {dsDuAn.map((da) => (
-                  <option key={da.id} value={da.id}>
-                    {da.ma_ho_so ? `[${da.ma_ho_so}] ` : ''}{da.ten_du_an}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                {duAnDangChon ? (
+                  <div className="w-full h-10 rounded-[var(--radius-input)] border border-border bg-muted/30 px-3 flex items-center justify-between text-xs font-semibold">
+                    <span className="truncate text-foreground font-bold">{duAnDangChon.ten_du_an}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        form.setValue('du_an_id', null);
+                        setTuKhoaDA('');
+                        setMoDropdownDA(false);
+                      }}
+                      className="p-1 text-muted-foreground hover:text-destructive cursor-pointer ml-1"
+                      title="Bỏ chọn"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="relative">
+                      <Search className="size-3.5 absolute left-3 top-3 text-muted-foreground" />
+                      <input
+                        type="text"
+                        value={tuKhoaDA}
+                        onChange={(e) => {
+                          setTuKhoaDA(e.target.value);
+                          setMoDropdownDA(true);
+                        }}
+                        onFocus={() => setMoDropdownDA(true)}
+                        placeholder="Tìm tên hoặc mã dự án..."
+                        className="w-full h-10 rounded-[var(--radius-input)] border border-border bg-background pl-8.5 pr-8 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                      <ChevronDown className="size-3.5 absolute right-3 top-3 text-muted-foreground pointer-events-none" />
+                    </div>
+
+                    {moDropdownDA && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-30"
+                          onClick={() => setMoDropdownDA(false)}
+                        />
+                        <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-52 overflow-y-auto rounded-xl border border-border bg-white dark:bg-slate-900 shadow-xl divide-y divide-border">
+                          <div
+                            onClick={() => {
+                              form.setValue('du_an_id', null);
+                              setMoDropdownDA(false);
+                            }}
+                            className="p-2.5 text-xs text-muted-foreground hover:bg-muted cursor-pointer italic"
+                          >
+                            (Không gắn dự án)
+                          </div>
+                          {dsDALoc.length === 0 ? (
+                            <div className="p-2.5 text-xs text-muted-foreground italic text-center">
+                              Không tìm thấy dự án phù hợp
+                            </div>
+                          ) : (
+                            dsDALoc.map((da) => (
+                              <div
+                                key={da.id}
+                                onClick={() => {
+                                  form.setValue('du_an_id', da.id);
+                                  setMoDropdownDA(false);
+                                }}
+                                className="p-2.5 text-xs hover:bg-muted cursor-pointer flex items-center justify-between gap-2"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-semibold text-foreground truncate">
+                                    {da.ten_du_an}
+                                  </div>
+                                  {da.ma_ho_so && (
+                                    <div className="text-[10.5px] text-muted-foreground font-mono">
+                                      {da.ma_ho_so}
+                                    </div>
+                                  )}
+                                </div>
+                                {duAnDangChonId === da.id && (
+                                  <Check className="size-3.5 text-primary shrink-0" />
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>

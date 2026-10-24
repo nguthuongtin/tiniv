@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { X, Send, Link2, Calendar, FolderKanban, Loader2, Sparkles, Search, Check } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { X, Send, Link2, Calendar, FolderKanban, Loader2, Sparkles, Search, Check, ChevronDown } from 'lucide-react';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
 import { taoYeuCauPhoiHopMoi, type YeuCauPhoiHop } from '../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
@@ -37,6 +37,7 @@ export default function ModalTaoYeuCauPhoiHop({
   const [hanXong, setHanXong] = useState('');
   const [dangGui, setDangGui] = useState(false);
   const [loi, setLoi] = useState('');
+  const inputSearchRef = useRef<HTMLInputElement>(null);
 
   // Đồng bộ lại dữ liệu mỗi khi mở modal
   useEffect(() => {
@@ -61,14 +62,14 @@ export default function ModalTaoYeuCauPhoiHop({
   // Lọc danh sách dự án tìm kiếm
   const dsDuAnLoc = useMemo(() => {
     const list = danhSachDuAn.filter((d) => d.trang_thai !== 'da_xoa');
-    if (!tuKhoaDuAn.trim()) return list.slice(0, 30);
+    if (!tuKhoaDuAn.trim()) return list.slice(0, 50);
     const kw = tuKhoaDuAn.toLowerCase().trim();
     return list
       .filter((d) =>
         d.ten_du_an.toLowerCase().includes(kw) ||
         (d.ma_ho_so && d.ma_ho_so.toLowerCase().includes(kw))
       )
-      .slice(0, 30);
+      .slice(0, 50);
   }, [danhSachDuAn, tuKhoaDuAn]);
 
   if (!mo) return null;
@@ -76,7 +77,7 @@ export default function ModalTaoYeuCauPhoiHop({
   const handleGui = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!duAnChon) {
-      setLoi('Vui lòng chọn Dự án.');
+      setLoi('Vui lòng chọn Dự án cần phối hợp.');
       return;
     }
     if (!noiDung.trim()) {
@@ -118,58 +119,61 @@ export default function ModalTaoYeuCauPhoiHop({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 sm:p-6 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
-      <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-xl space-y-4 text-foreground">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 sm:p-6 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
+      {/* Background card với màu nền trắng/dark tuyệt đối */}
+      <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-2xl space-y-4 text-slate-900 dark:text-slate-100">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="size-9 rounded-xl bg-muted text-foreground flex items-center justify-center shrink-0">
-              <Sparkles className="size-4 text-primary" />
+            <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Sparkles className="size-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-foreground leading-snug">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
                 Tạo yêu cầu phối hợp
               </h3>
+              <p className="text-xs text-slate-500">
+                Gửi nội dung cần hỗ trợ sang bộ phận liên quan
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onDong}
-            className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="size-5" />
           </button>
         </div>
 
         {loi && (
-          <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium">
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium">
             {loi}
           </div>
         )}
 
         <form onSubmit={handleGui} className="space-y-4">
           {/* Dự án áp dụng - Searchable Combobox */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+          <div className="space-y-1.5 relative">
+            <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
               <FolderKanban className="size-3.5 text-primary" />
               <span>Dự án áp dụng *</span>
             </label>
 
-            {duAnChon ? (
-              <div className="h-10 px-3.5 rounded-xl border border-border bg-muted/30 flex items-center justify-between gap-2 text-xs font-semibold">
+            {duAnChon && !moDropdownDuAn ? (
+              <div className="h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-between gap-2 text-xs font-semibold">
                 <div className="flex items-center gap-2 truncate">
                   <FolderKanban className="size-4 text-primary shrink-0" />
-                  <span className="truncate text-foreground font-bold">{duAnChon.ten_du_an}</span>
+                  <span className="truncate text-slate-900 dark:text-slate-100 font-bold">{duAnChon.ten_du_an}</span>
                 </div>
                 {!duAnMacDinh && (
                   <button
                     type="button"
                     onClick={() => {
-                      setDuAnId('');
-                      setTuKhoaDuAn('');
                       setMoDropdownDuAn(true);
+                      setTimeout(() => inputSearchRef.current?.focus(), 50);
                     }}
-                    className="text-[11px] text-muted-foreground hover:text-foreground underline shrink-0 cursor-pointer"
+                    className="text-[11px] text-primary hover:underline font-semibold shrink-0 cursor-pointer"
                   >
                     Đổi dự án
                   </button>
@@ -178,8 +182,9 @@ export default function ModalTaoYeuCauPhoiHop({
             ) : (
               <div className="relative">
                 <div className="relative">
-                  <Search className="size-3.5 absolute left-3 top-3 text-muted-foreground" />
+                  <Search className="size-3.5 absolute left-3 top-3 text-slate-400" />
                   <input
+                    ref={inputSearchRef}
                     type="text"
                     value={tuKhoaDuAn}
                     onChange={(e) => {
@@ -187,21 +192,22 @@ export default function ModalTaoYeuCauPhoiHop({
                       setMoDropdownDuAn(true);
                     }}
                     onFocus={() => setMoDropdownDuAn(true)}
-                    placeholder="Gõ để tìm kiếm dự án..."
-                    className="w-full h-10 rounded-xl border border-border bg-background pl-8.5 pr-3 text-xs text-foreground focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground"
+                    placeholder="Gõ tên hoặc mã dự án để tìm kiếm..."
+                    className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8.5 pr-8 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-slate-400"
                     autoFocus
                   />
+                  <ChevronDown className="size-3.5 absolute right-3 top-3 text-slate-400 pointer-events-none" />
                 </div>
 
                 {moDropdownDuAn && (
                   <>
                     <div
-                      className="fixed inset-0 z-10"
+                      className="fixed inset-0 z-30"
                       onClick={() => setMoDropdownDuAn(false)}
                     />
-                    <div className="absolute left-0 right-0 top-full mt-1.5 z-20 max-h-48 overflow-y-auto rounded-xl border border-border bg-popover shadow-lg divide-y divide-border">
+                    <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-56 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl divide-y divide-slate-100 dark:divide-slate-700">
                       {dsDuAnLoc.length === 0 ? (
-                        <div className="p-3 text-center text-xs text-muted-foreground italic">
+                        <div className="p-3 text-center text-xs text-slate-500 italic">
                           Không tìm thấy dự án phù hợp
                         </div>
                       ) : (
@@ -213,19 +219,21 @@ export default function ModalTaoYeuCauPhoiHop({
                               setMoDropdownDuAn(false);
                               setLoi('');
                             }}
-                            className="p-2.5 hover:bg-muted/60 cursor-pointer transition text-xs flex items-center justify-between gap-2"
+                            className="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/60 cursor-pointer transition text-xs flex items-center justify-between gap-2"
                           >
                             <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-foreground truncate">
+                              <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">
                                 {d.ten_du_an}
                               </div>
                               {d.ma_ho_so && (
-                                <div className="text-[10.5px] text-muted-foreground font-mono">
+                                <div className="text-[10.5px] text-slate-500 font-mono">
                                   {d.ma_ho_so}
                                 </div>
                               )}
                             </div>
-                            <Check className="size-3.5 text-primary opacity-0 group-hover:opacity-100 shrink-0" />
+                            {duAnId === d.id && (
+                              <Check className="size-3.5 text-primary shrink-0" />
+                            )}
                           </div>
                         ))
                       )}
@@ -238,7 +246,7 @@ export default function ModalTaoYeuCauPhoiHop({
 
           {/* Nội dung yêu cầu */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground block">
+            <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
               Nội dung yêu cầu *
             </label>
             <textarea
@@ -246,7 +254,7 @@ export default function ModalTaoYeuCauPhoiHop({
               value={noiDung}
               onChange={(e) => setNoiDung(e.target.value)}
               placeholder="Nhập nội dung cần hỗ trợ hoặc phối hợp..."
-              className="w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none placeholder:text-muted-foreground"
+              className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none placeholder:text-slate-400"
               required
             />
           </div>
@@ -254,26 +262,26 @@ export default function ModalTaoYeuCauPhoiHop({
           {/* Link Google Drive đầu vào */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <Link2 className="size-3.5 text-muted-foreground" />
+              <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Link2 className="size-3.5 text-slate-400" />
                 <span>Link Google Drive tài liệu (nếu có)</span>
               </label>
-              <span className="text-[11px] text-muted-foreground">Tùy chọn</span>
+              <span className="text-[11px] text-slate-400">Tùy chọn</span>
             </div>
             <input
               type="url"
               value={linkDrive}
               onChange={(e) => setLinkDrive(e.target.value)}
               placeholder="https://drive.google.com/..."
-              className="w-full h-9.5 rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground"
+              className="w-full h-9.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-slate-400"
             />
           </div>
 
           {/* Hạn hoàn thành */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <Calendar className="size-3.5 text-muted-foreground" />
+              <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Calendar className="size-3.5 text-slate-400" />
                 <span>Thời hạn hoàn thành</span>
               </label>
               <div className="flex items-center gap-1">
@@ -286,7 +294,7 @@ export default function ModalTaoYeuCauPhoiHop({
                     key={chip.nhan}
                     type="button"
                     onClick={() => setNgayNhanh(chip.so)}
-                    className="px-2 py-0.5 rounded-md text-[10.5px] font-medium border border-border hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition"
+                    className="px-2 py-0.5 rounded-md text-[10.5px] font-medium border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer transition"
                   >
                     {chip.nhan}
                   </button>
@@ -297,17 +305,17 @@ export default function ModalTaoYeuCauPhoiHop({
               type="date"
               value={hanXong}
               onChange={(e) => setHanXong(e.target.value)}
-              className="w-full h-9.5 rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20"
+              className="w-full h-9.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20"
             />
           </div>
 
           {/* Footer buttons */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
               onClick={onDong}
               disabled={dangGui}
-              className="h-9 px-4 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="h-9 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               Hủy
             </button>

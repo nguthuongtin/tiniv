@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Filter, Search, XCircle, ChevronDown, Building2, UserRound, Users, Calendar, ArrowUpDown } from 'lucide-react';
+import { X, Filter, Search, XCircle, ChevronDown, Building2, UserRound, Users, Calendar, ArrowUpDown, Check } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { cn } from '../../thu_vien/utils/cn';
 import type { DieuKienLocHoSoDuAn } from '../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
@@ -63,6 +63,25 @@ export default function BoLocHoSoDuAn({
   khi_doi_sap_xep
 }: BoLocHoSoDuAnProps) {
   const [moRong, setMoRong] = useState(false);
+  const [tuKhoaKH, setTuKhoaKH] = useState('');
+  const [moDropdownKH, setMoDropdownKH] = useState(false);
+
+  const khachHangDangChon = useMemo(() => {
+    if (!gia_tri_hien_tai.khach_hang_id) return null;
+    return ds_khach_hang.find((k) => k.id === gia_tri_hien_tai.khach_hang_id) || null;
+  }, [gia_tri_hien_tai.khach_hang_id, ds_khach_hang]);
+
+  const dsKHLoc = useMemo(() => {
+    if (!tuKhoaKH.trim()) return ds_khach_hang.slice(0, 40);
+    const kw = tuKhoaKH.toLowerCase().trim();
+    return ds_khach_hang
+      .filter((k) =>
+        k.ten_khach_hang.toLowerCase().includes(kw) ||
+        (k.ma_so_thue && k.ma_so_thue.toLowerCase().includes(kw))
+      )
+      .slice(0, 40);
+  }, [ds_khach_hang, tuKhoaKH]);
+
   const tuKhoa = gia_tri_hien_tai.tuKhoa ?? '';
   const soLuongDieuKienKhacMacDinh = useMemo(() => {
     let dem = 0;
@@ -190,19 +209,93 @@ export default function BoLocHoSoDuAn({
       {moRong && (
         <div className="mt-2.5 grid gap-3.5 md:grid-cols-2 lg:grid-cols-3 p-4 sm:p-5 rounded-[24px] border border-slate-200/90 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
           <BoLocMuc label={<><Building2 className="size-3.5 text-slate-500" /> Khách hàng (Công ty)</>}>
-            <select
-              value={gia_tri_hien_tai.khach_hang_id ?? ''}
-              onChange={(e) => datGiaTri('khach_hang_id', e.target.value ? e.target.value : null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
-            >
-              <option value="">Tất cả khách hàng</option>
-              {ds_khach_hang.map((kh) => (
-                <option key={kh.id} value={kh.id}>
-                  {kh.ten_khach_hang}
-                  {kh.ma_so_thue ? ` (MST: ${kh.ma_so_thue})` : ''}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              {khachHangDangChon ? (
+                <div className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 flex items-center justify-between text-xs font-semibold">
+                  <span className="truncate text-slate-800 dark:text-slate-200">{khachHangDangChon.ten_khach_hang}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      datGiaTri('khach_hang_id', null);
+                      setTuKhoaKH('');
+                      setMoDropdownKH(false);
+                    }}
+                    className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer ml-1"
+                    title="Bỏ chọn"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="size-3.5 absolute left-3 top-3 text-slate-400" />
+                    <input
+                      type="text"
+                      value={tuKhoaKH}
+                      onChange={(e) => {
+                        setTuKhoaKH(e.target.value);
+                        setMoDropdownKH(true);
+                      }}
+                      onFocus={() => setMoDropdownKH(true)}
+                      placeholder="Tìm theo tên hoặc MST khách hàng..."
+                      className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8.5 pr-8 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden focus:border-emerald-600"
+                    />
+                    <ChevronDown className="size-3.5 absolute right-3 top-3 text-slate-400 pointer-events-none" />
+                  </div>
+
+                  {moDropdownKH && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setMoDropdownKH(false)}
+                      />
+                      <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-52 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl divide-y divide-slate-100 dark:divide-slate-700">
+                        <div
+                          onClick={() => {
+                            datGiaTri('khach_hang_id', null);
+                            setMoDropdownKH(false);
+                          }}
+                          className="p-2.5 text-xs text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/60 cursor-pointer italic"
+                        >
+                          Tất cả khách hàng
+                        </div>
+                        {dsKHLoc.length === 0 ? (
+                          <div className="p-2.5 text-xs text-slate-400 italic text-center">
+                            Không tìm thấy khách hàng
+                          </div>
+                        ) : (
+                          dsKHLoc.map((kh) => (
+                            <div
+                              key={kh.id}
+                              onClick={() => {
+                                datGiaTri('khach_hang_id', kh.id);
+                                setMoDropdownKH(false);
+                              }}
+                              className="p-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/60 cursor-pointer flex items-center justify-between gap-2"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                  {kh.ten_khach_hang}
+                                </div>
+                                {kh.ma_so_thue && (
+                                  <div className="text-[10.5px] text-slate-400 font-mono">
+                                    MST: {kh.ma_so_thue}
+                                  </div>
+                                )}
+                              </div>
+                              {gia_tri_hien_tai.khach_hang_id === kh.id && (
+                                <Check className="size-3.5 text-emerald-600 shrink-0" />
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </BoLocMuc>
           <BoLocMuc label={<><UserRound className="size-3.5 text-slate-500" /> Giai đoạn dự án</>}>
             <select

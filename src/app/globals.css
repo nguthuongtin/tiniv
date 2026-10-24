@@ -38,6 +38,8 @@
 }
 
 @theme inline {
+  --color-card: #ffffff;
+  --color-popover: #ffffff;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);

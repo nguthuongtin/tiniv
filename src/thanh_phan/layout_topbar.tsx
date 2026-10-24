@@ -6,6 +6,11 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useStoreXacThuc } from '../thu_vien/zustand/store_xac_thuc';
 import { langNgheYeuCauPhoiHop, type YeuCauPhoiHop } from '../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
+import {
+  phatChuongThongBao,
+  phatThongBaoTrinhDuyet,
+  xinQuyenThongBaoTrinhDuyet
+} from '../dich_vu/thong_bao/dich_vu_am_thanh_va_push';
 import { cn } from '../thu_vien/utils/cn';
 import {
   Home,
@@ -23,6 +28,9 @@ import {
   LogOut,
   Sparkles,
   Bell,
+  BellRing,
+  Smartphone,
+  X,
   User,
   BookOpen,
   TrendingUp,
@@ -242,6 +250,23 @@ export default function ThanhPhanTopbar() {
   const [moMenuMobile, setMoMenuMobile] = React.useState(false);
   const [moDropdownThongBao, setMoDropdownThongBao] = React.useState(false);
   const [dsYeuCau, setDsYeuCau] = React.useState<YeuCauPhoiHop[]>([]);
+  const [toastHienTai, setToastHienTai] = React.useState<{
+    id: string;
+    tieuDe: string;
+    noiDung: string;
+    duAn: string;
+    loai: 'moi' | 'duyet' | 'sua' | 'giao';
+  } | null>(null);
+  const [quyenThongBao, setQuyenThongBao] = React.useState<'default' | 'granted' | 'denied'>('default');
+
+  const daKhoiTaoRef = React.useRef(false);
+  const danhSachCuRef = React.useRef<Map<string, string>>(new Map());
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setQuyenThongBao(Notification.permission);
+    }
+  }, []);
 
   React.useEffect(() => {
     const huy = langNgheYeuCauPhoiHop((ds) => setDsYeuCau(ds));
@@ -272,6 +297,84 @@ export default function ThanhPhanTopbar() {
       return false;
     });
   }, [dsYeuCau, vaiTro, userId]);
+
+  // Bộ phát hiện realtime: Bật chuông & Push khi có việc mới hoặc kết quả mới
+  React.useEffect(() => {
+    if (!daKhoiTaoRef.current) {
+      const banDo = new Map<string, string>();
+      dsViecCho.forEach((yc) => {
+        banDo.set(yc.id, `${yc.trang_thai}_${yc.ngay_cap_nhat || ''}`);
+      });
+      danhSachCuRef.current = banDo;
+      daKhoiTaoRef.current = true;
+      return;
+    }
+
+    // So sánh dữ liệu mới nhận từ Firestore onSnapshot
+    for (const yc of dsViecCho) {
+      const signature = `${yc.trang_thai}_${yc.ngay_cap_nhat || ''}`;
+      const signatureCu = danhSachCuRef.current.get(yc.id);
+
+      if (!signatureCu || signatureCu !== signature) {
+        let tieuDe = 'Yêu cầu phối hợp mới';
+        let loai: 'moi' | 'duyet' | 'sua' | 'giao' = 'moi';
+
+        if (yc.trang_thai === 'da_phe_duyet') {
+          tieuDe = '✅ Kết quả đã sẵn sàng';
+          loai = 'duyet';
+        } else if (yc.trang_thai === 'yeu_cau_chinh_sua') {
+          tieuDe = '⚠️ Yêu cầu cần chỉnh sửa lại';
+          loai = 'sua';
+        } else if (yc.trang_thai === 'cho_khth_thuc_hien') {
+          tieuDe = '📋 Bạn được phân công xử lý';
+          loai = 'giao';
+        } else if (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') {
+          tieuDe = '📝 Kết quả chờ duyệt nghiệm thu';
+          loai = 'duyet';
+        }
+
+        const noiDung = `${yc.ten_du_an}: ${yc.noi_dung_yeu_cau}`;
+
+        // 1. Âm thanh Web Audio API
+        phatChuongThongBao();
+
+        // 2. Push Notification Mobile / Web
+        phatThongBaoTrinhDuyet(tieuDe, noiDung, '/ke-hoach');
+
+        // 3. Floating In-app Toast
+        setToastHienTai({
+          id: yc.id,
+          tieuDe,
+          noiDung: yc.noi_dung_yeu_cau,
+          duAn: yc.ten_du_an,
+          loai
+        });
+        break;
+      }
+    }
+
+    const banDoMoi = new Map<string, string>();
+    dsViecCho.forEach((yc) => {
+      banDoMoi.set(yc.id, `${yc.trang_thai}_${yc.ngay_cap_nhat || ''}`);
+    });
+    danhSachCuRef.current = banDoMoi;
+  }, [dsViecCho]);
+
+  // Tự đóng toast sau 6 giây
+  React.useEffect(() => {
+    if (!toastHienTai) return;
+    const timer = setTimeout(() => setToastHienTai(null), 6000);
+    return () => clearTimeout(timer);
+  }, [toastHienTai]);
+
+  const batQuyenThongBao = async () => {
+    const perm = await xinQuyenThongBaoTrinhDuyet();
+    setQuyenThongBao(perm);
+    if (perm === 'granted') {
+      phatChuongThongBao();
+      phatThongBaoTrinhDuyet('Thông báo đã sẵn sàng', 'Bạn sẽ nhận thông báo khi có yêu cầu phối hợp hoặc kết quả hoàn tất.', '/ke-hoach');
+    }
+  };
 
   const { thongTin, laChiTiet, tieuDeChiTiet } = timThongTinTrang(pathname);
   const PageIcon = thongTin.icon;
@@ -391,6 +494,36 @@ export default function ThanhPhanTopbar() {
                       Mở Bàn làm việc
                     </Link>
                   </div>
+
+                  {quyenThongBao !== 'granted' ? (
+                    <div className="p-2.5 bg-emerald-50/70 border border-emerald-200/60 rounded-xl flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-[11px] text-emerald-800 font-medium">
+                        <Smartphone className="size-3.5 text-emerald-600 shrink-0" />
+                        <span>Nhận thông báo trên Mobile / Web</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={batQuyenThongBao}
+                        className="px-2.5 py-1 text-[11px] font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition shrink-0 active:scale-95 shadow-xs cursor-pointer"
+                      >
+                        Bật ngay
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between px-1 text-[10px] text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <span className="size-1.5 rounded-full bg-emerald-500 inline-block" />
+                        Thông báo thiết bị đang hoạt động
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => phatChuongThongBao()}
+                        className="text-slate-400 hover:text-slate-600 underline cursor-pointer"
+                      >
+                        Thử chuông
+                      </button>
+                    </div>
+                  )}
 
                   {dsViecCho.length === 0 ? (
                     <div className="py-6 text-center text-xs text-slate-400">
@@ -568,6 +701,49 @@ export default function ThanhPhanTopbar() {
             </button>
           </div>
         </>
+      )}
+
+      {/* Toast popup nổi góc màn hình khi có thông báo mới */}
+      {toastHienTai && (
+        <div className="fixed top-4 right-4 z-50 max-w-sm w-[calc(100vw-2rem)] bg-white border border-slate-200/90 rounded-2xl shadow-[0_16px_40px_rgba(15,23,42,0.18)] p-3.5 flex items-start gap-3 animate-in slide-in-from-top-3 fade-in duration-200">
+          <div
+            className={cn(
+              "size-9 rounded-xl flex items-center justify-center shrink-0",
+              toastHienTai.loai === 'duyet'
+                ? "bg-emerald-100 text-emerald-700"
+                : toastHienTai.loai === 'sua'
+                ? "bg-amber-100 text-amber-700"
+                : "bg-indigo-100 text-indigo-700"
+            )}
+          >
+            <BellRing className="size-4.5" />
+          </div>
+          <div
+            className="flex-1 min-w-0 cursor-pointer"
+            onClick={() => {
+              setToastHienTai(null);
+              window.location.href = '/ke-hoach';
+            }}
+          >
+            <div className="text-xs font-bold text-slate-900 leading-snug">
+              {toastHienTai.tieuDe}
+            </div>
+            <div className="text-[11px] font-bold text-indigo-700 truncate mt-0.5">
+              {toastHienTai.duAn}
+            </div>
+            <div className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">
+              {toastHienTai.noiDung}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastHienTai(null)}
+            className="text-slate-400 hover:text-slate-600 p-1 rounded-lg shrink-0 cursor-pointer"
+            aria-label="Đóng"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
       )}
     </>
   );

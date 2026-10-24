@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Filter, Search, XCircle, ChevronDown } from 'lucide-react';
+import { X, Filter, Search, XCircle, ChevronDown, ChevronUp, RotateCcw, Check } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { cn } from '../../thu_vien/utils/cn';
 import type { DieuKienLocCongViec } from '../../dich_vu/cong_viec/dich_vu_cong_viec';
@@ -34,6 +34,25 @@ export default function BoLocCongViec({
   dsNhanSu = []
 }: BoLocCongViecProps) {
   const [moRong, setMoRong] = useState(false);
+  const [tuKhoaDA, setTuKhoaDA] = useState('');
+  const [moDropdownDA, setMoDropdownDA] = useState(false);
+
+  const duAnDangChon = useMemo(() => {
+    if (!gia_tri_hien_tai.du_an_id) return null;
+    return dsDuAn.find((d) => d.id === gia_tri_hien_tai.du_an_id) || null;
+  }, [gia_tri_hien_tai.du_an_id, dsDuAn]);
+
+  const dsDALoc = useMemo(() => {
+    if (!tuKhoaDA.trim()) return dsDuAn.slice(0, 40);
+    const kw = tuKhoaDA.toLowerCase().trim();
+    return dsDuAn
+      .filter((d) =>
+        d.ten_du_an.toLowerCase().includes(kw) ||
+        (d.ma_ho_so && d.ma_ho_so.toLowerCase().includes(kw))
+      )
+      .slice(0, 40);
+  }, [dsDuAn, tuKhoaDA]);
+
   const tuKhoa = gia_tri_hien_tai.tuKhoa ?? '';
   const soLuongDieuKienKhacMacDinh = useMemo(() => {
     let dem = 0;
@@ -128,18 +147,93 @@ export default function BoLocCongViec({
             <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wide">
               Dự án
             </label>
-            <select
-              value={gia_tri_hien_tai.du_an_id ?? ''}
-              onChange={(e) => capNhat({ du_an_id: e.target.value || null })}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-slate-700"
-            >
-              <option value="">Tất cả dự án</option>
-              {dsDuAn.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.ma_ho_so ? `[${d.ma_ho_so}] ` : ''}{d.ten_du_an}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              {duAnDangChon ? (
+                <div className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 flex items-center justify-between text-xs font-semibold">
+                  <span className="truncate text-slate-800">{duAnDangChon.ten_du_an}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      capNhat({ du_an_id: null });
+                      setTuKhoaDA('');
+                      setMoDropdownDA(false);
+                    }}
+                    className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer ml-1"
+                    title="Bỏ chọn"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="size-3.5 absolute left-3 top-3 text-slate-400" />
+                    <input
+                      type="text"
+                      value={tuKhoaDA}
+                      onChange={(e) => {
+                        setTuKhoaDA(e.target.value);
+                        setMoDropdownDA(true);
+                      }}
+                      onFocus={() => setMoDropdownDA(true)}
+                      placeholder="Tìm tên hoặc mã dự án..."
+                      className="w-full h-10 rounded-xl border border-slate-200 bg-white pl-8.5 pr-8 text-xs text-slate-800 focus:outline-none focus:border-primary"
+                    />
+                    <ChevronDown className="size-3.5 absolute right-3 top-3 text-slate-400 pointer-events-none" />
+                  </div>
+
+                  {moDropdownDA && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setMoDropdownDA(false)}
+                      />
+                      <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-52 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl divide-y divide-slate-100">
+                        <div
+                          onClick={() => {
+                            capNhat({ du_an_id: null });
+                            setMoDropdownDA(false);
+                          }}
+                          className="p-2.5 text-xs text-slate-400 hover:bg-slate-50 cursor-pointer italic"
+                        >
+                          Tất cả dự án
+                        </div>
+                        {dsDALoc.length === 0 ? (
+                          <div className="p-2.5 text-xs text-slate-400 italic text-center">
+                            Không tìm thấy dự án phù hợp
+                          </div>
+                        ) : (
+                          dsDALoc.map((d) => (
+                            <div
+                              key={d.id}
+                              onClick={() => {
+                                capNhat({ du_an_id: d.id });
+                                setMoDropdownDA(false);
+                              }}
+                              className="p-2.5 text-xs hover:bg-slate-50 cursor-pointer flex items-center justify-between gap-2"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="font-semibold text-slate-800 truncate">
+                                  {d.ten_du_an}
+                                </div>
+                                {d.ma_ho_so && (
+                                  <div className="text-[10.5px] text-slate-400 font-mono">
+                                    {d.ma_ho_so}
+                                  </div>
+                                )}
+                              </div>
+                              {gia_tri_hien_tai.du_an_id === d.id && (
+                                <Check className="size-3.5 text-primary shrink-0" />
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-[11px] font-bold text-slate-600 mb-1 uppercase tracking-wide">

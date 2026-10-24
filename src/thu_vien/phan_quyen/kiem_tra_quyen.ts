@@ -188,9 +188,7 @@ export const duocXemHoSoDuAn = (
   if (
     vaiTroKey === 'quan_tri_he_thong' ||
     vaiTroKey === 'giam_doc' ||
-    vaiTroKey === 'truong_phong' ||
-    coQuyen(nguoiDung, 'bao_cao.xem_toan_cong_ty', dsVaiTro) ||
-    coQuyen(nguoiDung, 'du_an.xem_toan_cong_ty', dsVaiTro)
+    vaiTroKey === 'truong_phong'
   ) {
     return true;
   }
@@ -229,9 +227,7 @@ export const duocXemKhachHang = (
   // 1. Quản trị hệ thống hoặc Giám đốc hoặc có quyền quản trị
   if (
     vaiTroKey === 'quan_tri_he_thong' ||
-    vaiTroKey === 'giam_doc' ||
-    coQuyen(nguoiDung, 'he_thong.quan_tri', dsVaiTro) ||
-    coQuyen(nguoiDung, 'bao_cao.xem_toan_cong_ty', dsVaiTro)
+    vaiTroKey === 'giam_doc'
   ) {
     return true;
   }

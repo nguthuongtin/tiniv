@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../thu_vien/utils/cn';
 import useStoreXacThuc from '../../../thu_vien/zustand/store_xac_thuc';
-import { coQuyen, layPhamViPhongBan } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { coQuyen, layPhamViPhongBan, duocXemHoSoDuAn, duocXemKhachHang } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import type { NhanSu, ChiNhanh } from '../../../thu_vien/types/nhan_su';
 import type { HoSoDuAn, TienDoDuAn } from '../../../thu_vien/types/du_an';
 import type { KhachHang, NguoiLienHe } from '../../../thu_vien/types/khach_hang';
@@ -159,9 +159,47 @@ export function NoiDungKeHoachNVKD({
   const [dsHoSoDuAn, setDsHoSoDuAn] = useState<HoSoDuAn[]>([]);
   const [dsTienDoDuAn, setDsTienDoDuAn] = useState<TienDoDuAn[]>([]);
   const [dsKhachHang, setDsKhachHang] = useState<KhachHang[]>([]);
+
+  
+
   const [dsNguoiLienHe, setDsNguoiLienHe] = useState<NguoiLienHe[]>([]);
   const [dsLichGap, setDsLichGap] = useState<LichGapKH[]>([]);
   const [nhanVienChonId, setNhanVienChonId] = useState<string>('');
+
+  // Lọc dự án & khách hàng theo phân quyền của nhân sự đang xem / đăng nhập
+  const dsHoSoDuAnHieuLuc = useMemo(() => {
+    const vaiTroKey = String(nguoiDungHienTai?.vai_tro || '');
+    const laQuanLy =
+      vaiTroKey === 'quan_tri_he_thong' ||
+      vaiTroKey === 'giam_doc' ||
+      vaiTroKey === 'truong_phong';
+    if (laQuanLy && !nhanVienChonId) return dsHoSoDuAn;
+
+    const targetUser = nhanVienChonId
+      ? dsNhanSu.find((ns) => ns.id === nhanVienChonId) || { id: nhanVienChonId }
+      : nguoiDungHienTai;
+    return dsHoSoDuAn.filter((da) => duocXemHoSoDuAn(targetUser as any, da));
+  }, [dsHoSoDuAn, nguoiDungHienTai, nhanVienChonId, dsNhanSu]);
+
+  const dsKhachHangHieuLuc = useMemo(() => {
+    const vaiTroKey = String(nguoiDungHienTai?.vai_tro || '');
+    const laQuanLy =
+      vaiTroKey === 'quan_tri_he_thong' ||
+      vaiTroKey === 'giam_doc' ||
+      vaiTroKey === 'truong_phong';
+    if (laQuanLy && !nhanVienChonId) return dsKhachHang;
+
+    const targetUser = nhanVienChonId
+      ? dsNhanSu.find((ns) => ns.id === nhanVienChonId) || { id: nhanVienChonId }
+      : nguoiDungHienTai;
+    const dsDuAnIdsCuaUser = new Set(
+      dsHoSoDuAnHieuLuc.map((da) => da.khach_hang_id).filter(Boolean) as string[]
+    );
+    return dsKhachHang.filter((kh) =>
+      duocXemKhachHang(targetUser as any, kh, undefined, dsDuAnIdsCuaUser)
+    );
+  }, [dsKhachHang, dsHoSoDuAnHieuLuc, nguoiDungHienTai, nhanVienChonId, dsNhanSu]);
+
 
   const [keHoachThang, setKeHoachThang] = useState<KeHoachThang | null>(null);
   const [keHoachTuan, setKeHoachTuan] = useState<KeHoachTuan | null>(null);
@@ -1502,9 +1540,9 @@ export function NoiDungKeHoachNVKD({
           ngayChon={ngayTacChien}
           onDoiNgayChon={xuLyDoiNgayTacChien}
           viecChonMacDinhId={viecChonMacDinhId}
-          danhSachDuAn={dsHoSoDuAn}
+          danhSachDuAn={dsHoSoDuAnHieuLuc}
           danhSachTienDoDuAn={dsTienDoDuAn}
-          danhSachKhachHang={dsKhachHang}
+          danhSachKhachHang={dsKhachHangHieuLuc}
           danhSachNguoiLienHe={dsNguoiLienHe}
           danhSachLichGap={dsLichGap}
           laSuaDuoc={laSuaDuoc}
@@ -1593,8 +1631,8 @@ export function NoiDungKeHoachNVKD({
           setMucTieuThangMacDinhId(null);
         }}
         dangSua={dangSuaTuan}
-        danhSachDuAn={dsHoSoDuAn}
-        danhSachKhachHang={dsKhachHang}
+        danhSachDuAn={dsHoSoDuAnHieuLuc}
+        danhSachKhachHang={dsKhachHangHieuLuc}
         danhSachNguoiLienHe={dsNguoiLienHe}
         danhSachMucTieuThang={keHoachThang?.danh_sach_dia_ban ?? []}
         ngayMacDinh={ngayMacDinhDrawerTuan}
@@ -1661,7 +1699,7 @@ export function NoiDungKeHoachNVKD({
           noi_dung: goiYLichCongTac?.noi_dung || null
         }}
         dsLichHienCo={dsLichGap}
-        dsKhachHang={dsKhachHang}
+        dsKhachHang={dsKhachHangHieuLuc}
         dsNguoiLienHe={dsNguoiLienHe}
         dsNhanSu={dsNhanSu}
         nguoiDungId={nguoiDungHienTai?.id}

@@ -27,7 +27,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
 import type {
-  YeuCauPhoiHop
+  YeuCauPhoiHop,
+  TrangThaiYeuCauPhoiHop
 } from '../../thu_vien/types/yeu_cau_phoi_hop';
 import { NHAN_TRANG_THAI_YEU_CAU } from '../../thu_vien/types/yeu_cau_phoi_hop';
 import type { NguoiDungDangNhap, NhanSu, PhongBan } from '../../thu_vien/types/nhan_su';
@@ -38,6 +39,8 @@ import {
 } from '../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
 import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachPhongBan } from '../../dich_vu/co_cau_to_chuc/dich_vu_phong_ban';
+
+type TabYeuCau = 'tat_ca' | 'cho_tiep_nhan' | 'dang_xu_ly' | 'cho_duyet' | 'da_duyet' | 'hoan_thanh';
 
 interface Props {
   danhSachYeuCau: YeuCauPhoiHop[];
@@ -57,6 +60,7 @@ export default function HopYeuCauPhoiHop({
   onMoModalTaoYeuCau
 }: Props) {
   const [moToanBo, setMoToanBo] = useState(false);
+  const [tabHienTai, setTabHienTai] = useState<TabYeuCau>('tat_ca');
   const [yeuCauDangXemLichSu, setYeuCauDangXemLichSu] = useState<YeuCauPhoiHop | null>(null);
 
   // 1. Modal tiếp nhận & phân công nhân sự
@@ -133,7 +137,7 @@ export default function HopYeuCauPhoiHop({
   // Xác định những việc liên quan đến người dùng hiện tại
   const dsViecChoToi = useMemo(() => {
     return danhSachYeuCau.filter((yc) => {
-      if (yc.trang_thai_du_lieu === 'da_xoa' || yc.trang_thai === 'da_hoan_thanh') {
+      if (yc.trang_thai_du_lieu === 'da_xoa') {
         return false;
       }
 
@@ -167,13 +171,66 @@ export default function HopYeuCauPhoiHop({
         return yc.nguoi_tao_id === userId || coQuyenDieuHanh;
       }
 
+      // Đã hoàn tất: người tạo hoặc người xử lý đều thấy nếu xem lịch sử
+      if (yc.trang_thai === 'da_hoan_thanh') {
+        const duocGiaoDichDanh = Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
+          yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId);
+        return yc.nguoi_tao_id === userId || duocGiaoDichDanh || coQuyenDieuHanh;
+      }
+
       return false;
     });
   }, [danhSachYeuCau, userId, coQuyenDieuHanh]);
 
-  const dsHienThi = moToanBo
-    ? danhSachYeuCau.filter((x) => x.trang_thai_du_lieu !== 'da_xoa')
-    : dsViecChoToi;
+  // Nguồn dữ liệu theo chế độ xem
+  const dsNguon = useMemo(() => {
+    return moToanBo
+      ? danhSachYeuCau.filter((x) => x.trang_thai_du_lieu !== 'da_xoa')
+      : dsViecChoToi;
+  }, [moToanBo, danhSachYeuCau, dsViecChoToi]);
+
+  // Đếm số lượng badge cho từng tab
+  const thongKeTabs = useMemo(() => {
+    let choTiepNhan = 0;
+    let dangXuLy = 0;
+    let choDuyet = 0;
+    let daDuyet = 0;
+    let hoanThanh = 0;
+
+    for (const yc of dsNguon) {
+      if (yc.trang_thai === 'cho_tpkd_duyet') {
+        choTiepNhan++;
+      } else if (yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') {
+        dangXuLy++;
+      } else if (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') {
+        choDuyet++;
+      } else if (yc.trang_thai === 'da_phe_duyet') {
+        daDuyet++;
+      } else if (yc.trang_thai === 'da_hoan_thanh') {
+        hoanThanh++;
+      }
+    }
+
+    return {
+      tat_ca: dsNguon.length,
+      cho_tiep_nhan: choTiepNhan,
+      dang_xu_ly: dangXuLy,
+      cho_duyet: choDuyet,
+      da_duyet: daDuyet,
+      hoan_thanh: hoanThanh
+    };
+  }, [dsNguon]);
+
+  // Lọc theo Tab đang chọn
+  const dsHienThi = useMemo(() => {
+    if (tabHienTai === 'tat_ca') return dsNguon;
+    if (tabHienTai === 'cho_tiep_nhan') return dsNguon.filter((yc) => yc.trang_thai === 'cho_tpkd_duyet');
+    if (tabHienTai === 'dang_xu_ly') return dsNguon.filter((yc) => yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua');
+    if (tabHienTai === 'cho_duyet') return dsNguon.filter((yc) => yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet');
+    if (tabHienTai === 'da_duyet') return dsNguon.filter((yc) => yc.trang_thai === 'da_phe_duyet');
+    if (tabHienTai === 'hoan_thanh') return dsNguon.filter((yc) => yc.trang_thai === 'da_hoan_thanh');
+    return dsNguon;
+  }, [dsNguon, tabHienTai]);
 
   // Map ID phòng ban sang tên
   const mapTenPhongBan = useMemo(() => {
@@ -417,22 +474,32 @@ export default function HopYeuCauPhoiHop({
     }
   };
 
+  const danhSachTabs: { key: TabYeuCau; nhan: string; count: number; badgeColor?: string }[] = [
+    { key: 'tat_ca', nhan: 'Tất cả', count: thongKeTabs.tat_ca },
+    { key: 'cho_tiep_nhan', nhan: 'Chờ tiếp nhận', count: thongKeTabs.cho_tiep_nhan, badgeColor: thongKeTabs.cho_tiep_nhan > 0 ? 'bg-amber-500 text-white animate-pulse' : undefined },
+    { key: 'dang_xu_ly', nhan: 'Đang xử lý', count: thongKeTabs.dang_xu_ly, badgeColor: thongKeTabs.dang_xu_ly > 0 ? 'bg-blue-600 text-white' : undefined },
+    { key: 'cho_duyet', nhan: 'Chờ duyệt kết quả', count: thongKeTabs.cho_duyet, badgeColor: thongKeTabs.cho_duyet > 0 ? 'bg-purple-600 text-white animate-pulse' : undefined },
+    { key: 'da_duyet', nhan: 'Đã duyệt', count: thongKeTabs.da_duyet, badgeColor: thongKeTabs.da_duyet > 0 ? 'bg-emerald-600 text-white' : undefined },
+    { key: 'hoan_thanh', nhan: 'Hoàn tất', count: thongKeTabs.hoan_thanh }
+  ];
+
   return (
     <div className="space-y-3">
       {/* Khung Hộp yêu cầu */}
-      <div className="rounded-2xl border border-border bg-card p-4 space-y-3 shadow-xs text-foreground">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3.5 shadow-xs text-slate-900 dark:text-slate-100">
+        {/* Top Header */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-xl bg-muted text-foreground flex items-center justify-center shrink-0">
-              <Sparkles className="size-4 text-primary" />
+            <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Sparkles className="size-4" />
             </div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-foreground">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                 Yêu cầu phối hợp
               </h3>
-              {dsViecChoToi.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-                  {dsViecChoToi.length} cần theo dõi & xử lý
+              {thongKeTabs.cho_tiep_nhan + thongKeTabs.cho_duyet > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500 text-white shadow-xs">
+                  {thongKeTabs.cho_tiep_nhan + thongKeTabs.cho_duyet} cần xử lý
                 </span>
               )}
             </div>
@@ -452,26 +519,62 @@ export default function HopYeuCauPhoiHop({
             <button
               type="button"
               onClick={() => setMoToanBo(!moToanBo)}
-              className="text-xs font-medium px-2.5 py-1.5 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-xs font-medium px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 inline-flex items-center gap-1 cursor-pointer transition-colors"
             >
-              <span>{moToanBo ? 'Chỉ việc của tôi' : `Tất cả (${danhSachYeuCau.length})`}</span>
+              <span>{moToanBo ? 'Chỉ việc của tôi' : `Toàn bộ (${danhSachYeuCau.length})`}</span>
               {moToanBo ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
             </button>
           </div>
         </div>
 
+        {/* Thanh Tabs phân loại theo trạng thái */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-b border-slate-100 dark:border-slate-800">
+          {danhSachTabs.map((tab) => {
+            const dangChon = tabHienTai === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setTabHienTai(tab.key)}
+                className={cn(
+                  'h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-all shrink-0',
+                  dangChon
+                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
+                )}
+              >
+                <span>{tab.nhan}</span>
+                {tab.count > 0 && (
+                  <span
+                    className={cn(
+                      'px-1.5 py-0.2 rounded-full text-[10.5px] font-bold',
+                      dangChon
+                        ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900'
+                        : tab.badgeColor || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    )}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Danh sách yêu cầu */}
         {dsHienThi.length === 0 ? (
-          <div className="p-4 text-center text-xs text-muted-foreground italic bg-muted/20 rounded-xl">
-            Không có yêu cầu nào đang chờ xử lý.
+          <div className="p-4 text-center text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+            {tabHienTai === 'tat_ca'
+              ? 'Không có yêu cầu nào.'
+              : `Không có yêu cầu nào ở mục "${danhSachTabs.find(t => t.key === tabHienTai)?.nhan}".`}
           </div>
         ) : (
-          <div className="divide-y divide-border rounded-xl border border-border bg-background overflow-hidden">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
             {dsHienThi.map((yc) => {
               const cfgTrangThai = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai] || {
                 label: yc.trang_thai,
-                mauBadge: 'bg-muted text-muted-foreground border-border',
-                textClass: 'text-muted-foreground'
+                mauBadge: 'bg-slate-100 text-slate-600 border-slate-200',
+                textClass: 'text-slate-600'
               };
               const laNguoiTao = yc.nguoi_tao_id === userId;
               const coQuyenSuaXoa = laNguoiTao || coQuyenDieuHanh;
@@ -483,17 +586,17 @@ export default function HopYeuCauPhoiHop({
               return (
                 <div
                   key={yc.id}
-                  className="p-3.5 hover:bg-muted/25 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                  className="p-3.5 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
                 >
                   {/* Cột trái: Thông tin dự án + Nội dung + Phân công */}
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
                         onClick={() => onMoChiTietDuAn?.(yc.du_an_id)}
-                        className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1.5 text-sm"
+                        className="font-semibold text-slate-900 dark:text-slate-100 hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1.5 text-sm"
                         title="Xem chi tiết dự án"
                       >
-                        <FolderKanban className="size-4 text-muted-foreground" />
+                        <FolderKanban className="size-4 text-slate-400" />
                         <span>{yc.ten_du_an}</span>
                       </span>
 
@@ -507,28 +610,28 @@ export default function HopYeuCauPhoiHop({
                       </span>
 
                       {yc.han_hoan_thanh && (
-                        <span className="text-[11px] text-muted-foreground font-mono flex items-center gap-1">
-                          <Clock className="size-3 text-muted-foreground" />
+                        <span className="text-[11px] text-slate-500 font-mono flex items-center gap-1">
+                          <Clock className="size-3 text-slate-400" />
                           <span>Hạn: {yc.han_hoan_thanh}</span>
                         </span>
                       )}
                     </div>
 
-                    <div className="text-foreground text-xs leading-relaxed">
+                    <div className="text-slate-800 dark:text-slate-200 text-xs leading-relaxed">
                       {yc.noi_dung_yeu_cau}
                     </div>
 
                     {/* Metadata line: Người gửi, Phân công, Link Drive, Ghi chú phản hồi */}
-                    <div className="flex items-center gap-3 text-[11.5px] text-muted-foreground flex-wrap pt-0.5">
+                    <div className="flex items-center gap-3 text-[11.5px] text-slate-500 flex-wrap pt-0.5">
                       <span className="flex items-center gap-1">
-                        <User className="size-3 text-muted-foreground" />
-                        <span>Người gửi: <strong className="text-foreground font-semibold">{yc.ten_nguoi_tao}</strong></span>
+                        <User className="size-3 text-slate-400" />
+                        <span>Người gửi: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{yc.ten_nguoi_tao}</strong></span>
                       </span>
 
                       {yc.danh_sach_ten_nhan_su_thuc_hien && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0 && (
                         <span className="flex items-center gap-1">
-                          <Users className="size-3 text-muted-foreground" />
-                          <span>Phân công: <strong className="text-foreground font-semibold">{yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')}</strong></span>
+                          <Users className="size-3 text-slate-400" />
+                          <span>Phân công: <strong className="text-slate-700 dark:text-slate-300 font-semibold">{yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')}</strong></span>
                         </span>
                       )}
 
@@ -559,7 +662,7 @@ export default function HopYeuCauPhoiHop({
                       )}
 
                       {yc.ghi_chu_phan_hoi && (
-                        <span className="text-destructive font-medium italic">
+                        <span className="text-rose-600 dark:text-rose-400 font-medium italic">
                           Phản hồi: {yc.ghi_chu_phan_hoi}
                         </span>
                       )}
@@ -606,7 +709,7 @@ export default function HopYeuCauPhoiHop({
                         <button
                           type="button"
                           onClick={() => moModalYeuCauSua(yc)}
-                          className="h-8 px-2.5 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                          className="h-8 px-2.5 rounded-lg border border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition"
                         >
                           <span>Yêu cầu sửa</span>
                         </button>
@@ -620,7 +723,7 @@ export default function HopYeuCauPhoiHop({
                           <button
                             type="button"
                             onClick={() => handleCopyLink(yc.link_drive_ket_qua!, yc.id)}
-                            className="h-8 px-3 rounded-lg border border-border bg-background text-foreground font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition hover:bg-muted"
+                            className="h-8 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition hover:bg-slate-100"
                           >
                             {daCopyLink === yc.id ? (
                               <>
@@ -650,7 +753,7 @@ export default function HopYeuCauPhoiHop({
                     <button
                       type="button"
                       onClick={() => setYeuCauDangXemLichSu(yc)}
-                      className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center justify-center cursor-pointer transition-colors"
+                      className="size-8 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center justify-center cursor-pointer transition-colors"
                       title="Xem lịch sử xử lý"
                     >
                       <History className="size-4" />
@@ -661,7 +764,7 @@ export default function HopYeuCauPhoiHop({
                       <button
                         type="button"
                         onClick={() => batDauSua(yc)}
-                        className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center justify-center cursor-pointer transition-colors"
+                        className="size-8 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center justify-center cursor-pointer transition-colors"
                         title="Chỉnh sửa nội dung"
                       >
                         <Pencil className="size-4" />
@@ -673,7 +776,7 @@ export default function HopYeuCauPhoiHop({
                       <button
                         type="button"
                         onClick={() => setYeuCauDangXoa(yc)}
-                        className="size-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 inline-flex items-center justify-center cursor-pointer transition-colors"
+                        className="size-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 inline-flex items-center justify-center cursor-pointer transition-colors"
                         title="Xóa yêu cầu"
                       >
                         <Trash2 className="size-4" />
@@ -691,26 +794,26 @@ export default function HopYeuCauPhoiHop({
       {/* MODAL 1: TIẾP NHẬN & PHÂN CÔNG                                            */}
       {/* ========================================================================= */}
       {modalGiaoViec.mo && modalGiaoViec.yeuCau && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-xl max-h-[90vh] rounded-2xl border border-border bg-card p-6 shadow-xl flex flex-col space-y-4 text-foreground">
-            <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-xl max-h-[90vh] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl flex flex-col space-y-4 text-slate-900 dark:text-slate-100">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-3">
-                <div className="size-10 rounded-xl bg-muted text-foreground flex items-center justify-center font-bold">
-                  <UserCheck className="size-5 text-primary" />
+                <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                  <UserCheck className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-foreground">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                     Tiếp nhận & Phân công xử lý
                   </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Dự án: <span className="font-semibold text-foreground">{modalGiaoViec.yeuCau.ten_du_an}</span>
+                  <p className="text-xs text-slate-500">
+                    Dự án: <span className="font-semibold text-slate-900 dark:text-slate-100">{modalGiaoViec.yeuCau.ten_du_an}</span>
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setModalGiaoViec({ mo: false, yeuCau: null })}
-                className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
               >
                 <X className="size-5" />
               </button>
@@ -718,19 +821,19 @@ export default function HopYeuCauPhoiHop({
 
             <form onSubmit={handleXacNhanGiaoViec} className="space-y-4 overflow-y-auto pr-1 flex-1">
               {loiGiaoViec && (
-                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
                   <AlertCircle className="size-4 shrink-0" />
                   <span>{loiGiaoViec}</span>
                 </div>
               )}
 
               {/* Thông tin ban đầu */}
-              <div className="p-3 rounded-xl bg-muted/40 border border-border space-y-1.5 text-xs">
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span>Người gửi: <strong className="text-foreground">{modalGiaoViec.yeuCau.ten_nguoi_tao}</strong></span>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between text-slate-500">
+                  <span>Người gửi: <strong className="text-slate-900 dark:text-slate-100">{modalGiaoViec.yeuCau.ten_nguoi_tao}</strong></span>
                   {modalGiaoViec.yeuCau.han_hoan_thanh && <span>Hạn mong muốn: {modalGiaoViec.yeuCau.han_hoan_thanh}</span>}
                 </div>
-                <p className="text-foreground font-medium">
+                <p className="text-slate-800 dark:text-slate-200 font-medium">
                   {modalGiaoViec.yeuCau.noi_dung_yeu_cau}
                 </p>
                 {modalGiaoViec.yeuCau.link_drive_dau_vao && (
@@ -752,28 +855,28 @@ export default function HopYeuCauPhoiHop({
               {/* Phân công nhân sự */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                     <Users className="size-4 text-primary" />
                     <span>Phân công nhân sự thực hiện *</span>
                   </label>
-                  <span className="text-[11px] text-muted-foreground">
-                    Đã chọn: <strong className="text-foreground">{dsNhanSuChon.length}</strong> người
+                  <span className="text-[11px] text-slate-500">
+                    Đã chọn: <strong className="text-slate-900 dark:text-slate-100">{dsNhanSuChon.length}</strong> người
                   </span>
                 </div>
 
                 {dsNhanSuChon.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-muted/30 border border-border">
+                  <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                     {dsNhanSuChon.map((ns) => (
                       <span
                         key={ns.id}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-background border border-border text-xs font-medium text-foreground shadow-2xs"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-slate-100 shadow-2xs"
                       >
-                        <User className="size-3 text-muted-foreground" />
+                        <User className="size-3 text-slate-400" />
                         <span>{ns.ho_va_ten}</span>
                         <button
                           type="button"
                           onClick={() => setDsNhanSuChon((prev) => prev.filter((x) => x.id !== ns.id))}
-                          className="hover:text-destructive cursor-pointer ml-0.5"
+                          className="hover:text-rose-600 cursor-pointer ml-0.5"
                         >
                           <X className="size-3" />
                         </button>
@@ -783,17 +886,17 @@ export default function HopYeuCauPhoiHop({
                 )}
 
                 <div className="relative">
-                  <Search className="size-3.5 absolute left-3 top-2.5 text-muted-foreground" />
+                  <Search className="size-3.5 absolute left-3 top-2.5 text-slate-400" />
                   <input
                     type="text"
                     value={tuKhoaTimNS}
                     onChange={(e) => setTuKhoaTimNS(e.target.value)}
                     placeholder="Tìm theo tên nhân sự hoặc phòng ban..."
-                    className="w-full h-8.5 rounded-xl border border-border bg-background pl-8 pr-3 text-xs text-foreground focus:outline-hidden focus:border-primary"
+                    className="w-full h-8.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8 pr-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary"
                   />
                 </div>
 
-                <div className="max-h-[190px] overflow-y-auto rounded-xl border border-border divide-y divide-border">
+                <div className="max-h-[190px] overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
                   {dsNhanSuToanBo
                     .filter((ns) =>
                       !tuKhoaTimNS ||
@@ -811,8 +914,8 @@ export default function HopYeuCauPhoiHop({
                           className={cn(
                             'px-3 py-2 flex items-center justify-between text-xs cursor-pointer transition select-none',
                             daChon
-                              ? 'bg-muted/80 text-foreground font-medium'
-                              : 'hover:bg-muted/40 text-muted-foreground hover:text-foreground'
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                           )}
                         >
                           <div className="flex items-center gap-2.5">
@@ -820,11 +923,11 @@ export default function HopYeuCauPhoiHop({
                               type="checkbox"
                               checked={daChon}
                               onChange={() => {}}
-                              className="size-4 rounded border-border text-primary focus:ring-primary pointer-events-none"
+                              className="size-4 rounded border-slate-300 text-primary focus:ring-primary pointer-events-none"
                             />
                             <div>
-                              <div className="font-semibold text-foreground">{ns.ho_va_ten}</div>
-                              <div className="text-[10.5px] text-muted-foreground">
+                              <div className="font-semibold text-slate-900 dark:text-slate-100">{ns.ho_va_ten}</div>
+                              <div className="text-[10.5px] text-slate-400">
                                 {ns.chuc_vu || 'Nhân sự'} • {tenPB}
                               </div>
                             </div>
@@ -840,15 +943,15 @@ export default function HopYeuCauPhoiHop({
               {/* Hạn hoàn thành & Ý kiến */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <Clock className="size-3.5 text-muted-foreground" />
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Clock className="size-3.5 text-slate-400" />
                     <span>Hạn hoàn thành</span>
                   </label>
                   <input
                     type="date"
                     value={hanXongGiaoViec}
                     onChange={(e) => setHanXongGiaoViec(e.target.value)}
-                    className="w-full h-9 rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-hidden focus:border-primary"
+                    className="w-full h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary"
                   />
                   <div className="flex items-center gap-1 pt-0.5">
                     {[
@@ -864,7 +967,7 @@ export default function HopYeuCauPhoiHop({
                           d.setDate(d.getDate() + chip.soNgay);
                           setHanXongGiaoViec(d.toISOString().slice(0, 10));
                         }}
-                        className="px-2 py-0.5 rounded border border-border hover:bg-muted text-[10.5px] text-muted-foreground hover:text-foreground transition cursor-pointer"
+                        className="px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10.5px] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition cursor-pointer"
                       >
                         {chip.nhan}
                       </button>
@@ -873,7 +976,7 @@ export default function HopYeuCauPhoiHop({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-foreground">
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                     Ý kiến / Ghi chú (nếu có)
                   </label>
                   <textarea
@@ -881,17 +984,17 @@ export default function HopYeuCauPhoiHop({
                     value={ghiChuGiaoViec}
                     onChange={(e) => setGhiChuGiaoViec(e.target.value)}
                     placeholder="Lưu ý nội dung, phương án hoặc tiến độ..."
-                    className="w-full rounded-xl border border-border bg-background p-2 text-xs text-foreground focus:outline-hidden focus:border-primary resize-none placeholder:text-muted-foreground"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary resize-none placeholder:text-slate-400"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setModalGiaoViec({ mo: false, yeuCau: null })}
                   disabled={dangXuLyGiaoViec}
-                  className="h-9 px-4 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition"
+                  className="h-9 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
                 >
                   Hủy bỏ
                 </button>
@@ -913,22 +1016,22 @@ export default function HopYeuCauPhoiHop({
       {/* MODAL 2: NỘP KẾT QUẢ                                                      */}
       {/* ========================================================================= */}
       {modalNopDrive.mo && modalNopDrive.yeuCau && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4 text-foreground">
-            <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 text-slate-900 dark:text-slate-100">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <Send className="size-4 text-primary" />
                   <span>Nộp kết quả xử lý</span>
                 </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Dự án: <strong className="text-foreground">{modalNopDrive.yeuCau.ten_du_an}</strong>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Dự án: <strong className="text-slate-900 dark:text-slate-100">{modalNopDrive.yeuCau.ten_du_an}</strong>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setModalNopDrive({ mo: false, yeuCau: null })}
-                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
               >
                 <X className="size-4" />
               </button>
@@ -936,8 +1039,8 @@ export default function HopYeuCauPhoiHop({
 
             <form onSubmit={handleXacNhanNopDrive} className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5 mb-1">
-                  <Link2 className="size-3.5 text-muted-foreground" />
+                <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mb-1">
+                  <Link2 className="size-3.5 text-slate-400" />
                   <span>Link Google Drive kết quả *</span>
                 </label>
                 <input
@@ -945,14 +1048,14 @@ export default function HopYeuCauPhoiHop({
                   value={linkDriveNop}
                   onChange={(e) => setLinkDriveNop(e.target.value)}
                   placeholder="https://drive.google.com/..."
-                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-hidden focus:border-primary"
+                  className="w-full h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary"
                   required
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-foreground block mb-1">
+                <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 block mb-1">
                   Ghi chú kết quả
                 </label>
                 <textarea
@@ -960,16 +1063,16 @@ export default function HopYeuCauPhoiHop({
                   value={ghiChuNop}
                   onChange={(e) => setGhiChuNop(e.target.value)}
                   placeholder="Nội dung đã hoàn thành..."
-                  className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground focus:outline-hidden focus:border-primary resize-none placeholder:text-muted-foreground"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary resize-none placeholder:text-slate-400"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setModalNopDrive({ mo: false, yeuCau: null })}
                   disabled={dangXuLyNop}
-                  className="h-9 px-3.5 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition"
+                  className="h-9 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
                 >
                   Hủy
                 </button>
@@ -991,17 +1094,17 @@ export default function HopYeuCauPhoiHop({
       {/* MODAL 3: YÊU CẦU CHỈNH SỬA                                                 */}
       {/* ========================================================================= */}
       {modalYeuCauSua.mo && modalYeuCauSua.yeuCau && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4 text-foreground">
-            <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
-              <div className="flex items-center gap-2 text-destructive">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 text-slate-900 dark:text-slate-100">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-rose-600">
                 <AlertTriangle className="size-5" />
-                <h3 className="text-base font-bold text-foreground">Yêu cầu chỉnh sửa</h3>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Yêu cầu chỉnh sửa</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setModalYeuCauSua({ mo: false, yeuCau: null })}
-                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
               >
                 <X className="size-4" />
               </button>
@@ -1009,7 +1112,7 @@ export default function HopYeuCauPhoiHop({
 
             <form onSubmit={handleXacNhanYeuCauSua} className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-foreground block mb-1">
+                <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 block mb-1">
                   Nội dung cần chỉnh sửa, bổ sung *
                 </label>
                 <textarea
@@ -1017,25 +1120,25 @@ export default function HopYeuCauPhoiHop({
                   value={lyDoSua}
                   onChange={(e) => setLyDoSua(e.target.value)}
                   placeholder="Ghi rõ các nội dung cần bổ sung, chỉnh sửa..."
-                  className="w-full rounded-xl border border-border bg-background p-2.5 text-xs text-foreground focus:outline-hidden focus:border-primary resize-none placeholder:text-muted-foreground"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary resize-none placeholder:text-slate-400"
                   required
                   autoFocus
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setModalYeuCauSua({ mo: false, yeuCau: null })}
                   disabled={dangXuLyYeuCauSua}
-                  className="h-9 px-3.5 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition"
+                  className="h-9 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={dangXuLyYeuCauSua}
-                  className="h-9 px-4 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
+                  className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
                 >
                   {dangXuLyYeuCauSua ? <Loader2 className="size-3.5 animate-spin" /> : <AlertTriangle className="size-3.5" />}
                   <span>Xác nhận yêu cầu sửa</span>
@@ -1050,26 +1153,26 @@ export default function HopYeuCauPhoiHop({
       {/* MODAL 4: CHỈNH SỬA THÔNG TIN YÊU CẦU                                      */}
       {/* ========================================================================= */}
       {yeuCauDangSua && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4 text-foreground">
-            <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 text-slate-900 dark:text-slate-100">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="size-9 rounded-xl bg-muted text-foreground flex items-center justify-center">
-                  <Pencil className="size-4 text-primary" />
+                <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <Pencil className="size-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-foreground">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     Chỉnh sửa yêu cầu phối hợp
                   </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Dự án: <span className="font-semibold text-foreground">{yeuCauDangSua.ten_du_an}</span>
+                  <p className="text-xs text-slate-500">
+                    Dự án: <span className="font-semibold text-slate-900 dark:text-slate-100">{yeuCauDangSua.ten_du_an}</span>
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setYeuCauDangSua(null)}
-                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
               >
                 <X className="size-4" />
               </button>
@@ -1077,28 +1180,28 @@ export default function HopYeuCauPhoiHop({
 
             <form onSubmit={handleLuuSua} className="space-y-4">
               {loiSua && (
-                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs">
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs">
                   {loiSua}
                 </div>
               )}
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-foreground">
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                   Nội dung yêu cầu *
                 </label>
                 <textarea
                   rows={3}
                   value={suaNoiDung}
                   onChange={(e) => setSuaNoiDung(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground focus:outline-hidden focus:border-primary resize-none placeholder:text-muted-foreground"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary resize-none placeholder:text-slate-400"
                   placeholder="Nội dung cần thực hiện..."
                   required
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <Link2 className="size-3.5 text-muted-foreground" />
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Link2 className="size-3.5 text-slate-400" />
                   <span>Link Google Drive tài liệu</span>
                 </label>
                 <input
@@ -1106,13 +1209,13 @@ export default function HopYeuCauPhoiHop({
                   value={suaLinkDrive}
                   onChange={(e) => setSuaLinkDrive(e.target.value)}
                   placeholder="https://drive.google.com/..."
-                  className="w-full h-9 rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-hidden focus:border-primary placeholder:text-muted-foreground"
+                  className="w-full h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary placeholder:text-slate-400"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <Clock className="size-3.5 text-muted-foreground" />
+                <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Clock className="size-3.5 text-slate-400" />
                   <span>Hạn hoàn thành</span>
                 </label>
                 <div className="flex items-center gap-2">
@@ -1120,7 +1223,7 @@ export default function HopYeuCauPhoiHop({
                     type="date"
                     value={suaHanXong}
                     onChange={(e) => setSuaHanXong(e.target.value)}
-                    className="h-9 rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-hidden focus:border-primary flex-1"
+                    className="h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:border-primary flex-1"
                   />
                   {[
                     { nhan: 'Ngày mai', soNgay: 1 },
@@ -1135,7 +1238,7 @@ export default function HopYeuCauPhoiHop({
                         d.setDate(d.getDate() + chip.soNgay);
                         setSuaHanXong(d.toISOString().slice(0, 10));
                       }}
-                      className="h-9 px-2.5 rounded-xl border border-border hover:bg-muted bg-background text-[11px] font-medium text-muted-foreground hover:text-foreground transition cursor-pointer"
+                      className="h-9 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 bg-white dark:bg-slate-800 text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition cursor-pointer"
                     >
                       +{chip.soNgay}d
                     </button>
@@ -1143,12 +1246,12 @@ export default function HopYeuCauPhoiHop({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setYeuCauDangSua(null)}
                   disabled={dangLuuSua}
-                  className="h-9 px-4 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition"
+                  className="h-9 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
                 >
                   Hủy
                 </button>
@@ -1170,32 +1273,32 @@ export default function HopYeuCauPhoiHop({
       {/* MODAL 5: XÁC NHẬN XÓA                                                     */}
       {/* ========================================================================= */}
       {yeuCauDangXoa && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4 text-foreground">
-            <div className="flex items-center gap-3 text-destructive">
-              <div className="size-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
-                <Trash2 className="size-5 text-destructive" />
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl space-y-4 text-slate-900 dark:text-slate-100">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="size-10 rounded-full bg-rose-50 dark:bg-rose-950/40 flex items-center justify-center shrink-0">
+                <Trash2 className="size-5 text-rose-600" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-foreground">
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                   Xác nhận xóa yêu cầu
                 </h3>
-                <p className="text-xs text-muted-foreground">
-                  Dự án: <span className="font-semibold text-foreground">{yeuCauDangXoa.ten_du_an}</span>
+                <p className="text-xs text-slate-500">
+                  Dự án: <span className="font-semibold text-slate-900 dark:text-slate-100">{yeuCauDangXoa.ten_du_an}</span>
                 </p>
               </div>
             </div>
 
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Bạn có chắc chắn muốn xóa yêu cầu: &ldquo;<span className="font-semibold text-foreground">{yeuCauDangXoa.noi_dung_yeu_cau}</span>&rdquo;?
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Bạn có chắc chắn muốn xóa yêu cầu: &ldquo;<span className="font-semibold text-slate-900 dark:text-slate-100">{yeuCauDangXoa.noi_dung_yeu_cau}</span>&rdquo;?
             </p>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setYeuCauDangXoa(null)}
                 disabled={dangXoa}
-                className="h-9 px-4 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition"
+                className="h-9 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
               >
                 Hủy bỏ
               </button>
@@ -1203,7 +1306,7 @@ export default function HopYeuCauPhoiHop({
                 type="button"
                 onClick={handleXacNhanXoa}
                 disabled={dangXoa}
-                className="h-9 px-4 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
+                className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
               >
                 {dangXoa ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
                 <span>Xác nhận xóa</span>
@@ -1217,21 +1320,21 @@ export default function HopYeuCauPhoiHop({
       {/* MODAL 6: LỊCH SỬ XỬ LÝ                                                    */}
       {/* ========================================================================= */}
       {yeuCauDangXemLichSu && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-xl space-y-4 text-foreground">
-            <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-2xl space-y-4 text-slate-900 dark:text-slate-100">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h3 className="text-sm font-bold text-foreground">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   Lịch sử luân chuyển yêu cầu
                 </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Dự án: <strong className="text-foreground">{yeuCauDangXemLichSu.ten_du_an}</strong>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Dự án: <strong className="text-slate-900 dark:text-slate-100">{yeuCauDangXemLichSu.ten_du_an}</strong>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setYeuCauDangXemLichSu(null)}
-                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
               >
                 <X className="size-4" />
               </button>
@@ -1243,18 +1346,18 @@ export default function HopYeuCauPhoiHop({
                   <div className="size-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
                     {idx + 1}
                   </div>
-                  <div className="min-w-0 flex-1 p-2.5 rounded-xl border border-border bg-muted/30 space-y-1">
+                  <div className="min-w-0 flex-1 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 space-y-1">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="font-semibold text-foreground">
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
                         {log.hanh_dong}
                       </span>
-                      <span className="text-[10.5px] text-muted-foreground font-mono">
+                      <span className="text-[10.5px] text-slate-400 font-mono">
                         {log.thoi_gian?.slice(0, 16).replace('T', ' ')}
                       </span>
                     </div>
 
-                    <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                      <User className="size-3 text-muted-foreground" />
+                    <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                      <User className="size-3 text-slate-400" />
                       <span>{log.ten_nguoi_thuc_hien}</span>
                     </div>
 
@@ -1274,7 +1377,7 @@ export default function HopYeuCauPhoiHop({
                     )}
 
                     {log.ghi_chu && (
-                      <div className="p-2 rounded-lg bg-background border border-border text-[11.5px] text-foreground italic">
+                      <div className="p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-[11.5px] text-slate-700 dark:text-slate-300 italic">
                         "{log.ghi_chu}"
                       </div>
                     )}
@@ -1283,11 +1386,11 @@ export default function HopYeuCauPhoiHop({
               ))}
             </div>
 
-            <div className="flex items-center justify-end pt-2 border-t border-border">
+            <div className="flex items-center justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setYeuCauDangXemLichSu(null)}
-                className="h-8 px-4 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition"
+                className="h-8 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
               >
                 Đóng
               </button>

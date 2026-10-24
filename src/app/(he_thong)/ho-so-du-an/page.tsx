@@ -36,7 +36,7 @@ import ModalXuatExcelDuAn, { type CheDoXuat } from '../../../thanh_phan/ho_so_du
 import { cn } from '../../../thu_vien/utils/cn';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
 import { useStoreXacThuc } from '../../../thu_vien/zustand/store_xac_thuc';
-import { duocXemHoSoDuAn, coQuyen } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { duocXemHoSoDuAn, duocXemKhachHang, coQuyen } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import type {
   GiaiDoanDuAn,
   HoSoDuAn,
@@ -187,6 +187,9 @@ function TrangHoSoDuAn() {
   const [danhSach, setDanhSach] = useState<HoSoDuAn[]>([]);
   const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>([]);
   const [dsKhachHang, setDsKhachHang] = useState<KhachHang[]>([]);
+
+
+
   const [dsTienDo, setDsTienDo] = useState<TienDoDuAn[]>([]);
   const [dieukien, setDieukien] = useState<DieuKienLocHoSoDuAn>(BO_LOC_MAC_DINH);
   const [moDrawer, setMoDrawer] = useState(false);
@@ -209,6 +212,15 @@ function TrangHoSoDuAn() {
   const [cheDoXuatMacDinh, setCheDoXuatMacDinh] = useState<CheDoXuat | undefined>(undefined);
 
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
+  const dsKhachHangHieuLuc = useMemo(() => {
+    const vaiTroKey = String(nguoiDungHienTai?.vai_tro || '');
+    const laQuanLy =
+      vaiTroKey === 'quan_tri_he_thong' ||
+      vaiTroKey === 'giam_doc' ||
+      vaiTroKey === 'truong_phong';
+    if (laQuanLy) return dsKhachHang;
+    return dsKhachHang.filter((kh) => duocXemKhachHang(nguoiDungHienTai, kh));
+  }, [dsKhachHang, nguoiDungHienTai]);
   const coQuyenXoa = coQuyen(nguoiDungHienTai, 'du_an.xoa');
   const coQuyenKhoiPhuc = coQuyen(nguoiDungHienTai, 'du_an.khoi_phuc');
   const laBackOffice = ['hanh_chinh_van_phong'].includes(
@@ -572,7 +584,7 @@ function TrangHoSoDuAn() {
       <BoLocHoSoDuAn
         gia_tri_hien_tai={dieukien}
         khi_thay_doi={setDieukien}
-        ds_khach_hang={dsKhachHang}
+        ds_khach_hang={dsKhachHangHieuLuc}
         ds_nhan_su={dsNhanSu}
         kieu_sap_xep={kieuSapXep}
         khi_doi_sap_xep={setKieuSapXep}
@@ -983,7 +995,7 @@ function TrangHoSoDuAn() {
         tatCaDuAn={danhSach}
         duAnTheoBoLoc={danhSachDaSapXep}
         duAnDaChon={duAnDaChonList}
-        dsKhachHang={dsKhachHang}
+        dsKhachHang={dsKhachHangHieuLuc}
         dsNhanSu={dsNhanSu}
         dsTienDo={dsTienDo}
         tenGiaiDoan={tenGiaiDoan}
