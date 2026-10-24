@@ -93,10 +93,12 @@ const SCHEMA_HO_SO_DU_AN = z
     }),
     gia_tri_du_kien: z.coerce.number().min(0, 'Giá trị không được âm').optional(),
     gia_tri_hop_dong: z.coerce.number().min(0, 'Giá trị không được âm').optional(),
+    tien_ve_thuc_te: z.coerce.number().min(0, 'Số tiền không được âm').optional(),
     nguoi_quan_ly_id: z.string().trim().nullable().optional(),
     nguoi_phu_trach_id: z.string().trim().nullable().optional(),
     danh_sach_nguoi_ho_tro_ids: z.string().array().default([]),
     san_pham_khac_mo_ta: z.string().max(500, 'Tên sản phẩm quá dài').trim().nullable().optional(),
+    kenh_ban_hang: z.string().max(100, 'Kênh bán hàng quá dài').trim().nullable().optional(),
     ngay_tao_ho_so: z.string().max(30, 'Ngày tiếp cận không hợp lệ').nullable().optional(),
     thoi_han_hoan_thanh: z.string().max(30, 'Thời hạn không hợp lệ').nullable().optional(),
     mo_ta: z.string().max(2000, 'Mô tả quá dài (tối đa 2000 ký tự)').trim().nullable().optional(),
@@ -136,10 +138,12 @@ const GIA_TRI_MAC_DINH: GiaTriForm = {
   muc_do_tiem_nang: 'trung_binh',
   gia_tri_du_kien: 0,
   gia_tri_hop_dong: 0,
+  tien_ve_thuc_te: 0,
   nguoi_quan_ly_id: null,
   nguoi_phu_trach_id: null,
   danh_sach_nguoi_ho_tro_ids: [],
   san_pham_khac_mo_ta: null,
+  kenh_ban_hang: 'Tự khai thác',
   ngay_tao_ho_so: layNgayHienTaiVN(),
   thoi_han_hoan_thanh: null,
   mo_ta: null,
@@ -284,13 +288,15 @@ export default function FormHoSoDuAnDrawer({
         muc_do_tiem_nang: (dang_sua.muc_do_tiem_nang as MucDoTiemNangKyHopDong) ?? 'trung_binh',
         gia_tri_du_kien: dang_sua.gia_tri_du_kien ?? 0,
         gia_tri_hop_dong: dang_sua.gia_tri_hop_dong ?? 0,
+        tien_ve_thuc_te: dang_sua.tien_ve_thuc_te ?? 0,
         nguoi_quan_ly_id: dang_sua.nguoi_quan_ly_id ?? null,
         nguoi_phu_trach_id: dang_sua.nguoi_phu_trach_id ?? null,
         danh_sach_nguoi_ho_tro_ids: Array.isArray(dang_sua.danh_sach_nguoi_ho_tro_ids)
           ? dang_sua.danh_sach_nguoi_ho_tro_ids
           : [],
         san_pham_khac_mo_ta: dang_sua.san_pham_khac_mo_ta ?? null,
-        ngay_tao_ho_so: dang_sua.ngay_tao_ho_so ?? layNgayHienTaiVN(),
+        kenh_ban_hang: dang_sua.kenh_ban_hang ?? 'Tự khai thác',
+        ngay_tao_ho_so: dang_sua.ngay_tao_ho_so?.slice(0, 10) ?? dang_sua.ngay_tao?.slice(0, 10) ?? layNgayHienTaiVN(),
         thoi_han_hoan_thanh: dang_sua.thoi_han_hoan_thanh ?? null,
         mo_ta: dang_sua.mo_ta ?? null,
         ghi_chu: dang_sua.ghi_chu ?? null,
@@ -312,7 +318,8 @@ export default function FormHoSoDuAnDrawer({
 
   const watchDK = Number(watch('gia_tri_du_kien') ?? 0);
   const watchHD = Number(watch('gia_tri_hop_dong') ?? 0);
-  const coSoTien = watchDK > 0 || watchHD > 0;
+  const watchTV = Number(watch('tien_ve_thuc_te') ?? 0);
+  const coSoTien = watchDK > 0 || watchHD > 0 || watchTV > 0;
 
   const dsPhongBanFiltered = useMemo(() => {
     if (!chiNhanhDangChon) return dsPhongBan;
@@ -387,6 +394,7 @@ export default function FormHoSoDuAnDrawer({
       phong_ban_id: (values.phong_ban_id ?? null) || null,
       san_pham_dich_vu_id: null,
       san_pham_khac_mo_ta: (values.san_pham_khac_mo_ta ?? null) || null,
+      kenh_ban_hang: (values.kenh_ban_hang ?? null) || null,
       nguoi_quan_ly_id: (values.nguoi_quan_ly_id ?? null) || null,
       nguoi_phu_trach_id: (values.nguoi_phu_trach_id ?? null) || null,
       danh_sach_nguoi_ho_tro_ids: dsHoTroSach,
@@ -399,6 +407,7 @@ export default function FormHoSoDuAnDrawer({
           : layNgayHienTaiVN(),
       gia_tri_du_kien: Number(values.gia_tri_du_kien) || 0,
       gia_tri_hop_dong: Number(values.gia_tri_hop_dong) || 0,
+      tien_ve_thuc_te: Number(values.tien_ve_thuc_te) || 0,
       trang_thai: 'hoat_dong' as const
     };
 
@@ -704,7 +713,7 @@ export default function FormHoSoDuAnDrawer({
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 pt-1 border-t border-slate-100">
+                <div className="grid gap-4 md:grid-cols-3 pt-1 border-t border-slate-100">
                   <div className="space-y-1.5">
                     <Nhan htmlFor="f-hda-cn">Chi nhánh phụ trách</Nhan>
                     <Controller
@@ -773,6 +782,31 @@ export default function FormHoSoDuAnDrawer({
                               ))}
                             </>
                           )}
+                        </Chon>
+                      )}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Nhan htmlFor="f-hda-kenh">Kênh bán hàng</Nhan>
+                    <Controller
+                      name="kenh_ban_hang"
+                      control={control}
+                      render={({ field }) => (
+                        <Chon
+                          {...field}
+                          id="f-hda-kenh"
+                          value={field.value ?? 'Tự khai thác'}
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                            field.onChange(e.target.value ? e.target.value : null);
+                          }}
+                        >
+                          <option value="Tự khai thác">Tự khai thác</option>
+                          <option value="Giới thiệu">Giới thiệu</option>
+                          <option value="Hotline">Hotline</option>
+                          <option value="Fanpage">Fanpage</option>
+                          <option value="Youtube">Youtube</option>
+                          <option value="Tiktok">Tiktok</option>
+                          <option value="Khác">Khác</option>
                         </Chon>
                       )}
                     />
@@ -1051,7 +1085,7 @@ export default function FormHoSoDuAnDrawer({
             </div>
 
             <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-1.5">
                   <Nhan htmlFor="f-hda-dk">Giá trị dự kiến (VND)</Nhan>
                   <Controller
@@ -1086,10 +1120,27 @@ export default function FormHoSoDuAnDrawer({
                     )}
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Nhan htmlFor="f-hda-tv">Tiền về thực tế (VND)</Nhan>
+                  <Controller
+                    control={control}
+                    name="tien_ve_thuc_te"
+                    render={({ field }) => (
+                      <O_NhapTien
+                        id="f-hda-tv"
+                        value={field.value}
+                        onChange={(val) => field.onChange(val)}
+                        icon_phai={DollarSign}
+                        phan_hoi={errors.tien_ve_thuc_te?.message ?? null}
+                        disabled={laBackOffice}
+                      />
+                    )}
+                  />
+                </div>
               </div>
 
               {coSoTien && !laBackOffice ? (
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
                     <div className="text-[10.5px] uppercase font-bold text-emerald-800 tracking-wider mb-0.5">
                       Dự kiến: {DINH_DANG_SO_TIEN(watchDK)} ₫
@@ -1106,12 +1157,20 @@ export default function FormHoSoDuAnDrawer({
                       {DOC_TIEN_RUT_GON(watchHD) || 'Chưa ký hợp đồng chính thức'}
                     </div>
                   </div>
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+                    <div className="text-[10.5px] uppercase font-bold text-blue-800 tracking-wider mb-0.5">
+                      Tiền về: {DINH_DANG_SO_TIEN(watchTV)} ₫
+                    </div>
+                    <div className="text-xs font-semibold text-blue-950">
+                      {DOC_TIEN_RUT_GON(watchTV) || 'Chưa thu tiền'}
+                    </div>
+                  </div>
                 </div>
               ) : null}
 
               <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-slate-100">
                 <div className="space-y-1.5">
-                  <Nhan htmlFor="f-hda-ngay">Ngày tiếp cận dự án</Nhan>
+                  <Nhan htmlFor="f-hda-ngay">Ngày bắt đầu dự kiến (Tiếp cận)</Nhan>
                   <O
                     {...register('ngay_tao_ho_so')}
                     id="f-hda-ngay"

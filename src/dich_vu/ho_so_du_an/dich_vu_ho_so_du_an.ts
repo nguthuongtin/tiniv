@@ -71,7 +71,9 @@ const chuyenDoiDocThanhDoiTuong = (
       : [],
     san_pham_dich_vu_id: (r.san_pham_dich_vu_id as string | null) ?? null,
     san_pham_khac_mo_ta: (r.san_pham_khac_mo_ta as string | null) ?? null,
-    ngay_tao_ho_so: (r.ngay_tao_ho_so as string) ?? today.split('T')[0],
+    kenh_ban_hang: (r.kenh_ban_hang as string | null) ?? null,
+    tien_ve_thuc_te: r.tien_ve_thuc_te !== undefined && r.tien_ve_thuc_te !== null ? Number(r.tien_ve_thuc_te) : 0,
+    ngay_tao_ho_so: (r.ngay_tao_ho_so as string) || (r.ngay_tao ? (r.ngay_tao as string).split('T')[0] : today.split('T')[0]),
     thoi_han_hoan_thanh: (r.thoi_han_hoan_thanh as string | null) ?? null,
     mo_ta: (r.mo_ta as string | null) ?? null,
     ghi_chu: (r.ghi_chu as string | null) ?? null,
@@ -237,6 +239,8 @@ export interface TaoMoiHoSoDuAnDTO {
   danh_sach_nguoi_ho_tro_ids?: string[];
   san_pham_dich_vu_id?: string | null;
   san_pham_khac_mo_ta?: string | null;
+  kenh_ban_hang?: string | null;
+  tien_ve_thuc_te?: number;
   ngay_tao_ho_so?: string | null;
   thoi_han_hoan_thanh?: string | null;
   mo_ta?: string | null;
@@ -276,6 +280,8 @@ export const taoHoSoDuAnMoi = async (
       : [],
     san_pham_dich_vu_id: dto.san_pham_dich_vu_id ?? null,
     san_pham_khac_mo_ta: dto.san_pham_khac_mo_ta?.trim() || null,
+    kenh_ban_hang: dto.kenh_ban_hang?.trim() || null,
+    tien_ve_thuc_te: Number(dto.tien_ve_thuc_te) || 0,
     ngay_tao_ho_so: dto.ngay_tao_ho_so ?? now.split('T')[0],
     thoi_han_hoan_thanh: dto.thoi_han_hoan_thanh ?? null,
     mo_ta: dto.mo_ta?.trim() || null,
@@ -326,7 +332,7 @@ export const capNhatHoSoDuAn = async (
     if (!Object.prototype.hasOwnProperty.call(dto, k)) return;
     const giaTriRaw = (dto as unknown as Record<string, unknown>)[k];
     if (giaTriRaw === undefined) return;
-    if (k === 'gia_tri_du_kien' || k === 'gia_tri_hop_dong') {
+    if (k === 'gia_tri_du_kien' || k === 'gia_tri_hop_dong' || k === 'tien_ve_thuc_te') {
       (patchRaw as unknown as Record<string, unknown>)[k] = Number(giaTriRaw) || 0;
     } else if (k === 'danh_sach_nguoi_ho_tro_ids') {
       (patchRaw as unknown as Record<string, unknown>)[k] = Array.isArray(giaTriRaw)

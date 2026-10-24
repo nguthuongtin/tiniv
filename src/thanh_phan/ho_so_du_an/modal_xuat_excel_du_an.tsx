@@ -13,7 +13,7 @@ import {
 import type { HoSoDuAn, TienDoDuAn } from '../../thu_vien/types/du_an';
 import type { KhachHang } from '../../thu_vien/types/khach_hang';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
-import { xuatExcelTienDoDuAn } from '../../dich_vu/ho_so_du_an/dich_vu_xuat_excel_tien_do';
+import { xuatExcelBaoCaoDuAn } from '../../dich_vu/ho_so_du_an/dich_vu_xuat_excel_du_an';
 
 export type CheDoXuat = 'tat_ca' | 'bo_loc' | 'da_chon';
 
@@ -75,17 +75,13 @@ export default function ModalXuatExcelDuAn({
     if (danhSachCanXuat.length === 0) return;
     setDangXuat(true);
     try {
-      let tenTep = 'Tien_Do_Du_An';
       const dateStr = new Date().toISOString().slice(0, 10);
+      let tenTep = `Bao_Cao_Tuan_Thang_Du_An_${dateStr}.xlsx`;
       if (cheDo === 'da_chon') {
-        tenTep = `Tien_Do_${danhSachCanXuat.length}_Du_An_Chon_${dateStr}.xlsx`;
-      } else if (cheDo === 'bo_loc') {
-        tenTep = `Tien_Do_Du_An_Bo_Loc_${dateStr}.xlsx`;
-      } else {
-        tenTep = `Tien_Do_Tat_Ca_Du_An_${dateStr}.xlsx`;
+        tenTep = `Bao_Cao_Tuan_Thang_${danhSachCanXuat.length}_Du_An_${dateStr}.xlsx`;
       }
 
-      await xuatExcelTienDoDuAn({
+      await xuatExcelBaoCaoDuAn({
         danhSachDuAn: danhSachCanXuat,
         dsKhachHang,
         dsNhanSu,
@@ -116,10 +112,10 @@ export default function ModalXuatExcelDuAn({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">
-                Xuất file Excel Tiến độ dự án
+                Xuất file Excel Báo cáo tuần - tháng
               </h3>
               <p className="text-xs text-slate-500">
-                Định dạng chuẩn theo biểu mẫu theo dõi tiến độ
+                Định dạng chuẩn theo biểu mẫu Báo cáo tuần - tháng (15 cột)
               </p>
             </div>
           </div>

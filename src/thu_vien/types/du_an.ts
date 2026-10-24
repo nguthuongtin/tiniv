@@ -21,6 +21,8 @@ export interface HoSoDuAn {
   danh_sach_nguoi_ho_tro_ids: string[];
   san_pham_dich_vu_id: string | null;
   san_pham_khac_mo_ta: string | null;
+  kenh_ban_hang?: string | null;
+  tien_ve_thuc_te?: number | null;
   ngay_tao_ho_so: string;
   thoi_han_hoan_thanh: string | null;
   mo_ta: string | null;
