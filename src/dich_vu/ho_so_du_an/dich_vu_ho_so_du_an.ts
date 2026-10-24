@@ -257,7 +257,16 @@ export const taoHoSoDuAnMoi = async (
   nguoiThucHien: NguoiThucHienDTO | null | undefined
 ): Promise<HoSoDuAn> => {
   if (!dto.ten_du_an || !dto.ten_du_an.trim()) {
-    throw new Error('Ten du an khong duoc de trong.');
+    throw new Error('Tên dự án không được để trống.');
+  }
+  if (!dto.khach_hang_id || !dto.khach_hang_id.trim()) {
+    throw new Error('Vui lòng chọn khách hàng.');
+  }
+  if (!dto.gia_tri_du_kien || Number(dto.gia_tri_du_kien) <= 0) {
+    throw new Error('Giá trị dự kiến phải lớn hơn 0.');
+  }
+  if (!dto.san_pham_khac_mo_ta || !dto.san_pham_khac_mo_ta.trim()) {
+    throw new Error('Vui lòng nhập hoặc chọn sản phẩm / dịch vụ.');
   }
   const now = new Date().toISOString();
   const idNguoiThucHien = nguoiThucHien?.id ?? null;

@@ -24,9 +24,13 @@ import {
   ShieldAlert,
   Loader2,
   Briefcase,
-  Lightbulb
+  Lightbulb,
+  Check,
+  ChevronDown,
+  X
 } from 'lucide-react';
 import { ModalHuongDanDatTen } from '../chung/modal_huong_dan_dat_ten';
+import { GIAI_PHAP_DU_AN_PHO_BIEN, sinhTenDuAnGoiY } from '../../thu_vien/quy_chuan_dat_ten';
 import type {
   CapNhatHoSoDuAnDTO,
   TaoMoiHoSoDuAnDTO
@@ -83,7 +87,10 @@ const SCHEMA_HO_SO_DU_AN = z
       .trim()
       .min(2, 'Tên dự án ít nhất 2 ký tự')
       .max(250, 'Tên dự án dài nhất 250 ký tự'),
-    khach_hang_id: z.string().trim().nullable().optional(),
+    khach_hang_id: z
+      .string({ required_error: 'Vui lòng chọn khách hàng' })
+      .trim()
+      .min(1, 'Vui lòng chọn khách hàng'),
     nguoi_lien_he_id: z.string().trim().nullable().optional(),
     chi_nhanh_id: z.string().trim().nullable().optional(),
     phong_ban_id: z.string().trim().nullable().optional(),
@@ -91,13 +98,19 @@ const SCHEMA_HO_SO_DU_AN = z
     muc_do_tiem_nang: z.enum(['rat_cao', 'cao', 'trung_binh', 'thap', 'rat_thap'], {
       required_error: 'Chọn mức tiềm năng'
     }),
-    gia_tri_du_kien: z.coerce.number().min(0, 'Giá trị không được âm').optional(),
+    gia_tri_du_kien: z.coerce
+      .number({ required_error: 'Vui lòng nhập giá trị dự kiến' })
+      .gt(0, 'Giá trị dự kiến phải lớn hơn 0'),
     gia_tri_hop_dong: z.coerce.number().min(0, 'Giá trị không được âm').optional(),
     tien_ve_thuc_te: z.coerce.number().min(0, 'Số tiền không được âm').optional(),
     nguoi_quan_ly_id: z.string().trim().nullable().optional(),
     nguoi_phu_trach_id: z.string().trim().nullable().optional(),
     danh_sach_nguoi_ho_tro_ids: z.string().array().default([]),
-    san_pham_khac_mo_ta: z.string().max(500, 'Tên sản phẩm quá dài').trim().nullable().optional(),
+    san_pham_khac_mo_ta: z
+      .string({ required_error: 'Vui lòng nhập hoặc chọn sản phẩm / dịch vụ' })
+      .trim()
+      .min(1, 'Vui lòng nhập hoặc chọn sản phẩm / dịch vụ')
+      .max(500, 'Tên sản phẩm quá dài'),
     kenh_ban_hang: z.string().max(100, 'Kênh bán hàng quá dài').trim().nullable().optional(),
     ngay_tao_ho_so: z.string().max(30, 'Ngày tiếp cận không hợp lệ').nullable().optional(),
     thoi_han_hoan_thanh: z.string().max(30, 'Thời hạn không hợp lệ').nullable().optional(),
@@ -130,7 +143,7 @@ const layNgayHienTaiVN = (): string => {
 const GIA_TRI_MAC_DINH: GiaTriForm = {
   ma_ho_so: null,
   ten_du_an: '',
-  khach_hang_id: null,
+  khach_hang_id: '',
   nguoi_lien_he_id: null,
   chi_nhanh_id: null,
   phong_ban_id: null,
@@ -142,7 +155,7 @@ const GIA_TRI_MAC_DINH: GiaTriForm = {
   nguoi_quan_ly_id: null,
   nguoi_phu_trach_id: null,
   danh_sach_nguoi_ho_tro_ids: [],
-  san_pham_khac_mo_ta: null,
+  san_pham_khac_mo_ta: '',
   kenh_ban_hang: 'Tự khai thác',
   ngay_tao_ho_so: layNgayHienTaiVN(),
   thoi_han_hoan_thanh: null,
@@ -159,11 +172,16 @@ const CAC_MUC_FORM = [
   { id: 'sec-mo-ta-ghi-chu', label: '5. Mô tả & Ghi chú' }
 ];
 
+export type GiaTriMacDinhHoSoDuAn = Partial<Omit<GiaTriForm, 'khach_hang_id' | 'san_pham_khac_mo_ta'>> & {
+  khach_hang_id?: string | null;
+  san_pham_khac_mo_ta?: string | null;
+};
+
 interface FormHoSoDuAnDrawerProps {
   mo: boolean;
   khi_dong: () => void;
   dang_sua: HoSoDuAn | null;
-  giaTriMacDinh?: Partial<GiaTriForm> | null;
+  giaTriMacDinh?: GiaTriMacDinhHoSoDuAn | null;
   khi_luu: (dto: TaoMoiHoSoDuAnDTO | CapNhatHoSoDuAnDTO) => Promise<void> | void;
   dang_xu_ly?: boolean;
   loi_thong_bao?: string | null;
@@ -196,6 +214,7 @@ export default function FormHoSoDuAnDrawer({
     watch,
     control,
     setValue,
+    getValues,
     formState: { errors, isDirty, isSubmitting }
   } = useForm<GiaTriForm>({
     resolver: zodResolver(SCHEMA_HO_SO_DU_AN),
@@ -210,12 +229,32 @@ export default function FormHoSoDuAnDrawer({
   const rawHoTro = watch('danh_sach_nguoi_ho_tro_ids');
   const dsHoTroDangChon = useMemo(() => (Array.isArray(rawHoTro) ? rawHoTro : []), [rawHoTro]);
   const [moModalQuyChuan, setMoModalQuyChuan] = useState(false);
+  const [tuKhoaKH, setTuKhoaKH] = useState('');
+  const [moDropdownKH, setMoDropdownKH] = useState(false);
+
+  const khachHangDangChonObj = useMemo(() => {
+    if (!khachHangDangChon) return null;
+    return dsKH.find((x) => x.id === khachHangDangChon) || null;
+  }, [dsKH, khachHangDangChon]);
 
   const tenKhachHangDangChon = useMemo(() => {
-    if (!khachHangDangChon) return null;
-    const kh = dsKH.find((x) => x.id === khachHangDangChon);
-    return kh?.ten_khach_hang || null;
-  }, [dsKH, khachHangDangChon]);
+    return khachHangDangChonObj?.ten_khach_hang || null;
+  }, [khachHangDangChonObj]);
+
+  const dsKHLoc = useMemo(() => {
+    if (!tuKhoaKH.trim()) return dsKH.slice(0, 50);
+    const kw = tuKhoaKH.toLowerCase().trim();
+    return dsKH
+      .filter(
+        (k) =>
+          k.ten_khach_hang.toLowerCase().includes(kw) ||
+          (k.ma_so_thue && k.ma_so_thue.toLowerCase().includes(kw)) ||
+          (k.xa_phuong && k.xa_phuong.toLowerCase().includes(kw)) ||
+          (k.tinh_thanh && k.tinh_thanh.toLowerCase().includes(kw)) ||
+          (k.dia_chi && k.dia_chi.toLowerCase().includes(kw))
+      )
+      .slice(0, 50);
+  }, [dsKH, tuKhoaKH]);
 
   // Load danh mục nền tảng khi mở form (bỏ sản phẩm/dịch vụ để tối ưu tốc độ)
   useEffect(() => {
@@ -280,7 +319,7 @@ export default function FormHoSoDuAnDrawer({
       reset({
         ma_ho_so: dang_sua.ma_ho_so || null,
         ten_du_an: dang_sua.ten_du_an,
-        khach_hang_id: dang_sua.khach_hang_id ?? null,
+        khach_hang_id: dang_sua.khach_hang_id ?? '',
         nguoi_lien_he_id: dang_sua.nguoi_lien_he_id ?? null,
         chi_nhanh_id: dang_sua.chi_nhanh_id ?? null,
         phong_ban_id: dang_sua.phong_ban_id ?? null,
@@ -294,7 +333,7 @@ export default function FormHoSoDuAnDrawer({
         danh_sach_nguoi_ho_tro_ids: Array.isArray(dang_sua.danh_sach_nguoi_ho_tro_ids)
           ? dang_sua.danh_sach_nguoi_ho_tro_ids
           : [],
-        san_pham_khac_mo_ta: dang_sua.san_pham_khac_mo_ta ?? null,
+        san_pham_khac_mo_ta: dang_sua.san_pham_khac_mo_ta ?? '',
         kenh_ban_hang: dang_sua.kenh_ban_hang ?? 'Tự khai thác',
         ngay_tao_ho_so: dang_sua.ngay_tao_ho_so?.slice(0, 10) ?? dang_sua.ngay_tao?.slice(0, 10) ?? layNgayHienTaiVN(),
         thoi_han_hoan_thanh: dang_sua.thoi_han_hoan_thanh ?? null,
@@ -303,14 +342,23 @@ export default function FormHoSoDuAnDrawer({
         trang_thai: dang_sua.trang_thai ?? 'hoat_dong'
       });
     } else {
+      const macDinh = giaTriMacDinh
+        ? {
+            ...giaTriMacDinh,
+            khach_hang_id: giaTriMacDinh.khach_hang_id || '',
+            san_pham_khac_mo_ta: giaTriMacDinh.san_pham_khac_mo_ta || ''
+          }
+        : {};
       reset({
         ...GIA_TRI_MAC_DINH,
         chi_nhanh_id: nguoiDungHienTai?.chi_nhanh_id ?? null,
         phong_ban_id: nguoiDungHienTai?.phong_ban_id ?? null,
-        ...(giaTriMacDinh || {})
+        ...macDinh
       });
     }
     setTuKhoaNS('');
+    setTuKhoaKH('');
+    setMoDropdownKH(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mo, dang_sua?.id]);
 
@@ -611,14 +659,45 @@ export default function FormHoSoDuAnDrawer({
               </div>
 
               <div className="space-y-1.5 pt-1">
-                <Nhan htmlFor="f-hda-sp">Sản phẩm / Dịch vụ</Nhan>
+                <Nhan htmlFor="f-hda-sp" bat_buoc>Sản phẩm / Dịch vụ</Nhan>
                 <O
                   {...register('san_pham_khac_mo_ta')}
                   id="f-hda-sp"
                   type="text"
+                  placeholder="Nhập hoặc bấm chọn nhanh gợi ý bên dưới..."
                   className="focus:border-emerald-600 focus:ring-emerald-500/20"
                   phan_hoi={errors.san_pham_khac_mo_ta?.message ?? null}
                 />
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {GIAI_PHAP_DU_AN_PHO_BIEN.map((sp) => {
+                    const dangChon = watch('san_pham_khac_mo_ta') === sp;
+                    return (
+                      <button
+                        key={sp}
+                        type="button"
+                        onClick={() => {
+                          setValue('san_pham_khac_mo_ta', sp, { shouldValidate: true, shouldDirty: true });
+                          const tenHienTai = getValues('ten_du_an');
+                          if (!tenHienTai || tenHienTai.includes('[TÊN XÃ]') || tenHienTai.includes('[GIẢI PHÁP]')) {
+                            const tenMoi = sinhTenDuAnGoiY(sp, khachHangDangChonObj?.ten_khach_hang, {
+                              xa_phuong: khachHangDangChonObj?.xa_phuong,
+                              tinh_thanh: khachHangDangChonObj?.tinh_thanh
+                            });
+                            setValue('ten_du_an', tenMoi, { shouldValidate: true, shouldDirty: true });
+                          }
+                        }}
+                        className={cn(
+                          'px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer',
+                          dangChon
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-2xs'
+                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        )}
+                      >
+                        {sp}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </section>
@@ -635,41 +714,168 @@ export default function FormHoSoDuAnDrawer({
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Nhan htmlFor="f-hda-kh">Khách hàng (Doanh nghiệp/Đối tác)</Nhan>
+                    <Nhan htmlFor="f-hda-kh" bat_buoc>Khách hàng (Doanh nghiệp/Đối tác)</Nhan>
                     <Controller
                       name="khach_hang_id"
                       control={control}
                       render={({ field }) => {
+                        const khChon = dsKH.find((k) => k.id === field.value);
                         return (
-                          <div className="relative group">
-                            <input
-                              type="text"
-                              placeholder="Nhập tên hoặc MST để tìm..."
-                              className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/60 transition"
-                              defaultValue={dsKH.find(k => k.id === field.value)?.ten_khach_hang ?? ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                const matched = dsKH.find(k => k.ten_khach_hang === val);
-                                if (matched) {
-                                  field.onChange(matched.id);
-                                } else {
-                                  field.onChange(null);
-                                }
-                              }}
-                              list="ds-kh-goi-y"
-                              autoComplete="off"
-                            />
-                            <datalist id="ds-kh-goi-y">
-                              {dsKH.map((kh) => (
-                                <option key={kh.id} value={kh.ten_khach_hang}>
-                                  {kh.ma_so_thue ? `MST: ${kh.ma_so_thue}` : ''}
-                                </option>
-                              ))}
-                            </datalist>
-                            <input type="hidden" value={field.value ?? ''} />
-                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                              <Search className="size-4 text-muted-foreground" />
-                            </div>
+                          <div className="relative">
+                            {khChon && !moDropdownKH ? (
+                              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-2.5 flex items-center justify-between gap-2.5">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <div className="size-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                    <Building2 className="size-4" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-xs font-bold text-slate-900 truncate">
+                                      {khChon.ten_khach_hang}
+                                    </div>
+                                    <div className="text-[10.5px] text-slate-500 truncate flex items-center gap-2">
+                                      {khChon.ma_so_thue && <span>MST: {khChon.ma_so_thue}</span>}
+                                      {(khChon.xa_phuong || khChon.tinh_thanh) && (
+                                        <span>
+                                          {[khChon.xa_phuong, khChon.tinh_thanh].filter(Boolean).join(' - ')}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setMoDropdownKH(true);
+                                      setTuKhoaKH('');
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-[11px] font-semibold transition cursor-pointer"
+                                  >
+                                    Đổi
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      field.onChange('');
+                                      setMoDropdownKH(false);
+                                      setTuKhoaKH('');
+                                    }}
+                                    className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                    title="Bỏ chọn"
+                                  >
+                                    <X className="size-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <div className="relative">
+                                  <Search className="size-3.5 absolute left-3 top-3 text-slate-400 pointer-events-none" />
+                                  <input
+                                    type="text"
+                                    value={tuKhoaKH}
+                                    onChange={(e) => {
+                                      setTuKhoaKH(e.target.value);
+                                      setMoDropdownKH(true);
+                                    }}
+                                    onFocus={() => setMoDropdownKH(true)}
+                                    placeholder="Gõ tên khách hàng, MST hoặc địa bàn..."
+                                    className={cn(
+                                      "w-full h-10 rounded-[var(--radius-input)] border bg-background pl-8.5 pr-8 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition",
+                                      errors.khach_hang_id ? "border-rose-400 ring-rose-200" : "border-border"
+                                    )}
+                                    autoComplete="off"
+                                  />
+                                  {tuKhoaKH ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setTuKhoaKH('');
+                                        setMoDropdownKH(true);
+                                      }}
+                                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                    >
+                                      <X className="size-3.5" />
+                                    </button>
+                                  ) : (
+                                    <ChevronDown className="size-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                  )}
+                                </div>
+
+                                {moDropdownKH && (
+                                  <>
+                                    <div
+                                      className="fixed inset-0 z-30"
+                                      onClick={() => setMoDropdownKH(false)}
+                                    />
+                                    <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl divide-y divide-slate-100 p-1">
+                                      {dsKHLoc.length === 0 ? (
+                                        <div className="p-3 text-center text-xs text-slate-500 italic">
+                                          Không tìm thấy khách hàng khớp từ khóa.
+                                        </div>
+                                      ) : (
+                                        dsKHLoc.map((kh) => {
+                                          const dangChon = kh.id === field.value;
+                                          return (
+                                            <div
+                                              key={kh.id}
+                                              onClick={() => {
+                                                field.onChange(kh.id);
+                                                setMoDropdownKH(false);
+                                                setTuKhoaKH('');
+                                                const spHienTai = getValues('san_pham_khac_mo_ta');
+                                                const tenHienTai = getValues('ten_du_an');
+                                                if (
+                                                  spHienTai &&
+                                                  (!tenHienTai ||
+                                                    tenHienTai.includes('[TÊN XÃ]') ||
+                                                    tenHienTai.includes('[GIẢI PHÁP]'))
+                                                ) {
+                                                  const tenMoi = sinhTenDuAnGoiY(spHienTai, kh.ten_khach_hang, {
+                                                    xa_phuong: kh.xa_phuong,
+                                                    tinh_thanh: kh.tinh_thanh
+                                                  });
+                                                  setValue('ten_du_an', tenMoi, {
+                                                    shouldValidate: true,
+                                                    shouldDirty: true
+                                                  });
+                                                }
+                                              }}
+                                              className={cn(
+                                                "p-2.5 rounded-lg hover:bg-slate-50 cursor-pointer transition text-xs flex items-center justify-between gap-2",
+                                                dangChon && "bg-emerald-50/70"
+                                              )}
+                                            >
+                                              <div className="min-w-0 flex-1">
+                                                <div className="font-semibold text-slate-900 truncate">
+                                                  {kh.ten_khach_hang}
+                                                </div>
+                                                <div className="text-[10.5px] text-slate-500 truncate flex items-center gap-2 mt-0.5">
+                                                  {kh.ma_so_thue && <span>MST: {kh.ma_so_thue}</span>}
+                                                  {(kh.xa_phuong || kh.tinh_thanh) && (
+                                                    <span>
+                                                      {[kh.xa_phuong, kh.tinh_thanh].filter(Boolean).join(' - ')}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              {dangChon && (
+                                                <Check className="size-4 text-emerald-600 shrink-0" />
+                                              )}
+                                            </div>
+                                          );
+                                        })
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                            {errors.khach_hang_id && (
+                              <p className="text-[11px] font-semibold text-rose-500 mt-1">
+                                {errors.khach_hang_id.message}
+                              </p>
+                            )}
                           </div>
                         );
                       }}
@@ -1087,7 +1293,7 @@ export default function FormHoSoDuAnDrawer({
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-1.5">
-                  <Nhan htmlFor="f-hda-dk">Giá trị dự kiến (VND)</Nhan>
+                  <Nhan htmlFor="f-hda-dk" bat_buoc>Giá trị dự kiến (VND)</Nhan>
                   <Controller
                     control={control}
                     name="gia_tri_du_kien"
@@ -1234,6 +1440,14 @@ export default function FormHoSoDuAnDrawer({
         onDong={() => setMoModalQuyChuan(false)}
         loaiMacDinh="du_an"
         tenKhachHangHienTai={tenKhachHangDangChon}
+        diaBanHienTai={
+          khachHangDangChonObj
+            ? {
+                xa_phuong: khachHangDangChonObj.xa_phuong,
+                tinh_thanh: khachHangDangChonObj.tinh_thanh
+              }
+            : null
+        }
         onChonMau={(mau) => {
           setValue('ten_du_an', mau.toUpperCase(), { shouldValidate: true, shouldDirty: true });
         }}

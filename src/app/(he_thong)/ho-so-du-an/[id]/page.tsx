@@ -48,7 +48,8 @@ import {
   Check,
   MessageSquareQuote,
   Shield,
-  Lightbulb
+  Lightbulb,
+  ChevronDown
 } from 'lucide-react';
 import { notFound, useRouter, useParams } from 'next/navigation';
 import type { HoSoDuAn, TienDoDuAn, GiaiDoanDuAn } from '../../../../thu_vien/types/du_an';
@@ -425,6 +426,23 @@ export default function TrangChiTietHoSoDuAn() {
     mo_ta: '',
     ghi_chu: ''
   });
+
+  const [tuKhoaSuaKH, setTuKhoaSuaKH] = useState('');
+  const [moDropdownSuaKH, setMoDropdownSuaKH] = useState(false);
+
+  const dsKHLocSua = useMemo(() => {
+    if (!tuKhoaSuaKH.trim()) return dsKH.slice(0, 50);
+    const kw = tuKhoaSuaKH.toLowerCase().trim();
+    return dsKH
+      .filter(
+        (k) =>
+          k.ten_khach_hang.toLowerCase().includes(kw) ||
+          (k.ma_so_thue && k.ma_so_thue.toLowerCase().includes(kw)) ||
+          (k.xa_phuong && k.xa_phuong.toLowerCase().includes(kw)) ||
+          (k.tinh_thanh && k.tinh_thanh.toLowerCase().includes(kw))
+      )
+      .slice(0, 50);
+  }, [dsKH, tuKhoaSuaKH]);
 
   const batDauChinhSua = () => {
     if (!hda) return;
@@ -1468,18 +1486,135 @@ export default function TrangChiTietHoSoDuAn() {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs font-semibold text-foreground mb-1 block">Khách hàng</label>
-                  <select
-                    value={formSuaDA.khach_hang_id}
-                    onChange={(e) => setFormSuaDA((f: any) => ({ ...f, khach_hang_id: e.target.value, nguoi_lien_he_id: '' }))}
-                    className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="">-- Chưa gắn khách hàng --</option>
-                    {dsKH.map((k) => (
-                      <option key={k.id} value={k.id}>
-                        {k.ten_khach_hang} {k.ma_so_thue ? `(MST: ${k.ma_so_thue})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  {(() => {
+                    const khSuaChon = dsKH.find((k) => k.id === formSuaDA.khach_hang_id);
+                    if (khSuaChon && !moDropdownSuaKH) {
+                      return (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-2.5 flex items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div className="size-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                              <Building2 className="size-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-slate-900 truncate">
+                                {khSuaChon.ten_khach_hang}
+                              </div>
+                              <div className="text-[10.5px] text-slate-500 truncate flex items-center gap-2">
+                                {khSuaChon.ma_so_thue && <span>MST: {khSuaChon.ma_so_thue}</span>}
+                                {(khSuaChon.xa_phuong || khSuaChon.tinh_thanh) && (
+                                  <span>
+                                    {[khSuaChon.xa_phuong, khSuaChon.tinh_thanh].filter(Boolean).join(' - ')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMoDropdownSuaKH(true);
+                                setTuKhoaSuaKH('');
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-[11px] font-semibold transition cursor-pointer"
+                            >
+                              Đổi
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormSuaDA((f: any) => ({ ...f, khach_hang_id: '', nguoi_lien_he_id: '' }));
+                                setMoDropdownSuaKH(false);
+                                setTuKhoaSuaKH('');
+                              }}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                              title="Bỏ chọn"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="relative">
+                        <div className="relative">
+                          <Search className="size-3.5 absolute left-3 top-3 text-slate-400 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={tuKhoaSuaKH}
+                            onChange={(e) => {
+                              setTuKhoaSuaKH(e.target.value);
+                              setMoDropdownSuaKH(true);
+                            }}
+                            onFocus={() => setMoDropdownSuaKH(true)}
+                            placeholder="Gõ tên khách hàng, MST hoặc địa bàn..."
+                            className="w-full h-10 rounded-[var(--radius-input)] border border-border bg-background pl-8.5 pr-8 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition"
+                            autoComplete="off"
+                          />
+                          {tuKhoaSuaKH ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTuKhoaSuaKH('');
+                                setMoDropdownSuaKH(true);
+                              }}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          ) : (
+                            <ChevronDown className="size-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                          )}
+                        </div>
+
+                        {moDropdownSuaKH && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-30"
+                              onClick={() => setMoDropdownSuaKH(false)}
+                            />
+                            <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl divide-y divide-slate-100 p-1">
+                              {dsKHLocSua.length === 0 ? (
+                                <div className="p-3 text-center text-xs text-slate-500 italic">
+                                  Không tìm thấy khách hàng phù hợp.
+                                </div>
+                              ) : (
+                                dsKHLocSua.map((k) => (
+                                  <div
+                                    key={k.id}
+                                    onClick={() => {
+                                      setFormSuaDA((f: any) => ({ ...f, khach_hang_id: k.id, nguoi_lien_he_id: '' }));
+                                      setMoDropdownSuaKH(false);
+                                      setTuKhoaSuaKH('');
+                                    }}
+                                    className="p-2.5 rounded-lg hover:bg-slate-50 cursor-pointer transition text-xs flex items-center justify-between gap-2"
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-semibold text-slate-900 truncate">
+                                        {k.ten_khach_hang}
+                                      </div>
+                                      <div className="text-[10.5px] text-slate-500 truncate flex items-center gap-2 mt-0.5">
+                                        {k.ma_so_thue && <span>MST: {k.ma_so_thue}</span>}
+                                        {(k.xa_phuong || k.tinh_thanh) && (
+                                          <span>
+                                            {[k.xa_phuong, k.tinh_thanh].filter(Boolean).join(' - ')}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {formSuaDA.khach_hang_id === k.id && (
+                                      <Check className="size-4 text-emerald-600 shrink-0" />
+                                    )}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-foreground mb-1 block">Người liên hệ chính</label>
@@ -1723,6 +1858,7 @@ export default function TrangChiTietHoSoDuAn() {
         onDong={() => setMoModalQuyChuan(false)}
         loaiMacDinh="du_an"
         tenKhachHangHienTai={kh?.ten_khach_hang ?? null}
+        diaBanHienTai={kh ? { xa_phuong: kh.xa_phuong, tinh_thanh: kh.tinh_thanh } : null}
         onChonMau={(mau) => {
           setFormSuaDA((prev: any) => ({ ...prev, ten_du_an: mau.toUpperCase() }));
         }}

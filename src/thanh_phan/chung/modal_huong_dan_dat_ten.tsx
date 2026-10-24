@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, BookOpen, Building2, FolderGit2, ArrowRight } from 'lucide-react';
 import {
   MAU_DAT_TEN_KHACH_HANG,
+  MAU_DAT_TEN_DU_AN,
   GIAI_PHAP_DU_AN_PHO_BIEN,
   sinhTenDuAnGoiY
 } from '../../thu_vien/quy_chuan_dat_ten';
@@ -13,6 +14,7 @@ interface ModalHuongDanDatTenProps {
   onDong: () => void;
   loaiMacDinh?: 'khach_hang' | 'du_an';
   tenKhachHangHienTai?: string | null;
+  diaBanHienTai?: { xa_phuong?: string | null; tinh_thanh?: string | null } | null;
   onChonMau?: (mau: string) => void;
 }
 
@@ -21,6 +23,7 @@ export const ModalHuongDanDatTen: React.FC<ModalHuongDanDatTenProps> = ({
   onDong,
   loaiMacDinh = 'du_an',
   tenKhachHangHienTai,
+  diaBanHienTai,
   onChonMau
 }) => {
   const [tabHienTai, setTabHienTai] = useState<'khach_hang' | 'du_an'>(loaiMacDinh);
@@ -109,7 +112,7 @@ export const ModalHuongDanDatTen: React.FC<ModalHuongDanDatTenProps> = ({
         </div>
 
         {/* Nội dung danh sách gợi ý tinh gọn */}
-        <div className="p-5 max-h-[70vh] overflow-y-auto space-y-3 text-xs">
+        <div className="p-5 max-h-[70vh] overflow-y-auto space-y-4 text-xs">
           {tabHienTai === 'khach_hang' ? (
             <div className="space-y-2">
               <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
@@ -135,37 +138,63 @@ export const ModalHuongDanDatTen: React.FC<ModalHuongDanDatTenProps> = ({
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                {tenKhachHangHienTai
-                  ? `Giải pháp theo Khách hàng "${tenKhachHangHienTai.toUpperCase()}" (Bấm để áp dụng):`
-                  : 'Các loại Sản phẩm / Giải pháp (Bấm để áp dụng):'}
-              </div>
+            <div className="space-y-4">
               <div className="space-y-2">
-                {GIAI_PHAP_DU_AN_PHO_BIEN.map((gp, idx) => {
-                  const tenDayDu = sinhTenDuAnGoiY(gp, tenKhachHangHienTai);
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleChon(tenDayDu)}
-                      className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-emerald-500 bg-slate-50/70 hover:bg-emerald-50/60 transition text-left group cursor-pointer"
-                    >
-                      <div>
-                        <div className="font-bold text-slate-900 group-hover:text-emerald-900 font-mono text-xs">
-                          {tenDayDu}
-                        </div>
-                        {tenKhachHangHienTai && (
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  {tenKhachHangHienTai
+                    ? `Dự án theo Khách hàng "${tenKhachHangHienTai.toUpperCase()}" (Bấm để áp dụng):`
+                    : 'Gợi ý Dự án chuẩn [GIẢI PHÁP] [XÃ/PHƯỜNG] TỈNH [TỈNH] (Bấm để áp dụng):'}
+                </div>
+                <div className="space-y-2">
+                  {GIAI_PHAP_DU_AN_PHO_BIEN.map((gp, idx) => {
+                    const tenDayDu = sinhTenDuAnGoiY(gp, tenKhachHangHienTai, diaBanHienTai);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleChon(tenDayDu)}
+                        className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-emerald-500 bg-slate-50/70 hover:bg-emerald-50/60 transition text-left group cursor-pointer"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-slate-900 group-hover:text-emerald-900 font-mono text-xs truncate">
+                            {tenDayDu}
+                          </div>
                           <div className="text-[11px] text-slate-500 mt-0.5">
                             Giải pháp: {gp}
                           </div>
-                        )}
-                      </div>
-                      <ArrowRight className="size-4 text-slate-300 group-hover:text-emerald-600 transition shrink-0 ml-2" />
-                    </button>
-                  );
-                })}
+                        </div>
+                        <ArrowRight className="size-4 text-slate-300 group-hover:text-emerald-600 transition shrink-0 ml-2" />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
+              {!tenKhachHangHienTai && (
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Cấu trúc khung chuẩn:
+                  </div>
+                  <div className="space-y-2">
+                    {MAU_DAT_TEN_DU_AN.map((m, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleChon(m.mau)}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 hover:border-emerald-500 bg-slate-50/70 hover:bg-emerald-50/60 transition text-left group cursor-pointer"
+                      >
+                        <div>
+                          <div className="font-semibold text-slate-900 group-hover:text-emerald-900 font-mono text-xs">
+                            {m.mau}
+                          </div>
+                          <div className="text-[10.5px] text-slate-500 mt-0.5">{m.nhan}</div>
+                        </div>
+                        <ArrowRight className="size-3.5 text-slate-300 group-hover:text-emerald-600 transition shrink-0 ml-2" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
