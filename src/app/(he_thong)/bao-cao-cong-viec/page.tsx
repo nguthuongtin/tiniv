@@ -49,7 +49,8 @@ import { danhSachVaiTro } from '../../../dich_vu/nhan_su/dich_vu_vai_tro';
 import {
   coQuyen,
   layPhamViPhongBan,
-  duocXemBaoCaoCuaNhanVien
+  duocXemBaoCaoCuaNhanVien,
+  duocXemHoSoDuAn
 } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
 import { dongBoBaoCaoNgaySangKeHoachTuan } from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
@@ -210,6 +211,18 @@ export default function TrangBaoCaoCongViec() {
   }, [coQuyenXemToanCongTy, coQuyenXemPhongBan, dsNhanSu, nguoiDungHienTai, phamVi]);
 
   // Lọc danh sách báo cáo theo phân quyền và bộ lọc
+  // Danh sách dự án nhân viên được phép chọn khi lập báo cáo công việc
+  const dsDuAnHieuLuc = useMemo(() => {
+    if (!nguoiDungHienTai) return [];
+    if (coQuyenXemToanCongTy) return dsDuAn;
+    const cacIdDangCo = new Set<string>();
+    if (dangSua?.du_an_id) cacIdDangCo.add(dangSua.du_an_id);
+    dangSua?.danh_sach_chi_tiet?.forEach((ct) => {
+      if (ct.du_an_id) cacIdDangCo.add(ct.du_an_id);
+    });
+    return dsDuAn.filter((da) => cacIdDangCo.has(da.id) || duocXemHoSoDuAn(nguoiDungHienTai, da));
+  }, [coQuyenXemToanCongTy, dangSua, dsDuAn, nguoiDungHienTai]);
+
   const dsBaoCaoHopLe = useMemo(() => {
     return danhSach.filter((b) => {
       const ns = dsNhanSu.find((x) => x.id === b.nhan_vien_id);
@@ -1746,7 +1759,7 @@ export default function TrangBaoCaoCongViec() {
         }}
         dangSua={dangSua}
         ngayMacDinh={ngayTaoMacDinh || undefined}
-        danhSachDuAn={dsDuAn.map((x) => ({ id: x.id, ten_du_an: x.ten_du_an }))}
+        danhSachDuAn={dsDuAnHieuLuc.map((x) => ({ id: x.id, ten_du_an: x.ten_du_an }))}
         onLuu={xuLyLuuForm}
         dangXuLy={dangXuLyForm}
         loi={loiForm}

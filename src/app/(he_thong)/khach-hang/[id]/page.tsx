@@ -235,6 +235,11 @@ export default function TrangChiTietKhachHang() {
         setKh(null);
         return;
       }
+      if (!duocXemKhachHang(nguoiDungHienTai, kq1)) {
+        setKh(null);
+        setErrTai('Bạn không có quyền truy cập hồ sơ khách hàng này.');
+        return;
+      }
       setKh(kq1);
       setDanhSachNLH(Array.isArray(kq2) ? kq2 : []);
       setDanhSachHDA(kq3.mang);

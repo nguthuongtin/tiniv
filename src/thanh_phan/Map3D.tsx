@@ -19,7 +19,8 @@ import {
   Maximize,
   Minimize,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle
 } from 'lucide-react';
 
 export interface DuAnLienKet {
@@ -75,6 +76,8 @@ interface MapProps {
   danhSachSale?: NhanSuSale[];
   selectedProvince?: string;
   onSelectProvince?: (province: string) => void;
+  laQuanLy?: boolean;
+  nguoiDungHienTai?: { id: string; ho_va_ten?: string | null; vai_tro?: string | null } | null;
 }
 
 // Danh sách 33 tên xã bị trùng lặp trên 5 tỉnh Miền Tây
@@ -219,6 +222,8 @@ export default function Map3D({
   danhSachSale = [],
   selectedProvince = 'All',
   onSelectProvince,
+  laQuanLy = false,
+  nguoiDungHienTai = null,
 }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -257,6 +262,14 @@ export default function Map3D({
   const [editSaleId, setEditSaleId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Phân quyền thao tác trên địa bàn: Quản lý toàn quyền, nhân viên chỉ thao tác địa bàn của mình hoặc địa bàn chưa gán
+  const duocPhepThaoTac = useMemo(() => {
+    if (!selectedFeature) return false;
+    if (laQuanLy) return true;
+    if (!selectedFeature.sale_id) return true;
+    return selectedFeature.sale_id === nguoiDungHienTai?.id;
+  }, [selectedFeature, laQuanLy, nguoiDungHienTai?.id]);
 
   // Xử lý sự kiện Fullscreen
   const toggleFullscreen = async () => {
@@ -940,18 +953,23 @@ export default function Map3D({
   // Lưu thông tin & gán nhân sự phụ trách
   const handleSaveCRM = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFeature) return;
+    if (!selectedFeature || !duocPhepThaoTac) return;
 
     setIsSaving(true);
     try {
-      const selectedSaleObj = danhSachSale?.find((s) => s.id === editSaleId);
-      const newSaleName = selectedSaleObj ? selectedSaleObj.ho_va_ten : 'Chưa gán';
+      const targetSaleId = !laQuanLy
+        ? (selectedFeature.sale_id || nguoiDungHienTai?.id || '')
+        : editSaleId;
+      const selectedSaleObj = danhSachSale?.find((s) => s.id === targetSaleId);
+      const newSaleName = selectedSaleObj
+        ? selectedSaleObj.ho_va_ten
+        : (targetSaleId === nguoiDungHienTai?.id ? (nguoiDungHienTai?.ho_va_ten || 'Tôi') : 'Chưa gán');
 
       await onUpdateCRM(
         selectedFeature.id,
         editStatus,
         editNotes,
-        editSaleId || undefined,
+        targetSaleId || undefined,
         newSaleName
       );
 
@@ -961,7 +979,7 @@ export default function Map3D({
               ...prev,
               reach_status: editStatus,
               notes: editNotes,
-              sale_id: editSaleId || undefined,
+              sale_id: targetSaleId || undefined,
               sale_name: newSaleName,
             }
           : null
@@ -1584,72 +1602,102 @@ export default function Map3D({
               </div>
 
               {/* Form Cập Nhật Nhanh & Gán Sale */}
-              <form onSubmit={handleSaveCRM} className="space-y-3 pt-3 border-t border-slate-800">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <UserCheck className="size-3.5 text-sky-400" />
-                    Phân công & cập nhật
-                  </span>
-                  {!selectedFeature.khach_hang_id && (
-                    <span className="text-[10px] bg-sky-950/80 text-sky-300 border border-sky-800/60 px-1.5 py-0.5 rounded">
-                      Tự động tạo hồ sơ KH
+              {!duocPhepThaoTac ? (
+                <div className="pt-3 border-t border-slate-800 space-y-2">
+                  <div className="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl text-amber-200 text-xs flex items-start gap-2.5">
+                    <AlertTriangle className="size-4 shrink-0 text-amber-400 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <div className="font-semibold text-amber-300">Địa bàn thuộc nhân sự khác</div>
+                      <div className="text-[11px] text-amber-200/80 leading-relaxed">
+                        Địa bàn này đang do <b>{selectedFeature.sale_name}</b> phụ trách. Bạn chỉ có quyền xem thông tin, không được chỉnh sửa hoặc chuyển giao.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSaveCRM} className="space-y-3 pt-3 border-t border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <UserCheck className="size-3.5 text-sky-400" />
+                      Phân công & cập nhật
                     </span>
-                  )}
-                </div>
+                    {!selectedFeature.khach_hang_id && (
+                      <span className="text-[10px] bg-sky-950/80 text-sky-300 border border-sky-800/60 px-1.5 py-0.5 rounded">
+                        Tự động tạo hồ sơ KH
+                      </span>
+                    )}
+                  </div>
 
-                {/* Chọn Nhân Sự Phụ Trách */}
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">
-                    Nhân viên kinh doanh phụ trách
-                  </label>
-                  <select
-                    value={editSaleId}
-                    onChange={(e) => setEditSaleId(e.target.value)}
-                    className="w-full text-xs bg-slate-800 border border-slate-700 text-slate-100 rounded-lg p-2 focus:outline-none focus:border-sky-500 cursor-pointer"
+                  {/* Chọn Nhân Sự Phụ Trách: Chỉ Admin / Giám đốc / Trưởng phòng mới được quyền chỉ định */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] text-slate-400">
+                        Nhân viên kinh doanh phụ trách
+                      </label>
+                      {!laQuanLy && (
+                        <span className="text-[10px] text-slate-500 italic">
+                          Chỉ quản lý có quyền chỉ định
+                        </span>
+                      )}
+                    </div>
+                    {laQuanLy ? (
+                      <select
+                        value={editSaleId}
+                        onChange={(e) => setEditSaleId(e.target.value)}
+                        className="w-full text-xs bg-slate-800 border border-slate-700 text-slate-100 rounded-lg p-2 focus:outline-none focus:border-sky-500 cursor-pointer"
+                      >
+                        <option value="">-- Chưa gán người phụ trách --</option>
+                        {(danhSachSale || []).map((ns) => (
+                          <option key={ns.id} value={ns.id}>
+                            {ns.ho_va_ten}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        disabled
+                        value={selectedFeature.sale_name !== 'Chưa gán' ? selectedFeature.sale_name : (nguoiDungHienTai?.ho_va_ten || 'Tôi')}
+                        className="w-full text-xs bg-slate-800/60 border border-slate-700/60 text-slate-400 rounded-lg p-2 cursor-not-allowed"
+                      />
+                    )}
+                  </div>
+
+                  {/* Trạng Thái */}
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Trạng thái tiếp cận</label>
+                    <select
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value as any)}
+                      className="w-full text-xs bg-slate-800 border border-slate-700 text-slate-100 rounded-lg p-2 focus:outline-none focus:border-sky-500 cursor-pointer"
+                    >
+                      <option value="Chưa tiếp cận">Chưa tiếp cận</option>
+                      <option value="Đang chăm sóc">Đang chăm sóc</option>
+                      <option value="Đã chốt">Đã chốt</option>
+                    </select>
+                  </div>
+
+                  {/* Ghi Chú Hỗ Trợ */}
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Ghi chú tiến độ / đầu mối</label>
+                    <textarea
+                      rows={3}
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      placeholder="Ghi chú trao đổi, đầu mối liên hệ..."
+                      className="w-full text-xs bg-slate-800 border border-slate-700 text-slate-100 rounded-lg p-2 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg font-medium text-xs transition-colors shadow-lg shadow-blue-600/30 cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <option value="">-- Chưa gán người phụ trách --</option>
-                    {(danhSachSale || []).map((ns) => (
-                      <option key={ns.id} value={ns.id}>
-                        {ns.ho_va_ten}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Trạng Thái */}
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Trạng thái tiếp cận</label>
-                  <select
-                    value={editStatus}
-                    onChange={(e) => setEditStatus(e.target.value as any)}
-                    className="w-full text-xs bg-slate-800 border border-slate-700 text-slate-100 rounded-lg p-2 focus:outline-none focus:border-sky-500 cursor-pointer"
-                  >
-                    <option value="Chưa tiếp cận">Chưa tiếp cận</option>
-                    <option value="Đang chăm sóc">Đang chăm sóc</option>
-                    <option value="Đã chốt">Đã chốt</option>
-                  </select>
-                </div>
-
-                {/* Ghi Chú Hỗ Trợ */}
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">Ghi chú tiến độ / đầu mối</label>
-                  <textarea
-                    rows={3}
-                    value={editNotes}
-                    onChange={(e) => setEditNotes(e.target.value)}
-                    placeholder="Ghi chú trao đổi, đầu mối liên hệ..."
-                    className="w-full text-xs bg-slate-800 border border-slate-700 text-slate-100 rounded-lg p-2 placeholder-slate-500 focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg font-medium text-xs transition-colors shadow-lg shadow-blue-600/30 cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  {isSaving ? 'Đang lưu...' : 'Lưu thay đổi địa bàn'}
-                </button>
-              </form>
+                    {isSaving ? 'Đang lưu...' : 'Lưu thay đổi địa bàn'}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         )}

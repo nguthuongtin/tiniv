@@ -33,6 +33,8 @@ import {
   type TaoMoiLichGapDTO,
   type CapNhatLichGapDTO
 } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
+import { useStoreXacThuc } from '../../thu_vien/zustand/store_xac_thuc';
+import { laQuanLyCapCaoHoacTruongPhong } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
 
 const congThemPhut = (hhmm: string, soPhut: number): string => {
   const [h, m] = (hhmm || '09:00').split(':').map((x) => parseInt(x, 10) || 0);
@@ -103,6 +105,8 @@ export default function FormLichGapModal({
   );
 
   const dropdownKHRef = useRef<HTMLDivElement>(null);
+  const { nguoiDungHienTai } = useStoreXacThuc();
+  const laQuanLy = useMemo(() => laQuanLyCapCaoHoacTruongPhong(nguoiDungHienTai), [nguoiDungHienTai]);
   const dropdownNLHRef = useRef<HTMLDivElement>(null);
   const dropdownNSRef = useRef<HTMLDivElement>(null);
 
@@ -362,7 +366,7 @@ export default function FormLichGapModal({
       nguoi_lien_he_id: nguoiLienHeId || gia_tri_mac_dinh?.nguoi_lien_he_id || dang_sua?.nguoi_lien_he_id || null,
       ten_nguoi_lien_he: tenNguoiLienHe.trim() || null,
       so_dien_thoai: soDienThoai.trim() || null,
-      nguoi_phu_trach_id: nguoiPhuTrachId || nguoiDungId || '',
+      nguoi_phu_trach_id: !laQuanLy ? (nguoiDungId || nguoiDungHienTai?.id || '') : (nguoiPhuTrachId || nguoiDungId || ''),
       nguoi_tham_gia_ids: nguoiThamGiaIds,
       chi_nhanh_id: cnId,
       ngay,
@@ -713,13 +717,14 @@ export default function FormLichGapModal({
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-800">Nhân sự chủ trì</label>
             <select
+              disabled={!laQuanLy}
               value={nguoiPhuTrachId}
               onChange={(e) => {
                 const idMoi = e.target.value;
                 setNguoiPhuTrachId(idMoi);
                 setNguoiThamGiaIds((prev) => prev.filter((x) => x !== idMoi));
               }}
-              className={cn(inputCls, 'cursor-pointer')}
+              className={cn(inputCls, !laQuanLy ? 'cursor-not-allowed bg-slate-100 text-slate-500' : 'cursor-pointer')}
             >
               {dsNhanSu.map((ns) => (
                 <option key={ns.id} value={ns.id}>

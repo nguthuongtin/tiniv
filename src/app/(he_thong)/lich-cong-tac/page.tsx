@@ -41,6 +41,7 @@ import { danhSachKhachHang } from '../../../dich_vu/khach_hang/dich_vu_khach_han
 import { danhSachNguoiLienHe } from '../../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachChiNhanh } from '../../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
+import { duocXemKhachHang, laQuanLyCapCaoHoacTruongPhong } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import FormLichGapModal, {
   type GiaTriMacDinhLichGap
 } from '../../../thanh_phan/lich_gap_kh/form_lich_gap_modal';
@@ -196,6 +197,10 @@ export default function TrangLichCongTac() {
   const [dangTai, setDangTai] = useState(true);
   const [dangLuu, setDangLuu] = useState(false);
 
+  const laQuanLy = useMemo(() => {
+    return laQuanLyCapCaoHoacTruongPhong(nguoiDungHienTai);
+  }, [nguoiDungHienTai]);
+
   // Điều khiển Calendar & Bộ lọc
   const [cheDoXem, setCheDoXem] = useState<CheDoXem>('tuan');
   const [ngayDangXem, setNgayDangXem] = useState<string>(homNayISO);
@@ -218,6 +223,15 @@ export default function TrangLichCongTac() {
   const [moModal, setMoModal] = useState(false);
   const [lichDangSua, setLichDangSua] = useState<LichGapKH | null>(null);
   const [giaTriMacDinhModal, setGiaTriMacDinhModal] = useState<GiaTriMacDinhLichGap | null>(null);
+
+  const dsKhachHangHieuLuc = useMemo(() => {
+    if (!nguoiDungHienTai) return [];
+    if (laQuanLy) return dsKhachHang;
+    return dsKhachHang.filter((kh) => {
+      if (lichDangSua?.khach_hang_id === kh.id) return true;
+      return duocXemKhachHang(nguoiDungHienTai, kh);
+    });
+  }, [dsKhachHang, laQuanLy, lichDangSua, nguoiDungHienTai]);
 
   const taiDanhMuc = useCallback(async () => {
     try {
@@ -410,7 +424,7 @@ export default function TrangLichCongTac() {
     setGiaTriMacDinhModal({
       ngay: ngayChon || homNayISO,
       gio_bat_dau: gioChon || '09:00',
-      nguoi_phu_trach_id: nhanSuLoc !== 'tat_ca' ? nhanSuLoc : nguoiDungHienTai?.id,
+      nguoi_phu_trach_id: laQuanLy && nhanSuLoc !== 'tat_ca' ? nhanSuLoc : nguoiDungHienTai?.id,
       chi_nhanh_id: chiNhanhLoc !== 'tat_ca' ? chiNhanhLoc : nguoiDungHienTai?.chi_nhanh_id
     });
     setMoModal(true);
@@ -1452,7 +1466,7 @@ export default function TrangLichCongTac() {
         dang_sua={lichDangSua}
         gia_tri_mac_dinh={giaTriMacDinhModal}
         dsLichHienCo={dsLich}
-        dsKhachHang={dsKhachHang}
+        dsKhachHang={dsKhachHangHieuLuc}
         dsNguoiLienHe={dsNguoiLienHe}
         dsNhanSu={dsNhanSu}
         nguoiDungId={nguoiDungHienTai?.id}

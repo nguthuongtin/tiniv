@@ -44,6 +44,7 @@ import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachChiNhanh } from '../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
 import { danhSachPhongBan } from '../../dich_vu/co_cau_to_chuc/dich_vu_phong_ban';
 import { useStoreXacThuc } from '../../thu_vien/zustand/store_xac_thuc';
+import { duocXemKhachHang } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
 import {
   Ban_Ve,
   O,
@@ -206,6 +207,9 @@ export default function FormHoSoDuAnDrawer({
 
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
   const laBackOffice = ['hanh_chinh_van_phong'].includes(nguoiDungHienTai?.vai_tro ?? '');
+  const laQuanLy = ['quan_tri_he_thong', 'giam_doc', 'truong_phong'].includes(
+    nguoiDungHienTai?.vai_tro ?? ''
+  );
 
   const {
     register,
@@ -270,7 +274,15 @@ export default function FormHoSoDuAnDrawer({
           danhSachPhongBan()
         ]);
         if (!huy) {
-          setDsKH(kq1.mang);
+          let khList = kq1.mang || [];
+          if (!laQuanLy && nguoiDungHienTai) {
+            khList = khList.filter((kh) =>
+              duocXemKhachHang(nguoiDungHienTai, kh) ||
+              kh.id === dang_sua?.khach_hang_id ||
+              kh.id === giaTriMacDinh?.khach_hang_id
+            );
+          }
+          setDsKH(khList);
           setDsNS(kq2.mang);
           setDsChiNhanh(kq3.mang);
           setDsPhongBan(kq4.mang);
@@ -353,6 +365,8 @@ export default function FormHoSoDuAnDrawer({
         ...GIA_TRI_MAC_DINH,
         chi_nhanh_id: nguoiDungHienTai?.chi_nhanh_id ?? null,
         phong_ban_id: nguoiDungHienTai?.phong_ban_id ?? null,
+        nguoi_phu_trach_id: nguoiDungHienTai?.id ?? null,
+        nguoi_quan_ly_id: nguoiDungHienTai?.id ?? null,
         ...macDinh
       });
     }
@@ -434,6 +448,9 @@ export default function FormHoSoDuAnDrawer({
 
     const duLieuChuan = {
       ...values,
+      nguoi_phu_trach_id: !laQuanLy
+        ? (dang_sua?.nguoi_phu_trach_id || nguoiDungHienTai?.id || null)
+        : (values.nguoi_phu_trach_id ?? null),
       ten_du_an: values.ten_du_an.trim().toUpperCase(),
       ma_ho_so: (values.ma_ho_so ?? null) || null,
       khach_hang_id: (values.khach_hang_id ?? null) || null,
@@ -443,8 +460,10 @@ export default function FormHoSoDuAnDrawer({
       san_pham_dich_vu_id: null,
       san_pham_khac_mo_ta: (values.san_pham_khac_mo_ta ?? null) || null,
       kenh_ban_hang: (values.kenh_ban_hang ?? null) || null,
-      nguoi_quan_ly_id: (values.nguoi_quan_ly_id ?? null) || null,
-      nguoi_phu_trach_id: (values.nguoi_phu_trach_id ?? null) || null,
+      nguoi_quan_ly_id: !laQuanLy
+        ? (dang_sua?.nguoi_quan_ly_id || nguoiDungHienTai?.id || null)
+        : ((values.nguoi_quan_ly_id ?? null) || null),
+
       danh_sach_nguoi_ho_tro_ids: dsHoTroSach,
       mo_ta: (values.mo_ta ?? null) || null,
       ghi_chu: (values.ghi_chu ?? null) || null,
@@ -1041,6 +1060,7 @@ export default function FormHoSoDuAnDrawer({
                         <Chon
                           {...field}
                           id="f-hda-nql"
+                          disabled={!laQuanLy}
                           value={field.value ?? ''}
                           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                             field.onChange(e.target.value ? e.target.value : null);
@@ -1086,6 +1106,7 @@ export default function FormHoSoDuAnDrawer({
                         <Chon
                           {...field}
                           id="f-hda-npt"
+                          disabled={!laQuanLy}
                           value={field.value ?? ''}
                           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                             field.onChange(e.target.value ? e.target.value : null);

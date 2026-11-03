@@ -13,6 +13,7 @@ import { danhSachPhongBan } from '@/dich_vu/co_cau_to_chuc/dich_vu_phong_ban';
 import { danhSachHoSoDuAn } from '@/dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import { danhSachNguoiLienHe } from '@/dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import useStoreXacThuc from '@/thu_vien/zustand/store_xac_thuc';
+import { duocXemHoSoDuAn, duocXemKhachHang, laQuanLyCapCaoHoacTruongPhong } from '@/thu_vien/phan_quyen/kiem_tra_quyen';
 import { Map as MapIcon } from 'lucide-react';
 
 // Chuẩn hóa tên xã để khớp hoàn hảo giữa CRM, Excel và GeoJSON
@@ -71,11 +72,20 @@ export default function MapDashboardPage() {
           danhSachNguoiLienHe(),
         ]);
 
-        const dsKhach = khRes.mang || [];
         const dsNhanSu = nsRes.mang || [];
         const dsPhongBan = pbRes.mang || [];
-        const dsDuAn = daRes.mang || [];
         const dsLienHe = lhRes.mang || [];
+
+        const vaiTroKey = String(nguoiDungHienTai?.vai_tro || '');
+        const laQuanLy =
+          vaiTroKey === 'quan_tri_he_thong' ||
+          vaiTroKey === 'giam_doc' ||
+          vaiTroKey === 'truong_phong';
+
+        let dsDuAn = daRes.mang || [];
+        let dsKhach = khRes.mang || [];
+
+        // Bản đồ hiển thị toàn bộ địa bàn 5 tỉnh theo yêu cầu lãnh đạo
 
         // Tìm các phòng ban kinh doanh
         const pbKdIds = new Set(
@@ -117,6 +127,8 @@ export default function MapDashboardPage() {
             return laKd || thuocTeam;
           });
         }
+
+        // Toàn bộ danh sách sale kinh doanh để lọc trên bản đồ
 
         // Lưu danh sách sale kinh doanh với tên rút gọn
         const sales = salesKd.map((ns) => ({
@@ -294,7 +306,11 @@ export default function MapDashboardPage() {
     }
 
     loadData();
-  }, []);
+  }, [nguoiDungHienTai]);
+
+  const laQuanLy = useMemo(() => {
+    return laQuanLyCapCaoHoacTruongPhong(nguoiDungHienTai);
+  }, [nguoiDungHienTai]);
 
   // Cập nhật CRM và gán nhân sự phụ trách
   const handleUpdateCRM = async (
@@ -305,6 +321,19 @@ export default function MapDashboardPage() {
     newSaleName?: string
   ) => {
     const targetItem = crmData.find((d) => d.id === communeId);
+    if (!targetItem) return;
+
+    // Phân quyền bảo vệ: Nếu là nhân viên thường, không được chỉnh sửa KH của người khác!
+    if (!laQuanLy) {
+      if (targetItem.sale_id && targetItem.sale_id !== nguoiDungHienTai?.id) {
+        alert('Bạn không có quyền thao tác trên khách hàng/địa bàn của nhân sự khác!');
+        return;
+      }
+      // Không phải quản lý thì không được chỉ định cho nhân viên khác -> bắt buộc gán cho chính mình
+      newSaleId = nguoiDungHienTai?.id;
+      newSaleName = nguoiDungHienTai?.ho_va_ten || 'Tôi';
+    }
+
     const resolvedSaleName = newSaleName || (newSaleId ? 'Đã gán' : 'Chưa gán');
 
     // 1. Cập nhật state UI ngay lập tức
@@ -434,6 +463,8 @@ export default function MapDashboardPage() {
             danhSachSale={danhSachSale}
             selectedProvince={selectedProvince}
             onSelectProvince={setSelectedProvince}
+            laQuanLy={laQuanLy}
+            nguoiDungHienTai={nguoiDungHienTai}
           />
         )}
       </div>

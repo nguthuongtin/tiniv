@@ -92,7 +92,7 @@ import {
   TEN_HANH_DONG_NHAT_KY
 } from '../../../../dich_vu/nhat_ky_hoat_dong/dich_vu_nhat_ky_hoat_dong';
 import { layDanhSachGiaiDoan } from '../../../../thu_vien/cau_hinh/giai_doan_du_an';
-import { duocXemHoSoDuAn, coQuyen } from '../../../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { duocXemHoSoDuAn, duocXemKhachHang, coQuyen, laQuanLyCapCaoHoacTruongPhong } from '../../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import useStoreXacThuc from '../../../../thu_vien/zustand/store_xac_thuc';
 import { ModalLyDoHuyDuAn } from '../../../../thanh_phan/ho_so_du_an/modal_ly_do_huy_du_an';
 import { ModalHuongDanDatTen } from '../../../../thanh_phan/chung/modal_huong_dan_dat_ten';
@@ -358,6 +358,11 @@ export default function TrangChiTietHoSoDuAn() {
         setHda(null);
         return;
       }
+      if (!duocXemHoSoDuAn(nguoiDungHienTai, kq1Raw)) {
+        setHda(null);
+        setErrTai('Bạn không có quyền truy cập hồ sơ dự án này.');
+        return;
+      }
       setHda(kq1Raw);
       setDsKH(kqKH.mang);
       setDsNLH(kqNLH.mang);
@@ -431,9 +436,20 @@ export default function TrangChiTietHoSoDuAn() {
   const [moDropdownSuaKH, setMoDropdownSuaKH] = useState(false);
 
   const dsKHLocSua = useMemo(() => {
-    if (!tuKhoaSuaKH.trim()) return dsKH.slice(0, 50);
+    const vaiTroKey = String(nguoiDungHienTai?.vai_tro || '');
+    const laQuanLy =
+      vaiTroKey === 'quan_tri_he_thong' ||
+      vaiTroKey === 'giam_doc' ||
+      vaiTroKey === 'truong_phong';
+
+    let pool = dsKH;
+    if (!laQuanLy && nguoiDungHienTai) {
+      pool = pool.filter((k) => duocXemKhachHang(nguoiDungHienTai, k) || k.id === hda?.khach_hang_id);
+    }
+
+    if (!tuKhoaSuaKH.trim()) return pool.slice(0, 50);
     const kw = tuKhoaSuaKH.toLowerCase().trim();
-    return dsKH
+    return pool
       .filter(
         (k) =>
           k.ten_khach_hang.toLowerCase().includes(kw) ||
@@ -442,7 +458,7 @@ export default function TrangChiTietHoSoDuAn() {
           (k.tinh_thanh && k.tinh_thanh.toLowerCase().includes(kw))
       )
       .slice(0, 50);
-  }, [dsKH, tuKhoaSuaKH]);
+  }, [dsKH, tuKhoaSuaKH, nguoiDungHienTai, hda?.khach_hang_id]);
 
   const batDauChinhSua = () => {
     if (!hda) return;

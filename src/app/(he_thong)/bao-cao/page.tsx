@@ -33,7 +33,7 @@ import jsPDF from 'jspdf';
 import { cn } from '../../../thu_vien/utils/cn';
 import { formatNgay } from '../../../thu_vien/utils/format_ngay';
 import useStoreXacThuc from '../../../thu_vien/zustand/store_xac_thuc';
-import { coQuyen } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { coQuyen, duocXemHoSoDuAn, duocXemKhachHang, laQuanLyCapCaoHoacTruongPhong } from '../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import type { KhachHang } from '../../../thu_vien/types/khach_hang';
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
 import type { CongViec } from '../../../thu_vien/types/cong_viec';
@@ -156,8 +156,20 @@ export default function TrangBaoCaoThongKe() {
         danhSachChiNhanh({ trang_thai_du_lieu: 'hoat_dong' }),
         danhSachPhongBan({ trang_thai_du_lieu: 'hoat_dong' })
       ]);
-      setDsKh(kqKh.mang);
-      setDsDa(kqDa.mang);
+      const laQuanLy = laQuanLyCapCaoHoacTruongPhong(nguoiDungHienTai);
+      let mangDa = kqDa.mang;
+      let mangKh = kqKh.mang;
+      if (!laQuanLy && nguoiDungHienTai) {
+        mangDa = mangDa.filter((da) => duocXemHoSoDuAn(nguoiDungHienTai, da));
+        const dsKhachHangIdsCoDuAn = new Set(
+          mangDa.map((da) => da.khach_hang_id).filter(Boolean) as string[]
+        );
+        mangKh = mangKh.filter((kh) =>
+          duocXemKhachHang(nguoiDungHienTai, kh, undefined, dsKhachHangIdsCoDuAn)
+        );
+      }
+      setDsKh(mangKh);
+      setDsDa(mangDa);
       setDsCv(kqCv.mang);
       setDsBccv(kqBccv.mang);
       setDsNs(kqNs.mang);

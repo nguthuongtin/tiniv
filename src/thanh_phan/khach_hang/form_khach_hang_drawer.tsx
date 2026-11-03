@@ -19,6 +19,8 @@ import {
 import type { KhachHang, LoaiKhachHang } from '../../thu_vien/types/khach_hang';
 import type { ChiNhanh, NhanSu } from '../../thu_vien/types/nhan_su';
 import type { DiaGioiHanhChinh } from '../../thu_vien/types/dia_gioi_hanh_chinh';
+import { useStoreXacThuc } from '../../thu_vien/zustand/store_xac_thuc';
+import { laQuanLyCapCaoHoacTruongPhong } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
 
 const SCHEMA_KHACH_HANG = z.object({
   ten_khach_hang: z
@@ -92,6 +94,8 @@ export default function FormKhachHangDrawer({
   const [dsDiaGioi, setDsDiaGioi] = useState<DiaGioiHanhChinh[]>([]);
   const [nhapTayXa, setNhapTayXa] = useState(false);
   const [moModalQuyChuan, setMoModalQuyChuan] = useState(false);
+  const { nguoiDungHienTai } = useStoreXacThuc();
+  const laQuanLy = useMemo(() => laQuanLyCapCaoHoacTruongPhong(nguoiDungHienTai), [nguoiDungHienTai]);
 
   useEffect(() => {
     if (!mo || dsDiaGioi.length > 0) return;
@@ -181,7 +185,11 @@ export default function FormKhachHangDrawer({
         trang_thai: dang_sua.trang_thai
       });
     } else {
-      form.reset(GIA_TRI_MAC_DINH);
+      form.reset({
+        ...GIA_TRI_MAC_DINH,
+        chi_nhanh_id: nguoiDungHienTai?.chi_nhanh_id ?? null,
+        nguoi_phu_trach_id: nguoiDungHienTai?.id ?? null
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mo, dang_sua?.id]);
@@ -201,7 +209,7 @@ export default function FormKhachHangDrawer({
         xa_phuong: (values.xa_phuong ?? null) || null,
         website: (values.website ?? null) || null,
         chi_nhanh_id: (values.chi_nhanh_id ?? null) || null,
-        nguoi_phu_trach_id: (values.nguoi_phu_trach_id ?? null) || null,
+        nguoi_phu_trach_id: !laQuanLy ? (nguoiDungHienTai?.id ?? null) : ((values.nguoi_phu_trach_id ?? null) || null),
         ghi_chu: (values.ghi_chu ?? null) || null
       };
       await khi_luu(patchDto);
@@ -217,7 +225,7 @@ export default function FormKhachHangDrawer({
         xa_phuong: (values.xa_phuong ?? null) || null,
         website: (values.website ?? null) || null,
         chi_nhanh_id: (values.chi_nhanh_id ?? null) || null,
-        nguoi_phu_trach_id: (values.nguoi_phu_trach_id ?? null) || null,
+        nguoi_phu_trach_id: !laQuanLy ? (nguoiDungHienTai?.id ?? null) : ((values.nguoi_phu_trach_id ?? null) || null),
         ghi_chu: (values.ghi_chu ?? null) || null
       };
       await khi_luu(taoDto);
@@ -489,7 +497,11 @@ export default function FormKhachHangDrawer({
                     </select>
                   </TruongForm>
                   <TruongForm label="Người phụ trách">
-                    <select {...form.register('nguoi_phu_trach_id')} className={inputStyleCls}>
+                    <select
+                      {...form.register('nguoi_phu_trach_id')}
+                      disabled={!laQuanLy}
+                      className={cn(inputStyleCls, !laQuanLy && 'cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-500')}
+                    >
                       <option value="">-- Chưa phân công --</option>
                       {dsNhanSu.map((ns) => (
                         <option key={ns.id} value={ns.id}>

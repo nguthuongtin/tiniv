@@ -159,12 +159,13 @@ export const duocXemBaoCaoCuaNhanVien = (
 
 /**
  * Kiểm tra xem người dùng hiện tại có được phép xem hồ sơ dự án cụ thể hay không:
- * - Admin / Giám đốc / Trưởng phòng: Xem được TOÀN BỘ dự án trong hệ thống.
- * - Nhân viên thường: CHỈ xem được các dự án mà mình có liên quan trực tiếp:
+ * - Admin / Giám đốc / Trưởng phòng: Xem được toàn bộ dự án trong hệ thống.
+ * - Nhân viên kinh doanh / nhân viên thường: CHỈ xem được dự án của chính mình:
  *   + Người phụ trách chính (nguoi_phu_trach_id)
  *   + Người quản lý dự án (nguoi_quan_ly_id)
- *   + Người tạo hồ sơ (nguoi_tao_id)
- *   + Nằm trong danh sách người hỗ trợ / phối hợp (danh_sach_nguoi_ho_tro_ids)
+ *   + Người tạo hồ sơ (nguoi_tao_id) khi dự án chưa có người phụ trách
+ *   * Lưu ý: Không phân quyền theo danh_sach_nguoi_ho_tro_ids để đảm bảo cách ly dữ liệu
+ *     tuyệt đối giữa các nhân viên kinh doanh.
  */
 export const duocXemHoSoDuAn = (
   nguoiDung: NguoiDungXacThuc,
@@ -183,31 +184,29 @@ export const duocXemHoSoDuAn = (
 
   const vaiTroKey = String(nguoiDung.vai_tro || '');
 
-  // 1. Quản trị hệ thống, Ban Giám đốc, Trưởng phòng (hoặc người có quyền xem toàn công ty):
-  // Xem được TOÀN BỘ dự án trong hệ thống
+  // 1. Quản trị hệ thống, Ban Giám đốc, Trưởng phòng: Toàn quyền xem
   if (
     vaiTroKey === 'quan_tri_he_thong' ||
     vaiTroKey === 'giam_doc' ||
-    vaiTroKey === 'truong_phong'
+    vaiTroKey === 'truong_phong' ||
+    coQuyen(nguoiDung, 'du_an.xem_toan_bo', dsVaiTro)
   ) {
     return true;
   }
 
-  // 2. Nhân viên thông thường: CHỈ xem được các dự án mà mình có liên quan trực tiếp:
+  // 2. Nhân viên thông thường: CHỈ xem được các dự án mà mình trực tiếp phụ trách/sở hữu
   const uid = nguoiDung.id;
-  const laLienQuanTrucTiep =
-    duAn.nguoi_phu_trach_id === uid ||
-    duAn.nguoi_quan_ly_id === uid ||
-    duAn.nguoi_tao_id === uid ||
-    (Array.isArray(duAn.danh_sach_nguoi_ho_tro_ids) && duAn.danh_sach_nguoi_ho_tro_ids.includes(uid));
-
-  return Boolean(laLienQuanTrucTiep);
+  if (duAn.nguoi_phu_trach_id) {
+    return duAn.nguoi_phu_trach_id === uid || duAn.nguoi_quan_ly_id === uid;
+  }
+  return duAn.nguoi_tao_id === uid || duAn.nguoi_quan_ly_id === uid;
 };
 
 /**
  * Kiểm tra xem người dùng hiện tại có được phép xem khách hàng cụ thể hay không:
- * - Admin / Giám đốc / Trưởng phòng: xem theo thẩm quyền.
- * - Nhân viên thường: CHỈ xem được khách hàng do mình tạo, mình phụ trách, HOẶC có dự án liên quan đến khách hàng đó.
+ * - Admin / Giám đốc / Trưởng phòng: xem theo thẩm quyền điều hành.
+ * - Nhân viên kinh doanh / thường: CHỈ xem khách hàng do mình trực tiếp phụ trách,
+ *   hoặc do mình tạo (nếu chưa gán phụ trách), HOẶC khách hàng có dự án mà mình trực tiếp phụ trách.
  */
 export const duocXemKhachHang = (
   nguoiDung: NguoiDungXacThuc,
@@ -224,38 +223,48 @@ export const duocXemKhachHang = (
 
   const vaiTroKey = String(nguoiDung.vai_tro || '');
 
-  // 1. Quản trị hệ thống hoặc Giám đốc hoặc có quyền quản trị
+  // 1. Quản trị hệ thống, Ban Giám đốc, Trưởng phòng
   if (
     vaiTroKey === 'quan_tri_he_thong' ||
-    vaiTroKey === 'giam_doc'
+    vaiTroKey === 'giam_doc' ||
+    vaiTroKey === 'truong_phong' ||
+    coQuyen(nguoiDung, 'khach_hang.xem_toan_bo', dsVaiTro)
   ) {
     return true;
   }
 
-  // 2. Trực tiếp phụ trách hoặc tạo khách hàng
   const uid = nguoiDung.id;
-  if (khachHang.nguoi_phu_trach_id === uid || khachHang.nguoi_tao_id === uid) {
+
+  // 2. Nhân viên kinh doanh / nhân viên thường:
+  // TUYỆT ĐỐI CÁCH LY: Khách hàng của nhân viên nào thì nhân viên đó thấy!
+  // - Nếu có người phụ trách: CHỈ người phụ trách (nguoi_phu_trach_id) thấy.
+  // - Nếu chưa phân bổ người phụ trách: Người tạo (nguoi_tao_id) thấy.
+  if (khachHang.nguoi_phu_trach_id) {
+    return khachHang.nguoi_phu_trach_id === uid;
+  }
+  return khachHang.nguoi_tao_id === uid;
+};
+
+/**
+ * Kiểm tra xem người dùng có phải là Quản trị hệ thống, Ban Giám đốc hoặc Trưởng phòng hay không
+ * Thường dùng để phân quyền chỉ định/chuyển giao phụ trách nhân sự khác.
+ */
+export const laQuanLyCapCaoHoacTruongPhong = (
+  nguoiDung: NguoiDungXacThuc,
+  dsVaiTro?: VaiTro[]
+): boolean => {
+  if (!nguoiDung) return false;
+  const vaiTroKey = String(nguoiDung.vai_tro || '');
+  if (
+    vaiTroKey === 'quan_tri_he_thong' ||
+    vaiTroKey === 'giam_doc' ||
+    vaiTroKey === 'truong_phong' ||
+    coQuyen(nguoiDung, 'lanh_dao.xem', dsVaiTro) ||
+    coQuyen(nguoiDung, 'khach_hang.xem_toan_bo', dsVaiTro) ||
+    coQuyen(nguoiDung, 'du_an.xem_toan_bo', dsVaiTro)
+  ) {
     return true;
   }
-
-  // 3. Có dự án liên quan đến khách hàng này
-  if (khachHang.id && dsKhachHangIdsCoDuAnLienQuan) {
-    if (dsKhachHangIdsCoDuAnLienQuan instanceof Set) {
-      if (dsKhachHangIdsCoDuAnLienQuan.has(khachHang.id)) return true;
-    } else if (Array.isArray(dsKhachHangIdsCoDuAnLienQuan)) {
-      if (dsKhachHangIdsCoDuAnLienQuan.includes(khachHang.id)) return true;
-    }
-  }
-
-  // 4. Trưởng phòng xem được khách hàng cùng chi nhánh
-  if (vaiTroKey === 'truong_phong') {
-    if (khachHang.chi_nhanh_id && nguoiDung.chi_nhanh_id && khachHang.chi_nhanh_id === nguoiDung.chi_nhanh_id) {
-      return true;
-    }
-    if (!khachHang.nguoi_phu_trach_id) {
-      return true;
-    }
-  }
-
   return false;
 };
+

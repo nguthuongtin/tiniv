@@ -23,9 +23,11 @@ import {
   Pencil,
   Trash2,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  CalendarDays
 } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
+import { formatNgay } from '../../thu_vien/utils/format_ngay';
 import type {
   YeuCauPhoiHop,
   TrangThaiYeuCauPhoiHop
@@ -66,7 +68,7 @@ export default function HopYeuCauPhoiHop({
   const SO_MUC_MOI_TRANG = 15;
   const [yeuCauDangXemLichSu, setYeuCauDangXemLichSu] = useState<YeuCauPhoiHop | null>(null);
 
-  // 1. Modal tiếp nhận & phân công nhân sự
+  // 1. Modal tiếp nhận & phân công nhân sự phòng KHTH
   const [modalGiaoViec, setModalGiaoViec] = useState<{
     mo: boolean;
     yeuCau: YeuCauPhoiHop | null;
@@ -137,60 +139,100 @@ export default function HopYeuCauPhoiHop({
     }
   };
 
+  // Map ID phòng ban sang tên
+  const mapTenPhongBan = useMemo(() => {
+    const m = new Map<string, string>();
+    dsPhongBanToanBo.forEach((pb) => m.set(pb.id, pb.ten_phong_ban));
+    return m;
+  }, [dsPhongBanToanBo]);
+
+  // Lọc danh sách nhân sự CHỈ THUỘC PHÒNG KHTH (Kế hoạch tổng hợp)
+  const dsNhanSuKHTH = useMemo(() => {
+    const dsPbKHTH = dsPhongBanToanBo.filter((pb) => {
+      const ten = (pb.ten_phong_ban || '').toLowerCase();
+      const ma = (pb.ma_phong_ban || '').toLowerCase();
+      return (
+        ten.includes('kế hoạch') ||
+        ten.includes('khth') ||
+        ten.includes('tổng hợp') ||
+        ma.includes('khth') ||
+        ma.includes('kh')
+      );
+    });
+    const pbIds = new Set(dsPbKHTH.map((p) => p.id));
+
+    let list = dsNhanSuToanBo.filter((ns) => {
+      if (ns.trang_thai_du_lieu === 'da_xoa' || ns.trang_thai === false) return false;
+      if (ns.phong_ban_id && pbIds.has(ns.phong_ban_id)) return true;
+      const cv = (ns.chuc_vu || '').toLowerCase();
+      if (cv.includes('khth') || cv.includes('kế hoạch') || cv.includes('tổng hợp')) return true;
+      if (Array.isArray(ns.phong_ban_phu_trach_them) && ns.phong_ban_phu_trach_them.some((id) => pbIds.has(id))) return true;
+      return false;
+    });
+
+    // Fallback nếu chưa cấu hình phòng ban rõ ràng: lấy nhân sự kỹ thuật / KHTH
+    if (list.length === 0) {
+      list = dsNhanSuToanBo.filter((ns) => {
+        if (ns.trang_thai_du_lieu === 'da_xoa' || ns.trang_thai === false) return false;
+        const cv = (ns.chuc_vu || '').toLowerCase();
+        const vt = (ns.vai_tro || '').toLowerCase();
+        return (
+          cv.includes('khth') ||
+          cv.includes('kế hoạch') ||
+          cv.includes('kỹ thuật') ||
+          vt === 'nhan_vien_ky_thuat'
+        );
+      });
+    }
+
+    return list;
+  }, [dsNhanSuToanBo, dsPhongBanToanBo]);
+
   // Xác định những việc liên quan đến người dùng hiện tại
+  // QUY TẮC CÁCH LY KẾT QUẢ KHTH:
+  // Khi nhân sự KHTH nộp kết quả, thì dữ liệu yêu cầu đó KHÔNG CÒN TRONG DANH SÁCH
+  // của nhân sự đó, từ đó không thể xem, xóa hay sửa được kết quả đã nộp!
   const dsViecChoToi = useMemo(() => {
     return danhSachYeuCau.filter((yc) => {
       if (yc.trang_thai_du_lieu === 'da_xoa') {
         return false;
       }
 
-      // Người tạo (Sale) luôn thấy các yêu cầu mình đã tạo trong bàn làm việc để theo dõi tiến độ
-      if (yc.nguoi_tao_id === userId) {
+      // 1. Quản trị hệ thống, Ban Giám đốc, Trưởng phòng: thấy đầy đủ để điều hành
+      if (coQuyenDieuHanh) {
         return true;
       }
 
-      // Bước 1: Chờ tiếp nhận & phân công -> dành cho người điều hành
-      if (yc.trang_thai === 'cho_tpkd_duyet') {
-        return coQuyenDieuHanh;
+      // 2. Người tạo (Kinh doanh): thấy các yêu cầu mình đã tạo để theo dõi tiến độ
+      const laNguoiTao = yc.nguoi_tao_id === userId;
+      if (laNguoiTao) {
+        return true;
       }
 
-      // Bước 2: Đang xử lý hoặc cần sửa lại -> việc của nhân sự được phân công
-      if (yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') {
-        const duocGiaoDichDanh = Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
-          yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId);
-        if (duocGiaoDichDanh) return true;
-        if (!yc.danh_sach_nhan_su_thuc_hien_ids?.length && coQuyenDieuHanh) return true;
-        if (coQuyenDieuHanh) return true;
+      // 3. Nhân sự được phân công (KHTH):
+      const duocPhanCong = Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
+        yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId);
+
+      if (duocPhanCong) {
+        // Chỉ hiển thị khi đang cần nhân sự thực hiện hoặc khi Trưởng phòng yêu cầu sửa lại
+        if (yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') {
+          return true;
+        }
+        // Khi KHTH đã nộp kết quả (cho_tpkd_duyet_ket_qua, cho_lanh_dao_duyet, da_phe_duyet, da_hoan_thanh)
+        // -> BIẾN MẤT HOÀN TOÀN khỏi danh sách của nhân sự KHTH đó
         return false;
-      }
-
-      // Bước 3: Đã nộp kết quả -> Chờ duyệt kết quả
-      if (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') {
-        return coQuyenDieuHanh;
-      }
-
-      // Bước 4: Đã duyệt -> Người tạo hoàn tất
-      if (yc.trang_thai === 'da_phe_duyet') {
-        return yc.nguoi_tao_id === userId || coQuyenDieuHanh;
-      }
-
-      // Đã hoàn tất: người tạo hoặc người xử lý đều thấy nếu xem lịch sử
-      if (yc.trang_thai === 'da_hoan_thanh') {
-        const duocGiaoDichDanh = Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
-          yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId);
-        return yc.nguoi_tao_id === userId || duocGiaoDichDanh || coQuyenDieuHanh;
       }
 
       return false;
     });
   }, [danhSachYeuCau, userId, coQuyenDieuHanh]);
 
-  // Nguồn dữ liệu theo chế độ xem
+  // Nguồn dữ liệu: Chỉ Quản lý mới có quyền bật "Xem toàn bộ"
   const dsNguon = useMemo(() => {
-    return moToanBo
+    return (moToanBo && coQuyenDieuHanh)
       ? danhSachYeuCau.filter((x) => x.trang_thai_du_lieu !== 'da_xoa')
       : dsViecChoToi;
-  }, [moToanBo, danhSachYeuCau, dsViecChoToi]);
+  }, [moToanBo, coQuyenDieuHanh, danhSachYeuCau, dsViecChoToi]);
 
   // Đếm số lượng badge cho từng tab
   const thongKeTabs = useMemo(() => {
@@ -227,7 +269,7 @@ export default function HopYeuCauPhoiHop({
     };
   }, [dsNguon]);
 
-  // Lọc theo Tab đang chọn (mặc định 'dang_chay' loại trừ việc đã xong)
+  // Lọc theo Tab đang chọn
   const dsTheoTab = useMemo(() => {
     if (tabHienTai === 'dang_chay') return dsNguon.filter((yc) => yc.trang_thai !== 'da_hoan_thanh');
     if (tabHienTai === 'cho_tiep_nhan') return dsNguon.filter((yc) => yc.trang_thai === 'cho_tpkd_duyet');
@@ -254,21 +296,14 @@ export default function HopYeuCauPhoiHop({
     });
   }, [dsTheoTab, tuKhoaTim]);
 
-  // Tính toán phân trang
+  // Phân trang
   const tongSoTrang = Math.max(1, Math.ceil(dsSauLoc.length / SO_MUC_MOI_TRANG));
   const dsHienThi = useMemo(() => {
     const batDau = (trangHienTai - 1) * SO_MUC_MOI_TRANG;
     return dsSauLoc.slice(batDau, batDau + SO_MUC_MOI_TRANG);
   }, [dsSauLoc, trangHienTai]);
 
-  // Map ID phòng ban sang tên
-  const mapTenPhongBan = useMemo(() => {
-    const m = new Map<string, string>();
-    dsPhongBanToanBo.forEach((pb) => m.set(pb.id, pb.ten_phong_ban));
-    return m;
-  }, [dsPhongBanToanBo]);
-
-  // Mở modal tiếp nhận & phân công
+  // Mở modal tiếp nhận & phê duyệt chuyển thông tin sang KHTH
   const moModalGiaoViec = async (yc: YeuCauPhoiHop) => {
     void taiDuLieuNhanSuVaPhongBan();
     setModalGiaoViec({ mo: true, yeuCau: yc });
@@ -300,11 +335,26 @@ export default function HopYeuCauPhoiHop({
     setLoiGiaoViec('');
   };
 
+  // Trạng thái đã chọn tất cả nhân sự KHTH
+  const daChonTatCaKHTH = useMemo(() => {
+    if (dsNhanSuKHTH.length === 0) return false;
+    return dsNhanSuKHTH.every((ns) => dsNhanSuChon.some((x) => x.id === ns.id));
+  }, [dsNhanSuKHTH, dsNhanSuChon]);
+
+  const toggleChonTatCaKHTH = () => {
+    if (daChonTatCaKHTH) {
+      setDsNhanSuChon([]);
+    } else {
+      setDsNhanSuChon(dsNhanSuKHTH.map((ns) => ({ id: ns.id, ho_va_ten: ns.ho_va_ten })));
+    }
+    setLoiGiaoViec('');
+  };
+
   const handleXacNhanGiaoViec = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!modalGiaoViec.yeuCau) return;
     if (dsNhanSuChon.length === 0) {
-      setLoiGiaoViec('Vui lòng chọn ít nhất 1 nhân sự để giao việc.');
+      setLoiGiaoViec('Vui lòng chọn ít nhất 1 nhân sự phòng KHTH để chuyển giao.');
       return;
     }
 
@@ -325,7 +375,7 @@ export default function HopYeuCauPhoiHop({
       }
       setModalGiaoViec({ mo: false, yeuCau: null });
     } catch {
-      setLoiGiaoViec('Có lỗi xảy ra khi phân công. Vui lòng thử lại.');
+      setLoiGiaoViec('Có lỗi xảy ra khi phê duyệt & chuyển thông tin. Vui lòng thử lại.');
     } finally {
       setDangXuLyGiaoViec(false);
     }
@@ -504,10 +554,10 @@ export default function HopYeuCauPhoiHop({
   };
 
   const danhSachTabs: { key: TabYeuCau; nhan: string; count: number; badgeColor?: string }[] = [
-    { key: 'dang_chay', nhan: 'Đang hoạt động', count: thongKeTabs.dang_chay, badgeColor: thongKeTabs.dang_chay > 0 ? 'bg-primary/20 text-primary font-bold' : undefined },
-    { key: 'cho_tiep_nhan', nhan: 'Chờ tiếp nhận', count: thongKeTabs.cho_tiep_nhan, badgeColor: thongKeTabs.cho_tiep_nhan > 0 ? 'bg-amber-500 text-white animate-pulse' : undefined },
-    { key: 'dang_xu_ly', nhan: 'Đang xử lý', count: thongKeTabs.dang_xu_ly, badgeColor: thongKeTabs.dang_xu_ly > 0 ? 'bg-blue-600 text-white' : undefined },
-    { key: 'cho_duyet', nhan: 'Chờ duyệt kết quả', count: thongKeTabs.cho_duyet, badgeColor: thongKeTabs.cho_duyet > 0 ? 'bg-purple-600 text-white animate-pulse' : undefined },
+    { key: 'dang_chay', nhan: 'Đang hoạt động', count: thongKeTabs.dang_chay, badgeColor: thongKeTabs.dang_chay > 0 ? 'bg-blue-100 text-blue-800 font-bold' : undefined },
+    { key: 'cho_tiep_nhan', nhan: 'Chờ duyệt', count: thongKeTabs.cho_tiep_nhan, badgeColor: thongKeTabs.cho_tiep_nhan > 0 ? 'bg-amber-500 text-white' : undefined },
+    { key: 'dang_xu_ly', nhan: 'Đang xử lý (KHTH)', count: thongKeTabs.dang_xu_ly, badgeColor: thongKeTabs.dang_xu_ly > 0 ? 'bg-sky-600 text-white' : undefined },
+    { key: 'cho_duyet', nhan: 'Chờ duyệt KQ', count: thongKeTabs.cho_duyet, badgeColor: thongKeTabs.cho_duyet > 0 ? 'bg-purple-600 text-white' : undefined },
     { key: 'da_duyet', nhan: 'Đã duyệt', count: thongKeTabs.da_duyet, badgeColor: thongKeTabs.da_duyet > 0 ? 'bg-emerald-600 text-white' : undefined },
     { key: 'hoan_thanh', nhan: 'Lịch sử / Đã xong', count: thongKeTabs.hoan_thanh },
     { key: 'tat_ca', nhan: 'Tất cả', count: thongKeTabs.tat_ca }
@@ -515,23 +565,28 @@ export default function HopYeuCauPhoiHop({
 
   return (
     <div className="space-y-3">
-      {/* Khung Hộp yêu cầu */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3.5 shadow-xs text-slate-900">
+      {/* Khung Hộp yêu cầu phối hợp */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-4 shadow-xs text-slate-900">
         {/* Top Header */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Sparkles className="size-4" />
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="size-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+              <Sparkles className="size-4.5" />
             </div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-slate-900">
-                Yêu cầu phối hợp
-              </h3>
-              {thongKeTabs.cho_tiep_nhan + thongKeTabs.cho_duyet > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500 text-white shadow-xs">
-                  {thongKeTabs.cho_tiep_nhan + thongKeTabs.cho_duyet} cần xử lý
-                </span>
-              )}
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900">
+                  Yêu cầu phối hợp phòng ban
+                </h3>
+                {thongKeTabs.cho_tiep_nhan + thongKeTabs.cho_duyet > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500 text-white shadow-2xs">
+                    {thongKeTabs.cho_tiep_nhan + thongKeTabs.cho_duyet} cần xử lý
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Luân chuyển thông tin tác nghiệp giữa Kinh doanh và Kế hoạch tổng hợp
+              </p>
             </div>
           </div>
 
@@ -540,20 +595,24 @@ export default function HopYeuCauPhoiHop({
               <button
                 type="button"
                 onClick={onMoModalTaoYeuCau}
-                className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                className="text-xs font-semibold px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
               >
                 <Sparkles className="size-3.5" />
-                <span>+ Tạo yêu cầu</span>
+                <span>+ Tạo yêu cầu mới</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setMoToanBo(!moToanBo)}
-              className="text-xs font-medium px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 inline-flex items-center gap-1 cursor-pointer transition-colors"
-            >
-              <span>{moToanBo ? 'Chỉ việc của tôi' : `Toàn bộ (${danhSachYeuCau.length})`}</span>
-              {moToanBo ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-            </button>
+
+            {/* Chỉ Lãnh đạo / Trưởng phòng mới được xem toàn bộ */}
+            {coQuyenDieuHanh && (
+              <button
+                type="button"
+                onClick={() => setMoToanBo(!moToanBo)}
+                className="text-xs font-medium px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 inline-flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <span>{moToanBo ? 'Chỉ việc cần xử lý' : `Xem toàn bộ (${danhSachYeuCau.length})`}</span>
+                {moToanBo ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              </button>
+            )}
           </div>
         </div>
 
@@ -570,7 +629,7 @@ export default function HopYeuCauPhoiHop({
                   setTrangHienTai(1);
                 }}
                 className={cn(
-                  'h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-all shrink-0',
+                  'h-8.5 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-all shrink-0',
                   dangChon
                     ? 'bg-slate-900 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -597,7 +656,7 @@ export default function HopYeuCauPhoiHop({
         {/* Thanh tìm kiếm nhanh */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
             <input
               type="text"
               value={tuKhoaTim}
@@ -606,7 +665,7 @@ export default function HopYeuCauPhoiHop({
                 setTrangHienTai(1);
               }}
               placeholder="Tìm theo tên dự án, nội dung yêu cầu, người tạo..."
-              className="w-full h-8 pl-8 pr-7 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary transition"
+              className="w-full h-9 pl-8.5 pr-8 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
             />
             {tuKhoaTim && (
               <button
@@ -615,28 +674,28 @@ export default function HopYeuCauPhoiHop({
                   setTuKhoaTim('');
                   setTrangHienTai(1);
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
-                <X className="size-3" />
+                <X className="size-3.5" />
               </button>
             )}
           </div>
           {dsSauLoc.length > 0 && (
-            <span className="text-[11px] text-slate-400 whitespace-nowrap shrink-0">
+            <span className="text-xs text-slate-400 whitespace-nowrap shrink-0 font-medium">
               {dsSauLoc.length} yêu cầu
             </span>
           )}
         </div>
 
-        {/* Danh sách yêu cầu */}
+        {/* DANH SÁCH YÊU CẦU: THIẾT KẾ DẠNG THẺ (CARD) TÁCH BIỆT RÕ RÀNG */}
         {dsHienThi.length === 0 ? (
-          <div className="p-4 text-center text-xs text-slate-500 italic bg-slate-50 rounded-xl">
+          <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">
             {tabHienTai === 'tat_ca'
-              ? 'Không có yêu cầu nào.'
+              ? 'Không có yêu cầu phối hợp nào.'
               : `Không có yêu cầu nào ở mục "${danhSachTabs.find(t => t.key === tabHienTai)?.nhan}".`}
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="space-y-3">
             {dsHienThi.map((yc) => {
               const cfgTrangThai = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai] || {
                 label: yc.trang_thai,
@@ -644,7 +703,8 @@ export default function HopYeuCauPhoiHop({
                 textClass: 'text-slate-600'
               };
               const laNguoiTao = yc.nguoi_tao_id === userId;
-              const coQuyenSuaXoa = laNguoiTao || coQuyenDieuHanh;
+              // Chỉ người tạo (khi chưa duyệt) hoặc cấp quản lý mới được sửa/xóa
+              const coQuyenSuaXoa = (laNguoiTao && yc.trang_thai === 'cho_tpkd_duyet') || coQuyenDieuHanh;
 
               const duocGiaoDichDanh = Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
                 yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId);
@@ -653,202 +713,225 @@ export default function HopYeuCauPhoiHop({
               return (
                 <div
                   key={yc.id}
-                  className="p-3.5 hover:bg-slate-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                  className="rounded-2xl border border-slate-200/90 hover:border-slate-300 bg-white p-4 shadow-2xs hover:shadow-md transition-all space-y-3"
                 >
-                  {/* Cột trái: Thông tin dự án + Nội dung + Phân công */}
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span
+                  {/* Dòng 1: Dự án + Trạng thái + NGÀY YÊU CẦU & HẠN */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-2.5">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <button
+                        type="button"
                         onClick={() => onMoChiTietDuAn?.(yc.du_an_id)}
-                        className="font-semibold text-slate-900 hover:text-primary transition-colors cursor-pointer inline-flex items-center gap-1.5 text-sm"
+                        className="font-bold text-slate-900 hover:text-blue-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 text-sm truncate text-left"
                         title="Xem chi tiết dự án"
                       >
-                        <FolderKanban className="size-4 text-slate-400" />
-                        <span>{yc.ten_du_an}</span>
-                      </span>
+                        <FolderKanban className="size-4 text-blue-600 shrink-0" />
+                        <span className="truncate">{yc.ten_du_an}</span>
+                      </button>
 
-                      <span
-                        className={cn(
-                          'px-2 py-0.5 rounded-md text-[11px] font-medium border',
-                          cfgTrangThai.mauBadge
-                        )}
-                      >
+                      {yc.ten_khach_hang && (
+                        <span className="text-xs text-slate-500 font-medium truncate">
+                          • {yc.ten_khach_hang}
+                        </span>
+                      )}
+
+                      {/* Badge trạng thái */}
+                      <span className={cn('px-2.5 py-0.5 rounded-full text-[11px] font-semibold border', cfgTrangThai.mauBadge)}>
                         {cfgTrangThai.label}
                       </span>
+                    </div>
+
+                    {/* HIỂN THỊ RÕ RÀNG NGÀY YÊU CẦU & HẠN HOÀN THÀNH */}
+                    <div className="flex items-center gap-2.5 text-xs text-slate-500 shrink-0 flex-wrap">
+                      <div className="inline-flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 font-medium text-slate-600">
+                        <CalendarDays className="size-3.5 text-slate-400" />
+                        <span>Ngày yêu cầu: <strong className="text-slate-800 font-semibold">{formatNgay(yc.ngay_tao) || 'Hôm nay'}</strong></span>
+                      </div>
 
                       {yc.han_hoan_thanh && (
-                        <span className="text-[11px] text-slate-500 font-mono flex items-center gap-1">
-                          <Clock className="size-3 text-slate-400" />
-                          <span>Hạn: {yc.han_hoan_thanh}</span>
-                        </span>
+                        <div className="inline-flex items-center gap-1.5 bg-amber-50/80 px-2.5 py-1 rounded-lg border border-amber-200/60 font-medium text-amber-800">
+                          <Clock className="size-3.5 text-amber-500" />
+                          <span>Hạn xong: <strong className="font-semibold">{formatNgay(yc.han_hoan_thanh)}</strong></span>
+                        </div>
                       )}
                     </div>
+                  </div>
 
-                    <div className="text-slate-800 text-xs leading-relaxed">
-                      {yc.noi_dung_yeu_cau}
-                    </div>
+                  {/* Dòng 2: Nội dung yêu cầu */}
+                  <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100 text-[13px] text-slate-800 leading-relaxed font-normal">
+                    {yc.noi_dung_yeu_cau}
+                  </div>
 
-                    {/* Metadata line: Người gửi, Phân công, Link Drive, Ghi chú phản hồi */}
-                    <div className="flex items-center gap-3 text-[11.5px] text-slate-500 flex-wrap pt-0.5">
-                      <span className="flex items-center gap-1">
-                        <User className="size-3 text-slate-400" />
-                        <span>Người gửi: <strong className="text-slate-700 font-semibold">{yc.ten_nguoi_tao}</strong></span>
-                      </span>
-
-                      {yc.danh_sach_ten_nhan_su_thuc_hien && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Users className="size-3 text-slate-400" />
-                          <span>Phân công: <strong className="text-slate-700 font-semibold">{yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')}</strong></span>
-                        </span>
-                      )}
-
+                  {/* Dòng 3: Tài liệu đính kèm & Kết quả xử lý */}
+                  {(yc.link_drive_dau_vao || (yc.link_drive_ket_qua && (laNguoiTao || coQuyenDieuHanh)) || yc.ghi_chu_phan_hoi) && (
+                    <div className="flex items-center gap-2.5 flex-wrap pt-0.5 text-xs">
                       {yc.link_drive_dau_vao && (
                         <a
                           href={yc.link_drive_dau_vao}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline inline-flex items-center gap-1 font-medium"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 font-medium transition"
                         >
-                          <Link2 className="size-3" />
-                          <span>Tài liệu đính kèm</span>
-                          <ExternalLink className="size-2.5" />
+                          <Link2 className="size-3.5 text-blue-600" />
+                          <span>File yêu cầu đính kèm</span>
+                          <ExternalLink className="size-3 text-blue-500" />
                         </a>
                       )}
 
-                      {yc.link_drive_ket_qua && (
+                      {/* Link kết quả: chỉ người tạo hoặc quản lý mới xem được */}
+                      {yc.link_drive_ket_qua && (laNguoiTao || coQuyenDieuHanh) && (
                         <a
                           href={yc.link_drive_ket_qua}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline inline-flex items-center gap-1 font-semibold"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 font-semibold transition"
                         >
-                          <Link2 className="size-3" />
-                          <span>Kết quả xử lý</span>
-                          <ExternalLink className="size-2.5" />
+                          <CheckCircle2 className="size-3.5 text-emerald-600" />
+                          <span>File kết quả KHTH</span>
+                          <ExternalLink className="size-3 text-emerald-500" />
                         </a>
                       )}
 
                       {yc.ghi_chu_phan_hoi && (
-                        <span className="text-rose-600 font-medium italic">
-                          Phản hồi: {yc.ghi_chu_phan_hoi}
-                        </span>
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200/80 font-medium">
+                          <AlertCircle className="size-3.5 text-rose-500 shrink-0" />
+                          <span>Phản hồi: {yc.ghi_chu_phan_hoi}</span>
+                        </div>
                       )}
                     </div>
-                  </div>
+                  )}
 
-                  {/* Cột phải: Các nút hành động */}
-                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                    {/* BƯỚC 1: Tiếp nhận & Giao việc */}
-                    {yc.trang_thai === 'cho_tpkd_duyet' && coQuyenDieuHanh && (
-                      <button
-                        type="button"
-                        onClick={() => moModalGiaoViec(yc)}
-                        className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                      >
-                        <UserCheck className="size-3.5" />
-                        <span>Tiếp nhận & Giao việc</span>
-                      </button>
-                    )}
+                  {/* Dòng 4: Metadata & CÁC NÚT HÀNH ĐỘNG PHÂN BIỆT MÀU SẮC RÕ RÀNG */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1 border-t border-slate-100 text-xs">
+                    {/* Người gửi & Nhân sự KHTH thực hiện */}
+                    <div className="flex items-center gap-3.5 text-slate-500 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <User className="size-3.5 text-slate-400" />
+                        <span>Người gửi: <strong className="text-slate-800 font-semibold">{yc.ten_nguoi_tao}</strong></span>
+                      </div>
 
-                    {/* BƯỚC 2: Nộp kết quả */}
-                    {(yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') && coQuyenNopKetQua && (
-                      <button
-                        type="button"
-                        onClick={() => moModalNopDrive(yc)}
-                        className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                      >
-                        <Send className="size-3.5" />
-                        <span>Nộp kết quả</span>
-                      </button>
-                    )}
+                      {yc.danh_sach_ten_nhan_su_thuc_hien && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <Users className="size-3.5 text-blue-500" />
+                          <span>KHTH thực hiện: <strong className="text-slate-800 font-semibold">{yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')}</strong></span>
+                        </div>
+                      )}
+                    </div>
 
-                    {/* BƯỚC 3: Phê duyệt kết quả */}
-                    {(yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') && coQuyenDieuHanh && (
-                      <>
+                    {/* CÁC NÚT HÀNH ĐỘNG PHÂN BIỆT MÀU SẮC TRỰC QUAN */}
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                      {/* BƯỚC 1: TP Phê duyệt & Chuyển thông tin (MÀU XANH DƯƠNG ĐẬM) */}
+                      {yc.trang_thai === 'cho_tpkd_duyet' && coQuyenDieuHanh && (
                         <button
                           type="button"
-                          onClick={() => handlePheDuyetKetQua(yc)}
-                          className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                          onClick={() => moModalGiaoViec(yc)}
+                          className="h-8 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
                         >
-                          <Check className="size-3.5" />
-                          <span>Phê duyệt</span>
+                          <UserCheck className="size-3.5 stroke-[2.5]" />
+                          <span>Phê duyệt & Chuyển thông tin</span>
                         </button>
+                      )}
+
+                      {/* BƯỚC 2: KHTH Nộp kết quả (MÀU XANH NGỌC TEAL ĐẬM) */}
+                      {(yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') && coQuyenNopKetQua && (
                         <button
                           type="button"
-                          onClick={() => moModalYeuCauSua(yc)}
-                          className="h-8 px-2.5 rounded-lg border border-rose-300 text-rose-600 hover:bg-rose-50 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                          onClick={() => moModalNopDrive(yc)}
+                          className="h-8 px-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
                         >
-                          <span>Yêu cầu sửa</span>
+                          <Send className="size-3.5" />
+                          <span>Nộp kết quả</span>
                         </button>
-                      </>
-                    )}
+                      )}
 
-                    {/* BƯỚC 4: Hoàn tất */}
-                    {yc.trang_thai === 'da_phe_duyet' && (laNguoiTao || coQuyenDieuHanh) && (
-                      <>
-                        {yc.link_drive_ket_qua && (
+                      {/* BƯỚC 3: Phê duyệt kết quả (MÀU XANH LÁ EMERALD & NÚT YÊU CẦU SỬA MÀU ĐỎ ROSE) */}
+                      {(yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') && coQuyenDieuHanh && (
+                        <>
                           <button
                             type="button"
-                            onClick={() => handleCopyLink(yc.link_drive_ket_qua!, yc.id)}
-                            className="h-8 px-3 rounded-lg border border-slate-200 bg-white text-slate-700 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition hover:bg-slate-100"
+                            onClick={() => handlePheDuyetKetQua(yc)}
+                            className="h-8 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
                           >
-                            {daCopyLink === yc.id ? (
-                              <>
-                                <CheckCircle2 className="size-3.5 text-primary" />
-                                <span>Đã chép link</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="size-3.5" />
-                                <span>Sao chép link</span>
-                              </>
-                            )}
+                            <Check className="size-3.5 stroke-[2.5]" />
+                            <span>Phê duyệt kết quả</span>
                           </button>
-                        )}
+                          <button
+                            type="button"
+                            onClick={() => moModalYeuCauSua(yc)}
+                            className="h-8 px-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                          >
+                            <AlertTriangle className="size-3.5 text-rose-600" />
+                            <span>Yêu cầu sửa</span>
+                          </button>
+                        </>
+                      )}
+
+                      {/* BƯỚC 4: Hoàn tất (MÀU TÍM INDIGO & SAO CHÉP LINK XÁM) */}
+                      {yc.trang_thai === 'da_phe_duyet' && (laNguoiTao || coQuyenDieuHanh) && (
+                        <>
+                          {yc.link_drive_ket_qua && (
+                            <button
+                              type="button"
+                              onClick={() => handleCopyLink(yc.link_drive_ket_qua!, yc.id)}
+                              className="h-8 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 font-medium text-xs inline-flex items-center gap-1.5 cursor-pointer transition"
+                            >
+                              {daCopyLink === yc.id ? (
+                                <>
+                                  <CheckCircle2 className="size-3.5 text-emerald-600" />
+                                  <span className="text-emerald-700 font-semibold">Đã chép link</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="size-3.5 text-slate-500" />
+                                  <span>Sao chép link</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleHoanTatYeuCau(yc)}
+                            className="h-8 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                          >
+                            <Check className="size-3.5 stroke-[2.5]" />
+                            <span>Hoàn tất yêu cầu</span>
+                          </button>
+                        </>
+                      )}
+
+                      {/* Nút phụ: Lịch sử, Sửa, Xóa */}
+                      <div className="flex items-center gap-1 pl-1">
                         <button
                           type="button"
-                          onClick={() => handleHoanTatYeuCau(yc)}
-                          className="h-8 px-3.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs inline-flex items-center gap-1 cursor-pointer shadow-xs transition"
+                          onClick={() => setYeuCauDangXemLichSu(yc)}
+                          className="size-8 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 inline-flex items-center justify-center cursor-pointer transition-colors"
+                          title="Xem lịch sử luân chuyển"
                         >
-                          <Check className="size-3.5" />
-                          <span>Hoàn tất</span>
+                          <History className="size-3.5" />
                         </button>
-                      </>
-                    )}
 
-                    {/* Lịch sử */}
-                    <button
-                      type="button"
-                      onClick={() => setYeuCauDangXemLichSu(yc)}
-                      className="size-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 inline-flex items-center justify-center cursor-pointer transition-colors"
-                      title="Xem lịch sử xử lý"
-                    >
-                      <History className="size-4" />
-                    </button>
+                        {coQuyenSuaXoa && (
+                          <button
+                            type="button"
+                            onClick={() => batDauSua(yc)}
+                            className="size-8 rounded-lg text-amber-600 hover:text-amber-800 hover:bg-amber-50 border border-amber-200 inline-flex items-center justify-center cursor-pointer transition-colors"
+                            title="Chỉnh sửa nội dung"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                        )}
 
-                    {/* Sửa */}
-                    {coQuyenSuaXoa && (
-                      <button
-                        type="button"
-                        onClick={() => batDauSua(yc)}
-                        className="size-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 inline-flex items-center justify-center cursor-pointer transition-colors"
-                        title="Chỉnh sửa nội dung"
-                      >
-                        <Pencil className="size-4" />
-                      </button>
-                    )}
-
-                    {/* Xóa (Chỉ người tạo mới có quyền xóa) */}
-                    {laNguoiTao && (
-                      <button
-                        type="button"
-                        onClick={() => setYeuCauDangXoa(yc)}
-                        className="size-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 inline-flex items-center justify-center cursor-pointer transition-colors"
-                        title="Xóa yêu cầu (Chỉ người tạo)"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    )}
+                        {laNguoiTao && (
+                          <button
+                            type="button"
+                            onClick={() => setYeuCauDangXoa(yc)}
+                            className="size-8 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 inline-flex items-center justify-center cursor-pointer transition-colors"
+                            title="Xóa yêu cầu"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -856,11 +939,11 @@ export default function HopYeuCauPhoiHop({
           </div>
         )}
 
-        {/* Thanh phân trang sạch đẹp, tối giản */}
+        {/* Phân trang */}
         {tongSoTrang > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 px-1 border-t border-slate-100 text-xs text-slate-500">
+          <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
             <div>
-              Hiển thị <strong>{(trangHienTai - 1) * SO_MUC_MOI_TRANG + 1}</strong> – <strong>{Math.min(trangHienTai * SO_MUC_MOI_TRANG, dsSauLoc.length)}</strong> trong tổng số <strong>{dsSauLoc.length}</strong> yêu cầu
+              Trang <span className="font-semibold text-slate-800">{trangHienTai}</span> / {tongSoTrang}
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -916,19 +999,19 @@ export default function HopYeuCauPhoiHop({
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL 1: TIẾP NHẬN & PHÂN CÔNG                                            */}
+      {/* MODAL 1: PHÊ DUYỆT & CHUYỂN THÔNG TIN PHÒNG KHTH                          */}
       {/* ========================================================================= */}
       {modalGiaoViec.mo && modalGiaoViec.yeuCau && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="w-full max-w-xl max-h-[90vh] rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl flex flex-col space-y-4 text-slate-900">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
               <div className="flex items-center gap-3">
-                <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold border border-blue-100">
                   <UserCheck className="size-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    Tiếp nhận & Phân công xử lý
+                    Phê duyệt & Chuyển thông tin phòng KHTH
                   </h3>
                   <p className="text-xs text-slate-500">
                     Dự án: <span className="font-semibold text-slate-900">{modalGiaoViec.yeuCau.ten_du_an}</span>
@@ -956,9 +1039,9 @@ export default function HopYeuCauPhoiHop({
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Người gửi: <strong className="text-slate-900">{modalGiaoViec.yeuCau.ten_nguoi_tao}</strong></span>
-                  {modalGiaoViec.yeuCau.han_hoan_thanh && <span>Hạn mong muốn: {modalGiaoViec.yeuCau.han_hoan_thanh}</span>}
+                  <span>Ngày yêu cầu: <strong className="text-slate-900">{formatNgay(modalGiaoViec.yeuCau.ngay_tao)}</strong></span>
                 </div>
-                <p className="text-slate-800 font-medium">
+                <p className="text-slate-800 font-medium leading-relaxed">
                   {modalGiaoViec.yeuCau.noi_dung_yeu_cau}
                 </p>
                 {modalGiaoViec.yeuCau.link_drive_dau_vao && (
@@ -967,7 +1050,7 @@ export default function HopYeuCauPhoiHop({
                       href={modalGiaoViec.yeuCau.link_drive_dau_vao}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:underline inline-flex items-center gap-1 font-semibold"
+                      className="text-blue-600 hover:underline inline-flex items-center gap-1 font-semibold"
                     >
                       <Link2 className="size-3" />
                       <span>Xem file Google Drive đính kèm</span>
@@ -977,18 +1060,43 @@ export default function HopYeuCauPhoiHop({
                 )}
               </div>
 
-              {/* Phân công nhân sự */}
+              {/* Phân công nhân sự: CHỈ HIỂN THỊ PHÒNG KHTH & CÓ NÚT CHỌN TẤT CẢ */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Users className="size-4 text-primary" />
-                    <span>Phân công nhân sự thực hiện *</span>
+                    <Users className="size-4 text-blue-600" />
+                    <span>Nhân sự phòng KHTH thực hiện *</span>
                   </label>
                   <span className="text-[11px] text-slate-500">
-                    Đã chọn: <strong className="text-slate-900">{dsNhanSuChon.length}</strong> người
+                    Đã chọn: <strong className="text-blue-600 font-bold">{dsNhanSuChon.length}</strong> / {dsNhanSuKHTH.length} người
                   </span>
                 </div>
 
+                {/* Ô TÍCH CHỌN TẤT CẢ NHÂN SỰ PHÒNG KHTH */}
+                <div
+                  onClick={toggleChonTatCaKHTH}
+                  className={cn(
+                    'p-2.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer select-none transition-all',
+                    daChonTatCaKHTH
+                      ? 'bg-blue-50 border-blue-300 text-blue-900 font-semibold shadow-2xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={daChonTatCaKHTH}
+                      onChange={() => {}}
+                      className="size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 pointer-events-none"
+                    />
+                    <span>Chọn tất cả nhân sự phòng KHTH ({dsNhanSuKHTH.length} nhân sự)</span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-normal">
+                    {daChonTatCaKHTH ? 'Đã chọn toàn bộ' : 'Tích để chọn tất cả'}
+                  </span>
+                </div>
+
+                {/* Danh sách đã chọn hiển thị tags */}
                 {dsNhanSuChon.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-slate-50 border border-slate-200">
                     {dsNhanSuChon.map((ns) => (
@@ -1010,28 +1118,29 @@ export default function HopYeuCauPhoiHop({
                   </div>
                 )}
 
+                {/* Tìm kiếm trong phòng KHTH */}
                 <div className="relative">
                   <Search className="size-3.5 absolute left-3 top-2.5 text-slate-400" />
                   <input
                     type="text"
                     value={tuKhoaTimNS}
                     onChange={(e) => setTuKhoaTimNS(e.target.value)}
-                    placeholder="Tìm theo tên nhân sự hoặc phòng ban..."
-                    className="w-full h-8.5 rounded-xl border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary"
+                    placeholder="Tìm nhân sự trong phòng KHTH..."
+                    className="w-full h-8.5 rounded-xl border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
                   />
                 </div>
 
+                {/* Danh sách nhân sự chỉ thuộc phòng KHTH */}
                 <div className="max-h-[190px] overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
-                  {dsNhanSuToanBo
+                  {dsNhanSuKHTH
                     .filter((ns) =>
                       !tuKhoaTimNS ||
                       ns.ho_va_ten.toLowerCase().includes(tuKhoaTimNS.toLowerCase()) ||
-                      (ns.chuc_vu && ns.chuc_vu.toLowerCase().includes(tuKhoaTimNS.toLowerCase())) ||
-                      (ns.phong_ban_id && (mapTenPhongBan.get(ns.phong_ban_id) || '').toLowerCase().includes(tuKhoaTimNS.toLowerCase()))
+                      (ns.chuc_vu && ns.chuc_vu.toLowerCase().includes(tuKhoaTimNS.toLowerCase()))
                     )
                     .map((ns) => {
                       const daChon = dsNhanSuChon.some((x) => x.id === ns.id);
-                      const tenPB = mapTenPhongBan.get(ns.phong_ban_id || '') || 'Công ty';
+                      const tenPB = mapTenPhongBan.get(ns.phong_ban_id || '') || 'Phòng KHTH';
                       return (
                         <div
                           key={ns.id}
@@ -1039,8 +1148,8 @@ export default function HopYeuCauPhoiHop({
                           className={cn(
                             'px-3 py-2 flex items-center justify-between text-xs cursor-pointer transition select-none',
                             daChon
-                              ? 'bg-primary/10 text-primary font-medium'
-                              : 'hover:bg-slate-50 text-slate-600 hover:text-slate-900'
+                              ? 'bg-blue-50/70 text-blue-900 font-medium'
+                              : 'hover:bg-slate-50 text-slate-700'
                           )}
                         >
                           <div className="flex items-center gap-2.5">
@@ -1048,7 +1157,7 @@ export default function HopYeuCauPhoiHop({
                               type="checkbox"
                               checked={daChon}
                               onChange={() => {}}
-                              className="size-4 rounded border-slate-300 text-primary focus:ring-primary pointer-events-none"
+                              className="size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 pointer-events-none"
                             />
                             <div>
                               <div className="font-semibold text-slate-900">{ns.ho_va_ten}</div>
@@ -1058,10 +1167,16 @@ export default function HopYeuCauPhoiHop({
                             </div>
                           </div>
 
-                          {daChon && <Check className="size-4 text-primary" />}
+                          {daChon && <Check className="size-4 text-blue-600" />}
                         </div>
                       );
                     })}
+
+                  {dsNhanSuKHTH.length === 0 && (
+                    <div className="p-3 text-center text-xs text-slate-400 italic">
+                      Chưa tìm thấy nhân sự nào thuộc phòng KHTH.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1076,7 +1191,7 @@ export default function HopYeuCauPhoiHop({
                     type="date"
                     value={hanXongGiaoViec}
                     onChange={(e) => setHanXongGiaoViec(e.target.value)}
-                    className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary"
+                    className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
                   />
                   <div className="flex items-center gap-1 pt-0.5">
                     {[
@@ -1102,14 +1217,14 @@ export default function HopYeuCauPhoiHop({
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-800">
-                    Ý kiến / Ghi chú (nếu có)
+                    Ghi chú / Định hướng cho KHTH
                   </label>
                   <textarea
                     rows={2}
                     value={ghiChuGiaoViec}
                     onChange={(e) => setGhiChuGiaoViec(e.target.value)}
-                    placeholder="Lưu ý nội dung, phương án hoặc tiến độ..."
-                    className="w-full rounded-xl border border-slate-200 bg-white p-2 text-xs text-slate-900 focus:outline-hidden focus:border-primary resize-none placeholder:text-slate-400"
+                    placeholder="Lưu ý phương án, tiêu chuẩn hoặc yêu cầu đặc thù..."
+                    className="w-full rounded-xl border border-slate-200 bg-white p-2 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500 resize-none placeholder:text-slate-400"
                   />
                 </div>
               </div>
@@ -1126,10 +1241,10 @@ export default function HopYeuCauPhoiHop({
                 <button
                   type="submit"
                   disabled={dangXuLyGiaoViec || dsNhanSuChon.length === 0}
-                  className="h-9 px-5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
+                  className="h-9 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
                 >
                   {dangXuLyGiaoViec ? <Loader2 className="size-3.5 animate-spin" /> : <UserCheck className="size-3.5 stroke-[2.5]" />}
-                  <span>Xác nhận & Giao việc</span>
+                  <span>Phê duyệt & Chuyển thông tin</span>
                 </button>
               </div>
             </form>
@@ -1146,7 +1261,7 @@ export default function HopYeuCauPhoiHop({
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Send className="size-4 text-primary" />
+                  <Send className="size-4 text-teal-600" />
                   <span>Nộp kết quả xử lý</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -1173,7 +1288,7 @@ export default function HopYeuCauPhoiHop({
                   value={linkDriveNop}
                   onChange={(e) => setLinkDriveNop(e.target.value)}
                   placeholder="https://drive.google.com/..."
-                  className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary"
+                  className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-teal-500"
                   required
                   autoFocus
                 />
@@ -1181,14 +1296,14 @@ export default function HopYeuCauPhoiHop({
 
               <div>
                 <label className="text-xs font-semibold text-slate-800 block mb-1">
-                  Ghi chú kết quả
+                  Ghi chú kết quả hoàn thành
                 </label>
                 <textarea
                   rows={3}
                   value={ghiChuNop}
                   onChange={(e) => setGhiChuNop(e.target.value)}
-                  placeholder="Nội dung đã hoàn thành..."
-                  className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:outline-hidden focus:border-primary resize-none placeholder:text-slate-400"
+                  placeholder="Ghi chú nội dung đã hoàn thành..."
+                  className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:outline-hidden focus:border-teal-500 resize-none placeholder:text-slate-400"
                 />
               </div>
 
@@ -1204,7 +1319,7 @@ export default function HopYeuCauPhoiHop({
                 <button
                   type="submit"
                   disabled={dangXuLyNop}
-                  className="h-9 px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
+                  className="h-9 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
                 >
                   {dangXuLyNop ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
                   <span>Xác nhận nộp kết quả</span>
@@ -1224,7 +1339,7 @@ export default function HopYeuCauPhoiHop({
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 text-rose-600">
                 <AlertTriangle className="size-5" />
-                <h3 className="text-base font-bold text-slate-900">Yêu cầu chỉnh sửa</h3>
+                <h3 className="text-base font-bold text-slate-900">Yêu cầu chỉnh sửa lại</h3>
               </div>
               <button
                 type="button"
@@ -1245,7 +1360,7 @@ export default function HopYeuCauPhoiHop({
                   value={lyDoSua}
                   onChange={(e) => setLyDoSua(e.target.value)}
                   placeholder="Ghi rõ các nội dung cần bổ sung, chỉnh sửa..."
-                  className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:outline-hidden focus:border-primary resize-none placeholder:text-slate-400"
+                  className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:outline-hidden focus:border-rose-500 resize-none placeholder:text-slate-400"
                   required
                   autoFocus
                 />
@@ -1282,7 +1397,7 @@ export default function HopYeuCauPhoiHop({
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 text-slate-900">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <div className="size-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
                   <Pencil className="size-4" />
                 </div>
                 <div>
@@ -1318,7 +1433,7 @@ export default function HopYeuCauPhoiHop({
                   rows={3}
                   value={suaNoiDung}
                   onChange={(e) => setSuaNoiDung(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary resize-none placeholder:text-slate-400"
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500 resize-none placeholder:text-slate-400"
                   placeholder="Nội dung cần thực hiện..."
                   required
                 />
@@ -1334,7 +1449,7 @@ export default function HopYeuCauPhoiHop({
                   value={suaLinkDrive}
                   onChange={(e) => setSuaLinkDrive(e.target.value)}
                   placeholder="https://drive.google.com/..."
-                  className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary placeholder:text-slate-400"
+                  className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500 placeholder:text-slate-400"
                 />
               </div>
 
@@ -1348,7 +1463,7 @@ export default function HopYeuCauPhoiHop({
                     type="date"
                     value={suaHanXong}
                     onChange={(e) => setSuaHanXong(e.target.value)}
-                    className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary flex-1"
+                    className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500 flex-1"
                   />
                   {[
                     { nhan: 'Ngày mai', soNgay: 1 },
@@ -1383,7 +1498,7 @@ export default function HopYeuCauPhoiHop({
                 <button
                   type="submit"
                   disabled={dangLuuSua}
-                  className="h-9 px-5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
+                  className="h-9 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
                 >
                   {dangLuuSua ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5 stroke-[2.5]" />}
                   <span>Lưu thay đổi</span>
@@ -1468,7 +1583,7 @@ export default function HopYeuCauPhoiHop({
             <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
               {yeuCauDangXemLichSu.lich_su_xu_ly.map((log, idx) => (
                 <div key={log.id || idx} className="flex items-start gap-2.5 text-xs">
-                  <div className="size-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                  <div className="size-6 rounded-full bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
                     {idx + 1}
                   </div>
                   <div className="min-w-0 flex-1 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1">
@@ -1492,7 +1607,7 @@ export default function HopYeuCauPhoiHop({
                           href={log.link_drive}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline inline-flex items-center gap-1 font-medium text-[11px]"
+                          className="text-blue-600 hover:underline inline-flex items-center gap-1 font-medium text-[11px]"
                         >
                           <Link2 className="size-3" />
                           <span>Link Google Drive đính kèm</span>

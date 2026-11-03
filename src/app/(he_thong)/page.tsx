@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { coQuyen } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { coQuyen, duocXemHoSoDuAn, duocXemKhachHang } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
 import {
   FolderKanban,
   UsersRound,
@@ -604,33 +604,7 @@ export default function TrangChu() {
   // Xác định danh sách dự án liên quan đến nhân viên này
   const dsDuAnLienQuan = useMemo(() => {
     if (!nguoiDungHienTai) return [];
-    const userId = nguoiDungHienTai.id;
-    const laAdmin =
-      nguoiDungHienTai.vai_tro === 'quan_tri_he_thong' || nguoiDungHienTai.vai_tro === 'giam_doc';
-
-    if (laAdmin) {
-      return dsTatCaDuAn;
-    }
-
-    return dsTatCaDuAn.filter((da) => {
-      if (da.nguoi_phu_trach_id === userId) return true;
-      if (da.nguoi_quan_ly_id === userId) return true;
-      if (da.nguoi_tao_id === userId) return true;
-      if (
-        Array.isArray(da.danh_sach_nguoi_ho_tro_ids) &&
-        da.danh_sach_nguoi_ho_tro_ids.includes(userId)
-      ) {
-        return true;
-      }
-      if (
-        nguoiDungHienTai.vai_tro === 'truong_phong' &&
-        nguoiDungHienTai.phong_ban_id &&
-        da.phong_ban_id === nguoiDungHienTai.phong_ban_id
-      ) {
-        return true;
-      }
-      return false;
-    });
+    return dsTatCaDuAn.filter((da) => duocXemHoSoDuAn(nguoiDungHienTai, da));
   }, [nguoiDungHienTai, dsTatCaDuAn]);
 
   const setDuAnLienQuanIds = useMemo(() => {
@@ -640,27 +614,12 @@ export default function TrangChu() {
   // Xác định danh sách khách hàng liên quan
   const dsKhachHangLienQuan = useMemo(() => {
     if (!nguoiDungHienTai) return [];
-    const userId = nguoiDungHienTai.id;
-    const laAdmin =
-      nguoiDungHienTai.vai_tro === 'quan_tri_he_thong' || nguoiDungHienTai.vai_tro === 'giam_doc';
-
-    if (laAdmin) {
-      return dsTatCaKhachHang;
-    }
-
-    const setKhachHangIds = new Set<string>();
-    dsDuAnLienQuan.forEach((da) => {
-      if (da.khach_hang_id) {
-        setKhachHangIds.add(da.khach_hang_id);
-      }
-    });
-
-    return dsTatCaKhachHang.filter((kh) => {
-      if (setKhachHangIds.has(kh.id)) return true;
-      if (kh.nguoi_phu_trach_id === userId) return true;
-      if (kh.nguoi_tao_id === userId) return true;
-      return false;
-    });
+    const dsKhachHangIdsCoDuAn = new Set(
+      dsDuAnLienQuan.map((da) => da.khach_hang_id).filter(Boolean) as string[]
+    );
+    return dsTatCaKhachHang.filter((kh) =>
+      duocXemKhachHang(nguoiDungHienTai, kh, undefined, dsKhachHangIdsCoDuAn)
+    );
   }, [nguoiDungHienTai, dsTatCaKhachHang, dsDuAnLienQuan]);
 
   // Báo cáo ngày hôm nay (khớp cả local date và UTC date, theo user hiện tại)
