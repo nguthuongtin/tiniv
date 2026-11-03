@@ -1,13 +1,30 @@
 'use client';
 
+import {
+  getDocs,
+  getDoc,
+  setDoc,
+  updateDoc,
+  addDoc,
+  query,
+  where,
+  onSnapshot
+} from 'firebase/firestore';
+import {
+  thamChieuCollection,
+  thamChieuBanGhi,
+  ghiNhatKyHoatDong
+} from '../../thu_vien/firebase/client_firebase';
 import type {
   YeuCauPhoiHop,
   TrangThaiYeuCauPhoiHop,
   NhatKyXuLyYeuCau
 } from '../../thu_vien/types/yeu_cau_phoi_hop';
+
 export type { YeuCauPhoiHop };
 
-const LOCAL_STORAGE_KEY = 'ebms_yeu_cau_phoi_hop_cache_v3';
+const TEN_COLLECTION = 'yeu_cau_phoi_hop' as const;
+const LOCAL_STORAGE_KEY = 'ebms_yeu_cau_phoi_hop_cache_v4';
 
 export interface DieuKienLocYeuCauPhoiHop {
   du_an_id?: string | null;
@@ -45,6 +62,7 @@ export interface ChuyenBuocDTO {
   nguoiThucHien?: { id: string; ho_va_ten?: string | null; [key: string]: any } | null;
 }
 
+// ==== Helpers Cache Local & Event ====
 const docCacheLocal = (): YeuCauPhoiHop[] => {
   if (typeof window === 'undefined') return [];
   try {
@@ -70,116 +88,125 @@ const phatSuKienCapNhat = (yc?: YeuCauPhoiHop) => {
   }
 };
 
-export const danhSachYeuCauPhoiHop = async (
-  dieuKien: DieuKienLocYeuCauPhoiHop = {}
-): Promise<YeuCauPhoiHop[]> => {
-  let danhSach: YeuCauPhoiHop[] = [];
-
-  try {
-    const params = new URLSearchParams();
-    if (dieuKien.du_an_id) params.set('du_an_id', dieuKien.du_an_id);
-    if (dieuKien.nguoi_tao_id) params.set('nguoi_tao_id', dieuKien.nguoi_tao_id);
-
-    const res = await fetch(`/api/yeu-cau-phoi-hop?${params.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.thanh_cong && Array.isArray(data.mang)) {
-        const tuServer = data.mang as YeuCauPhoiHop[];
-        const local = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
-        const mapDoc = new Map<string, YeuCauPhoiHop>();
-        local.forEach((x) => mapDoc.set(x.id, x));
-        tuServer.forEach((x) => mapDoc.set(x.id, x));
-
-        danhSach = Array.from(mapDoc.values());
-        ghiCacheLocal(danhSach);
-      } else {
-        danhSach = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
-      }
-    } else {
-      danhSach = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
-    }
-  } catch {
-    danhSach = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
-  }
-
-  if (dieuKien.du_an_id) {
-    danhSach = danhSach.filter((x) => x.du_an_id === dieuKien.du_an_id);
-  }
-
-  if (dieuKien.nguoi_tao_id) {
-    danhSach = danhSach.filter((x) => x.nguoi_tao_id === dieuKien.nguoi_tao_id);
-  }
-
-  if (dieuKien.trang_thai && dieuKien.trang_thai !== 'tat_ca') {
-    danhSach = danhSach.filter((x) => x.trang_thai === dieuKien.trang_thai);
-  }
-
-  if (dieuKien.tuKhoa?.trim()) {
-    const kw = dieuKien.tuKhoa.trim().toLowerCase();
-    danhSach = danhSach.filter(
-      (x) =>
-        x.noi_dung_yeu_cau.toLowerCase().includes(kw) ||
-        x.ten_du_an.toLowerCase().includes(kw) ||
-        (x.ten_khach_hang && x.ten_khach_hang.toLowerCase().includes(kw)) ||
-        x.ten_nguoi_tao.toLowerCase().includes(kw)
-    );
-  }
-
-  return danhSach.sort((a, b) => new Date(b.ngay_tao).getTime() - new Date(a.ngay_tao).getTime());
-};
-
+/**
+ * Lắng nghe thay đổi dữ liệu thời gian thực từ Firestore Client
+ */
 export const langNgheYeuCauPhoiHop = (
   callback: (ds: YeuCauPhoiHop[]) => void
 ): (() => void) => {
-  const docVaGui = () => {
-    const ds = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
-    callback(ds.sort((a, b) => new Date(b.ngay_tao).getTime() - new Date(a.ngay_tao).getTime()));
-  };
+  // 1. Gửi cache ngay lập tức để render tức thì (0ms)
+  const cached = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+  if (cached.length > 0) {
+    callback(cached.sort((a, b) => new Date(b.ngay_tao || 0).getTime() - new Date(a.ngay_tao || 0).getTime()));
+  }
 
-  const taiServerVaCapNhat = async () => {
-    try {
-      const res = await fetch('/api/yeu-cau-phoi-hop');
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.thanh_cong && Array.isArray(data.mang)) {
-          const tuServer = data.mang as YeuCauPhoiHop[];
-          // Lấy server làm chuẩn tuyệt đối: mọi yêu cầu bị xóa trên server sẽ lập tức biến mất trên mọi máy
-          ghiCacheLocal(tuServer);
-          callback(tuServer.sort((a, b) => new Date(b.ngay_tao).getTime() - new Date(a.ngay_tao).getTime()));
-          return;
-        }
+  // 2. Lắng nghe real-time qua onSnapshot trực tiếp từ Firestore Client
+  let unsubscribeFirestore = () => {};
+  try {
+    const q = query(
+      thamChieuCollection(TEN_COLLECTION),
+      where('trang_thai_du_lieu', '==', 'hoat_dong')
+    );
+
+    unsubscribeFirestore = onSnapshot(
+      q,
+      (snapshot) => {
+        const danhSach: YeuCauPhoiHop[] = [];
+        snapshot.forEach((d) => {
+          danhSach.push({ id: d.id, ...(d.data() as any) });
+        });
+        danhSach.sort((a, b) => new Date(b.ngay_tao || 0).getTime() - new Date(a.ngay_tao || 0).getTime());
+        ghiCacheLocal(danhSach);
+        callback(danhSach);
+      },
+      (error) => {
+        console.warn('[langNgheYeuCauPhoiHop] Lỗi onSnapshot Firestore, sử dụng cache cục bộ:', error);
       }
-    } catch {}
-    docVaGui();
-  };
+    );
+  } catch (err) {
+    console.warn('[langNgheYeuCauPhoiHop] Không thể tạo onSnapshot:', err);
+  }
 
-  // Đọc ngay từ cache
-  docVaGui();
-  // Tải lần đầu từ server
-  void taiServerVaCapNhat();
-
-  // Lắng nghe sự kiện cục bộ
-  const handleCustomEvent = () => {
-    docVaGui();
+  // 3. Lắng nghe event cục bộ cùng tab
+  const handleCustomEvent = (ev: Event) => {
+    const custom = ev as CustomEvent<YeuCauPhoiHop | undefined>;
+    const updated = custom.detail;
+    if (updated) {
+      const current = docCacheLocal();
+      const next = current.some((x) => x.id === updated.id)
+        ? current.map((x) => (x.id === updated.id ? updated : x))
+        : [updated, ...current];
+      const valid = next.filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+      ghiCacheLocal(valid);
+      callback(valid.sort((a, b) => new Date(b.ngay_tao || 0).getTime() - new Date(a.ngay_tao || 0).getTime()));
+    } else {
+      const valid = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+      callback(valid.sort((a, b) => new Date(b.ngay_tao || 0).getTime() - new Date(a.ngay_tao || 0).getTime()));
+    }
   };
 
   if (typeof window !== 'undefined') {
     window.addEventListener('ebms_cap_nhat_yeu_cau_phoi_hop', handleCustomEvent);
   }
 
-  // Đồng bộ máy chủ định kỳ 3 giây để cập nhật tức thời khi người khác xóa hoặc sửa
-  const intervalId = setInterval(() => {
-    void taiServerVaCapNhat();
-  }, 3000);
-
   return () => {
-    clearInterval(intervalId);
+    unsubscribeFirestore();
     if (typeof window !== 'undefined') {
       window.removeEventListener('ebms_cap_nhat_yeu_cau_phoi_hop', handleCustomEvent);
     }
   };
 };
 
+/**
+ * Lấy danh sách yêu cầu phối hợp từ Firestore
+ */
+export const danhSachYeuCauPhoiHop = async (
+  dieuKien: DieuKienLocYeuCauPhoiHop = {}
+): Promise<YeuCauPhoiHop[]> => {
+  let danhSach: YeuCauPhoiHop[] = [];
+
+  try {
+    const q = query(
+      thamChieuCollection(TEN_COLLECTION),
+      where('trang_thai_du_lieu', '==', 'hoat_dong')
+    );
+    const snap = await getDocs(q);
+    snap.forEach((d) => {
+      danhSach.push({ id: d.id, ...(d.data() as any) });
+    });
+    danhSach.sort((a, b) => new Date(b.ngay_tao || 0).getTime() - new Date(a.ngay_tao || 0).getTime());
+    ghiCacheLocal(danhSach);
+  } catch (err) {
+    console.warn('[danhSachYeuCauPhoiHop] Lỗi đọc Firestore, dùng cache:', err);
+    danhSach = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+  }
+
+  if (dieuKien.du_an_id) {
+    danhSach = danhSach.filter((x) => x.du_an_id === dieuKien.du_an_id);
+  }
+  if (dieuKien.nguoi_tao_id) {
+    danhSach = danhSach.filter((x) => x.nguoi_tao_id === dieuKien.nguoi_tao_id);
+  }
+  if (dieuKien.trang_thai && dieuKien.trang_thai !== 'tat_ca') {
+    danhSach = danhSach.filter((x) => x.trang_thai === dieuKien.trang_thai);
+  }
+  if (dieuKien.tuKhoa?.trim()) {
+    const kw = dieuKien.tuKhoa.trim().toLowerCase();
+    danhSach = danhSach.filter(
+      (x) =>
+        x.noi_dung_yeu_cau?.toLowerCase().includes(kw) ||
+        x.ten_du_an?.toLowerCase().includes(kw) ||
+        x.ten_khach_hang?.toLowerCase().includes(kw) ||
+        x.ten_nguoi_tao?.toLowerCase().includes(kw)
+    );
+  }
+
+  return danhSach;
+};
+
+/**
+ * Tạo mới yêu cầu phối hợp và lưu trực tiếp lên Firestore
+ */
 export const taoYeuCauPhoiHopMoi = async (
   dto: TaoMoiYeuCauPhoiHopDTO,
   nguoiThucHien?: { id: string; ho_va_ten?: string | null; [key: string]: any } | null
@@ -223,31 +250,55 @@ export const taoYeuCauPhoiHopMoi = async (
     trang_thai_du_lieu: 'hoat_dong'
   };
 
-  // 1. Lưu ngay vào local cache & phát sự kiện tức thời
+  // 1. Cập nhật cache tức thì và phát event
   const cacheHienTai = docCacheLocal();
   ghiCacheLocal([yeuCauMoi, ...cacheHienTai.filter((x) => x.id !== idMoi)]);
   phatSuKienCapNhat(yeuCauMoi);
 
-  // 2. Gửi qua API Server bằng Firebase Admin (không bao giờ bị lỗi permission)
+  // 2. Ghi trực tiếp lên Firestore qua Client SDK (nhanh, chuẩn, không delay)
   try {
-    const res = await fetch('/api/yeu-cau-phoi-hop', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(yeuCauMoi)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.du_lieu) {
-        return data.du_lieu;
-      }
-    }
+    await setDoc(thamChieuBanGhi(TEN_COLLECTION, idMoi), yeuCauMoi);
   } catch (err) {
-    console.warn('[taoYeuCauPhoiHopMoi] Lỗi gửi API, đã lưu cache local:', err);
+    console.warn('[taoYeuCauPhoiHopMoi] Cảnh báo ghi Firestore:', err);
   }
+
+  // 3. Tự động thêm dòng tiến độ vào hồ sơ dự án
+  try {
+    const cauHanhDong = `Gửi yêu cầu phối hợp: ${dto.noi_dung_yeu_cau.trim()}`;
+    await addDoc(thamChieuCollection('tien_do_du_an'), {
+      du_an_id: dto.du_an_id,
+      tinh_hinh_hien_tai: cauHanhDong,
+      hanh_dong_tiep_theo: 'Bộ phận chuyên môn tiếp nhận và xử lý kết quả',
+      deadline_hanh_dong: dto.han_hoan_thanh || null,
+      link_tai_lieu: dto.link_drive_dau_vao || null,
+      ten_tai_lieu: dto.link_drive_dau_vao ? 'Tài liệu đầu vào (Google Drive)' : null,
+      ket_qua_thuc_hien: null,
+      trang_thai_hanh_dong: 'dang_thuc_hien',
+      nguoi_tao_id: userId,
+      nguoi_hoan_thanh_id: null,
+      ngay_tao: nowISO,
+      ngay_cap_nhat: nowISO,
+      ngay_hoan_thanh: null,
+      trang_thai_du_lieu: 'hoat_dong'
+    });
+  } catch (eTD) {
+    console.warn('[taoYeuCauPhoiHopMoi] Lỗi ghi tiến độ dự án:', eTD);
+  }
+
+  // 4. Gửi thông báo ngầm (nếu có API) mà không chờ block UI
+  void fetch('/api/yeu-cau-phoi-hop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(yeuCauMoi),
+    signal: AbortSignal.timeout(2000)
+  }).catch(() => {});
 
   return yeuCauMoi;
 };
 
+/**
+ * Chuyển bước yêu cầu phối hợp (Phê duyệt, Phân công, Nộp kết quả, Sửa, Hoàn tất)
+ */
 export const chuyenBuocYeuCauPhoiHop = async (
   params: ChuyenBuocDTO
 ): Promise<YeuCauPhoiHop | null> => {
@@ -265,13 +316,21 @@ export const chuyenBuocYeuCauPhoiHop = async (
   const userId = nguoiThucHien?.id || 'he_thong';
   const userName = nguoiThucHien?.ho_va_ten || 'Người dùng';
 
-  const ds = await danhSachYeuCauPhoiHop();
-  const hienTai = ds.find((x) => x.id === yeuCauId);
+  // Lấy dữ liệu hiện tại từ cache hoặc Firestore
+  let hienTai = docCacheLocal().find((x) => x.id === yeuCauId);
+  if (!hienTai) {
+    try {
+      const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, yeuCauId));
+      if (snap.exists()) {
+        hienTai = { id: snap.id, ...(snap.data() as any) } as YeuCauPhoiHop;
+      }
+    } catch {}
+  }
   if (!hienTai) return null;
 
   let tenHanhDong = 'Chuyển bước';
   if (trangThaiMoi === 'cho_khth_thuc_hien') {
-    tenHanhDong = 'Tiếp nhận & Phân công';
+    tenHanhDong = 'Tiếp nhận & Phân công KHTH';
   } else if (trangThaiMoi === 'cho_tpkd_duyet_ket_qua') {
     tenHanhDong = 'Nộp kết quả xử lý';
   } else if (trangThaiMoi === 'da_phe_duyet') {
@@ -308,99 +367,139 @@ export const chuyenBuocYeuCauPhoiHop = async (
     capNhat.danh_sach_ten_nhan_su_thuc_hien = danhSachNhanSuThucHien.map((x) => x.ho_va_ten);
   }
 
+  const lichSuCu = Array.isArray(hienTai.lich_su_xu_ly) ? hienTai.lich_su_xu_ly : [];
   const yeuCauCapNhat: YeuCauPhoiHop = {
     ...hienTai,
     ...capNhat,
-    lich_su_xu_ly: [...hienTai.lich_su_xu_ly, nhatKyMoi]
+    lich_su_xu_ly: [...lichSuCu, nhatKyMoi]
   };
 
-  // Cập nhật local cache & phát sự kiện tức thì
+  // 1. Cập nhật local cache & phát event tức thì (giao diện phản hồi 0ms)
   const localList = docCacheLocal();
   ghiCacheLocal(localList.map((x) => (x.id === yeuCauId ? yeuCauCapNhat : x)));
   phatSuKienCapNhat(yeuCauCapNhat);
 
-  // Gửi qua API Server
+  // 2. Ghi trực tiếp Firestore
   try {
-    await fetch('/api/yeu-cau-phoi-hop', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: yeuCauId,
-        ...capNhat,
-        nhat_ky_moi: nhatKyMoi
-      })
-    });
+    await setDoc(thamChieuBanGhi(TEN_COLLECTION, yeuCauId), yeuCauCapNhat, { merge: true });
   } catch (err) {
-    console.warn('[chuyenBuocYeuCauPhoiHop] Lỗi gửi API, đã lưu cache local:', err);
+    console.warn('[chuyenBuocYeuCauPhoiHop] Cảnh báo lưu Firestore:', err);
   }
+
+  // 3. Gửi thông báo ngầm mà không block UI
+  void fetch('/api/yeu-cau-phoi-hop', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: yeuCauId,
+      ...capNhat,
+      nhat_ky_moi: nhatKyMoi
+    }),
+    signal: AbortSignal.timeout(2000)
+  }).catch(() => {});
 
   return yeuCauCapNhat;
 };
 
+/**
+ * Cập nhật thông tin yêu cầu (nội dung, link, hạn hoàn thành)
+ */
 export const capNhatThongTinYeuCau = async (
   dto: CapNhatThongTinYeuCauDTO
 ): Promise<YeuCauPhoiHop | null> => {
-  const ds = await danhSachYeuCauPhoiHop();
-  const hienTai = ds.find((x) => x.id === dto.id);
+  let hienTai = docCacheLocal().find((x) => x.id === dto.id);
+  if (!hienTai) {
+    try {
+      const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id));
+      if (snap.exists()) {
+        hienTai = { id: snap.id, ...(snap.data() as any) } as YeuCauPhoiHop;
+      }
+    } catch {}
+  }
   if (!hienTai) return null;
 
   const nowISO = new Date().toISOString();
-  const yeuCauCapNhat: YeuCauPhoiHop = {
-    ...hienTai,
-    noi_dung_yeu_cau: dto.noi_dung_yeu_cau ?? hienTai.noi_dung_yeu_cau,
-    link_drive_dau_vao: dto.link_drive_dau_vao !== undefined ? dto.link_drive_dau_vao : hienTai.link_drive_dau_vao,
-    link_drive_ket_qua: dto.link_drive_ket_qua !== undefined ? dto.link_drive_ket_qua : hienTai.link_drive_ket_qua,
-    han_hoan_thanh: dto.han_hoan_thanh !== undefined ? dto.han_hoan_thanh : hienTai.han_hoan_thanh,
+  const patch: Partial<YeuCauPhoiHop> = {
     ngay_cap_nhat: nowISO
   };
 
+  if (dto.noi_dung_yeu_cau !== undefined) patch.noi_dung_yeu_cau = dto.noi_dung_yeu_cau.trim();
+  if (dto.link_drive_dau_vao !== undefined) patch.link_drive_dau_vao = dto.link_drive_dau_vao?.trim() || null;
+  if (dto.link_drive_ket_qua !== undefined) patch.link_drive_ket_qua = dto.link_drive_ket_qua?.trim() || null;
+  if (dto.han_hoan_thanh !== undefined) patch.han_hoan_thanh = dto.han_hoan_thanh || null;
+
+  const yeuCauCapNhat: YeuCauPhoiHop = {
+    ...hienTai,
+    ...patch
+  };
+
+  // 1. Cập nhật cache tức thì & phát event
   const localList = docCacheLocal();
   ghiCacheLocal(localList.map((x) => (x.id === dto.id ? yeuCauCapNhat : x)));
   phatSuKienCapNhat(yeuCauCapNhat);
 
+  // 2. Ghi trực tiếp Firestore
   try {
-    await fetch('/api/yeu-cau-phoi-hop', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: dto.id,
-        noi_dung_yeu_cau: dto.noi_dung_yeu_cau,
-        link_drive_dau_vao: dto.link_drive_dau_vao,
-        link_drive_ket_qua: dto.link_drive_ket_qua,
-        han_hoan_thanh: dto.han_hoan_thanh
-      })
-    });
-  } catch {}
+    await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patch, { merge: true });
+  } catch (err) {
+    console.warn('[capNhatThongTinYeuCau] Cảnh báo lưu Firestore:', err);
+  }
+
+  // 3. Gửi ngầm thông báo
+  void fetch('/api/yeu-cau-phoi-hop', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: dto.id,
+      noi_dung_yeu_cau: dto.noi_dung_yeu_cau,
+      link_drive_dau_vao: dto.link_drive_dau_vao,
+      link_drive_ket_qua: dto.link_drive_ket_qua,
+      han_hoan_thanh: dto.han_hoan_thanh
+    }),
+    signal: AbortSignal.timeout(2000)
+  }).catch(() => {});
 
   return yeuCauCapNhat;
 };
 
+/**
+ * Xóa yêu cầu phối hợp (xóa mềm đổi trang_thai_du_lieu sang 'da_xoa')
+ */
 export const xoaYeuCauPhoiHop = async (
   yeuCauId: string,
   nguoiThucHien?: { id: string; ho_va_ten?: string | null; [key: string]: any } | null
 ): Promise<boolean> => {
+  // 1. Xóa khỏi local cache & phát event ngay
   const localList = docCacheLocal();
   ghiCacheLocal(localList.filter((x) => x.id !== yeuCauId));
   phatSuKienCapNhat();
 
+  // 2. Ghi cập nhật Firestore
+  try {
+    const nowISO = new Date().toISOString();
+    await setDoc(
+      thamChieuBanGhi(TEN_COLLECTION, yeuCauId),
+      {
+        trang_thai_du_lieu: 'da_xoa',
+        ngay_cap_nhat: nowISO
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('[xoaYeuCauPhoiHop] Lỗi xóa Firestore:', err);
+  }
+
+  // 3. Gửi ngầm API dọn dẹp (nếu cần)
   try {
     const params = new URLSearchParams({ id: yeuCauId });
     if (nguoiThucHien?.id) {
       params.append('nguoi_xoa_id', nguoiThucHien.id);
     }
-    const res = await fetch(`/api/yeu-cau-phoi-hop?${params.toString()}`, {
-      method: 'DELETE'
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      if (errData?.thong_diep) {
-        throw new Error(errData.thong_diep);
-      }
-    }
-  } catch (err: any) {
-    console.warn('[xoaYeuCauPhoiHop] Lỗi xóa yêu cầu:', err);
-    throw err;
-  }
+    void fetch(`/api/yeu-cau-phoi-hop?${params.toString()}`, {
+      method: 'DELETE',
+      signal: AbortSignal.timeout(2000)
+    }).catch(() => {});
+  } catch {}
 
   return true;
 };
