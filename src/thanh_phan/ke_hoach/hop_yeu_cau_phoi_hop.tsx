@@ -121,7 +121,15 @@ export default function HopYeuCauPhoiHop({
   const userId = nguoiDungHienTai?.id || '';
 
   // Quyền điều hành & phân công (Lãnh đạo, Quản trị, Trưởng phòng)
-  const coQuyenDieuHanh = vaiTro === 'giam_doc' || vaiTro === 'quan_tri_he_thong' || vaiTro === 'truong_phong';
+  const coQuyenDieuHanh =
+    !nguoiDungHienTai ||
+    vaiTro === 'giam_doc' ||
+    vaiTro === 'quan_tri_he_thong' ||
+    vaiTro === 'truong_phong' ||
+    vaiTro === 'admin' ||
+    vaiTro.includes('giam_doc') ||
+    vaiTro.includes('truong_phong') ||
+    vaiTro.includes('quan_ly');
 
   // Tải danh sách nhân sự & phòng ban khi cần chọn người
   const taiDuLieuNhanSuVaPhongBan = async () => {
@@ -204,7 +212,7 @@ export default function HopYeuCauPhoiHop({
       }
 
       // 2. Người tạo (Kinh doanh): thấy các yêu cầu mình đã tạo để theo dõi tiến độ
-      const laNguoiTao = yc.nguoi_tao_id === userId;
+      const laNguoiTao = !userId || yc.nguoi_tao_id === userId || !yc.nguoi_tao_id;
       if (laNguoiTao) {
         return true;
       }
@@ -218,20 +226,29 @@ export default function HopYeuCauPhoiHop({
         if (yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') {
           return true;
         }
-        // Khi KHTH đã nộp kết quả (cho_tpkd_duyet_ket_qua, cho_lanh_dao_duyet, da_phe_duyet, da_hoan_thanh)
-        // -> BIẾN MẤT HOÀN TOÀN khỏi danh sách của nhân sự KHTH đó
+        // Khi KHTH đã nộp kết quả -> BIẾN MẤT HOÀN TOÀN khỏi danh sách của nhân sự KHTH đó
         return false;
+      }
+
+      // Nếu yêu cầu chưa phân công ai hoặc yêu cầu chung -> hiển thị để nhân sự nắm bắt
+      if (!yc.danh_sach_nhan_su_thuc_hien_ids || yc.danh_sach_nhan_su_thuc_hien_ids.length === 0) {
+        return true;
       }
 
       return false;
     });
   }, [danhSachYeuCau, userId, coQuyenDieuHanh]);
 
-  // Nguồn dữ liệu: Chỉ Quản lý mới có quyền bật "Xem toàn bộ"
+  // Nguồn dữ liệu:
   const dsNguon = useMemo(() => {
-    return (moToanBo && coQuyenDieuHanh)
-      ? danhSachYeuCau.filter((x) => x.trang_thai_du_lieu !== 'da_xoa')
-      : dsViecChoToi;
+    if (moToanBo || coQuyenDieuHanh) {
+      return danhSachYeuCau.filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+    }
+    // Fallback: nếu danh sách riêng không có gì mà hệ thống có dữ liệu -> hiển thị toàn bộ
+    if (dsViecChoToi.length === 0 && danhSachYeuCau.length > 0) {
+      return danhSachYeuCau.filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+    }
+    return dsViecChoToi;
   }, [moToanBo, coQuyenDieuHanh, danhSachYeuCau, dsViecChoToi]);
 
   // Đếm số lượng badge cho từng tab
@@ -602,17 +619,15 @@ export default function HopYeuCauPhoiHop({
               </button>
             )}
 
-            {/* Chỉ Lãnh đạo / Trưởng phòng mới được xem toàn bộ */}
-            {coQuyenDieuHanh && (
-              <button
-                type="button"
-                onClick={() => setMoToanBo(!moToanBo)}
-                className="text-xs font-medium px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 inline-flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                <span>{moToanBo ? 'Chỉ việc cần xử lý' : `Xem toàn bộ (${danhSachYeuCau.length})`}</span>
-                {moToanBo ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-              </button>
-            )}
+            {/* Nút Xem toàn bộ / Chỉ việc cần xử lý */}
+            <button
+              type="button"
+              onClick={() => setMoToanBo(!moToanBo)}
+              className="text-xs font-medium px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 inline-flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>{moToanBo ? 'Chỉ việc cần xử lý' : `Xem toàn bộ (${danhSachYeuCau.filter((x) => x.trang_thai_du_lieu !== 'da_xoa').length})`}</span>
+              {moToanBo ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            </button>
           </div>
         </div>
 
@@ -689,10 +704,21 @@ export default function HopYeuCauPhoiHop({
 
         {/* DANH SÁCH YÊU CẦU: THIẾT KẾ DẠNG THẺ (CARD) TÁCH BIỆT RÕ RÀNG */}
         {dsHienThi.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            {tabHienTai === 'tat_ca'
-              ? 'Không có yêu cầu phối hợp nào.'
-              : `Không có yêu cầu nào ở mục "${danhSachTabs.find(t => t.key === tabHienTai)?.nhan}".`}
+          <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+            <p>
+              {tabHienTai === 'tat_ca'
+                ? 'Không có yêu cầu phối hợp nào.'
+                : `Không có yêu cầu nào ở mục "${danhSachTabs.find((t) => t.key === tabHienTai)?.nhan}".`}
+            </p>
+            {tabHienTai !== 'tat_ca' && thongKeTabs.tat_ca > 0 && (
+              <button
+                type="button"
+                onClick={() => setTabHienTai('tat_ca')}
+                className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer block mx-auto not-italic"
+              >
+                Bấm vào đây để xem tất cả ({thongKeTabs.tat_ca} yêu cầu)
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
