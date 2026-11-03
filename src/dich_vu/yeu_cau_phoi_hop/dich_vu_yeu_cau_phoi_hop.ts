@@ -149,7 +149,10 @@ async function ghiNhanTienDoKhiChuyenBuoc(
   if (!hienTai.du_an_id) return;
 
   try {
-    if (trangThaiMoi === 'cho_tpkd_duyet_ket_qua') {
+    if (
+      trangThaiMoi === 'cho_tpkh_duyet_ket_qua' ||
+      trangThaiMoi === 'cho_tpkd_duyet_ket_qua'
+    ) {
       const tenKHTH =
         Array.isArray(hienTai.danh_sach_ten_nhan_su_thuc_hien) &&
         hienTai.danh_sach_ten_nhan_su_thuc_hien.length > 0
@@ -159,7 +162,7 @@ async function ghiNhanTienDoKhiChuyenBuoc(
       await addDoc(thamChieuCollection('tien_do_du_an'), {
         du_an_id: hienTai.du_an_id,
         tinh_hinh_hien_tai: `[KHTH nộp kết quả] ${hienTai.noi_dung_yeu_cau}`,
-        hanh_dong_tiep_theo: 'Trưởng phòng kiểm tra & phê duyệt kết quả phối hợp',
+        hanh_dong_tiep_theo: 'Kiểm tra & phê duyệt kết quả phối hợp',
         deadline_hanh_dong: hienTai.han_hoan_thanh || null,
         link_tai_lieu: linkKetQua,
         ten_tai_lieu: linkKetQua ? 'File kết quả Google Drive (KHTH)' : null,
@@ -172,7 +175,11 @@ async function ghiNhanTienDoKhiChuyenBuoc(
         ngay_hoan_thanh: nowISO,
         trang_thai_du_lieu: 'hoat_dong'
       });
-    } else if (trangThaiMoi === 'da_phe_duyet') {
+    } else if (
+      trangThaiMoi === 'cho_sale_nghiem_thu' ||
+      trangThaiMoi === 'da_phe_duyet' ||
+      trangThaiMoi === 'da_hoan_thanh'
+    ) {
       await addDoc(thamChieuCollection('tien_do_du_an'), {
         du_an_id: hienTai.du_an_id,
         tinh_hinh_hien_tai: `[Đã duyệt kết quả phối hợp] ${hienTai.noi_dung_yeu_cau}`,
@@ -545,16 +552,28 @@ export const chuyenBuocYeuCauPhoiHop = async (
   if (!hienTai) return null;
 
   let tenHanhDong = 'Chuyển bước';
-  if (trangThaiMoi === 'cho_khth_thuc_hien') {
-    tenHanhDong = 'Tiếp nhận & Phân công KHTH';
-  } else if (trangThaiMoi === 'cho_tpkd_duyet_ket_qua') {
-    tenHanhDong = 'Nộp kết quả xử lý';
-  } else if (trangThaiMoi === 'da_phe_duyet') {
-    tenHanhDong = 'Phê duyệt kết quả';
+  if (trangThaiMoi === 'cho_tpkd_duyet') {
+    tenHanhDong = ghiChu ? 'Yêu cầu làm lại / Chuyển TPKD' : 'Khởi tạo chuyển TPKD';
+  } else if (trangThaiMoi === 'cho_tpkh_tiep_nhan') {
+    tenHanhDong = ghiChu?.includes('TPKD yêu cầu')
+      ? 'TPKD yêu cầu TPKH rà soát sửa lại'
+      : 'TPKD phê duyệt & Chuyển KHTH';
+  } else if (trangThaiMoi === 'cho_cv_khth_thuc_hien' || trangThaiMoi === 'cho_khth_thuc_hien') {
+    tenHanhDong = ghiChu?.includes('sửa')
+      ? 'TPKH yêu cầu CV sửa lại'
+      : 'TPKH phân công CV KHTH';
+  } else if (trangThaiMoi === 'cho_tpkh_duyet_ket_qua') {
+    tenHanhDong = 'CV KHTH nộp kết quả';
+  } else if (trangThaiMoi === 'cho_tpkd_duyet_ket_qua' || trangThaiMoi === 'cho_lanh_dao_duyet') {
+    tenHanhDong = hienTai.trang_thai === 'cho_tpkh_tiep_nhan'
+      ? 'TPKH tự thực hiện & nộp kết quả'
+      : 'TPKH phê duyệt kết quả & Chuyển TPKD';
+  } else if (trangThaiMoi === 'cho_sale_nghiem_thu' || trangThaiMoi === 'da_phe_duyet') {
+    tenHanhDong = 'TPKD phê duyệt kết quả & Bàn giao Sale';
+  } else if (trangThaiMoi === 'da_hoan_thanh') {
+    tenHanhDong = 'Sale nghiệm thu & Hoàn tất yêu cầu';
   } else if (trangThaiMoi === 'yeu_cau_chinh_sua') {
     tenHanhDong = 'Yêu cầu chỉnh sửa';
-  } else if (trangThaiMoi === 'da_hoan_thanh') {
-    tenHanhDong = 'Hoàn tất yêu cầu';
   }
 
   const nhatKyMoi: NhatKyXuLyYeuCau = {
@@ -602,11 +621,17 @@ export const chuyenBuocYeuCauPhoiHop = async (
     console.warn('[chuyenBuocYeuCauPhoiHop] Cảnh báo lưu Firestore:', err);
   }
 
-  // 3. TỰ ĐỘNG THỰC HIỆN 2 YÊU CẦU:
+  // 3. TỰ ĐỘNG THỰC HIỆN TIẾN ĐỘ DỰ ÁN & KHO TÀI LIỆU
   const linkKetQuaThucTe = linkDriveKetQua?.trim() || hienTai.link_drive_ket_qua || null;
 
-  // Việc 1: Ghi nhận cập nhật tiến độ dự án khi KHTH nộp kết quả hoặc khi kết quả được phê duyệt
-  if (trangThaiMoi === 'cho_tpkd_duyet_ket_qua' || trangThaiMoi === 'da_phe_duyet') {
+  // Việc 1: Ghi nhận cập nhật tiến độ dự án khi nộp kết quả hoặc khi kết quả được phê duyệt
+  if (
+    trangThaiMoi === 'cho_tpkh_duyet_ket_qua' ||
+    trangThaiMoi === 'cho_tpkd_duyet_ket_qua' ||
+    trangThaiMoi === 'cho_sale_nghiem_thu' ||
+    trangThaiMoi === 'da_phe_duyet' ||
+    trangThaiMoi === 'da_hoan_thanh'
+  ) {
     void ghiNhanTienDoKhiChuyenBuoc(
       hienTai,
       trangThaiMoi,
@@ -619,7 +644,11 @@ export const chuyenBuocYeuCauPhoiHop = async (
   }
 
   // Việc 2: Khi kết quả sau khi được phê duyệt -> tự động lưu tất cả link file vào kho tài liệu và chính mục tài liệu của dự án
-  if (trangThaiMoi === 'da_phe_duyet' || trangThaiMoi === 'da_hoan_thanh') {
+  if (
+    trangThaiMoi === 'cho_sale_nghiem_thu' ||
+    trangThaiMoi === 'da_phe_duyet' ||
+    trangThaiMoi === 'da_hoan_thanh'
+  ) {
     void luuTaiLieuKetQuaKhiPheDuyet(
       hienTai,
       linkKetQuaThucTe,
