@@ -191,8 +191,7 @@ export const duocXemHoSoDuAn = (
     vaiTroKey === 'quan_tri_he_thong' ||
     vaiTroKey === 'giam_doc' ||
     vaiTroKey === 'truong_phong' ||
-    vaiTroKey === 'truong_phong_kd' ||
-    vaiTroKey === 'truong_phong_khth' ||
+    vaiTroKey.startsWith('truong_phong_') ||
     coQuyen(nguoiDung, 'du_an.xem_toan_bo', dsVaiTro)
   ) {
     return true;
@@ -276,8 +275,7 @@ export const laQuanLyCapCaoHoacTruongPhong = (
     vaiTroKey === 'quan_tri_he_thong' ||
     vaiTroKey === 'giam_doc' ||
     vaiTroKey === 'truong_phong' ||
-    vaiTroKey === 'truong_phong_kd' ||
-    vaiTroKey === 'truong_phong_khth' ||
+    vaiTroKey.startsWith('truong_phong_') ||
     coQuyen(nguoiDung, 'lanh_dao.xem', dsVaiTro) ||
     coQuyen(nguoiDung, 'khach_hang.xem_toan_bo', dsVaiTro) ||
     coQuyen(nguoiDung, 'du_an.xem_toan_bo', dsVaiTro)
@@ -305,7 +303,7 @@ export const laTruongPhongCuaNhanSu = (
   if (phamVi.toanCongTy) return true;
 
   if (nhanSuMucTieu.phong_ban_id && phamVi.danhSachPhongBanIds.includes(nhanSuMucTieu.phong_ban_id)) {
-    return vaiTroKey === 'truong_phong_kd' || vaiTroKey === 'truong_phong_khth' || vaiTroKey === 'truong_phong';
+    return vaiTroKey === 'truong_phong' || vaiTroKey.startsWith('truong_phong_');
   }
   return false;
 };

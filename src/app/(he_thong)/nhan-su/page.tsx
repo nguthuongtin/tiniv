@@ -146,7 +146,7 @@ export default function TrangNhanSu() {
       if (!nguoiDungHienTai) return false;
       const vaiTro = String(nguoiDungHienTai.vai_tro || '');
       if (vaiTro === 'quan_tri_he_thong' || vaiTro === 'giam_doc') return true;
-      if (vaiTro === 'truong_phong_kd' || vaiTro === 'truong_phong_khth' || vaiTro === 'truong_phong') {
+      if (vaiTro === 'truong_phong' || vaiTro.startsWith('truong_phong_')) {
         const myPbId = nguoiDungHienTai.phong_ban_id;
         const extraPbs = Array.isArray(nguoiDungHienTai.phong_ban_phu_trach_them) ? nguoiDungHienTai.phong_ban_phu_trach_them : [];
         return ns.phong_ban_id === myPbId || (!!ns.phong_ban_id && extraPbs.includes(ns.phong_ban_id));
@@ -160,7 +160,7 @@ export default function TrangNhanSu() {
   useEffect(() => {
     if (nguoiDungHienTai?.phong_ban_id) {
       const vaiTro = String(nguoiDungHienTai.vai_tro || '');
-      const laTruongPhong = vaiTro === 'truong_phong_kd' || vaiTro === 'truong_phong_khth' || vaiTro === 'truong_phong';
+      const laTruongPhong = vaiTro === 'truong_phong' || vaiTro.startsWith('truong_phong_');
       const laLanhDao = vaiTro === 'quan_tri_he_thong' || vaiTro === 'giam_doc';
       if (laTruongPhong && !laLanhDao && !dieukien.phong_ban_id) {
         setDieuKien((prev) => ({ ...prev, phong_ban_id: nguoiDungHienTai.phong_ban_id }));

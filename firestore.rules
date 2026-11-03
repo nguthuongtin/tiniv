@@ -53,7 +53,7 @@ service cloud.firestore {
       return daXacThucVaHoatDong() && (
         laGiamDoc()
         || (
-          layVaiTro() in ['truong_phong', 'truong_phong_kd', 'truong_phong_khth']
+          (layVaiTro() in ['truong_phong', 'truong_phong_kd', 'truong_phong_khth'] || (layVaiTro() is string && layVaiTro().matches('^truong_phong.*')))
           && nhanSuDoc().data.phong_ban_id != null
           && phongBanIdCuaBanGhi != null
           && nhanSuDoc().data.phong_ban_id == phongBanIdCuaBanGhi
