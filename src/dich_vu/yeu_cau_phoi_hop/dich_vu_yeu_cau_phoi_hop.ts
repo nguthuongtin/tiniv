@@ -56,6 +56,8 @@ export interface CapNhatThongTinYeuCauDTO {
   link_drive_dau_vao?: string | null;
   link_drive_ket_qua?: string | null;
   han_hoan_thanh?: string | null;
+  trang_thai?: TrangThaiYeuCauPhoiHop;
+  ghi_chu?: string | null;
   nguoiThucHien?: { id: string; ho_va_ten?: string | null; [key: string]: any } | null;
 }
 
@@ -685,6 +687,30 @@ export const capNhatThongTinYeuCau = async (
   if (dto.link_drive_dau_vao !== undefined) patch.link_drive_dau_vao = dto.link_drive_dau_vao?.trim() || null;
   if (dto.link_drive_ket_qua !== undefined) patch.link_drive_ket_qua = dto.link_drive_ket_qua?.trim() || null;
   if (dto.han_hoan_thanh !== undefined) patch.han_hoan_thanh = dto.han_hoan_thanh || null;
+  if (dto.trang_thai !== undefined) patch.trang_thai = dto.trang_thai;
+  if (dto.ghi_chu !== undefined) patch.ghi_chu_phan_hoi = dto.ghi_chu || null;
+
+  const userId = dto.nguoiThucHien?.id || 'thanh_vien';
+  const userName = dto.nguoiThucHien?.ho_va_ten || 'Người dùng';
+  const hanhDong =
+    dto.trang_thai === 'cho_tpkd_duyet'
+      ? 'Sale hiệu chỉnh & gửi lại TPKD'
+      : 'Cập nhật thông tin yêu cầu';
+
+  const nhatKySua: NhatKyXuLyYeuCau = {
+    id: `log_${Date.now()}`,
+    thoi_gian: nowISO,
+    nguoi_thuc_hien_id: userId,
+    ten_nguoi_thuc_hien: userName,
+    chuc_vu: (dto.nguoiThucHien as any)?.chuc_vu || null,
+    vai_tro: dto.nguoiThucHien?.vai_tro || null,
+    hanh_dong: hanhDong,
+    ghi_chu: dto.ghi_chu || dto.noi_dung_yeu_cau || null,
+    link_drive: dto.link_drive_dau_vao || null
+  };
+
+  const lichSuCu = Array.isArray(hienTai.lich_su_xu_ly) ? hienTai.lich_su_xu_ly : [];
+  patch.lich_su_xu_ly = [...lichSuCu, nhatKySua];
 
   const yeuCauCapNhat: YeuCauPhoiHop = {
     ...hienTai,

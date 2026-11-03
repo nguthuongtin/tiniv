@@ -247,11 +247,63 @@ export default function HopYeuCauPhoiHop({
   // - laTPKH: Trưởng phòng KHTH (hoặc Trưởng phòng nếu chưa gán phòng cụ thể, hoặc Admin)
   const laTPKH = coQuyenAdmin || (vaiTro === 'truong_phong' && (isKHTHDepartment || !isKDDepartment));
 
-  // Nguồn dữ liệu: KHÔNG ẨN BẤT KỲ YÊU CẦU NÀO ĐỐI VỚI BẤT KỲ AI
-  // "Lúc nào ở giai đoạn nào thì ai cũng thấy. Khi xong mọi người vẫn thấy kết quả cũ."
+  // Kiểm tra yêu cầu có phải do user hiện tại tạo hay không
+  const laNguoiTaoCuaYeuCau = (yc: YeuCauPhoiHop) => {
+    if (!userId && !nguoiDungHienTai) return true; // Preview mode khi chưa đăng nhập
+    if (yc.nguoi_tao_id && userId && yc.nguoi_tao_id === userId) return true;
+    if (
+      nguoiDungHienTai?.ho_va_ten &&
+      yc.ten_nguoi_tao &&
+      yc.ten_nguoi_tao.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten.trim().toLowerCase()
+    ) {
+      return true;
+    }
+    if (
+      nguoiDungHienTai?.email &&
+      (yc as any).nguoi_tao_email &&
+      (yc as any).nguoi_tao_email.trim().toLowerCase() === nguoiDungHienTai.email.trim().toLowerCase()
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  // Quản lý hoặc Ban giám đốc: Toàn quyền xem, điều phối & duyệt
+  const laQuanLyHoacAdmin = coQuyenAdmin || laTPKD || laTPKH;
+
+  // Nguồn dữ liệu theo phân quyền:
+  // - Sale: Chỉ thấy các yêu cầu do chính mình tạo ("yêu cầu của sale nào thì sale đó thấy")
+  // - Chuyên viên KHTH: Thấy yêu cầu được giao cho mình hoặc do chính mình tạo
+  // - Trưởng phòng & Lãnh đạo (TPKD, TPKHTH, Admin, Giám đốc): Thấy toàn bộ để điều phối & phê duyệt
   const dsNguon = useMemo(() => {
-    return danhSachYeuCau.filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
-  }, [danhSachYeuCau]);
+    const tatCa = danhSachYeuCau.filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+    if (!userId || laQuanLyHoacAdmin) {
+      return tatCa;
+    }
+
+    return tatCa.filter((yc) => {
+      const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
+      const duocGiao =
+        Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
+        yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId);
+
+      // Nếu là chuyên viên KHTH
+      if (vaiTro === 'nhan_vien_ky_thuat' || isKHTHDepartment) {
+        return duocGiao || laNguoiTao;
+      }
+
+      // Nếu là Sale (hoặc bất kỳ nhân sự thường nào): chỉ thấy yêu cầu do chính mình tạo
+      return laNguoiTao;
+    });
+  }, [
+    danhSachYeuCau,
+    userId,
+    laQuanLyHoacAdmin,
+    vaiTro,
+    isKHTHDepartment,
+    nguoiDungHienTai?.ho_va_ten,
+    nguoiDungHienTai?.email
+  ]);
 
   // Đếm số lượng badge cho từng tab
   const thongKeTabs = useMemo(() => {
@@ -275,10 +327,10 @@ export default function HopYeuCauPhoiHop({
       if (yc.trang_thai === 'cho_tpkh_tiep_nhan' || yc.trang_thai === 'cho_tpkh_duyet_ket_qua') {
         choTPKH++;
       }
-      if (yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') {
+      if (yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') {
         khthDangLam++;
       }
-      if (yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet') {
+      if (yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet' || yc.trang_thai === 'yeu_cau_chinh_sua') {
         choSale++;
       }
     }
@@ -309,11 +361,16 @@ export default function HopYeuCauPhoiHop({
     }
     if (tabHienTai === 'khth_dang_lam') {
       return dsNguon.filter(
-        (yc) => yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua'
+        (yc) => yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien'
       );
     }
     if (tabHienTai === 'cho_sale') {
-      return dsNguon.filter((yc) => yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet');
+      return dsNguon.filter(
+        (yc) =>
+          yc.trang_thai === 'cho_sale_nghiem_thu' ||
+          yc.trang_thai === 'da_phe_duyet' ||
+          yc.trang_thai === 'yeu_cau_chinh_sua'
+      );
     }
     if (tabHienTai === 'da_hoan_thanh') {
       return dsNguon.filter((yc) => yc.trang_thai === 'da_hoan_thanh');
@@ -640,11 +697,16 @@ export default function HopYeuCauPhoiHop({
 
     setDangLuuSua(true);
     try {
+      const laDangSuaLai = yeuCauDangSua.trang_thai === 'yeu_cau_chinh_sua';
       const res = await capNhatThongTinYeuCau({
         id: yeuCauDangSua.id,
         noi_dung_yeu_cau: suaNoiDung.trim(),
         link_drive_dau_vao: suaLinkDrive.trim() || null,
         han_hoan_thanh: suaHanXong || null,
+        trang_thai: laDangSuaLai ? 'cho_tpkd_duyet' : undefined,
+        ghi_chu: laDangSuaLai
+          ? `Sale đã hiệu chỉnh và gửi lại TPKD: ${suaNoiDung.trim().slice(0, 80)}`
+          : undefined,
         nguoiThucHien: nguoiDungHienTai
       });
 
@@ -752,7 +814,7 @@ export default function HopYeuCauPhoiHop({
       textHienTai = 'Hoàn tất toàn bộ quy trình phối hợp';
     } else if (yc.trang_thai === 'yeu_cau_chinh_sua') {
       buocHienTai = 1;
-      textHienTai = yc.ghi_chu_phan_hoi || 'Yêu cầu rà soát và chỉnh sửa lại';
+      textHienTai = 'TPKD yêu cầu sửa lại ➔ Chờ Sale chỉnh sửa & gửi lại TPKD';
     }
 
     const dsCacBuoc = [
@@ -951,8 +1013,11 @@ export default function HopYeuCauPhoiHop({
                 buocSo: 1
               };
 
-              const laNguoiTao = yc.nguoi_tao_id === userId || !yc.nguoi_tao_id;
-              const coQuyenSuaXoa = (laNguoiTao && yc.trang_thai === 'cho_tpkd_duyet') || coQuyenAdmin;
+              const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
+              const coQuyenSuaXoa =
+                ((laNguoiTao || coQuyenAdmin) &&
+                  (yc.trang_thai === 'cho_tpkd_duyet' || yc.trang_thai === 'yeu_cau_chinh_sua')) ||
+                coQuyenAdmin;
 
               const duocGiaoDichDanh =
                 Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
@@ -999,6 +1064,19 @@ export default function HopYeuCauPhoiHop({
 
                   {/* DÒNG 2: THANH TIẾN TRÌNH STEPPER 5 BƯỚC */}
                   {renderStepper(yc)}
+
+                  {/* THÔNG BÁO TPKD YÊU CẦU CHỈNH SỬA */}
+                  {yc.trang_thai === 'yeu_cau_chinh_sua' && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50/90 p-3 space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-rose-800 font-bold text-xs">
+                        <AlertTriangle className="size-4 text-rose-600 shrink-0" />
+                        <span>TPKD yêu cầu chỉnh sửa lại yêu cầu:</span>
+                      </div>
+                      <div className="text-xs text-rose-700 bg-white/90 p-2.5 rounded-lg border border-rose-100 font-medium whitespace-pre-wrap leading-relaxed">
+                        {yc.ghi_chu_phan_hoi || 'Vui lòng bổ sung hoặc hiệu chỉnh lại nội dung theo ý kiến của Trưởng phòng Kinh doanh.'}
+                      </div>
+                    </div>
+                  )}
 
                   {/* DÒNG 3: NỘI DUNG YÊU CẦU */}
                   <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-100 text-[13px] text-slate-800 leading-relaxed font-normal">
@@ -1084,6 +1162,18 @@ export default function HopYeuCauPhoiHop({
                         </>
                       )}
 
+                      {/* BƯỚC SỬA: TPKD YÊU CẦU SỬA ➔ SALE (HOẶC ADMIN) CHỈNH SỬA & GỬI LẠI TPKD */}
+                      {yc.trang_thai === 'yeu_cau_chinh_sua' && (laNguoiTao || coQuyenAdmin) && (
+                        <button
+                          type="button"
+                          onClick={() => batDauSua(yc)}
+                          className="h-8.5 px-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow-md transition"
+                        >
+                          <Pencil className="size-3.5 stroke-[2.5]" />
+                          <span>Chỉnh sửa & Gửi lại TPKD</span>
+                        </button>
+                      )}
+
                       {/* BƯỚC 2: Chờ TPKH tiếp nhận & phân công (2 LỰA CHỌN: Giao CV hoặc Tự làm) */}
                       {yc.trang_thai === 'cho_tpkh_tiep_nhan' && (laTPKH || coQuyenAdmin) && (
                         <>
@@ -1116,7 +1206,7 @@ export default function HopYeuCauPhoiHop({
                       )}
 
                       {/* BƯỚC 3: CV KHTH đang thực hiện ➔ Nộp kết quả */}
-                      {(yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') &&
+                      {(yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') &&
                         coQuyenNopKetQua && (
                           <button
                             type="button"
@@ -1239,7 +1329,7 @@ export default function HopYeuCauPhoiHop({
                           </button>
                         )}
 
-                        {laNguoiTao && yc.trang_thai === 'cho_tpkd_duyet' && (
+                        {laNguoiTao && (yc.trang_thai === 'cho_tpkd_duyet' || yc.trang_thai === 'yeu_cau_chinh_sua') && (
                           <button
                             type="button"
                             onClick={() => setYeuCauDangXoa(yc)}
@@ -1750,7 +1840,9 @@ export default function HopYeuCauPhoiHop({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    Chỉnh sửa nội dung yêu cầu
+                    {yeuCauDangSua.trang_thai === 'yeu_cau_chinh_sua'
+                      ? 'Chỉnh sửa & Gửi lại yêu cầu cho TPKD'
+                      : 'Chỉnh sửa nội dung yêu cầu'}
                   </h3>
                   <p className="text-xs text-slate-500">
                     Dự án: <span className="font-semibold text-slate-900">{yeuCauDangSua.ten_du_an}</span>
@@ -1770,6 +1862,19 @@ export default function HopYeuCauPhoiHop({
               {loiSua && (
                 <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
                   {loiSua}
+                </div>
+              )}
+
+              {/* Nếu TPKD yêu cầu sửa: hiển thị phản hồi của TPKD ngay trong modal để Sale đối chiếu sửa */}
+              {yeuCauDangSua.trang_thai === 'yeu_cau_chinh_sua' && yeuCauDangSua.ghi_chu_phan_hoi && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50/90 p-3 space-y-1">
+                  <div className="flex items-center gap-1.5 text-rose-800 font-bold text-xs">
+                    <AlertTriangle className="size-3.5 text-rose-600 shrink-0" />
+                    <span>Ý kiến yêu cầu từ TPKD:</span>
+                  </div>
+                  <div className="text-xs text-rose-700 whitespace-pre-wrap pl-5 font-medium leading-relaxed">
+                    {yeuCauDangSua.ghi_chu_phan_hoi}
+                  </div>
                 </div>
               )}
 
@@ -1826,10 +1931,25 @@ export default function HopYeuCauPhoiHop({
                 <button
                   type="submit"
                   disabled={dangLuuSua}
-                  className="h-9 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
+                  className={cn(
+                    'h-9 px-5 rounded-xl text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition',
+                    yeuCauDangSua.trang_thai === 'yeu_cau_chinh_sua'
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  )}
                 >
-                  {dangLuuSua ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5 stroke-[2.5]" />}
-                  <span>Lưu thay đổi</span>
+                  {dangLuuSua ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : yeuCauDangSua.trang_thai === 'yeu_cau_chinh_sua' ? (
+                    <Send className="size-3.5" />
+                  ) : (
+                    <Check className="size-3.5 stroke-[2.5]" />
+                  )}
+                  <span>
+                    {yeuCauDangSua.trang_thai === 'yeu_cau_chinh_sua'
+                      ? 'Lưu & Gửi lại cho TPKD'
+                      : 'Lưu thay đổi'}
+                  </span>
                 </button>
               </div>
             </form>
