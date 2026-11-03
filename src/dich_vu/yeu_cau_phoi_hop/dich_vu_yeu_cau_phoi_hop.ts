@@ -7,6 +7,7 @@ import {
   updateDoc,
   addDoc,
   query,
+  where,
   onSnapshot
 } from 'firebase/firestore';
 import {
@@ -18,6 +19,9 @@ import type {
   TrangThaiYeuCauPhoiHop,
   NhatKyXuLyYeuCau
 } from '../../thu_vien/types/yeu_cau_phoi_hop';
+import type { NguoiDungDangNhap, NhanSu } from '../../thu_vien/types/nhan_su';
+import { themTaiLieuDuAn } from '../tai_lieu_du_an/dich_vu_tai_lieu_du_an';
+import { taoTaiLieuMoi } from '../kho_tai_lieu/dich_vu_kho_tai_lieu';
 
 export type { YeuCauPhoiHop };
 
@@ -103,8 +107,174 @@ const phatSuKienCapNhat = (yc?: YeuCauPhoiHop) => {
 };
 
 /**
+ * Trích xuất danh sách liên kết (URL) hợp lệ từ chuỗi văn bản
+ */
+export function trichXuatDanhSachLinks(text: string | null | undefined): string[] {
+  if (!text) return [];
+  const lines = text.split(/[\r\n,;\s]+/).map((s) => s.trim()).filter(Boolean);
+  const links: string[] = [];
+  for (const l of lines) {
+    if (l.startsWith('http://') || l.startsWith('https://')) {
+      links.push(l);
+    } else if (
+      l.includes('drive.google.com') ||
+      l.includes('docs.google.com') ||
+      l.includes('dropbox.com') ||
+      l.includes('onedrive')
+    ) {
+      links.push(`https://${l}`);
+    }
+  }
+  if (links.length === 0 && text.trim()) {
+    const raw = text.trim();
+    links.push(raw.startsWith('http') ? raw : `https://${raw}`);
+  }
+  return Array.from(new Set(links));
+}
+
+/**
+ * Tự động ghi nhận dòng tiến độ dự án khi yêu cầu phối hợp chuyển bước
+ * 1. Khi KHTH hoàn thành nộp kết quả
+ * 2. Khi Trưởng phòng / Lãnh đạo phê duyệt kết quả
+ */
+async function ghiNhanTienDoKhiChuyenBuoc(
+  hienTai: YeuCauPhoiHop,
+  trangThaiMoi: TrangThaiYeuCauPhoiHop,
+  linkKetQua: string | null,
+  ghiChu: string | null,
+  userId: string,
+  userName: string,
+  nowISO: string
+) {
+  if (!hienTai.du_an_id) return;
+
+  try {
+    if (trangThaiMoi === 'cho_tpkd_duyet_ket_qua') {
+      const tenKHTH =
+        Array.isArray(hienTai.danh_sach_ten_nhan_su_thuc_hien) &&
+        hienTai.danh_sach_ten_nhan_su_thuc_hien.length > 0
+          ? hienTai.danh_sach_ten_nhan_su_thuc_hien.join(', ')
+          : userName;
+
+      await addDoc(thamChieuCollection('tien_do_du_an'), {
+        du_an_id: hienTai.du_an_id,
+        tinh_hinh_hien_tai: `[KHTH nộp kết quả] ${hienTai.noi_dung_yeu_cau}`,
+        hanh_dong_tiep_theo: 'Trưởng phòng kiểm tra & phê duyệt kết quả phối hợp',
+        deadline_hanh_dong: hienTai.han_hoan_thanh || null,
+        link_tai_lieu: linkKetQua,
+        ten_tai_lieu: linkKetQua ? 'File kết quả Google Drive (KHTH)' : null,
+        ket_qua_thuc_hien: ghiChu || `Đã bàn giao file kết quả (${tenKHTH})`,
+        trang_thai_hanh_dong: 'dang_thuc_hien',
+        nguoi_tao_id: userId,
+        nguoi_hoan_thanh_id: userId,
+        ngay_tao: nowISO,
+        ngay_cap_nhat: nowISO,
+        ngay_hoan_thanh: nowISO,
+        trang_thai_du_lieu: 'hoat_dong'
+      });
+    } else if (trangThaiMoi === 'da_phe_duyet') {
+      await addDoc(thamChieuCollection('tien_do_du_an'), {
+        du_an_id: hienTai.du_an_id,
+        tinh_hinh_hien_tai: `[Đã duyệt kết quả phối hợp] ${hienTai.noi_dung_yeu_cau}`,
+        hanh_dong_tiep_theo: 'Kinh doanh tiếp nhận kết quả và triển khai tiếp với khách hàng',
+        deadline_hanh_dong: hienTai.han_hoan_thanh || null,
+        link_tai_lieu: linkKetQua,
+        ten_tai_lieu: linkKetQua ? 'File kết quả KHTH đã phê duyệt' : null,
+        ket_qua_thuc_hien: ghiChu || 'Nghiệm thu đạt yêu cầu, sẵn sàng sử dụng',
+        trang_thai_hanh_dong: 'da_hoan_thanh',
+        nguoi_tao_id: userId,
+        nguoi_hoan_thanh_id: userId,
+        ngay_tao: nowISO,
+        ngay_cap_nhat: nowISO,
+        ngay_hoan_thanh: nowISO,
+        trang_thai_du_lieu: 'hoat_dong'
+      });
+    }
+  } catch (err) {
+    console.warn('[ghiNhanTienDoKhiChuyenBuoc] Lỗi ghi tiến độ dự án:', err);
+  }
+}
+
+/**
+ * Tự động lưu tất cả link file kết quả sau khi được phê duyệt vào:
+ * 1. Mục tài liệu của chính dự án đó (tai_lieu_du_an)
+ * 2. Kho tài liệu chung toàn hệ thống (kho_tai_lieu)
+ */
+async function luuTaiLieuKetQuaKhiPheDuyet(
+  hienTai: YeuCauPhoiHop,
+  linkKetQua: string | null,
+  nguoiThucHien?: any
+) {
+  if (!hienTai.du_an_id || !linkKetQua) return;
+
+  const dsLinks = trichXuatDanhSachLinks(linkKetQua);
+  if (dsLinks.length === 0) return;
+
+  const userId = nguoiThucHien?.id || 'he_thong';
+  const tenNhanSuKHTH =
+    Array.isArray(hienTai.danh_sach_ten_nhan_su_thuc_hien) &&
+    hienTai.danh_sach_ten_nhan_su_thuc_hien.length > 0
+      ? hienTai.danh_sach_ten_nhan_su_thuc_hien.join(', ')
+      : 'KHTH';
+
+  for (const url of dsLinks) {
+    // 1. Lưu vào mục tài liệu của chính dự án (tai_lieu_du_an)
+    try {
+      const snapTL = await getDocs(
+        query(
+          thamChieuCollection('tai_lieu_du_an'),
+          where('du_an_id', '==', hienTai.du_an_id)
+        )
+      );
+      const daTonTaiTL = snapTL.docs.some((d) => (d.data() as any)?.url_file === url);
+      if (!daTonTaiTL) {
+        await themTaiLieuDuAn(
+          {
+            du_an_id: hienTai.du_an_id,
+            ten_file: `Kết quả KHTH: ${hienTai.noi_dung_yeu_cau.slice(0, 80)}`,
+            url_file: url,
+            loai_file: 'link_google_drive',
+            ghi_chu: `Tự động lưu từ kết quả yêu cầu phối hợp đã phê duyệt (KHTH: ${tenNhanSuKHTH})`,
+            nguoi_tai_len_id: userId
+          },
+          nguoiThucHien ? { id: userId } : null
+        );
+      }
+    } catch (eTL) {
+      console.warn('[luuTaiLieuKetQuaKhiPheDuyet] Lỗi lưu vào tai_lieu_du_an:', eTL);
+    }
+
+    // 2. Lưu vào kho tài liệu toàn hệ thống (kho_tai_lieu)
+    try {
+      const snapKTL = await getDocs(
+        query(
+          thamChieuCollection('kho_tai_lieu'),
+          where('url', '==', url)
+        )
+      );
+      const daTonTaiKTL = snapKTL.docs.some((d) => (d.data() as any)?.trang_thai !== 'da_xoa');
+      if (!daTonTaiKTL) {
+        await taoTaiLieuMoi(
+          {
+            tieu_de: `[${hienTai.ten_du_an}] Kết quả KHTH: ${hienTai.noi_dung_yeu_cau.slice(0, 60)}`,
+            url,
+            mo_ta: `Tài liệu kết quả phối hợp phòng ban cho dự án "${hienTai.ten_du_an}". KHTH thực hiện: ${tenNhanSuKHTH}.`,
+            pham_vi: 'chung',
+            danh_muc: 'Hồ sơ dự án',
+            loai_lien_ket: 'google_drive',
+            the_tags: ['Dự án', hienTai.ten_du_an, 'KHTH', 'Kết quả phối hợp']
+          },
+          nguoiThucHien as any
+        );
+      }
+    } catch (eKTL) {
+      console.warn('[luuTaiLieuKetQuaKhiPheDuyet] Lỗi lưu vào kho_tai_lieu:', eKTL);
+    }
+  }
+}
+
+/**
  * Hợp nhất dữ liệu giữa Remote (Firestore) và Local Cache
- * Không làm mất dữ liệu offline hoặc dữ liệu cũ trong cache
  */
 const hopNhatDanhSach = (remote: YeuCauPhoiHop[], local: YeuCauPhoiHop[]): YeuCauPhoiHop[] => {
   const map = new Map<string, YeuCauPhoiHop>();
@@ -145,13 +315,11 @@ export const langNgheYeuCauPhoiHop = (
           }
         });
 
-        // Hợp nhất remote và local cache
         const local = docCacheLocal();
         const hopNhat = hopNhatDanhSach(tuRemote, local);
         ghiCacheLocal(hopNhat);
         callback(hopNhat);
 
-        // Tự động đẩy dữ liệu local chưa có trên Firestore lên Firestore
         if (tuRemote.length === 0 && local.length > 0) {
           local.forEach((item) => {
             if (item && item.id && item.trang_thai_du_lieu !== 'da_xoa') {
@@ -225,7 +393,6 @@ export const danhSachYeuCauPhoiHop = async (
     danhSach = hopNhatDanhSach(tuRemote, local);
     ghiCacheLocal(danhSach);
 
-    // Đồng bộ ngược nếu Firestore chưa có dữ liệu
     if (tuRemote.length === 0 && local.length > 0) {
       local.forEach((item) => {
         if (item && item.id && item.trang_thai_du_lieu !== 'da_xoa') {
@@ -433,6 +600,31 @@ export const chuyenBuocYeuCauPhoiHop = async (
     await setDoc(thamChieuBanGhi(TEN_COLLECTION, yeuCauId), yeuCauCapNhat, { merge: true });
   } catch (err) {
     console.warn('[chuyenBuocYeuCauPhoiHop] Cảnh báo lưu Firestore:', err);
+  }
+
+  // 3. TỰ ĐỘNG THỰC HIỆN 2 YÊU CẦU:
+  const linkKetQuaThucTe = linkDriveKetQua?.trim() || hienTai.link_drive_ket_qua || null;
+
+  // Việc 1: Ghi nhận cập nhật tiến độ dự án khi KHTH nộp kết quả hoặc khi kết quả được phê duyệt
+  if (trangThaiMoi === 'cho_tpkd_duyet_ket_qua' || trangThaiMoi === 'da_phe_duyet') {
+    void ghiNhanTienDoKhiChuyenBuoc(
+      hienTai,
+      trangThaiMoi,
+      linkKetQuaThucTe,
+      ghiChu || null,
+      userId,
+      userName,
+      nowISO
+    );
+  }
+
+  // Việc 2: Khi kết quả sau khi được phê duyệt -> tự động lưu tất cả link file vào kho tài liệu và chính mục tài liệu của dự án
+  if (trangThaiMoi === 'da_phe_duyet' || trangThaiMoi === 'da_hoan_thanh') {
+    void luuTaiLieuKetQuaKhiPheDuyet(
+      hienTai,
+      linkKetQuaThucTe,
+      nguoiThucHien
+    );
   }
 
   return yeuCauCapNhat;
