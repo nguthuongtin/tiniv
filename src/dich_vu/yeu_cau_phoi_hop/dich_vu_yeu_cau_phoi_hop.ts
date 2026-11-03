@@ -327,13 +327,13 @@ export const langNgheYeuCauPhoiHop = (
         ghiCacheLocal(hopNhat);
         callback(hopNhat);
 
-        if (tuRemote.length === 0 && local.length > 0) {
-          local.forEach((item) => {
-            if (item && item.id && item.trang_thai_du_lieu !== 'da_xoa') {
-              setDoc(thamChieuBanGhi(TEN_COLLECTION, item.id), item, { merge: true }).catch(() => {});
-            }
-          });
-        }
+        // Tự động đẩy bất kỳ item nào có ở local nhưng chưa có trên Firestore
+        const remoteIdSet = new Set(tuRemote.map((r) => r.id));
+        local.forEach((item) => {
+          if (item && item.id && !remoteIdSet.has(item.id) && item.trang_thai_du_lieu !== 'da_xoa') {
+            setDoc(thamChieuBanGhi(TEN_COLLECTION, item.id), item, { merge: true }).catch(() => {});
+          }
+        });
       },
       (error) => {
         console.warn('[langNgheYeuCauPhoiHop] Lỗi onSnapshot Firestore, sử dụng cache cục bộ:', error);
@@ -400,13 +400,13 @@ export const danhSachYeuCauPhoiHop = async (
     danhSach = hopNhatDanhSach(tuRemote, local);
     ghiCacheLocal(danhSach);
 
-    if (tuRemote.length === 0 && local.length > 0) {
-      local.forEach((item) => {
-        if (item && item.id && item.trang_thai_du_lieu !== 'da_xoa') {
-          setDoc(thamChieuBanGhi(TEN_COLLECTION, item.id), item, { merge: true }).catch(() => {});
-        }
-      });
-    }
+    // Tự động đẩy bất kỳ item nào có ở local nhưng chưa có trên Firestore
+    const remoteIdSet = new Set(tuRemote.map((r) => r.id));
+    local.forEach((item) => {
+      if (item && item.id && !remoteIdSet.has(item.id) && item.trang_thai_du_lieu !== 'da_xoa') {
+        setDoc(thamChieuBanGhi(TEN_COLLECTION, item.id), item, { merge: true }).catch(() => {});
+      }
+    });
   } catch (err) {
     console.warn('[danhSachYeuCauPhoiHop] Lỗi đọc Firestore, dùng cache:', err);
     danhSach = local.filter((x) => x.trang_thai_du_lieu !== 'da_xoa');

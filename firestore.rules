@@ -317,7 +317,7 @@ service cloud.firestore {
     }
     // ========== 26. Collection: yeu_cau_phoi_hop ==========
     match /yeu_cau_phoi_hop/{id} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
