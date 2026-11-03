@@ -225,6 +225,8 @@ export default function TrangNhanSu() {
     } else {
       ketQua.quan_tri_he_thong = theoVaiTro('quan_tri_he_thong');
       ketQua.giam_doc = theoVaiTro('giam_doc');
+      ketQua.truong_phong_kd = theoVaiTro('truong_phong_kd');
+      ketQua.truong_phong_khth = theoVaiTro('truong_phong_khth');
       ketQua.truong_phong = theoVaiTro('truong_phong');
       ketQua.nhan_vien_kinh_doanh = theoVaiTro('nhan_vien_kinh_doanh');
       ketQua.nhan_vien_ky_thuat = theoVaiTro('nhan_vien_ky_thuat');

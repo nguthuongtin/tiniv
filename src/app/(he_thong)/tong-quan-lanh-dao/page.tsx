@@ -125,7 +125,7 @@ export default function TrangTongQuanLanhDao() {
     return (
       coQuyen(nguoiDungHienTai, 'tong_quan.theo_doi_kinh_doanh') ||
       coQuyen(nguoiDungHienTai, 'lanh_dao.xem') ||
-      ['giam_doc', 'truong_phong', 'quan_tri_he_thong'].includes(nguoiDungHienTai.vai_tro as string)
+      ['giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth', 'quan_tri_he_thong'].includes(nguoiDungHienTai.vai_tro as string)
     );
   }, [nguoiDungHienTai]);
 
@@ -202,6 +202,8 @@ export default function TrangTongQuanLanhDao() {
       // Trưởng phòng KD là người quản lý/điều hành kế hoạch chung, không trực tiếp nhận KPI doanh số cá nhân
       if (
         ns.vai_tro === 'truong_phong' ||
+        ns.vai_tro === 'truong_phong_kd' ||
+        ns.vai_tro === 'truong_phong_khth' ||
         ns.vai_tro === 'giam_doc' ||
         ns.vai_tro === 'quan_tri_he_thong' ||
         (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng') ||

@@ -48,7 +48,8 @@ import {
 import {
   danhSachVaiTro,
   taoVaiTroMoi,
-  capNhatVaiTro
+  capNhatVaiTro,
+  xoaMemVaiTro
 } from '../../../dich_vu/nhan_su/dich_vu_vai_tro';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import {
@@ -295,6 +296,12 @@ export default function TrangQuanTri() {
     await taiDuLieu();
   };
 
+  const handleXoaVaiTro = async (id: string) => {
+    await xoaMemVaiTro(id, nguoiDungHienTai ? { id: nguoiDungHienTai.id } : null);
+    themToast('thanh_cong', 'Đã xóa vai trò');
+    await taiDuLieu();
+  };
+
   // Handlers Giai Doan Pipeline
   const handleLuuGiaiDoan = async (danhSachMoi: CauHinhMotGiaiDoan[]) => {
     await capNhatCauHinhGiaiDoanDuAn(danhSachMoi);
@@ -449,6 +456,7 @@ export default function TrangQuanTri() {
               dsNhanSu={dsNhanSu}
               dangTai={dangTai}
               onLuu={handleLuuVaiTro}
+              onXoa={handleXoaVaiTro}
             />
           )}
 

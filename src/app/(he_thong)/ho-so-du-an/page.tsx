@@ -217,7 +217,9 @@ function TrangHoSoDuAn() {
     const laQuanLy =
       vaiTroKey === 'quan_tri_he_thong' ||
       vaiTroKey === 'giam_doc' ||
-      vaiTroKey === 'truong_phong';
+      vaiTroKey === 'truong_phong' ||
+      vaiTroKey === 'truong_phong_kd' ||
+      vaiTroKey === 'truong_phong_khth';
     if (laQuanLy) return dsKhachHang;
     return dsKhachHang.filter((kh) => duocXemKhachHang(nguoiDungHienTai, kh));
   }, [dsKhachHang, nguoiDungHienTai]);

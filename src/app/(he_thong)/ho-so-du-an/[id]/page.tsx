@@ -440,7 +440,9 @@ export default function TrangChiTietHoSoDuAn() {
     const laQuanLy =
       vaiTroKey === 'quan_tri_he_thong' ||
       vaiTroKey === 'giam_doc' ||
-      vaiTroKey === 'truong_phong';
+      vaiTroKey === 'truong_phong' ||
+      vaiTroKey === 'truong_phong_kd' ||
+      vaiTroKey === 'truong_phong_khth';
 
     let pool = dsKH;
     if (!laQuanLy && nguoiDungHienTai) {
@@ -764,7 +766,7 @@ export default function TrangChiTietHoSoDuAn() {
 
   const laQuanLyHoacGiamDoc = useMemo(() => {
     return (
-      ['quan_tri_he_thong', 'giam_doc', 'truong_phong'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
+      ['quan_tri_he_thong', 'giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
       coQuyen(nguoiDungHienTai, 'du_an.duyet') ||
       (!!hda?.nguoi_quan_ly_id && hda.nguoi_quan_ly_id === nguoiDungHienTai?.id)
     );
@@ -812,6 +814,10 @@ export default function TrangChiTietHoSoDuAn() {
       const chucVuMacDinh =
         vaiTro === 'giam_doc'
           ? 'Giám đốc'
+          : vaiTro === 'truong_phong_kd'
+          ? 'Trưởng phòng Kinh doanh'
+          : vaiTro === 'truong_phong_khth'
+          ? 'Trưởng phòng KHTH'
           : vaiTro === 'truong_phong'
           ? 'Trưởng phòng'
           : vaiTro === 'nhan_vien_ky_thuat'

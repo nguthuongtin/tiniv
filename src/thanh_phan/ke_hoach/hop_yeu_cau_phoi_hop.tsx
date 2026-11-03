@@ -247,10 +247,10 @@ export default function HopYeuCauPhoiHop({
 
   // Phân quyền theo chức vụ:
   // - laTPKD: Trưởng phòng Kinh doanh (hoặc Trưởng phòng nếu chưa gán phòng cụ thể, hoặc Admin)
-  const laTPKD = coQuyenAdmin || (vaiTro === 'truong_phong' && (isKDDepartment || !isKHTHDepartment));
+  const laTPKD = coQuyenAdmin || vaiTro === 'truong_phong_kd' || (vaiTro === 'truong_phong' && (isKDDepartment || !isKHTHDepartment));
 
   // - laTPKH: Trưởng phòng KHTH (hoặc Trưởng phòng nếu chưa gán phòng cụ thể, hoặc Admin)
-  const laTPKH = coQuyenAdmin || (vaiTro === 'truong_phong' && (isKHTHDepartment || !isKDDepartment));
+  const laTPKH = coQuyenAdmin || vaiTro === 'truong_phong_khth' || (vaiTro === 'truong_phong' && (isKHTHDepartment || !isKDDepartment));
 
   // Kiểm tra yêu cầu có phải do user hiện tại tạo hay không
   const laNguoiTaoCuaYeuCau = (yc: YeuCauPhoiHop) => {

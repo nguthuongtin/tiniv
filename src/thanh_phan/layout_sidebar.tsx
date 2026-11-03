@@ -60,9 +60,12 @@ const DANH_MUC_SIDEBAR: MucSidebar[] = [
 const MAP_TEN_VAI_TRO: Record<string, string> = {
   quan_tri_he_thong: 'Quản trị hệ thống',
   giam_doc: 'Giám đốc',
+  truong_phong_kd: 'Trưởng phòng Kinh doanh',
+  truong_phong_khth: 'Trưởng phòng KHTH',
   truong_phong: 'Trưởng phòng',
   nhan_vien_kinh_doanh: 'Nhân viên kinh doanh',
-  nhan_vien_ky_thuat: 'Nhân viên kỹ thuật'
+  nhan_vien_ky_thuat: 'Nhân viên kỹ thuật',
+  hanh_chinh_van_phong: 'Hành chính / Văn phòng'
 };
 
 const chuyenDauKhongDauVeCoDau = (tenRaw: string | null | undefined): string => {

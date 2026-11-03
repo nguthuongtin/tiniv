@@ -80,7 +80,9 @@ export default function MapDashboardPage() {
         const laQuanLy =
           vaiTroKey === 'quan_tri_he_thong' ||
           vaiTroKey === 'giam_doc' ||
-          vaiTroKey === 'truong_phong';
+          vaiTroKey === 'truong_phong' ||
+          vaiTroKey === 'truong_phong_kd' ||
+          vaiTroKey === 'truong_phong_khth';
 
         let dsDuAn = daRes.mang || [];
         let dsKhach = khRes.mang || [];
@@ -103,6 +105,8 @@ export default function MapDashboardPage() {
 
           if (
             ns.vai_tro === 'truong_phong' ||
+            ns.vai_tro === 'truong_phong_kd' ||
+            ns.vai_tro === 'truong_phong_khth' ||
             ns.vai_tro === 'giam_doc' ||
             ns.vai_tro === 'quan_tri_he_thong' ||
             (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng') ||

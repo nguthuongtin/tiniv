@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
     try {
       const snapLD = await db
         .collection('nguoi_dung')
-        .where('vai_tro', 'in', ['giam_doc', 'truong_phong', 'quan_tri_he_thong'])
+        .where('vai_tro', 'in', ['giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth', 'quan_tri_he_thong'])
         .where('trang_thai_du_lieu', '==', 'hoat_dong')
         .get();
       const dsNhanIds = snapLD.docs
@@ -307,7 +307,7 @@ export async function PUT(req: NextRequest) {
         }
       } else if (body.trang_thai === 'cho_tpkd_duyet_ket_qua' || body.trang_thai === 'cho_lanh_dao_duyet') {
         db.collection('nguoi_dung')
-          .where('vai_tro', 'in', ['giam_doc', 'truong_phong', 'quan_tri_he_thong'])
+          .where('vai_tro', 'in', ['giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth', 'quan_tri_he_thong'])
           .where('trang_thai_du_lieu', '==', 'hoat_dong')
           .get()
           .then((snap) => {

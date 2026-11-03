@@ -282,12 +282,14 @@ export default function ThanhPhanTopbar() {
 
   const dsViecCho = React.useMemo(() => {
     const laLanhDaoHoacAdmin = vaiTro === 'giam_doc' || vaiTro === 'quan_tri_he_thong';
-    const laTPKD = laLanhDaoHoacAdmin || vaiTro === 'truong_phong';
+    const laTPKD = laLanhDaoHoacAdmin || vaiTro === 'truong_phong_kd' || vaiTro === 'truong_phong';
+    const laTPKH = laLanhDaoHoacAdmin || vaiTro === 'truong_phong_khth' || vaiTro === 'truong_phong';
 
     return dsYeuCau.filter((yc) => {
       if (yc.trang_thai_du_lieu === 'da_xoa' || yc.trang_thai === 'da_hoan_thanh') return false;
       // 1. Chờ tiếp nhận
       if (laTPKD && yc.trang_thai === 'cho_tpkd_duyet') return true;
+      if (laTPKH && yc.trang_thai === 'cho_tpkh_tiep_nhan') return true;
       // 2. Chờ xử lý hoặc cần sửa lại
       if (yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') {
         const duocGiao = Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) && yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId);
@@ -295,6 +297,7 @@ export default function ThanhPhanTopbar() {
         return false;
       }
       // 3. Chờ duyệt kết quả
+      if (laTPKH && yc.trang_thai === 'cho_tpkh_duyet_ket_qua') return true;
       if (laTPKD && (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet')) return true;
       // 4. Đã duyệt -> người tạo nhận kết quả hoàn tất
       if (yc.trang_thai === 'da_phe_duyet' && (yc.nguoi_tao_id === userId || laTPKD)) return true;
@@ -445,6 +448,8 @@ export default function ThanhPhanTopbar() {
               </div>
               <span className="text-[10px] text-slate-400">
                 {nguoiDungHienTai?.vai_tro === 'giam_doc' ? 'Giám đốc' :
+                 nguoiDungHienTai?.vai_tro === 'truong_phong_kd' ? 'Trưởng phòng KD' :
+                 nguoiDungHienTai?.vai_tro === 'truong_phong_khth' ? 'Trưởng phòng KHTH' :
                  nguoiDungHienTai?.vai_tro === 'truong_phong' ? 'Trưởng phòng' :
                  nguoiDungHienTai?.vai_tro === 'quan_tri_he_thong' ? 'Quản trị' : 'Nhân viên'}
               </span>
@@ -663,7 +668,7 @@ export default function ThanhPhanTopbar() {
               </div>
             </Link>
 
-            {(nguoiDungHienTai?.vai_tro === 'giam_doc' || nguoiDungHienTai?.vai_tro === 'quan_tri_he_thong' || nguoiDungHienTai?.vai_tro === 'truong_phong') && (
+            {(nguoiDungHienTai?.vai_tro === 'giam_doc' || nguoiDungHienTai?.vai_tro === 'quan_tri_he_thong' || nguoiDungHienTai?.vai_tro === 'truong_phong' || nguoiDungHienTai?.vai_tro === 'truong_phong_kd' || nguoiDungHienTai?.vai_tro === 'truong_phong_khth') && (
               <Link
                 href="/nhan-su"
                 onClick={() => setMoMenuMobile(false)}

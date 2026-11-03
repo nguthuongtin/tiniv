@@ -31,7 +31,7 @@ service cloud.firestore {
     }
 
     function laTruongPhong() {
-      return daXacThucVaHoatDong() && layVaiTro() in ['quan_tri_he_thong', 'giam_doc', 'truong_phong'];
+      return daXacThucVaHoatDong() && layVaiTro() in ['quan_tri_he_thong', 'giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth'];
     }
 
     function laNhanVien() {

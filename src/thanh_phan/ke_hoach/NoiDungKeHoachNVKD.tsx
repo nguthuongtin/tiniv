@@ -141,7 +141,7 @@ export function NoiDungKeHoachNVKD({
 } = {}) {
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
   const laQuanLyHoacGiamDoc =
-    ['quan_tri_he_thong', 'giam_doc', 'truong_phong'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
+    ['quan_tri_he_thong', 'giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
     coQuyen(nguoiDungHienTai, 'ke_hoach.duyet');
 
   const homNayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -172,7 +172,9 @@ export function NoiDungKeHoachNVKD({
     const laQuanLy =
       vaiTroKey === 'quan_tri_he_thong' ||
       vaiTroKey === 'giam_doc' ||
-      vaiTroKey === 'truong_phong';
+      vaiTroKey === 'truong_phong' ||
+      vaiTroKey === 'truong_phong_kd' ||
+      vaiTroKey === 'truong_phong_khth';
     if (laQuanLy && !nhanVienChonId) return dsHoSoDuAn;
 
     const targetUser = nhanVienChonId
@@ -186,7 +188,9 @@ export function NoiDungKeHoachNVKD({
     const laQuanLy =
       vaiTroKey === 'quan_tri_he_thong' ||
       vaiTroKey === 'giam_doc' ||
-      vaiTroKey === 'truong_phong';
+      vaiTroKey === 'truong_phong' ||
+      vaiTroKey === 'truong_phong_kd' ||
+      vaiTroKey === 'truong_phong_khth';
     if (laQuanLy && !nhanVienChonId) return dsKhachHang;
 
     const targetUser = nhanVienChonId
@@ -265,6 +269,8 @@ export function NoiDungKeHoachNVKD({
       }
       if (
         ns.vai_tro === 'truong_phong' ||
+        ns.vai_tro === 'truong_phong_kd' ||
+        ns.vai_tro === 'truong_phong_khth' ||
         ns.vai_tro === 'giam_doc' ||
         ns.vai_tro === 'quan_tri_he_thong' ||
         (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng') ||

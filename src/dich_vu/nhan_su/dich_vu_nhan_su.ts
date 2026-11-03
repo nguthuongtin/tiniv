@@ -47,6 +47,8 @@ const TEN_COLLECTION_PB = 'phong_ban' as const;
 const LEGACY_DS_VAI_TRO: { key: string; nhan: string; mau: string; kieu_hien_thi: VaiTro['kieu_hien_thi'] }[] = [
   { key: 'quan_tri_he_thong', nhan: 'Quản trị hệ thống', mau: 'bg-primary/12 text-primary border border-primary/25', kieu_hien_thi: 'primary' },
   { key: 'giam_doc', nhan: 'Giám đốc', mau: 'bg-danger/12 text-danger border border-danger/25', kieu_hien_thi: 'danger' },
+  { key: 'truong_phong_kd', nhan: 'Trưởng phòng Kinh doanh', mau: 'bg-warning/12 text-warning border border-warning/25', kieu_hien_thi: 'warning' },
+  { key: 'truong_phong_khth', nhan: 'Trưởng phòng KHTH', mau: 'bg-warning/12 text-warning border border-warning/25', kieu_hien_thi: 'warning' },
   { key: 'truong_phong', nhan: 'Trưởng phòng', mau: 'bg-warning/12 text-warning border border-warning/25', kieu_hien_thi: 'warning' },
   { key: 'nhan_vien_kinh_doanh', nhan: 'Nhân viên Kinh doanh', mau: 'bg-success/12 text-success border border-success/25', kieu_hien_thi: 'success' },
   { key: 'nhan_vien_ky_thuat', nhan: 'Nhân viên Kỹ thuật', mau: 'bg-muted text-muted-foreground border border-border', kieu_hien_thi: 'muted' },

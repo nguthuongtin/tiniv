@@ -207,7 +207,7 @@ export default function FormHoSoDuAnDrawer({
 
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
   const laBackOffice = ['hanh_chinh_van_phong'].includes(nguoiDungHienTai?.vai_tro ?? '');
-  const laQuanLy = ['quan_tri_he_thong', 'giam_doc', 'truong_phong'].includes(
+  const laQuanLy = ['quan_tri_he_thong', 'giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth'].includes(
     nguoiDungHienTai?.vai_tro ?? ''
   );
 

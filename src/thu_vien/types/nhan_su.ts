@@ -4,6 +4,8 @@
 export type VaiTroNguoiDung =
   | 'quan_tri_he_thong'
   | 'giam_doc'
+  | 'truong_phong_kd'
+  | 'truong_phong_khth'
   | 'truong_phong'
   | 'nhan_vien_kinh_doanh'
   | 'nhan_vien_ky_thuat'
@@ -98,14 +100,28 @@ export const CAC_VAI_TRO_CHUAN_HE_THONG: Array<{
     key: 'giam_doc',
     tenMacDinh: 'Ban Giám Đốc',
     phamVi: 'Toàn công ty',
-    moTa: 'Xem và giám sát số liệu tất cả chi nhánh, mọi dự án, hợp đồng và báo cáo tài chính.',
+    moTa: 'Xem và theo dõi số liệu tất cả chi nhánh, mọi dự án, hợp đồng và báo cáo tài chính.',
     badge: 'primary'
   },
   {
+    key: 'truong_phong_kd',
+    tenMacDinh: 'Trưởng phòng Kinh doanh',
+    phamVi: 'Phòng Kinh doanh & Chi nhánh',
+    moTa: 'Điều hành kế hoạch kinh doanh, tiếp nhận và chuyển tiếp yêu cầu phối hợp dự án.',
+    badge: 'warning'
+  },
+  {
+    key: 'truong_phong_khth',
+    tenMacDinh: 'Trưởng phòng KHTH',
+    phamVi: 'Phòng Kế hoạch Kỹ thuật / KHTH',
+    moTa: 'Tiếp nhận yêu cầu phối hợp, phân công chuyên viên kỹ thuật và duyệt kết quả kỹ thuật.',
+    badge: 'warning'
+  },
+  {
     key: 'truong_phong',
-    tenMacDinh: 'Trưởng phòng / Quản lý',
+    tenMacDinh: 'Trưởng phòng / Quản lý chung',
     phamVi: 'Chi nhánh & Phòng ban',
-    moTa: 'Quản lý nhân sự, phân công công việc, phê duyệt tiến độ thuộc chi nhánh phụ trách.',
+    moTa: 'Quản lý nhân sự, phân công công việc, theo dõi tiến độ thuộc chi nhánh/phòng ban phụ trách.',
     badge: 'warning'
   },
   {

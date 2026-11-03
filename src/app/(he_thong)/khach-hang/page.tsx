@@ -290,6 +290,8 @@ export default function TrangKhachHang() {
       vaiTroKey === 'quan_tri_he_thong' ||
       vaiTroKey === 'giam_doc' ||
       vaiTroKey === 'truong_phong' ||
+      vaiTroKey === 'truong_phong_kd' ||
+      vaiTroKey === 'truong_phong_khth' ||
       coQuyen(nguoi_dung_hien_tai, 'he_thong.quan_tri');
     const dsDuAnCuaToi = laQuanLy ? dsDuAn : dsDuAn.filter((hda) => duocXemHoSoDuAn(nguoi_dung_hien_tai, hda));
     const dsKhachHangIdsCoDuAn = new Set(dsDuAnCuaToi.map((hda) => hda.khach_hang_id).filter(Boolean) as string[]);

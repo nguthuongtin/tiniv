@@ -330,6 +330,8 @@ const layTenVaiTro = (vaiTro?: string | null) => {
   switch (vaiTro) {
     case 'quan_tri_he_thong': return 'Quản trị hệ thống';
     case 'giam_doc': return 'Giám đốc';
+    case 'truong_phong_kd': return 'Trưởng phòng Kinh doanh';
+    case 'truong_phong_khth': return 'Trưởng phòng KHTH';
     case 'truong_phong': return 'Trưởng phòng';
     case 'kinh_doanh': return 'Kinh doanh';
     case 'ky_thuat': return 'Kỹ thuật';
@@ -515,7 +517,7 @@ export default function TrangChu() {
     if (!nguoiDungHienTai) return false;
     return (
       coQuyen(nguoiDungHienTai, 'lanh_dao.xem') ||
-      ['giam_doc', 'truong_phong', 'quan_tri_he_thong'].includes(nguoiDungHienTai.vai_tro as string)
+      ['giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth', 'quan_tri_he_thong'].includes(nguoiDungHienTai.vai_tro as string)
     );
   }, [nguoiDungHienTai]);
 

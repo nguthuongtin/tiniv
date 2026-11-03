@@ -48,7 +48,7 @@ export default function FormCapNhatTienDoTuan({
 }: Props) {
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
   const laQuanLyHoacGiamDoc =
-    ['quan_tri_he_thong', 'giam_doc', 'truong_phong'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
+    ['quan_tri_he_thong', 'giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth'].includes(nguoiDungHienTai?.vai_tro ?? '') ||
     coQuyen(nguoiDungHienTai, 'ke_hoach.duyet');
 
   const [danhSachKetQua, setDanhSachKetQua] = useState<NhatKyKetQuaTuan[]>([]);
@@ -203,6 +203,10 @@ export default function FormCapNhatTienDoTuan({
       chuc_vu_nguoi_chi_dao:
         nguoiDungHienTai?.vai_tro === 'giam_doc'
           ? 'Giám đốc'
+          : nguoiDungHienTai?.vai_tro === 'truong_phong_kd'
+          ? 'Trưởng phòng Kinh doanh'
+          : nguoiDungHienTai?.vai_tro === 'truong_phong_khth'
+          ? 'Trưởng phòng KHTH'
           : nguoiDungHienTai?.vai_tro === 'truong_phong'
           ? 'Trưởng phòng'
           : 'Quản lý',
