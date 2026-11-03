@@ -52,22 +52,22 @@ const CAC_VAI_TRO_CHUAN: Array<{
   {
     key: 'truong_phong_kd',
     tenMacDinh: 'Trưởng phòng Kinh doanh',
-    phamVi: 'Phòng Kinh doanh & Chi nhánh',
-    moTa: 'Điều hành kế hoạch kinh doanh, tiếp nhận và chuyển tiếp yêu cầu phối hợp dự án.',
+    phamVi: 'Phòng Kinh doanh & Khách hàng',
+    moTa: 'Điều hành phòng Kinh doanh, phân bổ khách hàng, duyệt kế hoạch tác chiến, tiếp nhận và nghiệm thu yêu cầu phối hợp.',
     badge: 'warning'
   },
   {
     key: 'truong_phong_khth',
     tenMacDinh: 'Trưởng phòng KHTH',
     phamVi: 'Phòng Kế hoạch Kỹ thuật / KHTH',
-    moTa: 'Tiếp nhận yêu cầu phối hợp, phân công chuyên viên kỹ thuật và duyệt kết quả kỹ thuật.',
+    moTa: 'Tiếp nhận yêu cầu phối hợp, điều phối và giao việc cho chuyên viên KHTH, kiểm tra thẩm định kết quả kỹ thuật.',
     badge: 'warning'
   },
   {
     key: 'truong_phong',
     tenMacDinh: 'Trưởng phòng / Quản lý chung',
-    phamVi: 'Chi nhánh & Phòng ban',
-    moTa: 'Quản lý nhân sự, phân công công việc, theo dõi tiến độ thuộc chi nhánh/phòng ban phụ trách.',
+    phamVi: 'Nội bộ phòng ban trực thuộc',
+    moTa: 'Quản lý, phân công và kiểm soát công việc của nhân sự thuộc phòng ban của mình theo sơ đồ tổ chức.',
     badge: 'warning'
   },
   {

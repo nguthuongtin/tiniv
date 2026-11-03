@@ -140,6 +140,34 @@ export default function TrangNhanSu() {
   const duocQuanLyNhanSu = coQuyen(nguoiDungHienTai, 'nhan_su.quan_ly', dsVaiTroNS);
   const duocXemNhanSu = coQuyen(nguoiDungHienTai, 'nhan_su.xem', dsVaiTroNS) || duocQuanLyNhanSu;
 
+  // Kiểm tra quyền điều phối & kiểm soát nhân sự theo Sơ đồ tổ chức phòng ban
+  const coTheQuanLyNhanSuNay = useCallback(
+    (ns: NhanSu) => {
+      if (!nguoiDungHienTai) return false;
+      const vaiTro = String(nguoiDungHienTai.vai_tro || '');
+      if (vaiTro === 'quan_tri_he_thong' || vaiTro === 'giam_doc') return true;
+      if (vaiTro === 'truong_phong_kd' || vaiTro === 'truong_phong_khth' || vaiTro === 'truong_phong') {
+        const myPbId = nguoiDungHienTai.phong_ban_id;
+        const extraPbs = Array.isArray(nguoiDungHienTai.phong_ban_phu_trach_them) ? nguoiDungHienTai.phong_ban_phu_trach_them : [];
+        return ns.phong_ban_id === myPbId || (!!ns.phong_ban_id && extraPbs.includes(ns.phong_ban_id));
+      }
+      return false;
+    },
+    [nguoiDungHienTai]
+  );
+
+  // Trưởng phòng mặc định định vị vào nhân sự phòng ban của mình
+  useEffect(() => {
+    if (nguoiDungHienTai?.phong_ban_id) {
+      const vaiTro = String(nguoiDungHienTai.vai_tro || '');
+      const laTruongPhong = vaiTro === 'truong_phong_kd' || vaiTro === 'truong_phong_khth' || vaiTro === 'truong_phong';
+      const laLanhDao = vaiTro === 'quan_tri_he_thong' || vaiTro === 'giam_doc';
+      if (laTruongPhong && !laLanhDao && !dieukien.phong_ban_id) {
+        setDieuKien((prev) => ({ ...prev, phong_ban_id: nguoiDungHienTai.phong_ban_id }));
+      }
+    }
+  }, [nguoiDungHienTai]);
+
   const [kieuSapXep, setKieuSapXep] = useState<'moi_nhat' | 'cu_nhat' | 'ten_az'>('moi_nhat');
 
   const danhSachDaSapXep = useMemo(() => {
@@ -683,7 +711,7 @@ export default function TrangNhanSu() {
                       <OBang className="px-4 py-3.5 whitespace-nowrap text-right">
                         <div className="inline-flex items-center gap-1 justify-end">
                           <NutIcon href={`/nhan-su/${ns.id}`} icon={Eye} nhan="Xem chi tiết" sac="primary" />
-                          {duocQuanLyNhanSu && (
+                          {(duocQuanLyNhanSu && coTheQuanLyNhanSuNay(ns)) && (
                             <>
                               {ns.trang_thai_du_lieu === 'da_xoa' ? (
                                 <NutIcon
@@ -800,7 +828,7 @@ export default function TrangNhanSu() {
                       )}
                     </div>
 
-                    {daXoa && duocQuanLyNhanSu && (
+                    {daXoa && duocQuanLyNhanSu && coTheQuanLyNhanSuNay(ns) && (
                       <NutIcon
                         icon={RotateCcw}
                         nhan="Khôi phục"

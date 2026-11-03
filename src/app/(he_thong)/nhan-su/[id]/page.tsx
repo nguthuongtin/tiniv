@@ -260,6 +260,18 @@ export default function TrangChiTietNhanSu() {
     return Array.from(map.values()).filter((item) => item.ten && item.ten.trim().length > 0);
   }, [dsVaiTro, formSua.vai_tro, ns?.vai_tro]);
 
+  const coTheQuanLyNhanSuNay = useMemo(() => {
+    if (!nguoiDungHienTai || !ns) return false;
+    const vaiTro = String(nguoiDungHienTai.vai_tro || '');
+    if (vaiTro === 'quan_tri_he_thong' || vaiTro === 'giam_doc') return true;
+    if (vaiTro === 'truong_phong_kd' || vaiTro === 'truong_phong_khth' || vaiTro === 'truong_phong') {
+      const myPbId = nguoiDungHienTai.phong_ban_id;
+      const extraPbs = Array.isArray(nguoiDungHienTai.phong_ban_phu_trach_them) ? nguoiDungHienTai.phong_ban_phu_trach_them : [];
+      return ns.phong_ban_id === myPbId || (!!ns.phong_ban_id && extraPbs.includes(ns.phong_ban_id));
+    }
+    return false;
+  }, [nguoiDungHienTai, ns?.phong_ban_id]);
+
   const chiNhanh = useMemo(() => {
     if (!ns?.chi_nhanh_id) return null;
     return dsChiNhanh.find((c) => c.id === ns.chi_nhanh_id) ?? null;
@@ -456,7 +468,7 @@ export default function TrangChiTietNhanSu() {
                 </>
               ) : (
                 <>
-                  {(coQuyen(nguoiDungHienTai, 'nhan_su.quan_ly', dsVaiTro) || nguoiDungHienTai?.id === ns.id) && (
+                  {((coQuyen(nguoiDungHienTai, 'nhan_su.quan_ly', dsVaiTro) && coTheQuanLyNhanSuNay) || nguoiDungHienTai?.id === ns.id) && (
                     <Nut
                       kieu="primary"
                       kich_thuoc="sm"
@@ -466,7 +478,7 @@ export default function TrangChiTietNhanSu() {
                       Chỉnh sửa
                     </Nut>
                   )}
-                  {(coQuyen(nguoiDungHienTai, 'nhan_su.quan_ly', dsVaiTro) || nguoiDungHienTai?.id === ns.id) && (
+                  {((coQuyen(nguoiDungHienTai, 'nhan_su.quan_ly', dsVaiTro) && coTheQuanLyNhanSuNay) || nguoiDungHienTai?.id === ns.id) && (
                     <Nut
                       kieu="outline"
                       kich_thuoc="sm"
@@ -481,7 +493,7 @@ export default function TrangChiTietNhanSu() {
                       Đổi mật khẩu
                     </Nut>
                   )}
-                  {coQuyen(nguoiDungHienTai, 'nhan_su.quan_ly', dsVaiTro) && nguoiDungHienTai?.id !== ns.id && (
+                  {coQuyen(nguoiDungHienTai, 'nhan_su.quan_ly', dsVaiTro) && coTheQuanLyNhanSuNay && nguoiDungHienTai?.id !== ns.id && (
                     <>
                       <Nut
                         kieu="outline"

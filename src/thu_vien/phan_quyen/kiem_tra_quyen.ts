@@ -9,7 +9,7 @@ const QUYEN_MAC_DINH_SYSTEM: Record<string, string[]> = {
   quan_tri_he_thong: DANH_SACH_QUYEN_HAN_HE_THONG.map((q) => q.ma_quyen),
   giam_doc: DANH_SACH_QUYEN_HAN_HE_THONG.map((q) => q.ma_quyen).filter((m) => m !== 'he_thong.quan_tri'),
   truong_phong_kd: ['tong_quan.theo_doi_kinh_doanh', 'lanh_dao.xem', 'du_an.xem', 'du_an.tao_sua', 'du_an.xoa', 'du_an.khoi_phuc', 'ke_hoach.xem', 'ke_hoach.tao_sua', 'ke_hoach.duyet', 'bao_cao.xem', 'bao_cao.xem_phong_ban', 'bao_cao.tao', 'bao_cao.xuat_file', 'nhan_su.xem'],
-  truong_phong_khth: ['tong_quan.theo_doi_kinh_doanh', 'lanh_dao.xem', 'du_an.xem', 'du_an.tao_sua', 'du_an.xoa', 'du_an.khoi_phuc', 'ke_hoach.xem', 'ke_hoach.tao_sua', 'ke_hoach.duyet', 'bao_cao.xem', 'bao_cao.xem_phong_ban', 'bao_cao.tao', 'bao_cao.xuat_file', 'nhan_su.xem'],
+  truong_phong_khth: ['du_an.xem', 'du_an.tao_sua', 'ke_hoach.xem', 'ke_hoach.tao_sua', 'ke_hoach.duyet', 'bao_cao.xem', 'bao_cao.xem_phong_ban', 'bao_cao.tao', 'bao_cao.xuat_file', 'nhan_su.xem'],
   truong_phong: ['tong_quan.theo_doi_kinh_doanh', 'lanh_dao.xem', 'du_an.xem', 'du_an.tao_sua', 'du_an.xoa', 'du_an.khoi_phuc', 'ke_hoach.xem', 'ke_hoach.tao_sua', 'ke_hoach.duyet', 'bao_cao.xem', 'bao_cao.xem_phong_ban', 'bao_cao.tao', 'bao_cao.xuat_file', 'nhan_su.xem'],
   nhan_vien_kinh_doanh: ['du_an.xem', 'du_an.tao_sua', 'ke_hoach.xem', 'ke_hoach.tao_sua', 'bao_cao.xem', 'bao_cao.tao'],
   nhan_vien_ky_thuat: ['du_an.xem', 'ke_hoach.xem', 'ke_hoach.tao_sua', 'bao_cao.xem', 'bao_cao.tao'],
@@ -227,16 +227,27 @@ export const duocXemKhachHang = (
 
   const vaiTroKey = String(nguoiDung.vai_tro || '');
 
-  // 1. Quản trị hệ thống, Ban Giám đốc, Trưởng phòng
+  // 1. Quản trị hệ thống, Ban Giám đốc, Trưởng phòng Kinh doanh: Quản lý khách hàng
   if (
     vaiTroKey === 'quan_tri_he_thong' ||
     vaiTroKey === 'giam_doc' ||
-    vaiTroKey === 'truong_phong' ||
     vaiTroKey === 'truong_phong_kd' ||
-    vaiTroKey === 'truong_phong_khth' ||
+    (vaiTroKey === 'truong_phong' && !coQuyen(nguoiDung, 'khach_hang.xem_chi_du_an')) ||
     coQuyen(nguoiDung, 'khach_hang.xem_toan_bo', dsVaiTro)
   ) {
     return true;
+  }
+
+  // 2. Trưởng phòng KHTH (truong_phong_khth):
+  // Chỉ xem khách hàng khi có dự án KHTH tham gia phối hợp kỹ thuật
+  if (vaiTroKey === 'truong_phong_khth') {
+    if (dsKhachHangIdsCoDuAnLienQuan && khachHang.id) {
+      if (dsKhachHangIdsCoDuAnLienQuan instanceof Set) {
+        return dsKhachHangIdsCoDuAnLienQuan.has(khachHang.id);
+      }
+      return Array.isArray(dsKhachHangIdsCoDuAnLienQuan) && dsKhachHangIdsCoDuAnLienQuan.includes(khachHang.id);
+    }
+    return false;
   }
 
   const uid = nguoiDung.id;
@@ -276,3 +287,25 @@ export const laQuanLyCapCaoHoacTruongPhong = (
   return false;
 };
 
+
+/**
+ * Kiểm tra xem người dùng hiện tại có phải là Trưởng phòng trực tiếp của một nhân sự hay không
+ * (theo cơ chế Sơ đồ tổ chức phòng ban)
+ */
+export const laTruongPhongCuaNhanSu = (
+  nguoiDung: NguoiDungXacThuc,
+  nhanSuMucTieu: { id?: string; phong_ban_id?: string | null } | null | undefined,
+  dsVaiTro?: VaiTro[]
+): boolean => {
+  if (!nguoiDung || !nhanSuMucTieu) return false;
+  const vaiTroKey = String(nguoiDung.vai_tro || '');
+  if (vaiTroKey === 'quan_tri_he_thong' || vaiTroKey === 'giam_doc') return true;
+
+  const phamVi = layPhamViPhongBan(nguoiDung, dsVaiTro);
+  if (phamVi.toanCongTy) return true;
+
+  if (nhanSuMucTieu.phong_ban_id && phamVi.danhSachPhongBanIds.includes(nhanSuMucTieu.phong_ban_id)) {
+    return vaiTroKey === 'truong_phong_kd' || vaiTroKey === 'truong_phong_khth' || vaiTroKey === 'truong_phong';
+  }
+  return false;
+};

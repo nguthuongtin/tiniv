@@ -30,8 +30,35 @@ service cloud.firestore {
       return daXacThucVaHoatDong() && layVaiTro() in ['quan_tri_he_thong', 'giam_doc'];
     }
 
-    function laTruongPhong() {
-      return daXacThucVaHoatDong() && layVaiTro() in ['quan_tri_he_thong', 'giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth'];
+    // 1. Trưởng phòng Kinh doanh
+    function laTPKD() {
+      return daXacThucVaHoatDong() && (
+        laGiamDoc()
+        || layVaiTro() == 'truong_phong_kd'
+        || (layVaiTro() == 'truong_phong' && nhanSuDoc().data.chuc_vu != null && nhanSuDoc().data.chuc_vu.matches('.*(Kinh doanh|Kinh Doanh|sales|Sales).*'))
+      );
+    }
+
+    // 2. Trưởng phòng Kế hoạch Tổng hợp / Kỹ thuật
+    function laTPKHTH() {
+      return daXacThucVaHoatDong() && (
+        laGiamDoc()
+        || layVaiTro() == 'truong_phong_khth'
+        || (layVaiTro() == 'truong_phong' && nhanSuDoc().data.chuc_vu != null && nhanSuDoc().data.chuc_vu.matches('.*(KHTH|Kế hoạch|Tổng hợp).*'))
+      );
+    }
+
+    // 3. Quyền điều phối kiểm soát theo Sơ đồ tổ chức (Trưởng phòng của đúng phòng ban đó)
+    function laTruongPhongCuaPhongBan(phongBanIdCuaBanGhi) {
+      return daXacThucVaHoatDong() && (
+        laGiamDoc()
+        || (
+          layVaiTro() in ['truong_phong', 'truong_phong_kd', 'truong_phong_khth']
+          && nhanSuDoc().data.phong_ban_id != null
+          && phongBanIdCuaBanGhi != null
+          && nhanSuDoc().data.phong_ban_id == phongBanIdCuaBanGhi
+        )
+      );
     }
 
     function laNhanVien() {
@@ -69,7 +96,7 @@ service cloud.firestore {
         || (
           daXacThucVaHoatDong() && (
             laGiamDoc() ||
-            (laTruongPhong() && resource.data.phong_ban_id == nhanSuDoc().data.phong_ban_id) ||
+            laTruongPhongCuaPhongBan(resource.data.phong_ban_id) ||
             laNhanVien()
           )
         );
@@ -77,7 +104,6 @@ service cloud.firestore {
         || dangKyQuanTriLanDau(id)
         || userTuTaoHoSoLanDau();
         
-      // SỬA LỖI Ở ĐÂY: Dùng diff().affectedKeys() để kiểm tra xem các trường nhạy cảm có THỰC SỰ BỊ THAY ĐỔI hay không, thay vì keys().hasAny() 
       allow update: if laQuanTriHeThong()
         || laGiamDoc()
         || (laChinhMinh(id) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['vai_tro','trang_thai','chi_nhanh_id','phong_ban_id']));
@@ -109,13 +135,14 @@ service cloud.firestore {
     }
 
     // ========== 6. Collection: khach_hang ==========
+    // Chỉ TPKD và Ban Giám Đốc quản trị khách hàng kinh doanh
     match /khach_hang/{id} {
       allow read: if daXacThucVaHoatDong();
       allow create: if laNhanVien();
       allow update: if laGiamDoc()
         || (resource.data.nguoi_phu_trach_id == request.auth.uid)
         || (resource.data.nguoi_tao_id == request.auth.uid)
-        || (laTruongPhong() && resource.data.nguoi_phu_trach_id == null);
+        || (laTPKD() && resource.data.nguoi_phu_trach_id == null);
       allow delete: if laQuanTriHeThong();
     }
 
@@ -124,7 +151,7 @@ service cloud.firestore {
       allow read: if daXacThucVaHoatDong();
       allow create: if laNhanVien();
       allow update: if daXacThucVaHoatDong();
-      allow delete: if laTruongPhong();
+      allow delete: if laTPKD();
     }
 
     // ========== 8. Collection: ho_so_du_an ==========
@@ -137,7 +164,7 @@ service cloud.firestore {
       }
       allow read: if daXacThucVaHoatDong();
       allow create: if laNhanVien();
-      allow update: if laGiamDoc() || laNguoiThuocDuAn();
+      allow update: if laGiamDoc() || laTPKD() || laNguoiThuocDuAn();
       allow delete: if laQuanTriHeThong();
     }
 
@@ -156,11 +183,12 @@ service cloud.firestore {
       }
       allow read: if daXacThucVaHoatDong();
       allow create: if laNhanVien();
-      allow update: if laGiamDoc() || laNguoiThuocDuAnTDDA();
+      allow update: if laGiamDoc() || laTPKD() || laTPKHTH() || laNguoiThuocDuAnTDDA();
       allow delete: if laQuanTriHeThong();
     }
 
     // ========== 10. Collection: cong_viec ==========
+    // Trưởng phòng chỉ xóa/quản lý công việc thuộc phòng ban của mình
     match /cong_viec/{id} {
       function laNguoiThuocCongViec() {
         return (resource.data.nguoi_thuc_hien_id == request.auth.uid)
@@ -170,17 +198,20 @@ service cloud.firestore {
       allow create: if laNhanVien();
       allow update: if laGiamDoc()
         || (resource.data.nguoi_thuc_hien_id == request.auth.uid)
-        || (resource.data.nguoi_tao_id == request.auth.uid);
-      allow delete: if laTruongPhong();
+        || (resource.data.nguoi_tao_id == request.auth.uid)
+        || laTruongPhongCuaPhongBan(resource.data.phong_ban_id);
+      allow delete: if laGiamDoc() || laTruongPhongCuaPhongBan(resource.data.phong_ban_id);
     }
 
     // ========== 11. Collection: bao_cao_cong_viec ==========
+    // Trưởng phòng theo dõi và chỉ đạo báo cáo của nhân sự phòng mình
     match /bao_cao_cong_viec/{id} {
       allow read: if daXacThucVaHoatDong();
       allow create: if laNhanVien() && request.resource.data.nhan_vien_id == request.auth.uid;
       allow update: if laGiamDoc()
         || (resource.data.nhan_vien_id == request.auth.uid)
-        || (resource.data.nguoi_tao_id == request.auth.uid);
+        || (resource.data.nguoi_tao_id == request.auth.uid)
+        || laTruongPhongCuaPhongBan(resource.data.phong_ban_id);
       allow delete: if laQuanTriHeThong();
     }
 
@@ -196,7 +227,7 @@ service cloud.firestore {
       }
       allow read: if daXacThucVaHoatDong();
       allow create: if laNhanVien();
-      allow delete: if laTruongPhong() && laNguoiThuocDuAnTaiLieu();
+      allow delete: if (laGiamDoc() || laTPKD() || laTPKHTH()) && laNguoiThuocDuAnTaiLieu();
     }
 
     // ========== 13. Collection: nhat_ky_hoat_dong ==========
@@ -209,14 +240,14 @@ service cloud.firestore {
     // ========== 14. Collection: nhom_san_pham_dich_vu ==========
     match /nhom_san_pham_dich_vu/{id} {
       allow read: if daXacThucVaHoatDong();
-      allow create, update: if laTruongPhong();
+      allow create, update: if laGiamDoc() || laTPKD();
       allow delete: if laGiamDoc();
     }
 
     // ========== 15. Collection: san_pham_dich_vu ==========
     match /san_pham_dich_vu/{id} {
       allow read: if daXacThucVaHoatDong();
-      allow create, update: if laTruongPhong();
+      allow create, update: if laGiamDoc() || laTPKD();
       allow delete: if laGiamDoc();
     }
 
@@ -278,9 +309,10 @@ service cloud.firestore {
     }
 
     // ========== 23. Collection: ai_danh_gia_nhan_su ==========
+    // Chỉ Giám đốc và TPKD mới được xem/quản lý đánh giá AI kinh doanh
     match /ai_danh_gia_nhan_su/{id} {
-      allow read: if laTruongPhong();
-      allow create, update, delete: if laTruongPhong();
+      allow read: if laGiamDoc() || laTPKD();
+      allow create, update, delete: if laGiamDoc() || laTPKD();
     }
 
     // ========== 24. Collection: leads ==========
@@ -303,7 +335,7 @@ service cloud.firestore {
         && request.resource.data.nguoi_tao_id == request.auth.uid;
       allow update: if (
         laGiamDoc()
-        || laTruongPhong()
+        || laTPKD()
         || (laNhanVien() && (
           resource.data.nguoi_tao_id == request.auth.uid
           || resource.data.nguoi_phu_trach_id == request.auth.uid
@@ -315,6 +347,7 @@ service cloud.firestore {
       allow delete: if (laNhanVien() && resource.data.nguoi_tao_id == request.auth.uid)
         || laQuanTriHeThong();
     }
+
     // ========== 26. Collection: yeu_cau_phoi_hop ==========
     match /yeu_cau_phoi_hop/{id} {
       allow read, write: if true;

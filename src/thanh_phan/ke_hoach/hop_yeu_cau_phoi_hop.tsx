@@ -246,11 +246,11 @@ export default function HopYeuCauPhoiHop({
   }, [userPhongBanId, mapTenPhongBan, userChucVu]);
 
   // Phân quyền theo chức vụ:
-  // - laTPKD: Trưởng phòng Kinh doanh (hoặc Trưởng phòng nếu chưa gán phòng cụ thể, hoặc Admin)
-  const laTPKD = coQuyenAdmin || vaiTro === 'truong_phong_kd' || (vaiTro === 'truong_phong' && (isKDDepartment || !isKHTHDepartment));
+  // - laTPKD: Trưởng phòng Kinh doanh
+  const laTPKD = coQuyenAdmin || vaiTro === 'truong_phong_kd' || (vaiTro === 'truong_phong' && isKDDepartment);
 
-  // - laTPKH: Trưởng phòng KHTH (hoặc Trưởng phòng nếu chưa gán phòng cụ thể, hoặc Admin)
-  const laTPKH = coQuyenAdmin || vaiTro === 'truong_phong_khth' || (vaiTro === 'truong_phong' && (isKHTHDepartment || !isKDDepartment));
+  // - laTPKH: Trưởng phòng KHTH
+  const laTPKH = coQuyenAdmin || vaiTro === 'truong_phong_khth' || (vaiTro === 'truong_phong' && isKHTHDepartment);
 
   // Kiểm tra yêu cầu có phải do user hiện tại tạo hay không
   const laNguoiTaoCuaYeuCau = (yc: YeuCauPhoiHop) => {
