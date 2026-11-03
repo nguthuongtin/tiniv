@@ -266,6 +266,7 @@ export async function PUT(req: NextRequest) {
     if (body.trang_thai && body.trang_thai !== hienTai.trang_thai) {
       const tenTrangThaiMap: Record<string, string> = {
         cho_tpkd_duyet: 'Chờ tiếp nhận & giao việc',
+        cho_cv_khth_thuc_hien: 'KHTH đang xử lý',
         cho_khth_thuc_hien: 'Đang xử lý / Đã phân công',
         cho_tpkd_duyet_ket_qua: 'Chờ duyệt kết quả',
         cho_lanh_dao_duyet: 'Chờ duyệt kết quả',
@@ -285,7 +286,7 @@ export async function PUT(req: NextRequest) {
       const tenDuAn = hienTai.ten_du_an || 'Dự án';
       const noiDung = body.ghi_chu_phan_hoi || hienTai.noi_dung_yeu_cau || '';
 
-      if (body.trang_thai === 'cho_khth_thuc_hien') {
+      if (body.trang_thai === 'cho_khth_thuc_hien' || body.trang_thai === 'cho_cv_khth_thuc_hien') {
         const dsNS = body.danh_sach_nhan_su_thuc_hien_ids || hienTai.danh_sach_nhan_su_thuc_hien_ids || [];
         if (Array.isArray(dsNS) && dsNS.length > 0) {
           guiWebPushChoNhanSu(

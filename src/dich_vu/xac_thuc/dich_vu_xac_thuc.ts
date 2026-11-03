@@ -58,6 +58,7 @@ const chuyenDoiDuLieuNhanSu = (uid: string, duLieu: Partial<NhanSu>): NguoiDungD
   id: uid,
   email: (duLieu.email ?? '').trim(),
   ho_va_ten: duLieu.ho_va_ten ?? null,
+  chuc_vu: duLieu.chuc_vu ?? null,
   vai_tro: (duLieu.vai_tro as VaiTroNguoiDung) ?? null,
   chi_nhanh_id: duLieu.chi_nhanh_id ?? null,
   phong_ban_id: duLieu.phong_ban_id ?? null,

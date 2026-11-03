@@ -291,19 +291,27 @@ export default function ThanhPhanTopbar() {
       if (laTPKD && yc.trang_thai === 'cho_tpkd_duyet') return true;
       if (laTPKH && yc.trang_thai === 'cho_tpkh_tiep_nhan') return true;
       // 2. Chờ xử lý hoặc cần sửa lại
-      if (yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') {
-        const duocGiao = Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) && yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId);
-        if (duocGiao || laLanhDaoHoacAdmin) return true;
+      if (yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'yeu_cau_chinh_sua') {
+        const duocGiao =
+          (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
+            yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
+          (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
+            !!nguoiDungHienTai?.ho_va_ten &&
+            yc.danh_sach_ten_nhan_su_thuc_hien.some(
+              (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
+            ));
+        if (duocGiao || laLanhDaoHoacAdmin || laTPKH) return true;
+        if (yc.trang_thai === 'yeu_cau_chinh_sua' && yc.nguoi_tao_id === userId) return true;
         return false;
       }
       // 3. Chờ duyệt kết quả
       if (laTPKH && yc.trang_thai === 'cho_tpkh_duyet_ket_qua') return true;
       if (laTPKD && (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet')) return true;
       // 4. Đã duyệt -> người tạo nhận kết quả hoàn tất
-      if (yc.trang_thai === 'da_phe_duyet' && (yc.nguoi_tao_id === userId || laTPKD)) return true;
+      if ((yc.trang_thai === 'da_phe_duyet' || yc.trang_thai === 'cho_sale_nghiem_thu') && (yc.nguoi_tao_id === userId || laTPKD)) return true;
       return false;
     });
-  }, [dsYeuCau, vaiTro, userId]);
+  }, [dsYeuCau, vaiTro, userId, nguoiDungHienTai?.ho_va_ten]);
 
   // Bộ phát hiện realtime: Bật chuông & Push khi có việc mới hoặc kết quả mới
   React.useEffect(() => {
@@ -332,7 +340,7 @@ export default function ThanhPhanTopbar() {
         } else if (yc.trang_thai === 'yeu_cau_chinh_sua') {
           tieuDe = '⚠️ Yêu cầu cần chỉnh sửa lại';
           loai = 'sua';
-        } else if (yc.trang_thai === 'cho_khth_thuc_hien') {
+        } else if (yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') {
           tieuDe = '📋 Bạn được phân công xử lý';
           loai = 'giao';
         } else if (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') {
@@ -554,13 +562,13 @@ export default function ThanhPhanTopbar() {
                             <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
                               {yc.trang_thai === 'cho_tpkd_duyet'
                                 ? 'Chờ tiếp nhận'
-                                : yc.trang_thai === 'cho_khth_thuc_hien'
+                                : (yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'cho_cv_khth_thuc_hien')
                                 ? 'Đang xử lý'
                                 : (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet')
                                 ? 'Chờ duyệt'
                                 : yc.trang_thai === 'yeu_cau_chinh_sua'
                                 ? 'Cần sửa lại'
-                                : 'Đã duyệt'}
+                                : yc.trang_thai === 'cho_sale_nghiem_thu' ? 'Chờ nghiệm thu' : 'Đã duyệt'}
                             </span>
                           </div>
                           <div className="text-xs text-slate-800 font-medium truncate mt-1">

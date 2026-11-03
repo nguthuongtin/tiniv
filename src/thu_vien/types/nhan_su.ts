@@ -40,6 +40,7 @@ export interface NguoiDungDangNhap {
   id: string;
   email: string;
   ho_va_ten: string | null;
+  chuc_vu?: string | null;
   vai_tro: VaiTroNguoiDung | string | null;
   chi_nhanh_id: string | null;
   phong_ban_id: string | null;

@@ -604,6 +604,9 @@ export const chuyenBuocYeuCauPhoiHop = async (
   if (Array.isArray(danhSachNhanSuThucHien) && danhSachNhanSuThucHien.length > 0) {
     capNhat.danh_sach_nhan_su_thuc_hien_ids = danhSachNhanSuThucHien.map((x) => x.id);
     capNhat.danh_sach_ten_nhan_su_thuc_hien = danhSachNhanSuThucHien.map((x) => x.ho_va_ten);
+    (capNhat as any).nguoi_thuc_hien_id = danhSachNhanSuThucHien[0].id;
+    (capNhat as any).ten_nguoi_thuc_hien = danhSachNhanSuThucHien[0].ho_va_ten;
+    (capNhat as any).nhan_su_thuc_hien_id = danhSachNhanSuThucHien[0].id;
   }
 
   const lichSuCu = Array.isArray(hienTai.lich_su_xu_ly) ? hienTai.lich_su_xu_ly : [];

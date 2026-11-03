@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Sparkles,
   Check,
@@ -172,6 +172,10 @@ export default function HopYeuCauPhoiHop({
     }
   };
 
+  useEffect(() => {
+    void taiDuLieuNhanSuVaPhongBan();
+  }, []);
+
   // Map ID phòng ban sang tên
   const mapTenPhongBan = useMemo(() => {
     const m = new Map<string, string>();
@@ -290,20 +294,32 @@ export default function HopYeuCauPhoiHop({
       const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
       const duocGiao =
         (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
-          yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId)) ||
+          yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
         (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
           !!nguoiDungHienTai?.ho_va_ten &&
           yc.danh_sach_ten_nhan_su_thuc_hien.some(
-            (t) => t.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
-          ));
+            (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
+          )) ||
+        ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
+        ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId);
 
-      // Nếu là chuyên viên KHTH
+      // 1. Nếu là người được giao việc đích danh: LUÔN THẤY
+      if (duocGiao) return true;
+
+      // 2. Nếu là người tạo yêu cầu: LUÔN THẤY
+      if (laNguoiTao) return true;
+
+      // 3. Nếu là chuyên viên / nhân sự phòng KHTH: thấy các yêu cầu KHTH đang xử lý hoặc trình duyệt
       if (vaiTro === 'nhan_vien_ky_thuat' || isKHTHDepartment) {
-        return duocGiao || laNguoiTao;
+        return (
+          yc.trang_thai === 'cho_cv_khth_thuc_hien' ||
+          yc.trang_thai === 'cho_khth_thuc_hien' ||
+          yc.trang_thai === 'cho_tpkh_duyet_ket_qua'
+        );
       }
 
-      // Nếu là Sale (hoặc bất kỳ nhân sự thường nào): chỉ thấy yêu cầu do chính mình tạo
-      return laNguoiTao;
+      // 4. Vai trò khác (nhân viên Sale thông thường): chỉ thấy yêu cầu do chính mình tạo
+      return false;
     });
   }, [
     danhSachYeuCau,
@@ -1068,13 +1084,15 @@ export default function HopYeuCauPhoiHop({
 
               const duocGiaoDichDanh =
                 (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
-                  yc.danh_sach_nhan_su_thuc_hien_ids.includes(userId)) ||
+                  yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
                 (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
                   !!nguoiDungHienTai?.ho_va_ten &&
                   yc.danh_sach_ten_nhan_su_thuc_hien.some(
-                    (t) => t.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
-                  ));
-              const coQuyenNopKetQua = duocGiaoDichDanh || laTPKH || coQuyenAdmin;
+                    (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
+                  )) ||
+                ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
+                ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId);
+              const coQuyenNopKetQua = duocGiaoDichDanh || isKHTHDepartment || laTPKH || coQuyenAdmin;
 
               return (
                 <div
