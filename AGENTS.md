@@ -21,4 +21,5 @@ This version has breaking changes — APIs, conventions, and file structure may 
    - Trưởng phòng Kinh doanh là người điều hành, định hướng kế hoạch chung, không trực tiếp nhận KPI doanh số cá nhân và không bị AI chấm điểm KPI cá nhân trên trang tổng quan.
 
 4. **Quy tắc Git:**
+   - Sau mỗi lần hoàn thành nhiệm vụ sửa code, **luôn tự động chạy `git add -A` và `git commit -m "..."` tại máy local** với thông điệp rõ ràng, để người dùng chỉ cần mở phần mềm GitHub Desktop bấm 1 nút "Push origin" là xong.
    - **TUYỆT ĐỐI KHÔNG tự ý `git push`**. Chỉ push khi người dùng ra lệnh rõ ràng "git push đi" hoặc "git đi".
