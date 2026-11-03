@@ -555,7 +555,9 @@ export const chuyenBuocYeuCauPhoiHop = async (
 
   let tenHanhDong = 'Chuyển bước';
   if (trangThaiMoi === 'cho_tpkd_duyet') {
-    tenHanhDong = ghiChu ? 'Yêu cầu làm lại / Chuyển TPKD' : 'Khởi tạo chuyển TPKD';
+    if (ghiChu?.includes('TPKH')) tenHanhDong = 'TPKH trả lại yêu cầu làm rõ';
+    else if (ghiChu?.includes('Sale')) tenHanhDong = 'Sale yêu cầu hiệu chỉnh lại';
+    else tenHanhDong = ghiChu ? 'Yêu cầu làm lại / Chuyển TPKD' : 'Khởi tạo chuyển TPKD';
   } else if (trangThaiMoi === 'cho_tpkh_tiep_nhan') {
     tenHanhDong = ghiChu?.includes('TPKD yêu cầu')
       ? 'TPKD yêu cầu TPKH rà soát sửa lại'
