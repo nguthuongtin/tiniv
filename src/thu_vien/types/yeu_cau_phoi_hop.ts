@@ -37,6 +37,11 @@ export interface YeuCauPhoiHop {
   han_hoan_thanh?: string | null; // YYYY-MM-DD
   ghi_chu_phan_hoi?: string | null;
 
+  // Người nhận chỉ định / phân công đích danh
+  nguoi_nhan_id?: string | null;
+  ten_nguoi_nhan?: string | null;
+  chuc_vu_nguoi_nhan?: string | null;
+
   // Phân công nhân sự thực hiện
   danh_sach_nhan_su_thuc_hien_ids?: string[] | null;
   danh_sach_ten_nhan_su_thuc_hien?: string[] | null;

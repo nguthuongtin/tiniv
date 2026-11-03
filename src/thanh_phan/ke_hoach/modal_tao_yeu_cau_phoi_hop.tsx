@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Send, Link2, Calendar, FolderKanban, Loader2, Sparkles, Search, Check, ChevronDown } from 'lucide-react';
+import { X, Send, Link2, Calendar, FolderKanban, Loader2, Sparkles, Search, Check, ChevronDown, User } from 'lucide-react';
+import type { NhanSu } from '../../thu_vien/types/nhan_su';
+import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
 import { taoYeuCauPhoiHopMoi, type YeuCauPhoiHop } from '../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
@@ -38,6 +40,10 @@ export default function ModalTaoYeuCauPhoiHop({
   const [dangGui, setDangGui] = useState(false);
   const [loi, setLoi] = useState('');
   const inputSearchRef = useRef<HTMLInputElement>(null);
+  const [dsNhanSu, setDsNhanSu] = useState<NhanSu[]>([]);
+  const [nguoiNhanId, setNguoiNhanId] = useState<string>('');
+  const [tuKhoaNguoiNhan, setTuKhoaNguoiNhan] = useState('');
+  const [moDropdownNguoiNhan, setMoDropdownNguoiNhan] = useState(false);
 
   // Đồng bộ lại dữ liệu mỗi khi mở modal
   useEffect(() => {
@@ -51,6 +57,25 @@ export default function ModalTaoYeuCauPhoiHop({
       const d = new Date();
       d.setDate(d.getDate() + 2);
       setHanXong(d.toISOString().slice(0, 10));
+      setTuKhoaNguoiNhan('');
+      setMoDropdownNguoiNhan(false);
+
+      void danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong', trang_thai_hoat_dong: 'hoat_dong' }).then((res) => {
+        const mang = res.mang || [];
+        setDsNhanSu(mang);
+        const defaultTPKD = mang.find(
+          (ns) =>
+            ns.vai_tro === 'truong_phong_kd' ||
+            (ns.chuc_vu || '').toLowerCase().includes('tp kd') ||
+            (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng kinh doanh') ||
+            ns.vai_tro === 'truong_phong'
+        );
+        if (defaultTPKD) {
+          setNguoiNhanId(defaultTPKD.id);
+        } else if (mang.length > 0) {
+          setNguoiNhanId(mang[0].id);
+        }
+      }).catch(() => {});
     }
   }, [mo, duAnMacDinh, noiDungGoiY]);
 
@@ -71,6 +96,21 @@ export default function ModalTaoYeuCauPhoiHop({
       )
       .slice(0, 50);
   }, [danhSachDuAn, tuKhoaDuAn]);
+
+  // Người nhận đích danh đang chọn
+  const nguoiNhanChon = useMemo(() => {
+    return dsNhanSu.find((ns) => ns.id === nguoiNhanId) || null;
+  }, [dsNhanSu, nguoiNhanId]);
+
+  // Lọc danh sách nhân sự tìm kiếm
+  const dsNhanSuLoc = useMemo(() => {
+    if (!tuKhoaNguoiNhan.trim()) return dsNhanSu.slice(0, 50);
+    const kw = tuKhoaNguoiNhan.toLowerCase().trim();
+    return dsNhanSu.filter((ns) =>
+      ns.ho_va_ten.toLowerCase().includes(kw) ||
+      (ns.chuc_vu && ns.chuc_vu.toLowerCase().includes(kw))
+    ).slice(0, 50);
+  }, [dsNhanSu, tuKhoaNguoiNhan]);
 
   if (!mo) return null;
 
@@ -96,7 +136,10 @@ export default function ModalTaoYeuCauPhoiHop({
           ten_khach_hang: null,
           noi_dung_yeu_cau: noiDung.trim(),
           link_drive_dau_vao: linkDrive.trim() || null,
-          han_hoan_thanh: hanXong || null
+          han_hoan_thanh: hanXong || null,
+          nguoi_nhan_id: nguoiNhanChon?.id || null,
+          ten_nguoi_nhan: nguoiNhanChon?.ho_va_ten || null,
+          chuc_vu_nguoi_nhan: nguoiNhanChon?.chuc_vu || null
         },
         userHieuLuc
       );
@@ -242,6 +285,97 @@ export default function ModalTaoYeuCauPhoiHop({
                 )}
               </div>
             )}
+          </div>
+
+          {/* Gửi đích danh cho nhân sự */}
+          <div className="space-y-1.5 relative">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <User className="size-3.5 text-primary" />
+                <span>Gửi đích danh cho *</span>
+              </label>
+              <span className="text-[11px] text-slate-400">Mặc định: TPKD duyệt</span>
+            </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMoDropdownNguoiNhan(!moDropdownNguoiNhan)}
+                className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/80 flex items-center justify-between gap-2 text-xs font-medium text-left transition cursor-pointer"
+              >
+                {nguoiNhanChon ? (
+                  <div className="flex items-center gap-2 truncate">
+                    <div className="size-6 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-[10px] shrink-0">
+                      {nguoiNhanChon.ho_va_ten.slice(0, 2).toUpperCase()}
+                    </div>
+                    <span className="truncate font-semibold text-slate-900">{nguoiNhanChon.ho_va_ten}</span>
+                    {nguoiNhanChon.chuc_vu && (
+                      <span className="text-[11px] text-slate-400 truncate">({nguoiNhanChon.chuc_vu})</span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-slate-400">Chọn người tiếp nhận...</span>
+                )}
+                <ChevronDown className="size-3.5 text-slate-400 shrink-0" />
+              </button>
+
+              {moDropdownNguoiNhan && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setMoDropdownNguoiNhan(false)}
+                  />
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl flex flex-col">
+                    <div className="p-2 border-b border-slate-100 bg-slate-50">
+                      <div className="relative">
+                        <Search className="size-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={tuKhoaNguoiNhan}
+                          onChange={(e) => setTuKhoaNguoiNhan(e.target.value)}
+                          placeholder="Tìm theo tên hoặc chức vụ..."
+                          className="w-full h-8 pl-8 pr-2.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-primary"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="overflow-y-auto max-h-44 divide-y divide-slate-100">
+                      {dsNhanSuLoc.length === 0 ? (
+                        <div className="p-3 text-center text-xs text-slate-500 italic">
+                          Không tìm thấy nhân sự
+                        </div>
+                      ) : (
+                        dsNhanSuLoc.map((ns) => (
+                          <div
+                            key={ns.id}
+                            onClick={() => {
+                              setNguoiNhanId(ns.id);
+                              setMoDropdownNguoiNhan(false);
+                            }}
+                            className="p-2.5 hover:bg-slate-50 cursor-pointer transition text-xs flex items-center justify-between gap-2"
+                          >
+                            <div className="min-w-0 flex-1 flex items-center gap-2">
+                              <div className="size-6 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-[10px] shrink-0">
+                                {ns.ho_va_ten.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div className="truncate">
+                                <span className="font-semibold text-slate-900 block truncate">{ns.ho_va_ten}</span>
+                                {ns.chuc_vu && (
+                                  <span className="text-[10.5px] text-slate-500 block truncate">{ns.chuc_vu}</span>
+                                )}
+                              </div>
+                            </div>
+                            {nguoiNhanId === ns.id && (
+                              <Check className="size-3.5 text-primary shrink-0" />
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Nội dung yêu cầu */}

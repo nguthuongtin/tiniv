@@ -48,6 +48,9 @@ export interface TaoMoiYeuCauPhoiHopDTO {
   noi_dung_yeu_cau: string;
   link_drive_dau_vao?: string | null;
   han_hoan_thanh?: string | null;
+  nguoi_nhan_id?: string | null;
+  ten_nguoi_nhan?: string | null;
+  chuc_vu_nguoi_nhan?: string | null;
 }
 
 export interface CapNhatThongTinYeuCauDTO {
@@ -69,6 +72,9 @@ export interface ChuyenBuocDTO {
   danhSachNhanSuThucHien?: { id: string; ho_va_ten: string }[] | null;
   hanHoanThanhMoi?: string | null;
   nguoiThucHien?: { id: string; ho_va_ten?: string | null; [key: string]: any } | null;
+  nguoiNhanMoiId?: string | null;
+  tenNguoiNhanMoi?: string | null;
+  chucVuNguoiNhanMoi?: string | null;
 }
 
 // ==== Helpers Cache Local & Event ====
@@ -472,6 +478,11 @@ export const taoYeuCauPhoiHopMoi = async (
     link_drive_ket_qua: null,
     han_hoan_thanh: dto.han_hoan_thanh || null,
     ghi_chu_phan_hoi: null,
+    nguoi_nhan_id: dto.nguoi_nhan_id || null,
+    ten_nguoi_nhan: dto.ten_nguoi_nhan || null,
+    chuc_vu_nguoi_nhan: dto.chuc_vu_nguoi_nhan || null,
+    danh_sach_nhan_su_thuc_hien_ids: dto.nguoi_nhan_id ? [dto.nguoi_nhan_id] : [],
+    danh_sach_ten_nhan_su_thuc_hien: dto.ten_nguoi_nhan ? [dto.ten_nguoi_nhan] : [],
     trang_thai: 'cho_tpkd_duyet',
     nguoi_tao_id: userId,
     ten_nguoi_tao: userName,
@@ -604,9 +615,19 @@ export const chuyenBuocYeuCauPhoiHop = async (
   if (Array.isArray(danhSachNhanSuThucHien) && danhSachNhanSuThucHien.length > 0) {
     capNhat.danh_sach_nhan_su_thuc_hien_ids = danhSachNhanSuThucHien.map((x) => x.id);
     capNhat.danh_sach_ten_nhan_su_thuc_hien = danhSachNhanSuThucHien.map((x) => x.ho_va_ten);
+    capNhat.nguoi_nhan_id = danhSachNhanSuThucHien[0].id;
+    capNhat.ten_nguoi_nhan = danhSachNhanSuThucHien[0].ho_va_ten;
     (capNhat as any).nguoi_thuc_hien_id = danhSachNhanSuThucHien[0].id;
     (capNhat as any).ten_nguoi_thuc_hien = danhSachNhanSuThucHien[0].ho_va_ten;
     (capNhat as any).nhan_su_thuc_hien_id = danhSachNhanSuThucHien[0].id;
+  } else if (params.nguoiNhanMoiId) {
+    capNhat.nguoi_nhan_id = params.nguoiNhanMoiId;
+    capNhat.ten_nguoi_nhan = params.tenNguoiNhanMoi || null;
+    capNhat.chuc_vu_nguoi_nhan = params.chucVuNguoiNhanMoi || null;
+    capNhat.danh_sach_nhan_su_thuc_hien_ids = [params.nguoiNhanMoiId];
+    capNhat.danh_sach_ten_nhan_su_thuc_hien = params.tenNguoiNhanMoi ? [params.tenNguoiNhanMoi] : [];
+    (capNhat as any).nguoi_thuc_hien_id = params.nguoiNhanMoiId;
+    (capNhat as any).ten_nguoi_thuc_hien = params.tenNguoiNhanMoi || null;
   }
 
   const lichSuCu = Array.isArray(hienTai.lich_su_xu_ly) ? hienTai.lich_su_xu_ly : [];

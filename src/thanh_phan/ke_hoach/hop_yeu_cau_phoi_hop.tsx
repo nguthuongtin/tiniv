@@ -77,6 +77,18 @@ export default function HopYeuCauPhoiHop({
   const SO_MUC_MOI_TRANG = 15;
   const [yeuCauDangXemLichSu, setYeuCauDangXemLichSu] = useState<YeuCauPhoiHop | null>(null);
 
+  // 0. Modal TPKD Phê duyệt & Chuyển đích danh (Chuyển TPKH hoặc Giao thẳng CV)
+  const [modalTPKDChuyen, setModalTPKDChuyen] = useState<{
+    mo: boolean;
+    yeuCau: YeuCauPhoiHop | null;
+  }>({ mo: false, yeuCau: null });
+  const [tpkdHinhThucChuyen, setTpkdHinhThucChuyen] = useState<'cho_tpkh' | 'cho_cv'>('cho_tpkh');
+  const [tpkdNguoiNhanChon, setTpkdNguoiNhanChon] = useState<NhanSu | null>(null);
+  const [tpkdGhiChu, setTpkdGhiChu] = useState('');
+  const [tpkdHanXong, setTpkdHanXong] = useState('');
+  const [dangXuLyTPKDChuyen, setDangXuLyTPKDChuyen] = useState(false);
+  const [tuKhoaTimNSTpkd, setTuKhoaTimNSTpkd] = useState('');
+
   // 1. Modal tiếp nhận & phân công của TPKH (Giao việc cho CV hoặc Tự làm)
   const [modalGiaoViec, setModalGiaoViec] = useState<{
     mo: boolean;
@@ -293,6 +305,7 @@ export default function HopYeuCauPhoiHop({
     return tatCa.filter((yc) => {
       const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
       const duocGiao =
+        (yc.nguoi_nhan_id && yc.nguoi_nhan_id === userId) ||
         (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
           yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
         (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
@@ -300,25 +313,19 @@ export default function HopYeuCauPhoiHop({
           yc.danh_sach_ten_nhan_su_thuc_hien.some(
             (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
           )) ||
+        (yc.ten_nguoi_nhan &&
+          !!nguoiDungHienTai?.ho_va_ten &&
+          yc.ten_nguoi_nhan.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten.trim().toLowerCase()) ||
         ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
         ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId);
 
-      // 1. Nếu là người được giao việc đích danh: LUÔN THẤY
+      // 1. Người được giao việc đích danh: LUÔN THẤY
       if (duocGiao) return true;
 
-      // 2. Nếu là người tạo yêu cầu: LUÔN THẤY
+      // 2. Người tạo yêu cầu: LUÔN THẤY
       if (laNguoiTao) return true;
 
-      // 3. Nếu là chuyên viên / nhân sự phòng KHTH: thấy các yêu cầu KHTH đang xử lý hoặc trình duyệt
-      if (vaiTro === 'nhan_vien_ky_thuat' || isKHTHDepartment) {
-        return (
-          yc.trang_thai === 'cho_cv_khth_thuc_hien' ||
-          yc.trang_thai === 'cho_khth_thuc_hien' ||
-          yc.trang_thai === 'cho_tpkh_duyet_ket_qua'
-        );
-      }
-
-      // 4. Vai trò khác (nhân viên Sale thông thường): chỉ thấy yêu cầu do chính mình tạo
+      // Không hiển thị tràn lan cho nhân sự không liên quan
       return false;
     });
   }, [
@@ -445,22 +452,68 @@ export default function HopYeuCauPhoiHop({
   // CÁC HÀNH ĐỘNG THEO ĐÚNG QUY TRÌNH 7 BƯỚC
   // =========================================================================
 
-  // BƯỚC 1: TPKD bấm Chuyển KHTH
-  const handleTPKDChuyenKHTH = async (yc: YeuCauPhoiHop) => {
+  // BƯỚC 1: TPKD Mở modal Phê duyệt & Chuyển đích danh
+  const moModalTPKDChuyen = (yc: YeuCauPhoiHop) => {
+    void taiDuLieuNhanSuVaPhongBan();
+    setModalTPKDChuyen({ mo: true, yeuCau: yc });
+    setTpkdHinhThucChuyen('cho_tpkh');
+    setTpkdGhiChu('');
+    setTpkdHanXong(yc.han_hoan_thanh || '');
+    setTuKhoaTimNSTpkd('');
+
+    const defaultTPKH = dsNhanSuToanBo.find(
+      (ns) =>
+        ns.vai_tro === 'truong_phong_khth' ||
+        (ns.chuc_vu || '').toLowerCase().includes('tp khth') ||
+        (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng kế hoạch') ||
+        ((ns.chuc_vu || '').toLowerCase().includes('trưởng phòng') &&
+          (ns.chuc_vu || '').toLowerCase().includes('kế hoạch')) ||
+        ns.ho_va_ten.toLowerCase().includes('tp khth')
+    );
+    setTpkdNguoiNhanChon(defaultTPKH || null);
+  };
+
+  const handleXacNhanTPKDChuyen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modalTPKDChuyen.yeuCau) return;
+
+    if (!tpkdNguoiNhanChon) {
+      alert('Vui lòng chọn người tiếp nhận đích danh.');
+      return;
+    }
+
+    setDangXuLyTPKDChuyen(true);
     try {
+      const laChuyenCV = tpkdHinhThucChuyen === 'cho_cv';
+      const trangThaiMoi: TrangThaiYeuCauPhoiHop = laChuyenCV ? 'cho_cv_khth_thuc_hien' : 'cho_tpkh_tiep_nhan';
+      const ghiChuMacDinh = laChuyenCV
+        ? `TPKD duyệt và giao thẳng cho CV ${tpkdNguoiNhanChon.ho_va_ten}`
+        : `TPKD đã duyệt yêu cầu và chuyển cho ${tpkdNguoiNhanChon.ho_va_ten}`;
+
       const res = await chuyenBuocYeuCauPhoiHop({
-        yeuCauId: yc.id,
-        trangThaiMoi: 'cho_tpkh_tiep_nhan',
-        ghiChu: 'TPKD đã duyệt yêu cầu và chuyển sang Trưởng phòng KHTH',
+        yeuCauId: modalTPKDChuyen.yeuCau.id,
+        trangThaiMoi,
+        ghiChu: tpkdGhiChu.trim() || ghiChuMacDinh,
+        hanHoanThanhMoi: tpkdHanXong || null,
+        nguoiNhanMoiId: tpkdNguoiNhanChon.id,
+        tenNguoiNhanMoi: tpkdNguoiNhanChon.ho_va_ten,
+        chucVuNguoiNhanMoi: tpkdNguoiNhanChon.chuc_vu || null,
+        danhSachNhanSuThucHien: laChuyenCV
+          ? [{ id: tpkdNguoiNhanChon.id, ho_va_ten: tpkdNguoiNhanChon.ho_va_ten }]
+          : null,
         nguoiThucHien: nguoiDungHienTai
       });
+
       if (res && onCapNhatYeuCau) onCapNhatYeuCau(res);
+      setModalTPKDChuyen({ mo: false, yeuCau: null });
     } catch {
-      alert('Có lỗi khi chuyển thông tin sang KHTH.');
+      alert('Có lỗi khi chuyển yêu cầu.');
+    } finally {
+      setDangXuLyTPKDChuyen(false);
     }
   };
 
-  // BƯỚC 2: TPKH Mở modal tiếp nhận & phân công (Tự làm hoặc Giao CV)
+  // BƯỚC 2: TPKH Mở modal tiếp nhận & phân công đích danh
   const moModalTiepNhanTPKH = async (yc: YeuCauPhoiHop, hinhThuc: 'giao_cv' | 'tu_lam' = 'giao_cv') => {
     void taiDuLieuNhanSuVaPhongBan();
     setModalGiaoViec({ mo: true, yeuCau: yc, hinhThuc });
@@ -471,39 +524,22 @@ export default function HopYeuCauPhoiHop({
     setLoiGiaoViec('');
 
     if (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) && yc.danh_sach_nhan_su_thuc_hien_ids.length > 0) {
-      const list = yc.danh_sach_nhan_su_thuc_hien_ids.map((id, idx) => ({
-        id,
-        ho_va_ten: yc.danh_sach_ten_nhan_su_thuc_hien?.[idx] || 'Nhân sự'
-      }));
-      setDsNhanSuChon(list);
+      setDsNhanSuChon([{
+        id: yc.danh_sach_nhan_su_thuc_hien_ids[0],
+        ho_va_ten: yc.danh_sach_ten_nhan_su_thuc_hien?.[0] || 'Nhân sự'
+      }]);
+    } else if (yc.nguoi_nhan_id) {
+      setDsNhanSuChon([{
+        id: yc.nguoi_nhan_id,
+        ho_va_ten: yc.ten_nguoi_nhan || 'Nhân sự'
+      }]);
     } else {
       setDsNhanSuChon([]);
     }
   };
 
-  const toggleChonNhanSu = (ns: NhanSu) => {
-    setDsNhanSuChon((prev) => {
-      const tonTai = prev.some((x) => x.id === ns.id);
-      if (tonTai) {
-        return prev.filter((x) => x.id !== ns.id);
-      } else {
-        return [...prev, { id: ns.id, ho_va_ten: ns.ho_va_ten }];
-      }
-    });
-    setLoiGiaoViec('');
-  };
-
-  const daChonTatCaKHTH = useMemo(() => {
-    if (dsNhanSuKHTH.length === 0) return false;
-    return dsNhanSuKHTH.every((ns) => dsNhanSuChon.some((x) => x.id === ns.id));
-  }, [dsNhanSuKHTH, dsNhanSuChon]);
-
-  const toggleChonTatCaKHTH = () => {
-    if (daChonTatCaKHTH) {
-      setDsNhanSuChon([]);
-    } else {
-      setDsNhanSuChon(dsNhanSuKHTH.map((ns) => ({ id: ns.id, ho_va_ten: ns.ho_va_ten })));
-    }
+  const chonDichDanhCV = (ns: NhanSu) => {
+    setDsNhanSuChon([{ id: ns.id, ho_va_ten: ns.ho_va_ten }]);
     setLoiGiaoViec('');
   };
 
@@ -523,6 +559,8 @@ export default function HopYeuCauPhoiHop({
           yeuCauId: modalGiaoViec.yeuCau.id,
           trangThaiMoi: 'cho_cv_khth_thuc_hien',
           danhSachNhanSuThucHien: dsNhanSuChon,
+          nguoiNhanMoiId: dsNhanSuChon[0].id,
+          tenNguoiNhanMoi: dsNhanSuChon[0].ho_va_ten,
           hanHoanThanhMoi: hanXongGiaoViec || null,
           ghiChu: ghiChuGiaoViec.trim() || null,
           nguoiThucHien: nguoiDungHienTai
@@ -1083,6 +1121,7 @@ export default function HopYeuCauPhoiHop({
                 coQuyenAdmin;
 
               const duocGiaoDichDanh =
+                (yc.nguoi_nhan_id && yc.nguoi_nhan_id === userId) ||
                 (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
                   yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
                 (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
@@ -1090,9 +1129,12 @@ export default function HopYeuCauPhoiHop({
                   yc.danh_sach_ten_nhan_su_thuc_hien.some(
                     (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
                   )) ||
+                (yc.ten_nguoi_nhan &&
+                  !!nguoiDungHienTai?.ho_va_ten &&
+                  yc.ten_nguoi_nhan.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten.trim().toLowerCase()) ||
                 ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
                 ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId);
-              const coQuyenNopKetQua = duocGiaoDichDanh || isKHTHDepartment || laTPKH || coQuyenAdmin;
+              const coQuyenNopKetQua = duocGiaoDichDanh || laTPKH || coQuyenAdmin;
 
               return (
                 <div
@@ -1220,10 +1262,10 @@ export default function HopYeuCauPhoiHop({
                         <span>Người tạo: <strong className="text-slate-800 font-semibold">{yc.ten_nguoi_tao}</strong></span>
                       </div>
 
-                      {yc.danh_sach_ten_nhan_su_thuc_hien && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0 && (
+                      {(yc.ten_nguoi_nhan || (yc.danh_sach_ten_nhan_su_thuc_hien && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0)) && (
                         <div className="flex items-center gap-1.5">
-                          <Users className="size-3.5 text-blue-500" />
-                          <span>KHTH xử lý: <strong className="text-slate-800 font-semibold">{yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')}</strong></span>
+                          <UserCheck className="size-3.5 text-blue-600" />
+                          <span>Người nhận: <strong className="text-blue-700 font-semibold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">{yc.ten_nguoi_nhan || yc.danh_sach_ten_nhan_su_thuc_hien?.join(', ')}</strong></span>
                         </div>
                       )}
                     </div>
@@ -1237,11 +1279,11 @@ export default function HopYeuCauPhoiHop({
                             <>
                               <button
                                 type="button"
-                                onClick={() => handleTPKDChuyenKHTH(yc)}
+                                onClick={() => moModalTPKDChuyen(yc)}
                                 className="h-8 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
                               >
                                 <UserCheck className="size-3.5 stroke-[2.5]" />
-                                <span>Chuyển KHTH</span>
+                                <span>Duyệt & Chuyển</span>
                               </button>
                               <button
                                 type="button"
@@ -1557,6 +1599,240 @@ export default function HopYeuCauPhoiHop({
       </div>
 
       {/* ========================================================================= */}
+      {/* MODAL 0: TPKD PHÊ DUYỆT & CHUYỂN ĐÍCH DANH                                  */}
+      {/* ========================================================================= */}
+      {modalTPKDChuyen.mo && modalTPKDChuyen.yeuCau && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-lg max-h-[90vh] rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl flex flex-col space-y-4 text-slate-900">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold border border-blue-100">
+                  <UserCheck className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    TPKD Phê duyệt & Chuyển giao
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Dự án: <span className="font-semibold text-slate-900">{modalTPKDChuyen.yeuCau.ten_du_an}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalTPKDChuyen({ mo: false, yeuCau: null })}
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {/* TAB: CHỌN HÌNH THỨC CHUYỂN */}
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setTpkdHinhThucChuyen('cho_tpkh');
+                  const tpkh = dsNhanSuToanBo.find(
+                    (ns) =>
+                      ns.vai_tro === 'truong_phong_khth' ||
+                      (ns.chuc_vu || '').toLowerCase().includes('tp khth') ||
+                      (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng kế hoạch') ||
+                      ((ns.chuc_vu || '').toLowerCase().includes('trưởng phòng') &&
+                        (ns.chuc_vu || '').toLowerCase().includes('kế hoạch')) ||
+                      ns.ho_va_ten.toLowerCase().includes('tp khth')
+                  );
+                  setTpkdNguoiNhanChon(tpkh || null);
+                }}
+                className={cn(
+                  'py-2 px-3 rounded-lg transition-all text-center cursor-pointer',
+                  tpkdHinhThucChuyen === 'cho_tpkh'
+                    ? 'bg-white text-blue-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                1. Chuyển Trưởng phòng KHTH
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTpkdHinhThucChuyen('cho_cv');
+                  if (dsNhanSuKHTH.length > 0) {
+                    setTpkdNguoiNhanChon(dsNhanSuKHTH[0]);
+                  }
+                }}
+                className={cn(
+                  'py-2 px-3 rounded-lg transition-all text-center cursor-pointer',
+                  tpkdHinhThucChuyen === 'cho_cv'
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                2. Giao thẳng Chuyên viên
+              </button>
+            </div>
+
+            <form onSubmit={handleXacNhanTPKDChuyen} className="space-y-4 overflow-y-auto pr-1 flex-1">
+              {/* Thông tin ban đầu */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-xs">
+                <div className="flex items-center justify-between text-slate-500">
+                  <span>Người tạo: <strong className="text-slate-900">{modalTPKDChuyen.yeuCau.ten_nguoi_tao}</strong></span>
+                  <span>Hạn: <strong className="text-slate-900">{formatNgay(modalTPKDChuyen.yeuCau.han_hoan_thanh) || 'Chưa đặt'}</strong></span>
+                </div>
+                <p className="text-slate-800 font-medium leading-relaxed truncate">
+                  {modalTPKDChuyen.yeuCau.noi_dung_yeu_cau}
+                </p>
+              </div>
+
+              {/* Lựa chọn người tiếp nhận */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <User className="size-4 text-blue-600" />
+                  <span>
+                    {tpkdHinhThucChuyen === 'cho_tpkh'
+                      ? 'Chọn Trưởng phòng KHTH tiếp nhận *'
+                      : 'Chọn Chuyên viên thực hiện đích danh *'}
+                  </span>
+                </label>
+
+                {/* Tìm kiếm */}
+                <div className="relative">
+                  <Search className="size-3.5 absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={tuKhoaTimNSTpkd}
+                    onChange={(e) => setTuKhoaTimNSTpkd(e.target.value)}
+                    placeholder="Tìm theo tên hoặc chức vụ..."
+                    className="w-full h-8.5 rounded-xl border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Danh sách nhân sự */}
+                <div className="max-h-[180px] overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
+                  {(tpkdHinhThucChuyen === 'cho_tpkh' ? dsNhanSuToanBo : dsNhanSuKHTH)
+                    .filter((ns) => {
+                      if (ns.trang_thai_du_lieu === 'da_xoa' || ns.trang_thai === false) return false;
+                      if (!tuKhoaTimNSTpkd) {
+                        if (tpkdHinhThucChuyen === 'cho_tpkh') {
+                          const cv = (ns.chuc_vu || '').toLowerCase();
+                          const vt = (ns.vai_tro || '').toLowerCase();
+                          const ten = (ns.ho_va_ten || '').toLowerCase();
+                          return (
+                            vt === 'truong_phong_khth' ||
+                            vt === 'truong_phong' ||
+                            cv.includes('trưởng phòng') ||
+                            cv.includes('tp') ||
+                            ten.includes('tp khth')
+                          );
+                        }
+                        return true;
+                      }
+                      const kw = tuKhoaTimNSTpkd.toLowerCase();
+                      return (
+                        ns.ho_va_ten.toLowerCase().includes(kw) ||
+                        (ns.chuc_vu && ns.chuc_vu.toLowerCase().includes(kw))
+                      );
+                    })
+                    .map((ns) => {
+                      const daChon = tpkdNguoiNhanChon?.id === ns.id;
+                      return (
+                        <div
+                          key={ns.id}
+                          onClick={() => setTpkdNguoiNhanChon(ns)}
+                          className={cn(
+                            'px-3 py-2 flex items-center justify-between text-xs cursor-pointer transition select-none',
+                            daChon ? 'bg-blue-50 text-blue-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={cn(
+                                'size-4 rounded-full border flex items-center justify-center transition',
+                                daChon ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'
+                              )}
+                            >
+                              {daChon && <div className="size-1.5 rounded-full bg-white" />}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-slate-900">{ns.ho_va_ten}</div>
+                              <div className="text-[10.5px] text-slate-500">
+                                {ns.chuc_vu || (tpkdHinhThucChuyen === 'cho_tpkh' ? 'Trưởng phòng' : 'Chuyên viên')}
+                              </div>
+                            </div>
+                          </div>
+                          {daChon && (
+                            <span className="text-[11px] font-bold text-blue-600 bg-white px-2 py-0.5 rounded-md border border-blue-200">
+                              Đã chọn
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Hạn hoàn thành */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Clock className="size-3.5 text-slate-400" />
+                  <span>Thời hạn yêu cầu xử lý</span>
+                </label>
+                <input
+                  type="date"
+                  value={tpkdHanXong}
+                  onChange={(e) => setTpkdHanXong(e.target.value)}
+                  className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
+                />
+              </div>
+
+              {/* Ghi chú */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-800">
+                  Ghi chú chỉ đạo (nếu có)
+                </label>
+                <textarea
+                  rows={2}
+                  value={tpkdGhiChu}
+                  onChange={(e) => setTpkdGhiChu(e.target.value)}
+                  placeholder="Nhập lưu ý hoặc chỉ đạo cụ thể..."
+                  className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500 resize-none"
+                />
+              </div>
+
+              {/* Footer buttons */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setModalTPKDChuyen({ mo: false, yeuCau: null })}
+                  disabled={dangXuLyTPKDChuyen}
+                  className="h-9 px-4 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={dangXuLyTPKDChuyen || !tpkdNguoiNhanChon}
+                  className="h-9 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-2 cursor-pointer shadow-xs transition disabled:opacity-50"
+                >
+                  {dangXuLyTPKDChuyen ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      <span>Đang chuyển...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="size-3.5" />
+                      <span>Xác nhận chuyển</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL 1: TPKH TIẾP NHẬN & PHÂN CÔNG (Giao việc cho CV hoặc Tự làm)          */}
       {/* ========================================================================= */}
       {modalGiaoViec.mo && modalGiaoViec.yeuCau && (
@@ -1659,49 +1935,20 @@ export default function HopYeuCauPhoiHop({
                     </span>
                   </div>
 
-                  {/* Nút tích chọn tất cả nhân sự KHTH */}
-                  <div
-                    onClick={toggleChonTatCaKHTH}
-                    className={cn(
-                      'p-2.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer select-none transition-all',
-                      daChonTatCaKHTH
-                        ? 'bg-blue-50 border-blue-300 text-blue-900 font-semibold'
-                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <input
-                        type="checkbox"
-                        checked={daChonTatCaKHTH}
-                        onChange={() => {}}
-                        className="size-4 rounded border-slate-300 text-blue-600 pointer-events-none"
-                      />
-                      <span>Chọn tất cả nhân sự phòng KHTH ({dsNhanSuKHTH.length} người)</span>
-                    </div>
-                    <span className="text-[11px] text-slate-500 font-normal">
-                      {daChonTatCaKHTH ? 'Đã chọn toàn bộ' : 'Tích để chọn tất cả'}
-                    </span>
-                  </div>
-
-                  {/* Tags đã chọn */}
+                  {/* Chọn 1 Chuyên viên đích danh */}
                   {dsNhanSuChon.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-slate-50 border border-slate-200">
-                      {dsNhanSuChon.map((ns) => (
-                        <span
-                          key={ns.id}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-medium text-slate-900 shadow-2xs"
-                        >
-                          <User className="size-3 text-slate-400" />
-                          <span>{ns.ho_va_ten}</span>
-                          <button
-                            type="button"
-                            onClick={() => setDsNhanSuChon((prev) => prev.filter((x) => x.id !== ns.id))}
-                            className="hover:text-rose-600 cursor-pointer ml-0.5"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </span>
-                      ))}
+                    <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="size-4 text-blue-600 shrink-0" />
+                        <span>Chuyên viên tiếp nhận: <strong className="text-blue-900 font-bold">{dsNhanSuChon[0].ho_va_ten}</strong></span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDsNhanSuChon([])}
+                        className="text-xs text-rose-600 hover:underline font-semibold cursor-pointer"
+                      >
+                        Đổi người
+                      </button>
                     </div>
                   )}
 
@@ -1712,13 +1959,13 @@ export default function HopYeuCauPhoiHop({
                       type="text"
                       value={tuKhoaTimNS}
                       onChange={(e) => setTuKhoaTimNS(e.target.value)}
-                      placeholder="Tìm kiếm nhân sự KHTH..."
+                      placeholder="Tìm theo tên hoặc chức vụ..."
                       className="w-full h-8.5 rounded-xl border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500"
                     />
                   </div>
 
-                  {/* Danh sách nhân sự */}
-                  <div className="max-h-[170px] overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
+                  {/* Danh sách nhân sự KHTH chọn đích danh 1 người */}
+                  <div className="max-h-[190px] overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
                     {dsNhanSuKHTH
                       .filter((ns) =>
                         !tuKhoaTimNS ||
@@ -1730,27 +1977,33 @@ export default function HopYeuCauPhoiHop({
                         return (
                           <div
                             key={ns.id}
-                            onClick={() => toggleChonNhanSu(ns)}
+                            onClick={() => chonDichDanhCV(ns)}
                             className={cn(
                               'px-3 py-2 flex items-center justify-between text-xs cursor-pointer transition select-none',
-                              daChon ? 'bg-blue-50/70 text-blue-900 font-medium' : 'hover:bg-slate-50 text-slate-700'
+                              daChon ? 'bg-blue-50 text-blue-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
                             )}
                           >
                             <div className="flex items-center gap-2.5">
-                              <input
-                                type="checkbox"
-                                checked={daChon}
-                                onChange={() => {}}
-                                className="size-4 rounded border-slate-300 text-blue-600 pointer-events-none"
-                              />
+                              <div
+                                className={cn(
+                                  'size-4 rounded-full border flex items-center justify-center transition',
+                                  daChon ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'
+                                )}
+                              >
+                                {daChon && <div className="size-1.5 rounded-full bg-white" />}
+                              </div>
                               <div>
                                 <div className="font-semibold text-slate-900">{ns.ho_va_ten}</div>
-                                <div className="text-[10.5px] text-slate-400">
-                                  {ns.chuc_vu || 'Nhân sự KHTH'}
+                                <div className="text-[10.5px] text-slate-500">
+                                  {ns.chuc_vu || 'Chuyên viên KHTH'}
                                 </div>
                               </div>
                             </div>
-                            {daChon && <Check className="size-4 text-blue-600" />}
+                            {daChon && (
+                              <span className="text-[11px] font-bold text-blue-600 bg-white px-2 py-0.5 rounded-md border border-blue-200">
+                                Đã chỉ định
+                              </span>
+                            )}
                           </div>
                         );
                       })}
