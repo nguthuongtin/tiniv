@@ -630,7 +630,14 @@ export default function BanLamViecHangNgay({
   const dsLichGapNgayChon = useMemo(() => {
     return danhSachLichGap.filter((l) => {
       if (l.ngay !== ngayChon) return false;
-      if (nhanVienId && l.nguoi_phu_trach_id !== nhanVienId) return false;
+      if (
+        nhanVienId &&
+        l.nguoi_phu_trach_id !== nhanVienId &&
+        l.nguoi_tao_id !== nhanVienId &&
+        (!Array.isArray(l.nguoi_tham_gia_ids) || !l.nguoi_tham_gia_ids.includes(nhanVienId))
+      ) {
+        return false;
+      }
       return true;
     });
   }, [danhSachLichGap, ngayChon, nhanVienId]);
@@ -722,7 +729,14 @@ export default function BanLamViecHangNgay({
   // Danh sách lịch hẹn đã đến hoặc quá ngày hẹn nhưng chưa có kết quả (cần báo cáo ngay)
   const dsLichHenCanBaoCao = useMemo(() => {
     return danhSachLichGap.filter((l) => {
-      if (nhanVienId && l.nguoi_phu_trach_id !== nhanVienId) return false;
+      if (
+        nhanVienId &&
+        l.nguoi_phu_trach_id !== nhanVienId &&
+        l.nguoi_tao_id !== nhanVienId &&
+        (!Array.isArray(l.nguoi_tham_gia_ids) || !l.nguoi_tham_gia_ids.includes(nhanVienId))
+      ) {
+        return false;
+      }
       return l.ngay <= homNayISO && l.trang_thai === 'sap_toi';
     });
   }, [danhSachLichGap, homNayISO, nhanVienId]);

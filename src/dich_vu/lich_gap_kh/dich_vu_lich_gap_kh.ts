@@ -7,6 +7,7 @@ import {
   query,
   where,
   limit,
+  onSnapshot,
   type DocumentData
 } from 'firebase/firestore';
 import type { LichGapKH, TrangThaiLichGap } from '../../thu_vien/types/lich_gap_kh';
@@ -19,7 +20,11 @@ import {
 const TEN_COLLECTION = 'lich_gap_kh' as const;
 const COLLECTION_FALLBACK = 'cong_viec' as const;
 const LOAI_BAN_GHI_LICH = 'lich_gap_kh' as const;
-const LOCAL_STORAGE_KEY = 'ebms_lich_gap_kh_cache_v1';
+const CACHE_KEYS = [
+  'ebms_lich_gap_kh_cache_v2',
+  'ebms_lich_gap_kh_cache_v1',
+  'ebms_lich_gap_kh_cache'
+];
 const GIOI_HAN_MAC_DINH = 500;
 
 export interface DieuKienLocLichGap {
@@ -41,8 +46,16 @@ const CACHE_TTL_MS = 15_000;
 const docCacheLocal = (): LichGapKH[] => {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    for (const key of CACHE_KEYS) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list) && list.length > 0) return list;
+        } catch {}
+      }
+    }
+    return [];
   } catch {
     return [];
   }
@@ -51,9 +64,18 @@ const docCacheLocal = (): LichGapKH[] => {
 const ghiCacheLocal = (ds: LichGapKH[]) => {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(ds));
+    const raw = JSON.stringify(ds);
+    CACHE_KEYS.forEach((k) => localStorage.setItem(k, raw));
   } catch {
     // ignore
+  }
+};
+
+const phatSuKienCapNhat = (lich?: LichGapKH) => {
+  if (typeof window !== 'undefined') {
+    try {
+      window.dispatchEvent(new CustomEvent('ebms_cap_nhat_lich_gap', { detail: lich }));
+    } catch {}
   }
 };
 
@@ -94,53 +116,47 @@ const chuyenDoiDocThanhLichGap = (id: string, raw: DocumentData | undefined | nu
 export const danhSachLichGapKH = async (
   dieuKien?: DieuKienLocLichGap
 ): Promise<LichGapKH[]> => {
-  const now = Date.now();
-  let dsGoc: LichGapKH[] = [];
+  const local = docCacheLocal().filter((x) => !x.da_xoa);
+  const map = new Map<string, LichGapKH>();
+  local.forEach((x) => {
+    if (x && x.id) map.set(x.id, x);
+  });
 
-  if (_cacheDanhSachLich && now - _cacheDanhSachLich.time < CACHE_TTL_MS) {
-    dsGoc = _cacheDanhSachLich.data;
-  } else {
-    let thanhCong = false;
-
-    if (!_suDungFallbackCongViec) {
-      try {
-        const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
-        const snap = await getDocs(q);
-        dsGoc = snap.docs
-          .map((d) => chuyenDoiDocThanhLichGap(d.id, d.data()))
-          .filter((x) => !x.da_xoa);
-        thanhCong = true;
-      } catch {
-        _suDungFallbackCongViec = true;
-      }
-    }
-
-    if (!thanhCong) {
-      try {
-        const qFallback = query(
-          thamChieuCollection(COLLECTION_FALLBACK),
-          where('loai_ban_ghi', '==', LOAI_BAN_GHI_LICH),
-          limit(GIOI_HAN_MAC_DINH)
-        );
-        const snap = await getDocs(qFallback);
-        dsGoc = snap.docs
-          .map((d) => chuyenDoiDocThanhLichGap(d.id, d.data()))
-          .filter((x) => !x.da_xoa);
-        thanhCong = true;
-      } catch {
-        dsGoc = docCacheLocal().filter((x) => !x.da_xoa);
-      }
-    }
-
-    // Sắp xếp theo ngày tăng dần, giờ bắt đầu tăng dần
-    dsGoc.sort((a, b) => {
-      if (a.ngay !== b.ngay) return a.ngay.localeCompare(b.ngay);
-      return a.gio_bat_dau.localeCompare(b.gio_bat_dau);
+  // 1. Luôn đọc từ collection chính 'lich_gap_kh'
+  try {
+    const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
+    const snap = await getDocs(q);
+    snap.docs.forEach((d) => {
+      const lich = chuyenDoiDocThanhLichGap(d.id, d.data());
+      if (!lich.da_xoa) map.set(lich.id, lich);
     });
-
-    _cacheDanhSachLich = { data: dsGoc, time: now };
-    ghiCacheLocal(dsGoc);
+  } catch (err) {
+    console.warn('[danhSachLichGapKH] Đọc lich_gap_kh:', err);
   }
+
+  // 2. Đồng thời đọc từ collection fallback 'cong_viec' (nơi lưu các lịch công tác cũ)
+  try {
+    const qFallback = query(
+      thamChieuCollection(COLLECTION_FALLBACK),
+      where('loai_ban_ghi', '==', LOAI_BAN_GHI_LICH),
+      limit(GIOI_HAN_MAC_DINH)
+    );
+    const snapFallback = await getDocs(qFallback);
+    snapFallback.docs.forEach((d) => {
+      const lich = chuyenDoiDocThanhLichGap(d.id, d.data());
+      if (!lich.da_xoa) map.set(lich.id, lich);
+    });
+  } catch (err) {
+    console.warn('[danhSachLichGapKH] Đọc cong_viec fallback:', err);
+  }
+
+  let dsGoc = Array.from(map.values()).sort((a, b) => {
+    if (a.ngay !== b.ngay) return a.ngay.localeCompare(b.ngay);
+    return a.gio_bat_dau.localeCompare(b.gio_bat_dau);
+  });
+
+  _cacheDanhSachLich = { data: dsGoc, time: Date.now() };
+  ghiCacheLocal(dsGoc);
 
   let ketQua = [...dsGoc];
 
@@ -153,7 +169,8 @@ export const danhSachLichGapKH = async (
       ketQua = ketQua.filter(
         (x) =>
           x.nguoi_phu_trach_id === nptId ||
-          (x.nguoi_tham_gia_ids && x.nguoi_tham_gia_ids.includes(nptId))
+          x.nguoi_tao_id === nptId ||
+          (Array.isArray(x.nguoi_tham_gia_ids) && x.nguoi_tham_gia_ids.includes(nptId))
       );
     }
     if (dieuKien.chi_nhanh_id && dieuKien.chi_nhanh_id !== 'tat_ca') {
@@ -184,17 +201,77 @@ export const danhSachLichGapKH = async (
 export const langNgheLichGapKH = (
   callback: (danhSach: LichGapKH[]) => void
 ): (() => void) => {
-  let active = true;
+  // 1. Phục vụ ngay từ cache / fetch đầu tiên
   danhSachLichGapKH()
-    .then((ds) => {
-      if (active) callback(ds);
-    })
+    .then((ds) => callback(ds))
     .catch(() => {
-      if (active) callback([]);
+      const local = docCacheLocal().filter((x) => !x.da_xoa);
+      callback(local);
     });
 
+  // 2. Lắng nghe real-time qua onSnapshot trên Firestore
+  let unsubFirestore = () => {};
+  try {
+    const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
+    unsubFirestore = onSnapshot(
+      q,
+      (snap) => {
+        const tuRemote: LichGapKH[] = [];
+        snap.forEach((d) => {
+          const l = chuyenDoiDocThanhLichGap(d.id, d.data());
+          if (!l.da_xoa) tuRemote.push(l);
+        });
+        const currentLocal = docCacheLocal().filter((x) => !x.da_xoa);
+        const map = new Map<string, LichGapKH>();
+        currentLocal.forEach((x) => map.set(x.id, x));
+        tuRemote.forEach((x) => map.set(x.id, x));
+        const merged = Array.from(map.values()).sort((a, b) => {
+          if (a.ngay !== b.ngay) return a.ngay.localeCompare(b.ngay);
+          return a.gio_bat_dau.localeCompare(b.gio_bat_dau);
+        });
+        ghiCacheLocal(merged);
+        _cacheDanhSachLich = { data: merged, time: Date.now() };
+        callback(merged);
+      },
+      (err) => {
+        console.warn('[langNgheLichGapKH] Lỗi onSnapshot Firestore:', err);
+      }
+    );
+  } catch (err) {
+    console.warn('[langNgheLichGapKH] Không thể khởi tạo onSnapshot:', err);
+  }
+
+  // 3. Lắng nghe event cục bộ cùng tab (phản hồi tức thì 0ms)
+  const handleCustomEvent = (ev: Event) => {
+    const custom = ev as CustomEvent<LichGapKH | undefined>;
+    const updated = custom.detail;
+    const current = docCacheLocal();
+    let next: LichGapKH[];
+    if (updated && updated.id) {
+      next = current.some((x) => x.id === updated.id)
+        ? current.map((x) => (x.id === updated.id ? updated : x))
+        : [updated, ...current];
+    } else {
+      next = current;
+    }
+    const valid = next.filter((x) => !x.da_xoa).sort((a, b) => {
+      if (a.ngay !== b.ngay) return a.ngay.localeCompare(b.ngay);
+      return a.gio_bat_dau.localeCompare(b.gio_bat_dau);
+    });
+    ghiCacheLocal(valid);
+    _cacheDanhSachLich = { data: valid, time: Date.now() };
+    callback(valid);
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('ebms_cap_nhat_lich_gap', handleCustomEvent);
+  }
+
   return () => {
-    active = false;
+    unsubFirestore();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('ebms_cap_nhat_lich_gap', handleCustomEvent);
+    }
   };
 };
 
@@ -237,6 +314,7 @@ export const taoLichGapKHMoi = async (dto: TaoMoiLichGapDTO): Promise<LichGapKH>
   const dsHienTai = [...docCacheLocal().filter((x) => x.id !== docId), banGhiMoi];
   ghiCacheLocal(dsHienTai);
   xoaCacheLichGapKH();
+  phatSuKienCapNhat(banGhiMoi);
 
   await ghiNhatKyHoatDong(
     dto.nguoi_tao_id,
@@ -294,6 +372,8 @@ export const capNhatLichGapKH = async (
   const dsLocal = docCacheLocal().map((x) => (x.id === id ? { ...x, ...patch } : x));
   ghiCacheLocal(dsLocal);
   xoaCacheLichGapKH();
+  const banGhiCapNhat = dsLocal.find((x) => x.id === id);
+  if (banGhiCapNhat) phatSuKienCapNhat(banGhiCapNhat);
 
   if (nguoiCapNhatId) {
     await ghiNhatKyHoatDong(
@@ -359,6 +439,7 @@ export const xoaLichGapKH = async (id: string, nguoiXoaId?: string): Promise<voi
   const dsLocal = docCacheLocal().filter((x) => x.id !== id);
   ghiCacheLocal(dsLocal);
   xoaCacheLichGapKH();
+  phatSuKienCapNhat({ id, da_xoa: true } as any);
 
   if (nguoiXoaId) {
     await ghiNhatKyHoatDong(nguoiXoaId, 'lich_gap_kh', 'xoa', id, 'Xóa lịch gặp khách hàng');

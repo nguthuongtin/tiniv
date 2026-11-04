@@ -477,16 +477,36 @@ export default function TrangLichCongTac() {
     }
   };
 
+  // Tìm lịch gần nhất với hôm nay để gợi ý chuyển kỳ khi tuần/tháng đang xem trống
+  const lichGanNhat = useMemo(() => {
+    if (dsLichLoc.length === 0) return null;
+    const sorted = [...dsLichLoc].sort(
+      (a, b) =>
+        Math.abs(new Date(a.ngay).getTime() - new Date(homNayISO).getTime()) -
+        Math.abs(new Date(b.ngay).getTime() - new Date(homNayISO).getTime())
+    );
+    return sorted[0] || null;
+  }, [dsLichLoc, homNayISO]);
+
+  const coLichNgoaiKyHienTai = useMemo(() => {
+    if (dsLichLoc.length === 0) return false;
+    if (cheDoXem === 'tuan') return thongKe.lichTuanNay === 0;
+    if (cheDoXem === 'thang') return thongKe.lichThangNay === 0;
+    return false;
+  }, [dsLichLoc.length, cheDoXem, thongKe.lichTuanNay, thongKe.lichThangNay]);
+
   // Nhóm lịch theo ngày cho chế độ Danh sách (Agenda)
   const nhomLichTheoNgay = useMemo(() => {
-    const dauTuan = ds7NgayTuan[0]?.iso || homNayISO;
-    const cuoiTuan = ds7NgayTuan[6]?.iso || homNayISO;
-    const thangHienTai = ngayDangXem.slice(0, 7);
-
-    const dsTrongKy = dsLichLoc.filter((l) => {
-      if (cheDoXem === 'thang') return l.ngay.startsWith(thangHienTai);
-      return l.ngay >= dauTuan && l.ngay <= cuoiTuan;
-    });
+    const dsTrongKy =
+      cheDoXem === 'danh_sach'
+        ? dsLichLoc
+        : dsLichLoc.filter((l) => {
+            const dauTuan = ds7NgayTuan[0]?.iso || homNayISO;
+            const cuoiTuan = ds7NgayTuan[6]?.iso || homNayISO;
+            const thangHienTai = ngayDangXem.slice(0, 7);
+            if (cheDoXem === 'thang') return l.ngay.startsWith(thangHienTai);
+            return l.ngay >= dauTuan && l.ngay <= cuoiTuan;
+          });
 
     const map = new Map<string, LichGapKH[]>();
     dsTrongKy.forEach((l) => {
@@ -494,7 +514,7 @@ export default function TrangLichCongTac() {
       arr.push(l);
       map.set(l.ngay, arr);
     });
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
   }, [dsLichLoc, ds7NgayTuan, homNayISO, ngayDangXem, cheDoXem]);
 
   return (
@@ -544,8 +564,43 @@ export default function TrangLichCongTac() {
             icon: CheckCircle2,
             mau_so: 'xanh_la',
           },
+          {
+            id: 'tat_ca',
+            nhan: 'Tất cả lịch',
+            nhan_ngan: 'Tất cả',
+            so_lieu: dsLichLoc.length,
+            icon: ListFilter,
+            mau_so: 'trang',
+            dang_chon: cheDoXem === 'danh_sach',
+            khi_bam: () => setCheDoXem('danh_sach'),
+          },
         ]}
       />
+
+{/* Banner nhắc thông minh khi kỳ đang xem chưa có lịch nhưng có lịch ở kỳ khác */}
+      {coLichNgoaiKyHienTai && lichGanNhat && (
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 text-amber-600 shrink-0" />
+            <span>
+              Kỳ đang xem (<strong>{tieuDeThoiGian}</strong>) chưa có lịch hẹn. Bạn đang có{' '}
+              <strong className="text-amber-800">{dsLichLoc.length}</strong> lịch công tác ở các kỳ khác.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setNgayDangXem(lichGanNhat.ngay);
+              setNgayChonTuan(lichGanNhat.ngay);
+              setNgayChonTrongThang(lichGanNhat.ngay);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0 shadow-2xs"
+          >
+            <CalendarIcon className="size-3.5" />
+            <span>Chuyển đến kỳ có lịch ({formatNgay(lichGanNhat.ngay)})</span>
+          </button>
+        </div>
+      )}
 
       {/* 3. THANH ĐIỀU HƯỚNG GOOGLE CALENDAR & BỘ LỌC */}
       <div className="bg-white p-3 sm:p-4 rounded-[24px] sm:rounded-2xl border border-slate-200/80 shadow-[0_2px_10px_rgba(15,23,42,0.03)] flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3">
@@ -566,7 +621,7 @@ export default function TrangLichCongTac() {
             <button
               type="button"
               onClick={() => diChuyenThoiGian(-1)}
-              className={cn('p-1.5 rounded-full sm:rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer', cheDoXem !== 'thang' && 'max-sm:hidden')}
+              className="p-1.5 rounded-full sm:rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
               title="Kỳ trước"
             >
               <ChevronLeft className="size-4" />
@@ -574,7 +629,7 @@ export default function TrangLichCongTac() {
             <button
               type="button"
               onClick={() => diChuyenThoiGian(1)}
-              className={cn('p-1.5 rounded-full sm:rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer', cheDoXem !== 'thang' && 'max-sm:hidden')}
+              className="p-1.5 rounded-full sm:rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition cursor-pointer"
               title="Kỳ sau"
             >
               <ChevronRight className="size-4" />
