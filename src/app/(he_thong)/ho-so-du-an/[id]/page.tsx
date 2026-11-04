@@ -131,7 +131,7 @@ import {
 type TenTab = 'tien_do' | 'nhat_ky_noi_bo' | 'tai_lieu' | 'thong_tin';
 
 const DS_TAB: { key: TenTab; nhan: string; bieuTuong: any; dem?: number }[] = [
-  { key: 'tien_do', nhan: 'Nhật ký & Tiến độ (với KH)', bieuTuong: Activity },
+  { key: 'tien_do', nhan: 'Nhật ký làm việc với KH', bieuTuong: Activity },
   { key: 'nhat_ky_noi_bo', nhan: 'Nhật ký nội bộ', bieuTuong: Users },
   { key: 'tai_lieu', nhan: 'Kho tài liệu', bieuTuong: Paperclip },
   { key: 'thong_tin', nhan: 'Thông tin dự án', bieuTuong: FolderKanban }
@@ -702,14 +702,50 @@ export default function TrangChiTietHoSoDuAn() {
     setDsTDKemCanhBao(kq);
   }, [dsTD, hda?.id, hda?.ten_du_an, nguoiDungHienTai?.id]);
 
+  // Tách biệt hoàn toàn:
+  // 1. Nhật ký làm việc với KH: CHỈ chứa các kết quả làm việc với KH (cập nhật trực tiếp hoặc từ Bàn làm việc hàng ngày)
+  const dsTDKhachHang = useMemo(() => {
+    return dsTDKemCanhBao.filter((td) => {
+      if ((td as any).la_noi_bo || (td as any).loai_tien_do === 'noi_bo') return false;
+      const th = (td.tinh_hinh_hien_tai || '').trim();
+      if (
+        th.startsWith('[KHTH nộp kết quả]') ||
+        th.startsWith('[Đã duyệt kết quả phối hợp]') ||
+        th.startsWith('Gửi yêu cầu phối hợp:') ||
+        th.startsWith('[Yêu cầu phối hợp]') ||
+        th.includes('kết quả phối hợp') ||
+        th.includes('yêu cầu phối hợp')
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [dsTDKemCanhBao]);
+
+  // 2. Tiến độ tác nghiệp nội bộ: chứa các mốc phối hợp nội bộ [KHTH nộp kết quả], [Đã duyệt kết quả phối hợp], Gửi yêu cầu...
+  const dsTDNoiBo = useMemo(() => {
+    return dsTDKemCanhBao.filter((td) => {
+      if ((td as any).la_noi_bo || (td as any).loai_tien_do === 'noi_bo') return true;
+      const th = (td.tinh_hinh_hien_tai || '').trim();
+      return (
+        th.startsWith('[KHTH nộp kết quả]') ||
+        th.startsWith('[Đã duyệt kết quả phối hợp]') ||
+        th.startsWith('Gửi yêu cầu phối hợp:') ||
+        th.startsWith('[Yêu cầu phối hợp]') ||
+        th.includes('kết quả phối hợp') ||
+        th.includes('yêu cầu phối hợp')
+      );
+    });
+  }, [dsTDKemCanhBao]);
+
   const tabs = useMemo(() => {
     return DS_TAB.map((t) => {
-      if (t.key === 'tien_do') return { ...t, dem: dsTD.length };
-      if (t.key === 'nhat_ky_noi_bo') return { ...t, dem: dsYeuCauDA.length + dsLichDA.length };
+      if (t.key === 'tien_do') return { ...t, dem: dsTDKhachHang.length };
+      if (t.key === 'nhat_ky_noi_bo') return { ...t, dem: dsYeuCauDA.length + dsLichDA.length + dsTDNoiBo.length };
       if (t.key === 'tai_lieu') return { ...t, dem: dsTL.length };
       return t;
     });
-  }, [dsTD.length, dsYeuCauDA.length, dsLichDA.length, dsTL.length]);
+  }, [dsTDKhachHang.length, dsYeuCauDA.length, dsLichDA.length, dsTDNoiBo.length, dsTL.length]);
 
   const CAC_GIAI_DOAN_OPT: Array<{ value: GiaiDoanDuAn | string; nhan: string }> = [
     { value: 'moi_tao', nhan: '1. Mới tạo' },
@@ -1405,7 +1441,7 @@ export default function TrangChiTietHoSoDuAn() {
               <div className="p-5 sm:p-6">
                 <NoiDungTab gia_tri="tien_do">
                   <BanNhatKyVaTienDo
-                    dsTD={dsTDKemCanhBao}
+                    dsTD={dsTDKhachHang}
                     dangTai={dangTai}
                     err={errTai}
                     dsNS={dsNS}
@@ -1424,6 +1460,7 @@ export default function TrangChiTietHoSoDuAn() {
                     duAnId={id || ""}
                     tenDuAn={hda?.ten_du_an}
                     dsYeuCau={dsYeuCauDA}
+                    dsTDNoiBo={dsTDNoiBo}
                     dsLich={dsLichDA}
                     dsNK={dsNK}
                     nguoiDungHienTai={nguoiDungHienTai}
@@ -2641,6 +2678,7 @@ function BanNhatKyNoiBo(props: {
   tenDuAn?: string;
   dsYeuCau: YeuCauPhoiHop[];
   dsLich: LichGapKH[];
+  dsTDNoiBo: (TienDoDuAn & { canh_bao: 'sap_den' | 'qua_han' | null })[];
   dsNK: NhatKyHoatDong[];
   nguoiDungHienTai?: NguoiDungDangNhap | null;
   onMoModalTaoYeuCau: () => void;
@@ -2654,6 +2692,7 @@ function BanNhatKyNoiBo(props: {
     tenDuAn,
     dsYeuCau,
     dsLich,
+    dsTDNoiBo,
     dsNK,
     nguoiDungHienTai,
     onMoModalTaoYeuCau,
@@ -2663,7 +2702,7 @@ function BanNhatKyNoiBo(props: {
     onXoaYeuCau
   } = props;
 
-  const [tabCon, setTabCon] = useState<'yeu_cau' | 'lich_hen' | 'tong_hop'>('yeu_cau');
+  const [tabCon, setTabCon] = useState<'yeu_cau' | 'tien_do_noi_bo' | 'lich_hen' | 'tong_hop'>('yeu_cau');
 
   const dsLichSapXep = useMemo(() => {
     return [...dsLich].sort((a, b) => (b.ngay + (b.gio_bat_dau || '')).localeCompare(a.ngay + (a.gio_bat_dau || '')));
@@ -2681,6 +2720,21 @@ function BanNhatKyNoiBo(props: {
       badgeColor?: string;
     }[] = [];
 
+    // 1. Mốc tiến độ nội bộ [KHTH nộp kết quả], [Đã duyệt kết quả], Gửi yêu cầu...
+    dsTDNoiBo.forEach((td) => {
+      list.push({
+        id: `td_${td.id}`,
+        loai: 'nhat_ky',
+        tieu_de: td.tinh_hinh_hien_tai || 'Tiến độ nội bộ',
+        mo_ta: [td.hanh_dong_tiep_theo, td.ket_qua_thuc_hien].filter(Boolean).join(' - ') || '',
+        nguoi_thuc_hien: 'Tác nghiệp nội bộ',
+        thoi_gian: td.ngay_tao || td.ngay_cap_nhat || '',
+        badge: td.trang_thai_hanh_dong === 'da_hoan_thanh' ? 'Đã hoàn tất' : 'Đang xử lý',
+        badgeColor: td.trang_thai_hanh_dong === 'da_hoan_thanh' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+      });
+    });
+
+    // 2. Yêu cầu phối hợp phòng ban
     dsYeuCau.forEach((yc) => {
       const cfg = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai];
       list.push({
@@ -2783,6 +2837,24 @@ function BanNhatKyNoiBo(props: {
 
         <button
           type="button"
+          onClick={() => setTabCon('tien_do_noi_bo')}
+          className={cn(
+            'px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5',
+            tabCon === 'tien_do_noi_bo'
+              ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
+          )}
+        >
+          <span>Tiến độ nội bộ</span>
+          {dsTDNoiBo.length > 0 && (
+            <span className={cn('px-1.5 py-0.2 rounded-full text-[10.5px]', tabCon === 'tien_do_noi_bo' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-700')}>
+              {dsTDNoiBo.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
           onClick={() => setTabCon('lich_hen')}
           className={cn(
             'px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5',
@@ -2826,6 +2898,78 @@ function BanNhatKyNoiBo(props: {
             onXoaYeuCau={onXoaYeuCau}
             onMoModalTaoYeuCau={onMoModalTaoYeuCau}
           />
+        </div>
+      )}
+
+      {tabCon === 'tien_do_noi_bo' && (
+        <div className="space-y-3">
+          {dsTDNoiBo.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              Chưa có mốc tiến độ tác nghiệp nội bộ nào.
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {dsTDNoiBo.map((td) => (
+                <div
+                  key={td.id}
+                  className="rounded-xl border border-slate-200/90 bg-white p-3.5 space-y-2 shadow-2xs hover:border-slate-300 transition"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-bold text-xs text-slate-900 leading-snug">
+                      {td.tinh_hinh_hien_tai}
+                    </div>
+                    <span
+                      className={cn(
+                        'px-2 py-0.5 rounded-full text-[10.5px] font-semibold border shrink-0',
+                        td.trang_thai_hanh_dong === 'da_hoan_thanh'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                      )}
+                    >
+                      {td.trang_thai_hanh_dong === 'da_hoan_thanh' ? 'Đã hoàn tất' : 'Đang xử lý'}
+                    </span>
+                  </div>
+
+                  {td.hanh_dong_tiep_theo && (
+                    <p className="text-xs text-slate-600">
+                      <span className="font-semibold text-slate-700">Hành động tiếp theo:</span> {td.hanh_dong_tiep_theo}
+                    </p>
+                  )}
+
+                  {td.ket_qua_thuc_hien && (
+                    <p className="text-xs text-slate-600">
+                      <span className="font-semibold text-slate-700">Ghi chú kết quả:</span> {td.ket_qua_thuc_hien}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-100 flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="size-3 text-slate-400" />
+                      <span>Thời gian: {formatNgay(td.ngay_tao || td.ngay_cap_nhat)}</span>
+                      {td.deadline_hanh_dong && (
+                        <>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-amber-700 font-medium">Hạn: {formatNgay(td.deadline_hanh_dong)}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {td.link_tai_lieu && (
+                      <a
+                        href={td.link_tai_lieu}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-blue-600 hover:underline font-semibold"
+                      >
+                        <ExternalLink className="size-3" />
+                        <span>{td.ten_tai_lieu || 'Xem file đính kèm'}</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -3198,7 +3342,7 @@ function BanNhatKyVaTienDo(props: {
           <div>
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
               <Activity className="size-4 text-[#107555]" />
-              Nhật ký tiến độ dự án (Làm việc với khách hàng)
+              Nhật ký làm việc với khách hàng
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Chỉ cập nhật kết quả tiếp xúc, làm việc, đàm phán và tiến độ triển khai với Khách hàng. Các tương tác nội bộ xem tại mục "Nhật ký nội bộ".
@@ -3212,7 +3356,7 @@ function BanNhatKyVaTienDo(props: {
           onClick={() => capNhatMoForm(!moForm)}
           className="whitespace-nowrap font-medium"
         >
-          {moForm ? 'Đóng form' : '+ Tiến độ'}
+          {moForm ? 'Đóng form' : '+ Cập nhật nhật ký KH'}
         </Nut>
       </div>
 
@@ -3225,7 +3369,7 @@ function BanNhatKyVaTienDo(props: {
                 <Send className="size-3.5" />
               </div>
               <div className="text-sm font-bold text-foreground">
-                Ghi nhận cập nhật tiến độ mới
+                Ghi nhận kết quả làm việc với khách hàng
               </div>
             </div>
             {dsTD.length > 0 && (
@@ -3243,7 +3387,7 @@ function BanNhatKyVaTienDo(props: {
             {/* Nội dung tiến độ */}
             <div>
               <label className="text-xs font-semibold text-foreground mb-1 block">
-                Nội dung cập nhật tiến độ / Tình hình công việc <span className="text-destructive">*</span>
+                Nội dung làm việc / Kết quả trao đổi với khách hàng <span className="text-destructive">*</span>
               </label>
               <textarea
                 value={noiDung}
@@ -3375,11 +3519,11 @@ function BanNhatKyVaTienDo(props: {
           <Rong
             kieu="mac_dinh"
             icon_tuy_chinh={TrendingUp}
-            nhan_tuy_chinh="Chưa có ghi nhận tiến độ nào"
-            nhan_phu_tuy_chinh="Nhấn 'Cập nhật tiến độ mới' để bắt đầu ghi nhận tiến trình triển khai cho dự án này."
+            nhan_tuy_chinh="Chưa có nhật ký làm việc với khách hàng nào"
+            nhan_phu_tuy_chinh="Nhấn '+ Cập nhật nhật ký KH' hoặc cập nhật trực tiếp từ Bàn làm việc hàng ngày."
             hanh_dong={
               <Nut kieu="primary" kich_thuoc="sm" icon_trai={Plus} onClick={() => capNhatMoForm(true)}>
-                Thêm tiến độ đầu tiên
+                Thêm nhật ký đầu tiên
               </Nut>
             }
           />

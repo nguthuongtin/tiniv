@@ -170,6 +170,8 @@ async function ghiNhanTienDoKhiChuyenBuoc(
       await addDoc(thamChieuCollection('tien_do_du_an'), {
         du_an_id: hienTai.du_an_id,
         tinh_hinh_hien_tai: `[KHTH nộp kết quả] ${hienTai.noi_dung_yeu_cau}`,
+        la_noi_bo: true,
+        loai_tien_do: 'noi_bo',
         hanh_dong_tiep_theo: 'Kiểm tra & phê duyệt kết quả phối hợp',
         deadline_hanh_dong: hienTai.han_hoan_thanh || null,
         link_tai_lieu: linkKetQua,
@@ -191,6 +193,8 @@ async function ghiNhanTienDoKhiChuyenBuoc(
       await addDoc(thamChieuCollection('tien_do_du_an'), {
         du_an_id: hienTai.du_an_id,
         tinh_hinh_hien_tai: `[Đã duyệt kết quả phối hợp] ${hienTai.noi_dung_yeu_cau}`,
+        la_noi_bo: true,
+        loai_tien_do: 'noi_bo',
         hanh_dong_tiep_theo: 'Kinh doanh tiếp nhận kết quả và triển khai tiếp với khách hàng',
         deadline_hanh_dong: hienTai.han_hoan_thanh || null,
         link_tai_lieu: linkKetQua,
@@ -512,6 +516,8 @@ export const taoYeuCauPhoiHopMoi = async (
     await addDoc(thamChieuCollection('tien_do_du_an'), {
       du_an_id: dto.du_an_id,
       tinh_hinh_hien_tai: cauHanhDong,
+      la_noi_bo: true,
+      loai_tien_do: 'noi_bo',
       hanh_dong_tiep_theo: 'Bộ phận chuyên môn tiếp nhận và xử lý kết quả',
       deadline_hanh_dong: dto.han_hoan_thanh || null,
       link_tai_lieu: dto.link_drive_dau_vao || null,

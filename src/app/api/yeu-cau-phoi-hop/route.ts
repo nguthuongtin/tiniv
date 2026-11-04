@@ -118,6 +118,8 @@ export async function POST(req: NextRequest) {
       await db.collection('tien_do_du_an').add({
         du_an_id: body.du_an_id,
         tinh_hinh_hien_tai: cauHanhDong,
+        la_noi_bo: true,
+        loai_tien_do: 'noi_bo',
         hanh_dong_tiep_theo: 'Bộ phận chuyên môn tiếp nhận và xử lý kết quả',
         deadline_hanh_dong: body.han_hoan_thanh || null,
         link_tai_lieu: body.link_drive_dau_vao || null,
