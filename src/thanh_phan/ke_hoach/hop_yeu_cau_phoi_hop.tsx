@@ -815,10 +815,31 @@ export default function HopYeuCauPhoiHop({
     setTimeout(() => setDaChiaSeZaloId(null), 3000);
 
     if (typeof window !== 'undefined') {
-      const urlZalo = yc.link_drive_ket_qua
-        ? `https://zalo.me/share?url=${encodeURIComponent(yc.link_drive_ket_qua)}`
-        : 'https://chat.zalo.me/';
-      window.open(urlZalo, '_blank', 'noopener,noreferrer');
+      // 1. Mở trực tiếp phần mềm Zalo trên PC hoặc App Zalo trên Mobile qua custom URI scheme zalo://
+      try {
+        const a = document.createElement('a');
+        a.href = 'zalo://';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          if (a.parentNode) document.body.removeChild(a);
+        }, 300);
+      } catch {
+        try {
+          window.location.href = 'zalo://';
+        } catch {}
+      }
+
+      // 2. Dự phòng: Nếu thiết bị chưa cài phần mềm/app Zalo (sau 1.8s trang vẫn còn focus), chuyển sang Zalo Web
+      const start = Date.now();
+      setTimeout(() => {
+        if (document.hidden || Date.now() - start > 2600) return;
+        const urlZalo = yc.link_drive_ket_qua
+          ? `https://zalo.me/share?url=${encodeURIComponent(yc.link_drive_ket_qua)}`
+          : 'https://chat.zalo.me/';
+        window.open(urlZalo, '_blank', 'noopener,noreferrer');
+      }, 1800);
     }
   };
 
@@ -1464,7 +1485,7 @@ export default function HopYeuCauPhoiHop({
                                     ? 'bg-emerald-600 text-white'
                                     : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
                                 )}
-                                title="Sao chép nội dung và Mở Zalo chia sẻ kết quả"
+                                title="Sao chép nội dung & Mở thẳng phần mềm Zalo (PC) hoặc App Zalo (Mobile)"
                               >
                                 {daChiaSeZaloId === yc.id ? (
                                   <>
@@ -1591,7 +1612,7 @@ export default function HopYeuCauPhoiHop({
                               ? 'bg-emerald-600 text-white'
                               : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
                           )}
-                          title="Gửi kết quả đến Zalo"
+                          title="Mở phần mềm Zalo (PC) hoặc App Zalo (Mobile)"
                         >
                           <span className="font-black text-[9px] bg-white text-[#0068FF] size-3.5 rounded flex items-center justify-center leading-none">
                             Z
@@ -1871,7 +1892,7 @@ export default function HopYeuCauPhoiHop({
                               ? 'bg-emerald-600 text-white'
                               : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
                           )}
-                          title="Sao chép tóm tắt và Mở Zalo chia sẻ kết quả"
+                          title="Sao chép tóm tắt & Mở phần mềm Zalo (PC) hoặc App Zalo (Mobile)"
                         >
                           {daChiaSeZaloId === ycChiTietHienTai.id ? (
                             <>
