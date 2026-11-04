@@ -27,7 +27,8 @@ import {
   CalendarDays,
   ArrowRight,
   ShieldAlert,
-  FileCheck2
+  FileCheck2,
+  Eye
 } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
 import { formatNgay } from '../../thu_vien/utils/format_ngay';
@@ -76,6 +77,12 @@ export default function HopYeuCauPhoiHop({
   const [trangHienTai, setTrangHienTai] = useState(1);
   const SO_MUC_MOI_TRANG = 15;
   const [yeuCauDangXemLichSu, setYeuCauDangXemLichSu] = useState<YeuCauPhoiHop | null>(null);
+  const [yeuCauDangXemChiTiet, setYeuCauDangXemChiTiet] = useState<YeuCauPhoiHop | null>(null);
+
+  const ycChiTietHienTai = useMemo(() => {
+    if (!yeuCauDangXemChiTiet) return null;
+    return danhSachYeuCau.find((y) => y.id === yeuCauDangXemChiTiet.id) || yeuCauDangXemChiTiet;
+  }, [yeuCauDangXemChiTiet, danhSachYeuCau]);
 
   // 0. Modal TPKD Phê duyệt & Chuyển đích danh (Chuyển TPKH hoặc Giao thẳng CV)
   const [modalTPKDChuyen, setModalTPKDChuyen] = useState<{
@@ -976,6 +983,147 @@ export default function HopYeuCauPhoiHop({
       </div>
     );
   };
+  // Xác định nút hành động nhanh tương ứng theo vai trò & quyền hạn
+  const layHanhDongNhanh = (yc: YeuCauPhoiHop) => {
+    const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
+    const duocGiaoDichDanh =
+      (yc.nguoi_nhan_id && yc.nguoi_nhan_id === userId) ||
+      (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
+        yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
+      (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
+        !!nguoiDungHienTai?.ho_va_ten &&
+        yc.danh_sach_ten_nhan_su_thuc_hien.some(
+          (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
+        )) ||
+      (yc.ten_nguoi_nhan &&
+        !!nguoiDungHienTai?.ho_va_ten &&
+        yc.ten_nguoi_nhan.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten.trim().toLowerCase()) ||
+      ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
+      ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId);
+    const coQuyenNopKetQua = duocGiaoDichDanh || laTPKH || coQuyenAdmin;
+
+    if (yc.trang_thai === 'cho_tpkd_duyet') {
+      if (laTPKD || coQuyenAdmin) {
+        return {
+          label: 'Duyệt & Chuyển',
+          icon: UserCheck,
+          className: 'bg-blue-600 hover:bg-blue-700 text-white',
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            moModalTPKDChuyen(yc);
+          }
+        };
+      }
+      if (laNguoiTao) {
+        return {
+          label: 'Sửa yêu cầu',
+          icon: Pencil,
+          className: 'bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100',
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            batDauSua(yc);
+          }
+        };
+      }
+    }
+
+    if (yc.trang_thai === 'yeu_cau_chinh_sua' && (laNguoiTao || coQuyenAdmin)) {
+      return {
+        label: 'Sửa & Gửi lại',
+        icon: Pencil,
+        className: 'bg-amber-600 hover:bg-amber-700 text-white',
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          batDauSua(yc);
+        }
+      };
+    }
+
+    if (yc.trang_thai === 'cho_tpkh_tiep_nhan' && (laTPKH || coQuyenAdmin)) {
+      return {
+        label: 'Giao việc',
+        icon: Users,
+        className: 'bg-blue-600 hover:bg-blue-700 text-white',
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          moModalTiepNhanTPKH(yc, 'giao_cv');
+        }
+      };
+    }
+
+    if (
+      (yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') &&
+      coQuyenNopKetQua
+    ) {
+      return {
+        label: yc.link_drive_ket_qua ? 'Nộp lại KQ' : 'Nộp kết quả',
+        icon: Send,
+        className: 'bg-teal-600 hover:bg-teal-700 text-white',
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          moModalNopDrive(yc);
+        }
+      };
+    }
+
+    if (yc.trang_thai === 'cho_tpkh_duyet_ket_qua' && (laTPKH || coQuyenAdmin)) {
+      return {
+        label: 'Duyệt KQ',
+        icon: Check,
+        className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          handleTPKHDuyetKetQua(yc);
+        }
+      };
+    }
+
+    if (
+      (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') &&
+      (laTPKD || coQuyenAdmin)
+    ) {
+      return {
+        label: 'Duyệt bàn giao',
+        icon: Check,
+        className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          handleTPKDDuyetKetQua(yc);
+        }
+      };
+    }
+
+    if (
+      (yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet') &&
+      (laNguoiTao || laTPKD || coQuyenAdmin)
+    ) {
+      return {
+        label: 'Nghiệm thu',
+        icon: Check,
+        className: 'bg-indigo-600 hover:bg-indigo-700 text-white',
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          handleSaleNghiemThuHoanTat(yc);
+        }
+      };
+    }
+
+    if (yc.link_drive_ket_qua) {
+      return {
+        label: 'Xem KQ',
+        icon: ExternalLink,
+        className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200',
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          if (yc.link_drive_ket_qua) {
+            window.open(yc.link_drive_ket_qua, '_blank', 'noopener,noreferrer');
+          }
+        }
+      };
+    }
+
+    return null;
+  };
 
   return (
     <div className="space-y-4">
@@ -1086,7 +1234,7 @@ export default function HopYeuCauPhoiHop({
           )}
         </div>
 
-        {/* DANH SÁCH YÊU CẦU: THẺ CARD RÕ RÀNG */}
+        {/* DANH SÁCH YÊU CẦU DẠNG BẢNG GỌN GÀNG, CHUẨN MỰC */}
         {dsHienThi.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
             <p>
@@ -1105,437 +1253,278 @@ export default function HopYeuCauPhoiHop({
             )}
           </div>
         ) : (
-          <div className="space-y-3.5">
-            {dsHienThi.map((yc) => {
-              const cfgTrangThai = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai] || {
-                label: yc.trang_thai,
-                mauBadge: 'bg-slate-100 text-slate-600 border-slate-200',
-                textClass: 'text-slate-600',
-                buocSo: 1
-              };
+          <div className="space-y-3">
+            {/* 1. BẢNG TRÊN DESKTOP: CỘT RÕ RÀNG, CĂN LỀ THẲNG TẮP */}
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wider select-none">
+                    <th className="py-3 px-3.5 w-[200px]">Dự án</th>
+                    <th className="py-3 px-3.5 min-w-[260px]">Nội dung yêu cầu</th>
+                    <th className="py-3 px-3.5 w-[130px]">Người tạo</th>
+                    <th className="py-3 px-3.5 w-[150px]">Người tiếp nhận</th>
+                    <th className="py-3 px-3.5 w-[110px]">Hạn xử lý</th>
+                    <th className="py-3 px-3.5 w-[160px]">Trạng thái</th>
+                    <th className="py-3 px-3.5 w-[150px] text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {dsHienThi.map((yc) => {
+                    const cfgTrangThai = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai] || {
+                      label: yc.trang_thai,
+                      mauBadge: 'bg-slate-100 text-slate-600 border-slate-200',
+                      textClass: 'text-slate-600',
+                      buocSo: 1
+                    };
+                    const hanhDong = layHanhDongNhanh(yc);
+                    const nguoiNhan =
+                      yc.ten_nguoi_nhan ||
+                      (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0
+                        ? yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')
+                        : '');
 
-              const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
-              const coQuyenSuaXoa =
-                ((laNguoiTao || coQuyenAdmin) &&
-                  (yc.trang_thai === 'cho_tpkd_duyet' || yc.trang_thai === 'yeu_cau_chinh_sua')) ||
-                coQuyenAdmin;
-
-              const duocGiaoDichDanh =
-                (yc.nguoi_nhan_id && yc.nguoi_nhan_id === userId) ||
-                (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
-                  yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
-                (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
-                  !!nguoiDungHienTai?.ho_va_ten &&
-                  yc.danh_sach_ten_nhan_su_thuc_hien.some(
-                    (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
-                  )) ||
-                (yc.ten_nguoi_nhan &&
-                  !!nguoiDungHienTai?.ho_va_ten &&
-                  yc.ten_nguoi_nhan.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten.trim().toLowerCase()) ||
-                ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
-                ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId);
-              const coQuyenNopKetQua = duocGiaoDichDanh || laTPKH || coQuyenAdmin;
-
-              return (
-                <div
-                  key={yc.id}
-                  className="rounded-2xl border border-slate-200/90 hover:border-slate-300 bg-white p-4 shadow-2xs hover:shadow-md transition-all space-y-3"
-                >
-                  {/* DÒNG 1: DỰ ÁN + TRẠNG THÁI + THỜI GIAN */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-2.5">
-                    <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => onMoChiTietDuAn?.(yc.du_an_id)}
-                        className="font-bold text-slate-900 hover:text-blue-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 text-sm truncate text-left"
-                        title="Xem chi tiết dự án"
+                    return (
+                      <tr
+                        key={yc.id}
+                        onClick={() => setYeuCauDangXemChiTiet(yc)}
+                        className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
                       >
-                        <FolderKanban className="size-4 text-blue-600 shrink-0" />
-                        <span className="truncate">{yc.ten_du_an}</span>
-                      </button>
+                        {/* 1. Dự án */}
+                        <td className="py-3 px-3.5 align-middle">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMoChiTietDuAn?.(yc.du_an_id);
+                            }}
+                            className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 text-xs truncate text-left max-w-[190px]"
+                            title="Xem chi tiết dự án"
+                          >
+                            <FolderKanban className="size-3.5 text-blue-600 shrink-0" />
+                            <span className="truncate">{yc.ten_du_an}</span>
+                          </button>
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            {formatNgay(yc.ngay_tao) || 'Hôm nay'}
+                          </div>
+                        </td>
 
-                      <span className={cn('px-2.5 py-0.5 rounded-full text-[11px] font-semibold border', cfgTrangThai.mauBadge)}>
+                        {/* 2. Nội dung yêu cầu */}
+                        <td className="py-3 px-3.5 align-middle">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {yc.trang_thai === 'yeu_cau_chinh_sua' && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
+                                  <AlertTriangle className="size-2.5" />
+                                  Cần sửa
+                                </span>
+                              )}
+                              {yc.link_drive_dau_vao && (
+                                <a
+                                  href={yc.link_drive_dau_vao}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10.5px] font-medium bg-blue-50 text-blue-700 border border-blue-200/60 hover:bg-blue-100 transition shrink-0"
+                                  title="File yêu cầu đầu vào"
+                                >
+                                  <Link2 className="size-2.5" />
+                                  <span>Đầu vào</span>
+                                </a>
+                              )}
+                              {yc.link_drive_ket_qua && (
+                                <a
+                                  href={yc.link_drive_ket_qua}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100 transition shrink-0"
+                                  title="File kết quả KHTH"
+                                >
+                                  <FileCheck2 className="size-2.5" />
+                                  <span>Kết quả</span>
+                                </a>
+                              )}
+                            </div>
+                            <p
+                              className="text-slate-700 line-clamp-2 leading-relaxed text-[12px] font-normal"
+                              title={yc.noi_dung_yeu_cau}
+                            >
+                              {yc.noi_dung_yeu_cau}
+                            </p>
+                          </div>
+                        </td>
+
+                        {/* 3. Người tạo */}
+                        <td className="py-3 px-3.5 align-middle text-slate-800 font-medium whitespace-nowrap">
+                          {yc.ten_nguoi_tao}
+                        </td>
+
+                        {/* 4. Người tiếp nhận */}
+                        <td className="py-3 px-3.5 align-middle">
+                          {nguoiNhan ? (
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50/70 border border-blue-100 text-blue-700 font-medium text-[11px] truncate max-w-[140px]"
+                              title={nguoiNhan}
+                            >
+                              {nguoiNhan}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">Chờ phân công</span>
+                          )}
+                        </td>
+
+                        {/* 5. Hạn xử lý */}
+                        <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                          {yc.han_hoan_thanh ? (
+                            <span className="text-slate-700 font-medium">
+                              {formatNgay(yc.han_hoan_thanh)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+
+                        {/* 6. Trạng thái */}
+                        <td className="py-3 px-3.5 align-middle">
+                          <span
+                            className={cn(
+                              'inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap',
+                              cfgTrangThai.mauBadge
+                            )}
+                          >
+                            {cfgTrangThai.label}
+                          </span>
+                        </td>
+
+                        {/* 7. Thao tác */}
+                        <td className="py-3 px-3.5 align-middle text-right whitespace-nowrap">
+                          <div
+                            className="flex items-center justify-end gap-1.5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {hanhDong && (
+                              <button
+                                type="button"
+                                onClick={hanhDong.onClick}
+                                className={cn(
+                                  'h-7 px-2.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition shadow-2xs',
+                                  hanhDong.className
+                                )}
+                              >
+                                <hanhDong.icon className="size-3.5 stroke-[2.5]" />
+                                <span>{hanhDong.label}</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setYeuCauDangXemChiTiet(yc)}
+                              className="h-7 px-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                              title="Xem chi tiết"
+                            >
+                              <Eye className="size-3.5 text-slate-500" />
+                              <span className="hidden xl:inline">Chi tiết</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 2. DANH SÁCH THẺ GỌN GÀNG TRÊN MOBILE */}
+            <div className="md:hidden space-y-2.5">
+              {dsHienThi.map((yc) => {
+                const cfgTrangThai = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai] || {
+                  label: yc.trang_thai,
+                  mauBadge: 'bg-slate-100 text-slate-600 border-slate-200',
+                  textClass: 'text-slate-600',
+                  buocSo: 1
+                };
+                const hanhDong = layHanhDongNhanh(yc);
+                const nguoiNhan =
+                  yc.ten_nguoi_nhan ||
+                  (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0
+                    ? yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')
+                    : '');
+
+                return (
+                  <div
+                    key={yc.id}
+                    onClick={() => setYeuCauDangXemChiTiet(yc)}
+                    className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-2xs hover:border-slate-300 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                        <FolderKanban className="size-3.5 text-blue-600 shrink-0" />
+                        <span className="truncate">{yc.ten_du_an}</span>
+                      </div>
+                      <span
+                        className={cn(
+                          'px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0',
+                          cfgTrangThai.mauBadge
+                        )}
+                      >
                         {cfgTrangThai.label}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2.5 text-xs text-slate-500 shrink-0 flex-wrap">
-                      <div className="inline-flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100 font-medium text-slate-600">
-                        <CalendarDays className="size-3.5 text-slate-400" />
-                        <span>Ngày tạo: <strong className="text-slate-800 font-semibold">{formatNgay(yc.ngay_tao) || 'Hôm nay'}</strong></span>
-                      </div>
+                    <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-normal">
+                      {yc.noi_dung_yeu_cau}
+                    </p>
 
-                      {yc.han_hoan_thanh && (
-                        <div className="inline-flex items-center gap-1.5 bg-amber-50/80 px-2.5 py-1 rounded-lg border border-amber-200/60 font-medium text-amber-800">
-                          <Clock className="size-3.5 text-amber-500" />
-                          <span>Hạn xong: <strong className="font-semibold">{formatNgay(yc.han_hoan_thanh)}</strong></span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* DÒNG 2: THANH TIẾN TRÌNH STEPPER 5 BƯỚC */}
-                  {renderStepper(yc)}
-
-                  {/* THÔNG BÁO Ý KIẾN PHẢN HỒI / YÊU CẦU CHỈNH SỬA KHI BỊ TRẢ LẠI */}
-                  {yc.ghi_chu_phan_hoi && yc.trang_thai !== 'da_hoan_thanh' && (
-                    <div
-                      className={cn(
-                        'rounded-xl border p-3 space-y-1.5',
-                        yc.trang_thai === 'yeu_cau_chinh_sua'
-                          ? 'border-rose-200 bg-rose-50/90'
-                          : yc.ghi_chu_phan_hoi.toLowerCase().includes('sửa') ||
-                            yc.ghi_chu_phan_hoi.toLowerCase().includes('làm lại') ||
-                            yc.ghi_chu_phan_hoi.toLowerCase().includes('làm rõ')
-                          ? 'border-amber-200 bg-amber-50/90'
-                          : 'border-blue-200 bg-blue-50/90'
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'flex items-center gap-1.5 font-bold text-xs',
-                          yc.trang_thai === 'yeu_cau_chinh_sua' ? 'text-rose-800' : 'text-amber-800'
-                        )}
-                      >
-                        <AlertTriangle className="size-4 shrink-0" />
+                    <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 pt-1 border-t border-slate-100 flex-wrap">
+                      <div className="flex items-center gap-1 truncate">
                         <span>
-                          {yc.trang_thai === 'yeu_cau_chinh_sua'
-                            ? 'TPKD yêu cầu chỉnh sửa lại yêu cầu:'
-                            : 'Ý kiến phản hồi / Yêu cầu chỉnh sửa:'}
+                          Tạo: <strong className="text-slate-800">{yc.ten_nguoi_tao}</strong>
                         </span>
-                      </div>
-                      <div className="text-xs text-slate-800 bg-white/90 p-2.5 rounded-lg border border-slate-200/60 font-medium whitespace-pre-wrap leading-relaxed shadow-2xs">
-                        {yc.ghi_chu_phan_hoi}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* DÒNG 3: NỘI DUNG YÊU CẦU */}
-                  <div className="bg-slate-50/90 rounded-xl p-3 border border-slate-100 text-[13px] text-slate-800 leading-relaxed font-normal">
-                    {yc.noi_dung_yeu_cau}
-                  </div>
-
-                  {/* DÒNG 4: LINK TÀI LIỆU ĐẦU VÀO & FILE KẾT QUẢ & PHẢN HỒI */}
-                  {(yc.link_drive_dau_vao || yc.link_drive_ket_qua || yc.ghi_chu_phan_hoi) && (
-                    <div className="flex items-center gap-2.5 flex-wrap pt-0.5 text-xs">
-                      {yc.link_drive_dau_vao && (
-                        <a
-                          href={yc.link_drive_dau_vao}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/80 font-medium transition"
-                        >
-                          <Link2 className="size-3.5 text-blue-600" />
-                          <span>File yêu cầu đầu vào</span>
-                          <ExternalLink className="size-3 text-blue-500" />
-                        </a>
-                      )}
-
-                      {/* Link kết quả KHTH: ai cũng xem được khi đã có kết quả */}
-                      {yc.link_drive_ket_qua && (
-                        <a
-                          href={yc.link_drive_ket_qua}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/80 font-semibold transition"
-                        >
-                          <FileCheck2 className="size-3.5 text-emerald-600" />
-                          <span>File kết quả KHTH</span>
-                          <ExternalLink className="size-3 text-emerald-500" />
-                        </a>
-                      )}
-
-                      {yc.ghi_chu_phan_hoi && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200/80 font-medium">
-                          <AlertCircle className="size-3.5 text-rose-500 shrink-0" />
-                          <span>Phản hồi: {yc.ghi_chu_phan_hoi}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* DÒNG 5: METADATA NGƯỜI GỬI & CÁC NÚT HÀNH ĐỘNG THEO TỪNG BƯỚC */}
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1 border-t border-slate-100 text-xs">
-                    <div className="flex items-center gap-3 text-slate-500 flex-wrap">
-                      <div className="flex items-center gap-1.5">
-                        <User className="size-3.5 text-slate-400" />
-                        <span>Người tạo: <strong className="text-slate-800 font-semibold">{yc.ten_nguoi_tao}</strong></span>
-                      </div>
-
-                      {(yc.ten_nguoi_nhan || (yc.danh_sach_ten_nhan_su_thuc_hien && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0)) && (
-                        <div className="flex items-center gap-1.5">
-                          <UserCheck className="size-3.5 text-blue-600" />
-                          <span>Người nhận: <strong className="text-blue-700 font-semibold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">{yc.ten_nguoi_nhan || yc.danh_sach_ten_nhan_su_thuc_hien?.join(', ')}</strong></span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* CÁC NÚT HÀNH ĐỘNG TƯƠNG ỨNG TỪNG GIAI ĐOẠN */}
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                      {/* BƯỚC 1: Chờ TPKD duyệt & chuyển KHTH */}
-                      {yc.trang_thai === 'cho_tpkd_duyet' && (
-                        <>
-                          {(laTPKD || coQuyenAdmin) && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => moModalTPKDChuyen(yc)}
-                                className="h-8 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                              >
-                                <UserCheck className="size-3.5 stroke-[2.5]" />
-                                <span>Duyệt & Chuyển</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moModalYeuCauSua(yc, 'tpkd_tu_choi_sale')}
-                                className="h-8 px-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
-                              >
-                                <AlertTriangle className="size-3.5 text-rose-600" />
-                                <span>Yêu cầu Sale sửa</span>
-                              </button>
-                            </>
-                          )}
-                          {laNguoiTao && !laTPKD && !coQuyenAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => batDauSua(yc)}
-                              className="h-8 px-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
-                            >
-                              <Pencil className="size-3.5 text-amber-600" />
-                              <span>Chỉnh sửa yêu cầu</span>
-                            </button>
-                          )}
-                        </>
-                      )}
-
-                      {/* BƯỚC SỬA: TPKD YÊU CẦU SỬA ➔ SALE (HOẶC ADMIN) CHỈNH SỬA & GỬI LẠI TPKD */}
-                      {yc.trang_thai === 'yeu_cau_chinh_sua' && (laNguoiTao || coQuyenAdmin) && (
-                        <button
-                          type="button"
-                          onClick={() => batDauSua(yc)}
-                          className="h-8.5 px-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow-md transition"
-                        >
-                          <Pencil className="size-3.5 stroke-[2.5]" />
-                          <span>Chỉnh sửa & Gửi lại TPKD</span>
-                        </button>
-                      )}
-
-                      {/* BƯỚC 2: Chờ TPKH tiếp nhận & phân công (2 LỰA CHỌN: Giao CV hoặc Tự làm) */}
-                      {yc.trang_thai === 'cho_tpkh_tiep_nhan' && (laTPKH || coQuyenAdmin) && (
-                        <>
-                          {/* Nếu trước đó đã có CV phân công và đang bị yêu cầu sửa: TPKH có thể chuyển nhanh cho CV sửa */}
-                          {Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
-                            yc.danh_sach_nhan_su_thuc_hien_ids.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => handleTPKHChuyenCVSuaLai(yc)}
-                                className="h-8.5 px-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                              >
-                                <Send className="size-3.5" />
-                                <span>Chuyển CV sửa lại KQ</span>
-                              </button>
-                            )}
-
-                          <button
-                            type="button"
-                            onClick={() => moModalTiepNhanTPKH(yc, 'giao_cv')}
-                            className="h-8 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                          >
-                            <Users className="size-3.5" />
+                        {nguoiNhan && (
+                          <>
+                            <span className="text-slate-300">•</span>
                             <span>
-                              {Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
-                              yc.danh_sach_nhan_su_thuc_hien_ids.length > 0
-                                ? 'Phân công lại CV'
-                                : 'Giao việc cho CV'}
+                              Nhận: <strong className="text-blue-700">{nguoiNhan}</strong>
                             </span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moModalTiepNhanTPKH(yc, 'tu_lam')}
-                            className="h-8 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                          >
-                            <Send className="size-3.5" />
-                            <span>Tự thực hiện & Nộp KQ</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moModalYeuCauSua(yc, 'tpkh_tra_ve_tpkd')}
-                            className="h-8 px-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
-                            title="Trả lại TPKD yêu cầu làm rõ"
-                          >
-                            <AlertTriangle className="size-3.5 text-rose-600" />
-                            <span>Trả lại TPKD làm rõ</span>
-                          </button>
-                        </>
-                      )}
-
-                      {/* BƯỚC 3: CV KHTH đang thực hiện ➔ Nộp kết quả (hoặc TPKH nộp thay / phân công lại) */}
-                      {(yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') && (
-                        <>
-                          {coQuyenNopKetQua && (
-                            <button
-                              type="button"
-                              onClick={() => moModalNopDrive(yc)}
-                              className="h-8.5 px-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                            >
-                              <Send className="size-3.5" />
-                              <span>
-                                {yc.link_drive_ket_qua
-                                  ? 'Chỉnh sửa kết quả & Nộp lại'
-                                  : 'Nộp kết quả xử lý'}
-                              </span>
-                            </button>
-                          )}
-                          {(laTPKH || coQuyenAdmin) && (
-                            <button
-                              type="button"
-                              onClick={() => moModalTiepNhanTPKH(yc, 'giao_cv')}
-                              className="h-8 px-3 rounded-xl bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
-                              title="Phân công lại nhân sự thực hiện"
-                            >
-                              <Users className="size-3.5 text-blue-600" />
-                              <span>Phân công lại CV</span>
-                            </button>
-                          )}
-                        </>
-                      )}
-
-                      {/* BƯỚC 4: Chờ TPKH duyệt KQ của CV ➔ Chuyển TPKD hoặc Yêu cầu CV sửa */}
-                      {yc.trang_thai === 'cho_tpkh_duyet_ket_qua' && (laTPKH || coQuyenAdmin) && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleTPKHDuyetKetQua(yc)}
-                            className="h-8 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                          >
-                            <Check className="size-3.5 stroke-[2.5]" />
-                            <span>Duyệt & Chuyển TPKD</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moModalYeuCauSua(yc, 'tpkh_yeu_cau_cv')}
-                            className="h-8 px-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
-                          >
-                            <AlertTriangle className="size-3.5 text-rose-600" />
-                            <span>Yêu cầu CV sửa</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moModalNopDrive(yc)}
-                            className="h-8 px-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
-                            title="TPKH tự chỉnh sửa file kết quả"
-                          >
-                            <Pencil className="size-3.5 text-amber-600" />
-                            <span>Tự sửa file KQ</span>
-                          </button>
-                        </>
-                      )}
-
-                      {/* BƯỚC 5: Chờ TPKD duyệt kết quả ➔ Duyệt chuyển Sale hoặc Yêu cầu TPKH sửa */}
-                      {(yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') &&
-                        (laTPKD || coQuyenAdmin) && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleTPKDDuyetKetQua(yc)}
-                              className="h-8 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                            >
-                              <Check className="size-3.5 stroke-[2.5]" />
-                              <span>Duyệt kết quả (Chuyển Sale)</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => moModalYeuCauSua(yc, 'tpkd_yeu_cau_tpkh')}
-                              className="h-8 px-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
-                            >
-                              <AlertTriangle className="size-3.5 text-rose-600" />
-                              <span>Yêu cầu sửa lại (đến TPKH)</span>
-                            </button>
                           </>
-                        )}
-
-                      {/* BƯỚC 6: Chờ Sale nghiệm thu ➔ Nghiệm thu hoàn tất hoặc Yêu cầu sửa lại (quy trình chạy lại từ đầu) */}
-                      {(yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet') &&
-                        (laNguoiTao || laTPKD || coQuyenAdmin) && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleSaleNghiemThuHoanTat(yc)}
-                              className="h-8 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
-                            >
-                              <Check className="size-3.5 stroke-[2.5]" />
-                              <span>Nghiệm thu hoàn tất</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => moModalYeuCauSua(yc, 'sale_yeu_cau_sua')}
-                              className="h-8 px-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
-                            >
-                              <AlertTriangle className="size-3.5 text-rose-600" />
-                              <span>Yêu cầu sửa lại</span>
-                            </button>
-                          </>
-                        )}
-
-                      {/* SAO CHÉP LINK KẾT QUẢ KHI ĐÃ CÓ FILE */}
-                      {yc.link_drive_ket_qua && (
-                        <button
-                          type="button"
-                          onClick={() => handleCopyLink(yc.link_drive_ket_qua!, yc.id)}
-                          className="h-8 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 font-medium text-xs inline-flex items-center gap-1.5 cursor-pointer transition"
-                        >
-                          {daCopyLink === yc.id ? (
-                            <>
-                              <CheckCircle2 className="size-3.5 text-emerald-600" />
-                              <span className="text-emerald-700 font-semibold">Đã chép link</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="size-3.5 text-slate-500" />
-                              <span>Sao chép link</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-
-                      {/* Nút phụ: Xem lịch sử luân chuyển, Sửa, Xóa */}
-                      <div className="flex items-center gap-1 pl-1">
-                        <button
-                          type="button"
-                          onClick={() => setYeuCauDangXemLichSu(yc)}
-                          className="size-8 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-slate-200 inline-flex items-center justify-center cursor-pointer transition-colors"
-                          title="Xem lịch sử luân chuyển"
-                        >
-                          <History className="size-3.5" />
-                        </button>
-
-                        {coQuyenSuaXoa && (
-                          <button
-                            type="button"
-                            onClick={() => batDauSua(yc)}
-                            className="size-8 rounded-lg text-amber-600 hover:text-amber-800 hover:bg-amber-50 border border-amber-200 inline-flex items-center justify-center cursor-pointer transition-colors"
-                            title="Chỉnh sửa nội dung"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                        )}
-
-                        {laNguoiTao && (yc.trang_thai === 'cho_tpkd_duyet' || yc.trang_thai === 'yeu_cau_chinh_sua') && (
-                          <button
-                            type="button"
-                            onClick={() => setYeuCauDangXoa(yc)}
-                            className="size-8 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 inline-flex items-center justify-center cursor-pointer transition-colors"
-                            title="Xóa yêu cầu"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
                         )}
                       </div>
+                      {yc.han_hoan_thanh && (
+                        <div className="text-slate-600 font-medium">
+                          Hạn: {formatNgay(yc.han_hoan_thanh)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {hanhDong && (
+                        <button
+                          type="button"
+                          onClick={hanhDong.onClick}
+                          className={cn(
+                            'h-7 px-2.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition shadow-2xs',
+                            hanhDong.className
+                          )}
+                        >
+                          <hanhDong.icon className="size-3.5 stroke-[2.5]" />
+                          <span>{hanhDong.label}</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setYeuCauDangXemChiTiet(yc)}
+                        className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium inline-flex items-center gap-1 cursor-pointer transition"
+                      >
+                        <Eye className="size-3.5 text-slate-500" />
+                        <span>Xem chi tiết</span>
+                      </button>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -1597,6 +1586,545 @@ export default function HopYeuCauPhoiHop({
           </div>
         )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL CHI TIẾT YÊU CẦU PHỐI HỢP (XEM ĐẦY ĐỦ TIẾN TRÌNH, HỒ SƠ & THAO TÁC) */}
+      {/* ========================================================================= */}
+      {ycChiTietHienTai && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-2xl max-h-[92vh] rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xl flex flex-col space-y-4 text-slate-900">
+            {/* HEADER MODAL */}
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="size-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold border border-blue-100 shrink-0">
+                  <FolderKanban className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3
+                      onClick={() => onMoChiTietDuAn?.(ycChiTietHienTai.du_an_id)}
+                      className="text-base font-bold text-slate-900 hover:text-blue-600 transition-colors cursor-pointer truncate"
+                      title="Bấm để xem chi tiết dự án"
+                    >
+                      {ycChiTietHienTai.ten_du_an}
+                    </h3>
+                    {(() => {
+                      const cfg = NHAN_TRANG_THAI_YEU_CAU[ycChiTietHienTai.trang_thai];
+                      return (
+                        <span className={cn('px-2.5 py-0.5 rounded-full text-[11px] font-semibold border', cfg?.mauBadge)}>
+                          {cfg?.label || ycChiTietHienTai.trang_thai}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Tạo lúc {ycChiTietHienTai.ngay_tao ? formatNgay(ycChiTietHienTai.ngay_tao) : 'Hôm nay'} bởi{' '}
+                    <strong className="text-slate-700 font-semibold">{ycChiTietHienTai.ten_nguoi_tao}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setYeuCauDangXemChiTiet(null)}
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors shrink-0"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {/* BODY MODAL */}
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
+              {/* STEPPER TIẾN TRÌNH */}
+              {renderStepper(ycChiTietHienTai)}
+
+              {/* THÔNG BÁO Ý KIẾN PHẢN HỒI KHI CẦN SỬA */}
+              {ycChiTietHienTai.ghi_chu_phan_hoi && ycChiTietHienTai.trang_thai !== 'da_hoan_thanh' && (
+                <div
+                  className={cn(
+                    'rounded-xl border p-3 space-y-1.5',
+                    ycChiTietHienTai.trang_thai === 'yeu_cau_chinh_sua'
+                      ? 'border-rose-200 bg-rose-50/90'
+                      : ycChiTietHienTai.ghi_chu_phan_hoi.toLowerCase().includes('sửa') ||
+                        ycChiTietHienTai.ghi_chu_phan_hoi.toLowerCase().includes('làm lại') ||
+                        ycChiTietHienTai.ghi_chu_phan_hoi.toLowerCase().includes('làm rõ')
+                      ? 'border-amber-200 bg-amber-50/90'
+                      : 'border-blue-200 bg-blue-50/90'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'flex items-center gap-1.5 font-bold text-xs',
+                      ycChiTietHienTai.trang_thai === 'yeu_cau_chinh_sua' ? 'text-rose-800' : 'text-amber-800'
+                    )}
+                  >
+                    <AlertTriangle className="size-4 shrink-0" />
+                    <span>
+                      {ycChiTietHienTai.trang_thai === 'yeu_cau_chinh_sua'
+                        ? 'TPKD yêu cầu chỉnh sửa lại yêu cầu:'
+                        : 'Ý kiến phản hồi / Yêu cầu chỉnh sửa:'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-800 bg-white/90 p-2.5 rounded-lg border border-slate-200/60 font-medium whitespace-pre-wrap leading-relaxed shadow-2xs">
+                    {ycChiTietHienTai.ghi_chu_phan_hoi}
+                  </div>
+                </div>
+              )}
+
+              {/* NỘI DUNG YÊU CẦU */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                  Nội dung chi tiết yêu cầu
+                </label>
+                <div className="bg-slate-50/90 rounded-xl p-3.5 border border-slate-200 text-xs text-slate-800 leading-relaxed font-normal whitespace-pre-wrap">
+                  {ycChiTietHienTai.noi_dung_yeu_cau}
+                </div>
+              </div>
+
+              {/* THÔNG TIN PHỐI HỢP & NHÂN SỰ */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium">Người tạo yêu cầu</span>
+                  <div className="font-semibold text-slate-900 mt-0.5 flex items-center gap-1.5">
+                    <User className="size-3.5 text-slate-400" />
+                    <span>{ycChiTietHienTai.ten_nguoi_tao}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium">Người tiếp nhận / Thực hiện</span>
+                  <div className="font-semibold text-blue-700 mt-0.5 flex items-center gap-1.5">
+                    <UserCheck className="size-3.5 text-blue-600" />
+                    <span>
+                      {ycChiTietHienTai.ten_nguoi_nhan ||
+                        (Array.isArray(ycChiTietHienTai.danh_sach_ten_nhan_su_thuc_hien) &&
+                        ycChiTietHienTai.danh_sach_ten_nhan_su_thuc_hien.length > 0
+                          ? ycChiTietHienTai.danh_sach_ten_nhan_su_thuc_hien.join(', ')
+                          : 'Chưa chỉ định')}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium">Ngày khởi tạo</span>
+                  <div className="font-semibold text-slate-800 mt-0.5 flex items-center gap-1.5">
+                    <CalendarDays className="size-3.5 text-slate-400" />
+                    <span>{formatNgay(ycChiTietHienTai.ngay_tao) || 'Hôm nay'}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-slate-500 font-medium">Thời hạn hoàn thành</span>
+                  <div className="font-semibold text-amber-800 mt-0.5 flex items-center gap-1.5">
+                    <Clock className="size-3.5 text-amber-500" />
+                    <span>
+                      {ycChiTietHienTai.han_hoan_thanh
+                        ? formatNgay(ycChiTietHienTai.han_hoan_thanh)
+                        : 'Chưa đặt hạn'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* TÀI LIỆU LIÊN QUAN */}
+              {(ycChiTietHienTai.link_drive_dau_vao || ycChiTietHienTai.link_drive_ket_qua) && (
+                <div className="space-y-2 pt-1">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                    Tài liệu & Hồ sơ đính kèm
+                  </label>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {ycChiTietHienTai.link_drive_dau_vao && (
+                      <a
+                        href={ycChiTietHienTai.link_drive_dau_vao}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-semibold transition"
+                      >
+                        <Link2 className="size-3.5 text-blue-600" />
+                        <span>File yêu cầu đầu vào</span>
+                        <ExternalLink className="size-3 text-blue-500" />
+                      </a>
+                    )}
+
+                    {ycChiTietHienTai.link_drive_ket_qua && (
+                      <>
+                        <a
+                          href={ycChiTietHienTai.link_drive_ket_qua}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold transition"
+                        >
+                          <FileCheck2 className="size-3.5 text-emerald-600" />
+                          <span>File kết quả KHTH</span>
+                          <ExternalLink className="size-3 text-emerald-500" />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyLink(ycChiTietHienTai.link_drive_ket_qua!, ycChiTietHienTai.id)}
+                          className="h-8 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 font-medium text-xs inline-flex items-center gap-1.5 cursor-pointer transition"
+                        >
+                          {daCopyLink === ycChiTietHienTai.id ? (
+                            <>
+                              <CheckCircle2 className="size-3.5 text-emerald-600" />
+                              <span className="text-emerald-700 font-semibold">Đã chép link</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="size-3.5 text-slate-500" />
+                              <span>Sao chép link</span>
+                            </>
+                          )}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* LỊCH SỬ LUÂN CHUYỂN */}
+              {ycChiTietHienTai.lich_su_xu_ly && ycChiTietHienTai.lich_su_xu_ly.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <History className="size-3.5 text-slate-500" />
+                    <span>Nhật ký xử lý ({ycChiTietHienTai.lich_su_xu_ly.length} bước)</span>
+                  </label>
+                  <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                    {ycChiTietHienTai.lich_su_xu_ly.map((log, idx) => (
+                      <div key={log.id || idx} className="flex items-start gap-2.5 text-xs">
+                        <div className="size-5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
+                          {idx + 1}
+                        </div>
+                        <div className="min-w-0 flex-1 p-2 rounded-xl border border-slate-200 bg-slate-50/70 space-y-1">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <span className="font-semibold text-slate-900">{log.hanh_dong}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {log.thoi_gian?.slice(0, 16).replace('T', ' ')}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                            <User className="size-3 text-slate-400" />
+                            <span>{log.ten_nguoi_thuc_hien}</span>
+                          </div>
+                          {log.ghi_chu && (
+                            <div className="p-1.5 rounded-lg bg-white border border-slate-100 text-[11px] text-slate-700 italic">
+                              &ldquo;{log.ghi_chu}&rdquo;
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* FOOTER MODAL: TOÀN BỘ NÚT HÀNH ĐỘNG THEO GIAI ĐOẠN */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap shrink-0">
+              <div className="flex items-center gap-1.5">
+                {(() => {
+                  const laNguoiTao = laNguoiTaoCuaYeuCau(ycChiTietHienTai);
+                  const coQuyenSuaXoa =
+                    ((laNguoiTao || coQuyenAdmin) &&
+                      (ycChiTietHienTai.trang_thai === 'cho_tpkd_duyet' ||
+                        ycChiTietHienTai.trang_thai === 'yeu_cau_chinh_sua')) ||
+                    coQuyenAdmin;
+
+                  return (
+                    <>
+                      {coQuyenSuaXoa && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const yc = ycChiTietHienTai;
+                            setYeuCauDangXemChiTiet(null);
+                            batDauSua(yc);
+                          }}
+                          className="h-8 px-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                        >
+                          <Pencil className="size-3.5 text-amber-600" />
+                          <span>Sửa</span>
+                        </button>
+                      )}
+                      {laNguoiTao &&
+                        (ycChiTietHienTai.trang_thai === 'cho_tpkd_duyet' ||
+                          ycChiTietHienTai.trang_thai === 'yeu_cau_chinh_sua') && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const yc = ycChiTietHienTai;
+                              setYeuCauDangXemChiTiet(null);
+                              setYeuCauDangXoa(yc);
+                            }}
+                            className="h-8 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                          >
+                            <Trash2 className="size-3.5 text-rose-600" />
+                            <span>Xóa</span>
+                          </button>
+                        )}
+                    </>
+                  );
+                })()}
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {(() => {
+                  const yc = ycChiTietHienTai;
+                  const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
+                  const duocGiaoDichDanh =
+                    (yc.nguoi_nhan_id && yc.nguoi_nhan_id === userId) ||
+                    (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
+                      yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
+                    (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
+                      !!nguoiDungHienTai?.ho_va_ten &&
+                      yc.danh_sach_ten_nhan_su_thuc_hien.some(
+                        (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
+                      )) ||
+                    (yc.ten_nguoi_nhan &&
+                      !!nguoiDungHienTai?.ho_va_ten &&
+                      yc.ten_nguoi_nhan.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten.trim().toLowerCase()) ||
+                    ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
+                    ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId);
+                  const coQuyenNopKetQua = duocGiaoDichDanh || laTPKH || coQuyenAdmin;
+
+                  return (
+                    <>
+                      {/* Bước 1 */}
+                      {yc.trang_thai === 'cho_tpkd_duyet' && (laTPKD || coQuyenAdmin) && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setYeuCauDangXemChiTiet(null);
+                              moModalTPKDChuyen(yc);
+                            }}
+                            className="h-8.5 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                          >
+                            <UserCheck className="size-3.5 stroke-[2.5]" />
+                            <span>Duyệt & Chuyển</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setYeuCauDangXemChiTiet(null);
+                              moModalYeuCauSua(yc, 'tpkd_tu_choi_sale');
+                            }}
+                            className="h-8.5 px-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                          >
+                            <AlertTriangle className="size-3.5 text-rose-600" />
+                            <span>Yêu cầu Sale sửa</span>
+                          </button>
+                        </>
+                      )}
+
+                      {/* Bước sửa */}
+                      {yc.trang_thai === 'yeu_cau_chinh_sua' && (laNguoiTao || coQuyenAdmin) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setYeuCauDangXemChiTiet(null);
+                            batDauSua(yc);
+                          }}
+                          className="h-8.5 px-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow-md transition"
+                        >
+                          <Pencil className="size-3.5 stroke-[2.5]" />
+                          <span>Chỉnh sửa & Gửi lại TPKD</span>
+                        </button>
+                      )}
+
+                      {/* Bước 2 */}
+                      {yc.trang_thai === 'cho_tpkh_tiep_nhan' && (laTPKH || coQuyenAdmin) && (
+                        <>
+                          {Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
+                            yc.danh_sach_nhan_su_thuc_hien_ids.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleTPKHChuyenCVSuaLai(yc)}
+                                className="h-8.5 px-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                              >
+                                <Send className="size-3.5" />
+                                <span>Chuyển CV sửa lại</span>
+                              </button>
+                            )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setYeuCauDangXemChiTiet(null);
+                              moModalTiepNhanTPKH(yc, 'giao_cv');
+                            }}
+                            className="h-8.5 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                          >
+                            <Users className="size-3.5" />
+                            <span>Giao việc cho CV</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setYeuCauDangXemChiTiet(null);
+                              moModalTiepNhanTPKH(yc, 'tu_lam');
+                            }}
+                            className="h-8.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                          >
+                            <Send className="size-3.5" />
+                            <span>Tự làm & Nộp KQ</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setYeuCauDangXemChiTiet(null);
+                              moModalYeuCauSua(yc, 'tpkh_tra_ve_tpkd');
+                            }}
+                            className="h-8.5 px-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                          >
+                            <AlertTriangle className="size-3.5 text-rose-600" />
+                            <span>Trả lại TPKD</span>
+                          </button>
+                        </>
+                      )}
+
+                      {/* Bước 3 */}
+                      {(yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') && (
+                        <>
+                          {coQuyenNopKetQua && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setYeuCauDangXemChiTiet(null);
+                                moModalNopDrive(yc);
+                              }}
+                              className="h-8.5 px-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                            >
+                              <Send className="size-3.5" />
+                              <span>{yc.link_drive_ket_qua ? 'Chỉnh sửa & Nộp lại KQ' : 'Nộp kết quả xử lý'}</span>
+                            </button>
+                          )}
+                          {(laTPKH || coQuyenAdmin) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setYeuCauDangXemChiTiet(null);
+                                moModalTiepNhanTPKH(yc, 'giao_cv');
+                              }}
+                              className="h-8.5 px-3 rounded-xl bg-blue-50 border border-blue-300 text-blue-700 hover:bg-blue-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                            >
+                              <Users className="size-3.5 text-blue-600" />
+                              <span>Phân công lại CV</span>
+                            </button>
+                          )}
+                        </>
+                      )}
+
+                      {/* Bước 4 */}
+                      {yc.trang_thai === 'cho_tpkh_duyet_ket_qua' && (laTPKH || coQuyenAdmin) && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setYeuCauDangXemChiTiet(null);
+                              handleTPKHDuyetKetQua(yc);
+                            }}
+                            className="h-8.5 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                          >
+                            <Check className="size-3.5 stroke-[2.5]" />
+                            <span>Duyệt & Chuyển TPKD</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setYeuCauDangXemChiTiet(null);
+                              moModalYeuCauSua(yc, 'tpkh_yeu_cau_cv');
+                            }}
+                            className="h-8.5 px-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                          >
+                            <AlertTriangle className="size-3.5 text-rose-600" />
+                            <span>Yêu cầu CV sửa</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setYeuCauDangXemChiTiet(null);
+                              moModalNopDrive(yc);
+                            }}
+                            className="h-8.5 px-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                          >
+                            <Pencil className="size-3.5 text-amber-600" />
+                            <span>Tự sửa file KQ</span>
+                          </button>
+                        </>
+                      )}
+
+                      {/* Bước 5 */}
+                      {(yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') &&
+                        (laTPKD || coQuyenAdmin) && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setYeuCauDangXemChiTiet(null);
+                                handleTPKDDuyetKetQua(yc);
+                              }}
+                              className="h-8.5 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                            >
+                              <Check className="size-3.5 stroke-[2.5]" />
+                              <span>Duyệt kết quả (Chuyển Sale)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setYeuCauDangXemChiTiet(null);
+                                moModalYeuCauSua(yc, 'tpkd_yeu_cau_tpkh');
+                              }}
+                              className="h-8.5 px-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                            >
+                              <AlertTriangle className="size-3.5 text-rose-600" />
+                              <span>Yêu cầu sửa lại</span>
+                            </button>
+                          </>
+                        )}
+
+                      {/* Bước 6 */}
+                      {(yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet') &&
+                        (laNguoiTao || laTPKD || coQuyenAdmin) && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setYeuCauDangXemChiTiet(null);
+                                handleSaleNghiemThuHoanTat(yc);
+                              }}
+                              className="h-8.5 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                            >
+                              <Check className="size-3.5 stroke-[2.5]" />
+                              <span>Nghiệm thu hoàn tất</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setYeuCauDangXemChiTiet(null);
+                                moModalYeuCauSua(yc, 'sale_yeu_cau_sua');
+                              }}
+                              className="h-8.5 px-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-700 hover:bg-rose-100 font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                            >
+                              <AlertTriangle className="size-3.5 text-rose-600" />
+                              <span>Yêu cầu sửa lại</span>
+                            </button>
+                          </>
+                        )}
+                    </>
+                  );
+                })()}
+
+                <button
+                  type="button"
+                  onClick={() => setYeuCauDangXemChiTiet(null)}
+                  className="h-8.5 px-4 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-100 cursor-pointer transition"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* MODAL 0: TPKD PHÊ DUYỆT & CHUYỂN ĐÍCH DANH                                  */}
