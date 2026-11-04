@@ -10,6 +10,7 @@ import {
   Paperclip,
   Activity,
   Calendar,
+  CalendarDays,
   Gauge,
   DollarSign,
   Building2,
@@ -54,7 +55,7 @@ import {
 import { notFound, useRouter, useParams } from 'next/navigation';
 import type { HoSoDuAn, TienDoDuAn, GiaiDoanDuAn } from '../../../../thu_vien/types/du_an';
 import type { KhachHang, NguoiLienHe } from '../../../../thu_vien/types/khach_hang';
-import type { NhanSu, ChiNhanh, PhongBan } from '../../../../thu_vien/types/nhan_su';
+import type { NhanSu, ChiNhanh, PhongBan, NguoiDungDangNhap } from '../../../../thu_vien/types/nhan_su';
 import type {
   CapNhatHoSoDuAnDTO,
   DieuKienLocHoSoDuAn,
@@ -99,6 +100,18 @@ import { ModalHuongDanDatTen } from '../../../../thanh_phan/chung/modal_huong_da
 import ModalTaoYeuCauPhoiHop from '../../../../thanh_phan/ke_hoach/modal_tao_yeu_cau_phoi_hop';
 import HopYeuCauPhoiHop from '../../../../thanh_phan/ke_hoach/hop_yeu_cau_phoi_hop';
 import { langNgheYeuCauPhoiHop, type YeuCauPhoiHop } from '../../../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
+import {
+  langNgheLichGapKH,
+  taoLichGapKHMoi,
+  capNhatLichGapKH,
+  xoaLichGapKH
+} from '../../../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
+import {
+  type LichGapKH,
+  DANH_SACH_TRANG_THAI_LICH_GAP
+} from '../../../../thu_vien/types/lich_gap_kh';
+import FormLichGapModal from '../../../../thanh_phan/lich_gap_kh/form_lich_gap_modal';
+import { NHAN_TRANG_THAI_YEU_CAU } from '../../../../thu_vien/types/yeu_cau_phoi_hop';
 import { formatNgay } from '../../../../thu_vien/utils/format_ngay';
 import { formatTien, dinhDangSoPhanNgan, giaiMaSoPhanNgan } from '../../../../thu_vien/utils/format_tien';
 import { cn } from '../../../../thu_vien/utils/cn';
@@ -115,10 +128,11 @@ import {
   O_Nhap
 } from '../../../../thanh_phan/ui';
 
-type TenTab = 'tien_do' | 'yeu_cau' | 'tai_lieu' | 'thong_tin';
+type TenTab = 'tien_do' | 'nhat_ky_noi_bo' | 'tai_lieu' | 'thong_tin';
 
 const DS_TAB: { key: TenTab; nhan: string; bieuTuong: any; dem?: number }[] = [
-  { key: 'tien_do', nhan: 'Nhật ký & Tiến độ', bieuTuong: Activity },
+  { key: 'tien_do', nhan: 'Nhật ký & Tiến độ (với KH)', bieuTuong: Activity },
+  { key: 'nhat_ky_noi_bo', nhan: 'Nhật ký nội bộ', bieuTuong: Users },
   { key: 'tai_lieu', nhan: 'Kho tài liệu', bieuTuong: Paperclip },
   { key: 'thong_tin', nhan: 'Thông tin dự án', bieuTuong: FolderKanban }
 ];
@@ -390,6 +404,52 @@ export default function TrangChiTietHoSoDuAn() {
     return () => unsub();
   }, [id]);
 
+  const [dsLichDA, setDsLichDA] = useState<LichGapKH[]>([]);
+  const [moModalLichGap, setMoModalLichGap] = useState(false);
+  const [dangSuaLichGap, setDangSuaLichGap] = useState<LichGapKH | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    const unsub = langNgheLichGapKH((ds) => {
+      setDsLichDA(ds.filter((x) => x.du_an_id === id && !x.da_xoa));
+    });
+    return () => unsub();
+  }, [id]);
+
+  const xuLyLuuLichGap = async (dto: any) => {
+    try {
+      if (dangSuaLichGap) {
+        await capNhatLichGapKH(dangSuaLichGap.id, dto, nguoiDungHienTai?.id);
+        themToast('thanh_cong', 'Đã cập nhật lịch hẹn thành công!');
+      } else {
+        await taoLichGapKHMoi({
+          ...dto,
+          du_an_id: id,
+          khach_hang_id: dto.khach_hang_id || hda?.khach_hang_id || null,
+          ten_khach_hang: dto.ten_khach_hang || kh?.ten_khach_hang || hda?.ten_du_an || '',
+          nguoi_phu_trach_id: dto.nguoi_phu_trach_id || nguoiDungHienTai?.id || '',
+          nguoi_tao_id: nguoiDungHienTai?.id || ''
+        });
+        themToast('thanh_cong', 'Đã lên lịch hẹn cho dự án thành công!');
+      }
+      setMoModalLichGap(false);
+      setDangSuaLichGap(null);
+    } catch (err: any) {
+      themToast('loi', err?.message || 'Có lỗi khi lưu lịch hẹn');
+    }
+  };
+
+  const xuLyXoaLichGap = async (lichId: string) => {
+    try {
+      await xoaLichGapKH(lichId, nguoiDungHienTai?.id);
+      themToast('thanh_cong', 'Đã xóa lịch hẹn khỏi dự án.');
+      setMoModalLichGap(false);
+      setDangSuaLichGap(null);
+    } catch (err: any) {
+      themToast('loi', err?.message || 'Có lỗi khi xóa lịch hẹn');
+    }
+  };
+
   const [dangChinhSua, setDangChinhSua] = useState(false);
   const [dangXuLyLuuDA, setDangXuLyLuuDA] = useState(false);
   const [loiLuuDA, setLoiLuuDA] = useState<string | null>(null);
@@ -645,10 +705,11 @@ export default function TrangChiTietHoSoDuAn() {
   const tabs = useMemo(() => {
     return DS_TAB.map((t) => {
       if (t.key === 'tien_do') return { ...t, dem: dsTD.length };
+      if (t.key === 'nhat_ky_noi_bo') return { ...t, dem: dsYeuCauDA.length + dsLichDA.length };
       if (t.key === 'tai_lieu') return { ...t, dem: dsTL.length };
       return t;
     });
-  }, [dsTD.length, dsTL.length]);
+  }, [dsTD.length, dsYeuCauDA.length, dsLichDA.length, dsTL.length]);
 
   const CAC_GIAI_DOAN_OPT: Array<{ value: GiaiDoanDuAn | string; nhan: string }> = [
     { value: 'moi_tao', nhan: '1. Mới tạo' },
@@ -1356,6 +1417,31 @@ export default function TrangChiTietHoSoDuAn() {
                     laQuanLyHoacGiamDoc={laQuanLyHoacGiamDoc}
                     moForm={moFormTienDo}
                     onToggleForm={setMoFormTienDo}
+                  />
+                </NoiDungTab>
+                <NoiDungTab gia_tri="nhat_ky_noi_bo">
+                  <BanNhatKyNoiBo
+                    duAnId={id || ""}
+                    tenDuAn={hda?.ten_du_an}
+                    dsYeuCau={dsYeuCauDA}
+                    dsLich={dsLichDA}
+                    dsNK={dsNK}
+                    nguoiDungHienTai={nguoiDungHienTai}
+                    onMoModalTaoYeuCau={() => setMoModalTaoYeuCau(true)}
+                    onMoModalTaoLich={() => {
+                      setDangSuaLichGap(null);
+                      setMoModalLichGap(true);
+                    }}
+                    onSuaLich={(l) => {
+                      setDangSuaLichGap(l);
+                      setMoModalLichGap(true);
+                    }}
+                    onCapNhatYeuCau={(yc) => {
+                      setDsYeuCauDA((prev) => [yc, ...prev.filter((x) => x.id !== yc.id)]);
+                    }}
+                    onXoaYeuCau={(ycId) => {
+                      setDsYeuCauDA((prev) => prev.filter((x) => x.id !== ycId));
+                    }}
                   />
                 </NoiDungTab>
                 <NoiDungTab gia_tri="tai_lieu">
@@ -2550,6 +2636,366 @@ const LOAI_LINK_TL: Record<string, { nhan: string; mau: 'success' | 'danger' | '
   link_khac: { nhan: 'Liên kết', mau: 'primary', icon: ExternalLink }
 };
 
+function BanNhatKyNoiBo(props: {
+  duAnId: string | null;
+  tenDuAn?: string;
+  dsYeuCau: YeuCauPhoiHop[];
+  dsLich: LichGapKH[];
+  dsNK: NhatKyHoatDong[];
+  nguoiDungHienTai?: NguoiDungDangNhap | null;
+  onMoModalTaoYeuCau: () => void;
+  onMoModalTaoLich: () => void;
+  onSuaLich: (lich: LichGapKH) => void;
+  onCapNhatYeuCau: (yc: YeuCauPhoiHop) => void;
+  onXoaYeuCau: (id: string) => void;
+}) {
+  const {
+    duAnId,
+    tenDuAn,
+    dsYeuCau,
+    dsLich,
+    dsNK,
+    nguoiDungHienTai,
+    onMoModalTaoYeuCau,
+    onMoModalTaoLich,
+    onSuaLich,
+    onCapNhatYeuCau,
+    onXoaYeuCau
+  } = props;
+
+  const [tabCon, setTabCon] = useState<'yeu_cau' | 'lich_hen' | 'tong_hop'>('yeu_cau');
+
+  const dsLichSapXep = useMemo(() => {
+    return [...dsLich].sort((a, b) => (b.ngay + (b.gio_bat_dau || '')).localeCompare(a.ngay + (a.gio_bat_dau || '')));
+  }, [dsLich]);
+
+  const dsSuKienTongHop = useMemo(() => {
+    const list: {
+      id: string;
+      loai: 'yeu_cau' | 'lich_hen' | 'nhat_ky';
+      tieu_de: string;
+      mo_ta: string;
+      nguoi_thuc_hien: string;
+      thoi_gian: string;
+      badge?: string;
+      badgeColor?: string;
+    }[] = [];
+
+    dsYeuCau.forEach((yc) => {
+      const cfg = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai];
+      list.push({
+        id: `yc_${yc.id}`,
+        loai: 'yeu_cau',
+        tieu_de: `Yêu cầu phối hợp: ${yc.noi_dung_yeu_cau?.slice(0, 70) || ''}`,
+        mo_ta: yc.noi_dung_yeu_cau,
+        nguoi_thuc_hien: yc.ten_nguoi_tao || 'Nhân sự',
+        thoi_gian: yc.ngay_tao || '',
+        badge: cfg?.label || yc.trang_thai,
+        badgeColor: cfg?.mauBadge
+      });
+    });
+
+    dsLich.forEach((l) => {
+      const cfg = DANH_SACH_TRANG_THAI_LICH_GAP.find((x) => x.key === l.trang_thai);
+      list.push({
+        id: `lh_${l.id}`,
+        loai: 'lich_hen',
+        tieu_de: `Lịch công tác: ${l.tieu_de}`,
+        mo_ta: [l.noi_dung, l.dia_diem ? `Địa điểm: ${l.dia_diem}` : null].filter(Boolean).join(' - '),
+        nguoi_thuc_hien: l.ten_khach_hang || 'Công tác',
+        thoi_gian: `${l.ngay}T${l.gio_bat_dau || '00:00'}:00`,
+        badge: cfg?.tieu_de || l.trang_thai,
+        badgeColor: cfg?.mauBadge
+      });
+    });
+
+    dsNK.forEach((nk) => {
+      list.push({
+        id: `nk_${nk.id}`,
+        loai: 'nhat_ky',
+        tieu_de: nk.hanh_dong || 'Cập nhật nội bộ',
+        mo_ta: nk.noi_dung || '',
+        nguoi_thuc_hien: (nk as any).ten_nguoi_dung || nk.nguoi_dung_id || 'Hệ thống',
+        thoi_gian: nk.thoi_gian || '',
+        badge: 'Hoạt động',
+        badgeColor: 'bg-slate-100 text-slate-700 border-slate-200'
+      });
+    });
+
+    return list.sort((a, b) => (b.thoi_gian || '').localeCompare(a.thoi_gian || ''));
+  }, [dsYeuCau, dsLich, dsNK]);
+
+  return (
+    <div className="space-y-4">
+      {/* 1. Thanh tiêu đề & nút tác vụ nhanh */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+        <div>
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Users className="size-4 text-blue-600" />
+            Nhật ký tác nghiệp & Tương tác nội bộ
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Lưu giữ toàn bộ yêu cầu phối hợp phòng ban, lịch hẹn công tác và trao đổi nội bộ cho dự án.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <Nut
+            kieu="outline"
+            kich_thuoc="sm"
+            icon_trai={CalendarDays}
+            onClick={onMoModalTaoLich}
+            className="whitespace-nowrap font-medium"
+          >
+            + Lên lịch hẹn
+          </Nut>
+          <Nut
+            kieu="primary"
+            kich_thuoc="sm"
+            icon_trai={Sparkles}
+            onClick={onMoModalTaoYeuCau}
+            className="whitespace-nowrap font-medium bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            + Tạo yêu cầu
+          </Nut>
+        </div>
+      </div>
+
+      {/* 2. Sub-tab filter pills */}
+      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100/80 w-fit text-xs font-semibold">
+        <button
+          type="button"
+          onClick={() => setTabCon('yeu_cau')}
+          className={cn(
+            'px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5',
+            tabCon === 'yeu_cau'
+              ? 'bg-white text-blue-700 shadow-2xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
+          )}
+        >
+          <span>Yêu cầu phối hợp</span>
+          {dsYeuCau.length > 0 && (
+            <span className={cn('px-1.5 py-0.2 rounded-full text-[10.5px]', tabCon === 'yeu_cau' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700')}>
+              {dsYeuCau.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTabCon('lich_hen')}
+          className={cn(
+            'px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5',
+            tabCon === 'lich_hen'
+              ? 'bg-white text-emerald-700 shadow-2xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
+          )}
+        >
+          <span>Lịch hẹn & Công tác</span>
+          {dsLich.length > 0 && (
+            <span className={cn('px-1.5 py-0.2 rounded-full text-[10.5px]', tabCon === 'lich_hen' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700')}>
+              {dsLich.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTabCon('tong_hop')}
+          className={cn(
+            'px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5',
+            tabCon === 'tong_hop'
+              ? 'bg-white text-slate-900 shadow-2xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
+          )}
+        >
+          <span>Dòng thời gian</span>
+          <span className={cn('px-1.5 py-0.2 rounded-full text-[10.5px]', tabCon === 'tong_hop' ? 'bg-slate-200 text-slate-900' : 'bg-slate-200 text-slate-700')}>
+            {dsSuKienTongHop.length}
+          </span>
+        </button>
+      </div>
+
+      {/* 3. Nội dung tương ứng */}
+      {tabCon === 'yeu_cau' && (
+        <div className="space-y-3">
+          <HopYeuCauPhoiHop
+            danhSachYeuCau={dsYeuCau}
+            nguoiDungHienTai={nguoiDungHienTai}
+            onCapNhatYeuCau={onCapNhatYeuCau}
+            onXoaYeuCau={onXoaYeuCau}
+            onMoModalTaoYeuCau={onMoModalTaoYeuCau}
+          />
+        </div>
+      )}
+
+      {tabCon === 'lich_hen' && (
+        <div className="space-y-3">
+          {dsLichSapXep.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+              <CalendarDays className="size-8 text-slate-300 mx-auto" />
+              <p>Chưa có lịch hẹn hay lịch công tác nào được lên cho dự án này.</p>
+              <button
+                type="button"
+                onClick={onMoModalTaoLich}
+                className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer block mx-auto not-italic"
+              >
+                + Bấm để lên lịch hẹn / công tác đầu tiên
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Bảng trên Desktop */}
+              <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wider select-none">
+                      <th className="py-3 px-3.5 w-[150px]">Ngày & Giờ</th>
+                      <th className="py-3 px-3.5 min-w-[240px]">Tiêu đề & Nội dung</th>
+                      <th className="py-3 px-3.5 w-[160px]">Người phụ trách</th>
+                      <th className="py-3 px-3.5 w-[180px]">Địa điểm</th>
+                      <th className="py-3 px-3.5 w-[120px]">Trạng thái</th>
+                      <th className="py-3 px-3.5 w-[100px] text-right">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {dsLichSapXep.map((l) => {
+                      const cfgTT = DANH_SACH_TRANG_THAI_LICH_GAP.find((x) => x.key === l.trang_thai) || {
+                        key: l.trang_thai,
+                        tieu_de: l.trang_thai,
+                        mauBadge: 'bg-slate-100 text-slate-600 border-slate-200'
+                      };
+
+                      return (
+                        <tr
+                          key={l.id}
+                          onClick={() => onSuaLich(l)}
+                          className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
+                        >
+                          <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                            <div className="font-semibold text-slate-900">{formatNgay(l.ngay)}</div>
+                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                              {l.gio_bat_dau} - {l.gio_ket_thuc}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 align-middle">
+                            <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                              {l.tieu_de}
+                            </div>
+                            {l.noi_dung && (
+                              <p className="text-slate-600 line-clamp-1 text-[11.5px] mt-0.5">
+                                {l.noi_dung}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-3 px-3.5 align-middle text-slate-800 font-medium whitespace-nowrap">
+                            {l.ten_nguoi_lien_he || l.ten_khach_hang || '—'}
+                          </td>
+                          <td className="py-3 px-3.5 align-middle text-slate-600 text-[11.5px]">
+                            {l.dia_diem || '—'}
+                          </td>
+                          <td className="py-3 px-3.5 align-middle whitespace-nowrap">
+                            <span className={cn('px-2.5 py-1 rounded-full text-[11px] font-semibold border', cfgTT.mauBadge)}>
+                              {cfgTT.tieu_de}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3.5 align-middle text-right whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSuaLich(l);
+                              }}
+                              className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium inline-flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                            >
+                              <Pencil className="size-3 text-slate-500" />
+                              <span>Sửa</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Thẻ Mobile */}
+              <div className="md:hidden space-y-2.5">
+                {dsLichSapXep.map((l) => {
+                  const cfgTT = DANH_SACH_TRANG_THAI_LICH_GAP.find((x) => x.key === l.trang_thai) || {
+                    key: l.trang_thai,
+                    tieu_de: l.trang_thai,
+                    mauBadge: 'bg-slate-100 text-slate-600 border-slate-200'
+                  };
+
+                  return (
+                    <div
+                      key={l.id}
+                      onClick={() => onSuaLich(l)}
+                      className="rounded-xl border border-slate-200 bg-white p-3 space-y-2 shadow-2xs hover:border-slate-300 transition cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-bold text-xs text-slate-900">{l.tieu_de}</div>
+                        <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0', cfgTT.mauBadge)}>
+                          {cfgTT.tieu_de}
+                        </span>
+                      </div>
+                      {l.noi_dung && <p className="text-xs text-slate-600 line-clamp-2">{l.noi_dung}</p>}
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-100">
+                        <span>{formatNgay(l.ngay)} • {l.gio_bat_dau} - {l.gio_ket_thuc}</span>
+                        {l.dia_diem && <span className="truncate max-w-[140px]">{l.dia_diem}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {tabCon === 'tong_hop' && (
+        <div className="space-y-3">
+          {dsSuKienTongHop.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              Chưa có dữ liệu tương tác nội bộ nào.
+            </div>
+          ) : (
+            <div className="space-y-2.5 relative pl-4 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+              {dsSuKienTongHop.map((sk) => (
+                <div key={sk.id} className="relative flex items-start gap-3 text-xs bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
+                  <div className="absolute -left-[21px] top-3.5 size-2.5 rounded-full bg-blue-600 ring-4 ring-white" />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="font-bold text-slate-900">{sk.tieu_de}</span>
+                      <span className="text-[10.5px] text-slate-400 font-mono">
+                        {sk.thoi_gian?.slice(0, 16).replace('T', ' ')}
+                      </span>
+                    </div>
+                    {sk.mo_ta && (
+                      <p className="text-slate-600 line-clamp-2 text-[11.5px] leading-relaxed">
+                        {sk.mo_ta}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 text-[11px] text-slate-500 flex-wrap">
+                      <span>Người ghi nhận: <strong className="text-slate-800">{sk.nguoi_thuc_hien}</strong></span>
+                      {sk.badge && (
+                        <span className={cn('px-2 py-0.2 rounded-full text-[10px] font-semibold border', sk.badgeColor)}>
+                          {sk.badge}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BanNhatKyVaTienDo(props: {
   dsTD: (TienDoDuAn & { canh_bao: 'sap_den' | 'qua_han' | null })[];
   dangTai: boolean;
@@ -2749,10 +3195,15 @@ function BanNhatKyVaTienDo(props: {
       {/* 1. Header Bar & Nút Thao tác */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
         <div>
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Activity className="size-4 text-[#107555]" />
-            Nhật ký tiến độ dự án
-          </h3>
+          <div>
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Activity className="size-4 text-[#107555]" />
+              Nhật ký tiến độ dự án (Làm việc với khách hàng)
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Chỉ cập nhật kết quả tiếp xúc, làm việc, đàm phán và tiến độ triển khai với Khách hàng. Các tương tác nội bộ xem tại mục "Nhật ký nội bộ".
+            </p>
+          </div>
         </div>
         <Nut
           kieu={moForm ? 'outline' : 'primary'}

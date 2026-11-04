@@ -158,6 +158,7 @@ export default function HopYeuCauPhoiHop({
   const [daTaiDanhMuc, setDaTaiDanhMuc] = useState(false);
 
   const [daCopyLink, setDaCopyLink] = useState<string | null>(null);
+  const [daChiaSeZaloId, setDaChiaSeZaloId] = useState<string | null>(null);
 
   // Thông tin user hiện tại
   const vaiTro = nguoiDungHienTai?.vai_tro || '';
@@ -784,6 +785,41 @@ export default function HopYeuCauPhoiHop({
     navigator.clipboard.writeText(link);
     setDaCopyLink(id);
     setTimeout(() => setDaCopyLink(null), 2000);
+  };
+
+  const handleChiaSeZalo = (yc: YeuCauPhoiHop) => {
+    const nguoiThucHien =
+      yc.ten_nguoi_nhan ||
+      (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0
+        ? yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')
+        : 'KHTH');
+
+    const noiDungTinNhan = [
+      `🔔 [KẾT QUẢ XỬ LÝ YÊU CẦU: ${yc.ten_du_an.toUpperCase()}]`,
+      `• Nội dung yêu cầu: ${yc.noi_dung_yeu_cau}`,
+      `• Người tạo (Sale): ${yc.ten_nguoi_tao}`,
+      `• Phụ trách thực hiện: ${nguoiThucHien}`,
+      yc.link_drive_ket_qua ? `• Link kết quả: ${yc.link_drive_ket_qua}` : null,
+      `• Thời gian hoàn thành: ${new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}`
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    try {
+      navigator.clipboard.writeText(noiDungTinNhan);
+    } catch (err) {
+      console.warn('Lỗi chép clipboard:', err);
+    }
+
+    setDaChiaSeZaloId(yc.id);
+    setTimeout(() => setDaChiaSeZaloId(null), 3000);
+
+    if (typeof window !== 'undefined') {
+      const urlZalo = yc.link_drive_ket_qua
+        ? `https://zalo.me/share?url=${encodeURIComponent(yc.link_drive_ket_qua)}`
+        : 'https://chat.zalo.me/';
+      window.open(urlZalo, '_blank', 'noopener,noreferrer');
+    }
   };
 
   // Mở modal sửa nội dung cơ bản
@@ -1415,6 +1451,36 @@ export default function HopYeuCauPhoiHop({
                                 <span>{hanhDong.label}</span>
                               </button>
                             )}
+{yc.link_drive_ket_qua && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleChiaSeZalo(yc);
+                                }}
+                                className={cn(
+                                  'h-7 px-2.5 rounded-lg font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition shadow-2xs',
+                                  daChiaSeZaloId === yc.id
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
+                                )}
+                                title="Sao chép nội dung và Mở Zalo chia sẻ kết quả"
+                              >
+                                {daChiaSeZaloId === yc.id ? (
+                                  <>
+                                    <Check className="size-3.5 stroke-[2.5]" />
+                                    <span>Đã chép</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="font-black text-[9px] bg-white text-[#0068FF] size-3.5 rounded flex items-center justify-center leading-none">
+                                      Z
+                                    </span>
+                                    <span>Gửi Zalo</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => setYeuCauDangXemChiTiet(yc)}
@@ -1510,6 +1576,27 @@ export default function HopYeuCauPhoiHop({
                         >
                           <hanhDong.icon className="size-3.5 stroke-[2.5]" />
                           <span>{hanhDong.label}</span>
+                        </button>
+                      )}
+{yc.link_drive_ket_qua && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleChiaSeZalo(yc);
+                          }}
+                          className={cn(
+                            'h-7 px-2.5 rounded-lg font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition shadow-2xs',
+                            daChiaSeZaloId === yc.id
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
+                          )}
+                          title="Gửi kết quả đến Zalo"
+                        >
+                          <span className="font-black text-[9px] bg-white text-[#0068FF] size-3.5 rounded flex items-center justify-center leading-none">
+                            Z
+                          </span>
+                          <span>{daChiaSeZaloId === yc.id ? 'Đã chép' : 'Gửi Zalo'}</span>
                         </button>
                       )}
                       <button
@@ -1772,6 +1859,31 @@ export default function HopYeuCauPhoiHop({
                             <>
                               <Copy className="size-3.5 text-slate-500" />
                               <span>Sao chép link</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleChiaSeZalo(ycChiTietHienTai)}
+                          className={cn(
+                            'h-8 px-3 rounded-xl font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition',
+                            daChiaSeZaloId === ycChiTietHienTai.id
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
+                          )}
+                          title="Sao chép tóm tắt và Mở Zalo chia sẻ kết quả"
+                        >
+                          {daChiaSeZaloId === ycChiTietHienTai.id ? (
+                            <>
+                              <Check className="size-3.5 stroke-[2.5]" />
+                              <span>Đã sao chép & Mở Zalo</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-black text-[10px] bg-white text-[#0068FF] size-4 rounded flex items-center justify-center leading-none">
+                                Z
+                              </span>
+                              <span>Gửi kết quả đến Zalo</span>
                             </>
                           )}
                         </button>

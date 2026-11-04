@@ -63,6 +63,7 @@ export interface GiaTriMacDinhLichGap {
   dia_diem?: string | null;
   noi_dung?: string | null;
   nguon_lead_id?: string | null;
+  du_an_id?: string | null;
 }
 
 interface FormLichGapModalProps {
@@ -377,7 +378,7 @@ export default function FormLichGapModal({
       ket_qua: ketQua.trim() || null,
       trang_thai: trangThai,
       nguon_lead_id: gia_tri_mac_dinh?.nguon_lead_id || dang_sua?.nguon_lead_id || null,
-      du_an_id: dang_sua?.du_an_id || null,
+      du_an_id: dang_sua?.du_an_id || gia_tri_mac_dinh?.du_an_id || null,
       nguoi_tao_id: dang_sua?.nguoi_tao_id || nguoiDungId || ''
     };
 
