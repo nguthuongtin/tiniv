@@ -121,6 +121,13 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     placeholder_tim: 'Tìm kiếm mã hồ sơ, tên dự án, tên khách hàng...',
     event_them: 'ebms:ho_so_du_an:them_moi'
   },
+  '/bao-cao-tuan': {
+    nhan: 'Báo cáo tuần (Thử nghiệm)',
+    nhan_mobile: 'BC Tuần',
+    mo_ta: 'Báo cáo, kế hoạch & duyệt lịch công tác tuần',
+    icon: Calendar,
+    placeholder_tim: 'Tìm nhân sự, dự án...'
+  },
   '/bao-cao-cong-viec': {
     nhan: 'Báo cáo công việc',
     nhan_mobile: 'Báo cáo',
