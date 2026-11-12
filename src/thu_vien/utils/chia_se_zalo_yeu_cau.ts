@@ -80,9 +80,16 @@ export function dinhDangThoiGianNgan(ngay: string | null | undefined): string {
 
 /** Soạn nội dung tin nhắn gửi nhóm Zalo (tự động nhận diện gửi yêu cầu mới hoặc gửi kết quả) */
 export function taoTenYeuCauHienThi(
-  yc: Pick<YeuCauPhoiHop, 'loai_yeu_cau' | 'ten_du_an'>
+  yc: Pick<YeuCauPhoiHop, 'loai_yeu_cau' | 'ten_du_an'> & { noi_dung_yeu_cau?: string | null }
 ): string {
-  const loai = (yc.loai_yeu_cau || '').trim();
+  let loai = (yc.loai_yeu_cau || '').trim();
+  if (!loai && yc.noi_dung_yeu_cau) {
+    const nd = yc.noi_dung_yeu_cau.toLowerCase();
+    if (nd.includes('lập phương án') || nd.includes('phương án')) loai = 'Lập phương án';
+    else if (nd.includes('báo giá')) loai = 'Báo giá';
+    else if (nd.includes('khảo sát')) loai = 'Khảo sát';
+    else if (nd.includes('tờ trình')) loai = 'Tờ trình';
+  }
   const tenDuAn = (yc.ten_du_an || '').trim();
   if (!loai) return tenDuAn.toLocaleUpperCase('vi-VN');
   if (!tenDuAn) return loai.toLocaleUpperCase('vi-VN');

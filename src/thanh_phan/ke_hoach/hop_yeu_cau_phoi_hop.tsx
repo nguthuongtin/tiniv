@@ -1243,9 +1243,18 @@ export default function HopYeuCauPhoiHop({
           void handleChiaSeZalo(yc);
         }}
         className={cn(
-          'font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer transition shadow-2xs whitespace-nowrap',
-          fullLabel ? 'h-8.5 px-3 rounded-xl' : 'h-7 px-2.5 rounded-lg gap-1',
-          daChep ? 'bg-emerald-600 text-white' : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
+          'font-semibold text-xs inline-flex items-center cursor-pointer transition whitespace-nowrap shrink-0',
+          fullLabel
+            ? cn(
+                'h-8.5 px-3 rounded-xl gap-1.5 shadow-2xs',
+                daChep ? 'bg-emerald-600 text-white' : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
+              )
+            : cn(
+                'h-7 px-2 rounded-lg gap-1 border',
+                daChep
+                  ? 'border-emerald-600 bg-emerald-600 text-white'
+                  : 'border-[#0068FF]/30 bg-blue-50/70 hover:bg-[#0068FF] text-[#0068FF] hover:text-white group/zalo'
+              )
         )}
         title={
           daCoKetQua
@@ -1260,27 +1269,49 @@ export default function HopYeuCauPhoiHop({
           </>
         ) : (
           <>
-            <span className="font-black text-[9px] bg-white text-[#0068FF] size-3.5 rounded flex items-center justify-center leading-none">
+            <span
+              className={cn(
+                'font-black text-[9px] size-3.5 rounded flex items-center justify-center leading-none transition-colors',
+                fullLabel
+                  ? 'bg-white text-[#0068FF]'
+                  : 'bg-[#0068FF] text-white group-hover/zalo:bg-white group-hover/zalo:text-[#0068FF]'
+              )}
+            >
               Z
             </span>
-            <span>{fullLabel ? (daCoKetQua ? 'Gửi kết quả Zalo' : 'Gửi yêu cầu Zalo') : 'Gửi Zalo'}</span>
+            <span>{fullLabel ? (daCoKetQua ? 'Gửi kết quả Zalo' : 'Gửi yêu cầu Zalo') : 'Zalo'}</span>
           </>
         )}
       </button>
     );
   };
 
-  const renderTaiLieuBadges = (yc: YeuCauPhoiHop) => {
-    if (!yc.link_drive_dau_vao && !yc.link_drive_ket_qua) return null;
+  const renderTaiLieuBadges = (yc: YeuCauPhoiHop, showHoSoLink = false) => {
+    const coHoSo = showHoSoLink && Boolean(onMoChiTietDuAn);
+    if (!coHoSo && !yc.link_drive_dau_vao && !yc.link_drive_ket_qua) return null;
     return (
-      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+      <div className="flex items-center gap-3 flex-wrap pt-0.5 text-[11px]">
+        {coHoSo && onMoChiTietDuAn && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoChiTietDuAn(yc.du_an_id);
+            }}
+            className="inline-flex items-center gap-1 font-medium text-slate-500 hover:text-blue-600 transition cursor-pointer"
+            title={`Mở hồ sơ dự án: ${yc.ten_du_an}`}
+          >
+            <FolderKanban className="size-3 shrink-0" />
+            <span>Hồ sơ dự án</span>
+          </button>
+        )}
         {yc.link_drive_dau_vao && (
           <a
             href={yc.link_drive_dau_vao}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200/70 hover:bg-blue-100 transition"
+            className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline transition"
             title="Mở file yêu cầu đầu vào"
           >
             <Link2 className="size-3 shrink-0" />
@@ -1293,7 +1324,7 @@ export default function HopYeuCauPhoiHop({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70 hover:bg-emerald-100 transition"
+            className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline transition"
             title="Mở file kết quả xử lý"
           >
             <FileCheck2 className="size-3 shrink-0" />
@@ -1434,9 +1465,9 @@ export default function HopYeuCauPhoiHop({
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wider select-none">
                     <th className="py-3 px-4 min-w-[260px]">Yêu cầu hỗ trợ</th>
-                    <th className="py-3 px-3.5 w-[270px]">Người YC &amp; Xử lý</th>
-                    <th className="py-3 px-3.5 w-[140px]">Trạng thái</th>
-                    <th className="py-3 px-4 w-[225px] text-right">Thao tác</th>
+                    <th className="py-3 px-4 w-[285px]">Người YC &amp; Xử lý</th>
+                    <th className="py-3 px-3.5 w-[155px]">Trạng thái</th>
+                    <th className="py-3 px-4 w-[1%] whitespace-nowrap text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -1449,10 +1480,10 @@ export default function HopYeuCauPhoiHop({
                         onClick={() => setYeuCauDangXemChiTiet(yc)}
                         className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
                       >
-                        {/* 1. Yêu cầu hỗ trợ (Tên yêu cầu: LOẠI YÊU CẦU + DỰ ÁN, bấm xem chi tiết nội dung bên trong) */}
-                        <td className="py-3.5 px-4 align-top">
-                          <div className="space-y-1.5">
-                            <div className="flex items-start gap-2 flex-wrap">
+                        {/* 1. Yêu cầu hỗ trợ */}
+                        <td className="py-3 px-4 align-middle">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-[13px] font-bold text-slate-900 leading-snug group-hover:text-blue-700 transition-colors">
                                 {taoTenYeuCauHienThi(yc)}
                               </span>
@@ -1462,74 +1493,54 @@ export default function HopYeuCauPhoiHop({
                                   Cần sửa
                                 </span>
                               )}
-                              {onMoChiTietDuAn && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onMoChiTietDuAn(yc.du_an_id);
-                                  }}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10.5px] font-semibold text-blue-700 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/70 transition-colors cursor-pointer shrink-0"
-                                  title={`Mở hồ sơ dự án: ${yc.ten_du_an}`}
-                                >
-                                  <FolderKanban className="size-3 shrink-0" />
-                                  <span>Hồ sơ DA</span>
-                                </button>
-                              )}
                             </div>
 
-                            {renderTaiLieuBadges(yc)}
+                            {renderTaiLieuBadges(yc, true)}
                           </div>
                         </td>
 
                         {/* 2. Người YC & Người xử lý + Thời gian YC & TG thực hiện */}
-                        <td className="py-3.5 px-3.5 align-top w-[270px]">
-                          <div className="space-y-1.5 text-xs">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                <span className="inline-flex items-center justify-center w-6 h-4 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">
-                                  YC
-                                </span>
-                                <span
-                                  className="font-semibold text-slate-800 truncate"
-                                  title={`Người yêu cầu: ${yc.ten_nguoi_tao}`}
-                                >
-                                  {yc.ten_nguoi_tao}
-                                </span>
-                              </div>
-                              <span
-                                className="font-mono text-[11px] text-slate-500 tabular-nums shrink-0"
-                                title={`Gửi lúc: ${formatNgayGio(yc.ngay_tao) || 'Không rõ'}`}
-                              >
-                                {tt.tgYeuCauNgan || '—'}
-                              </span>
-                            </div>
+                        <td className="py-3 px-4 align-middle w-[285px]">
+                          <div className="grid grid-cols-[24px_minmax(0,1fr)_82px] items-center gap-x-2 gap-y-1 text-xs">
+                            <span className="inline-flex items-center justify-center w-6 h-4 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">
+                              YC
+                            </span>
+                            <span
+                              className="font-semibold text-slate-800 truncate"
+                              title={`Người yêu cầu: ${yc.ten_nguoi_tao}`}
+                            >
+                              {yc.ten_nguoi_tao}
+                            </span>
+                            <span
+                              className="font-mono text-[11px] text-slate-500 tabular-nums text-right"
+                              title={`Gửi lúc: ${formatNgayGio(yc.ngay_tao) || 'Không rõ'}`}
+                            >
+                              {tt.tgYeuCauNgan || '—'}
+                            </span>
 
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                <span className="inline-flex items-center justify-center w-6 h-4 rounded bg-blue-50 text-blue-700 text-[10px] font-bold shrink-0">
-                                  XL
-                                </span>
-                                {tt.nguoiNhan ? (
-                                  <span
-                                    className="font-semibold text-blue-700 truncate"
-                                    title={`Người xử lý: ${tt.nguoiNhan}`}
-                                  >
-                                    {tt.nguoiNhan}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-400 italic text-[11px] truncate">
-                                    Chờ phân công
-                                  </span>
-                                )}
-                              </div>
+                            <span className="inline-flex items-center justify-center w-6 h-4 rounded bg-blue-50 text-blue-700 text-[10px] font-bold">
+                              XL
+                            </span>
+                            {tt.nguoiNhan ? (
+                              <span
+                                className="font-semibold text-blue-700 truncate"
+                                title={`Người xử lý: ${tt.nguoiNhan}`}
+                              >
+                                {tt.nguoiNhan}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 italic text-[11px] truncate">
+                                Chờ phân công
+                              </span>
+                            )}
+                            <div className="text-right">
                               {renderMocThoiGianXL(yc, tt)}
                             </div>
                           </div>
                         </td>
 
                         {/* 3. Trạng thái */}
-                        <td className="py-3.5 px-3.5 align-top w-[140px]">
+                        <td className="py-3 px-3.5 align-middle w-[155px]">
                           <span
                             className={cn(
                               'inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap',
@@ -1541,9 +1552,9 @@ export default function HopYeuCauPhoiHop({
                         </td>
 
                         {/* 4. Thao tác */}
-                        <td className="py-3.5 px-4 align-top text-right w-[225px]">
+                        <td className="py-3 px-4 align-middle text-right whitespace-nowrap w-[1%]">
                           <div
-                            className="flex items-center justify-end gap-1.5 flex-wrap"
+                            className="inline-flex items-center justify-end gap-1.5 flex-nowrap"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {tt.hanhDong && (
@@ -1603,7 +1614,7 @@ export default function HopYeuCauPhoiHop({
                       </span>
                     </div>
 
-                    {renderTaiLieuBadges(yc)}
+                    {renderTaiLieuBadges(yc, true)}
 
                     <div className="space-y-1.5 text-[11px] pt-2 border-t border-slate-100">
                       <div className="flex items-center justify-between gap-2">
