@@ -8,7 +8,13 @@ import type { HoSoDuAn } from '../../thu_vien/types/du_an';
 import { taoYeuCauPhoiHopMoi, type YeuCauPhoiHop } from '../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
 import { cn } from '../../thu_vien/utils/cn';
-import { moZaloChiaSeYeuCau } from '../../thu_vien/utils/chia_se_zalo_yeu_cau';
+import { moZaloChiaSeYeuCau, taoTenYeuCauHienThi } from '../../thu_vien/utils/chia_se_zalo_yeu_cau';
+import {
+  LOAI_YEU_CAU_MAC_DINH,
+  GOI_Y_LOAI_YEU_CAU,
+  NHAN_TRANG_THAI_YEU_CAU,
+  xacDinhTrangThaiBanDauYeuCau
+} from '../../thu_vien/types/yeu_cau_phoi_hop';
 import { formatNgay } from '../../thu_vien/utils/format_ngay';
 
 interface Props {
@@ -36,6 +42,7 @@ export default function ModalTaoYeuCauPhoiHop({
   const [duAnId, setDuAnId] = useState(duAnMacDinh?.id || '');
   const [tuKhoaDuAn, setTuKhoaDuAn] = useState('');
   const [moDropdownDuAn, setMoDropdownDuAn] = useState(false);
+  const [loaiYeuCau, setLoaiYeuCau] = useState<string>(LOAI_YEU_CAU_MAC_DINH);
   const [noiDung, setNoiDung] = useState(noiDungGoiY);
   const [linkDrive, setLinkDrive] = useState('');
   const [hanXong, setHanXong] = useState('');
@@ -55,6 +62,8 @@ export default function ModalTaoYeuCauPhoiHop({
       setDuAnId(duAnMacDinh?.id || '');
       setTuKhoaDuAn('');
       setMoDropdownDuAn(false);
+      setLoaiYeuCau(LOAI_YEU_CAU_MAC_DINH);
+      setNoiDung(noiDungGoiY || '');
       setNoiDung(noiDungGoiY || '');
       setLinkDrive('');
       setLoi('');
@@ -69,6 +78,21 @@ export default function ModalTaoYeuCauPhoiHop({
       void danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong', trang_thai_hoat_dong: 'hoat_dong' }).then((res) => {
         const mang = res.mang || [];
         setDsNhanSu(mang);
+        const creatorRole = userHieuLuc?.vai_tro || '';
+        const laTPKDOrAdmin =
+          creatorRole === 'truong_phong_kd' ||
+          creatorRole === 'giam_doc' ||
+          creatorRole === 'quan_tri_he_thong';
+
+        const defaultTPKH = mang.find(
+          (ns) =>
+            ns.vai_tro === 'truong_phong_khth' ||
+            (ns.chuc_vu || '').toLowerCase().includes('tp khth') ||
+            (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng kế hoạch') ||
+            ((ns.chuc_vu || '').toLowerCase().includes('trưởng phòng') &&
+              (ns.chuc_vu || '').toLowerCase().includes('kế hoạch'))
+        );
+
         const defaultTPKD = mang.find(
           (ns) =>
             ns.vai_tro === 'truong_phong_kd' ||
@@ -76,8 +100,10 @@ export default function ModalTaoYeuCauPhoiHop({
             (ns.chuc_vu || '').toLowerCase().includes('trưởng phòng kinh doanh') ||
             ns.vai_tro === 'truong_phong'
         );
-        if (defaultTPKD) {
-          setNguoiNhanId(defaultTPKD.id);
+
+        const nguoiMacDinh = laTPKDOrAdmin ? defaultTPKH || defaultTPKD : defaultTPKD;
+        if (nguoiMacDinh) {
+          setNguoiNhanId(nguoiMacDinh.id);
         } else if (mang.length > 0) {
           setNguoiNhanId(mang[0].id);
         }
@@ -140,12 +166,14 @@ export default function ModalTaoYeuCauPhoiHop({
           ten_du_an: duAnChon.ten_du_an,
           khach_hang_id: duAnChon.khach_hang_id || null,
           ten_khach_hang: null,
+          loai_yeu_cau: loaiYeuCau.trim() || LOAI_YEU_CAU_MAC_DINH,
           noi_dung_yeu_cau: noiDung.trim(),
           link_drive_dau_vao: linkDrive.trim() || null,
           han_hoan_thanh: hanXong || null,
           nguoi_nhan_id: nguoiNhanChon?.id || null,
           ten_nguoi_nhan: nguoiNhanChon?.ho_va_ten || null,
-          chuc_vu_nguoi_nhan: nguoiNhanChon?.chuc_vu || null
+          chuc_vu_nguoi_nhan: nguoiNhanChon?.chuc_vu || null,
+          vai_tro_nguoi_nhan: nguoiNhanChon?.vai_tro || null
         },
         userHieuLuc
       );
@@ -190,7 +218,7 @@ export default function ModalTaoYeuCauPhoiHop({
                 {yeuCauVuaTao ? 'Đã gửi yêu cầu hỗ trợ' : 'Tạo yêu cầu phối hợp'}
               </h3>
               <p className="text-xs text-slate-500">
-                {yeuCauVuaTao ? yeuCauVuaTao.ten_du_an : 'Gửi nội dung cần hỗ trợ sang bộ phận liên quan'}
+                {yeuCauVuaTao ? taoTenYeuCauHienThi(yeuCauVuaTao) : 'Gửi nội dung cần hỗ trợ sang bộ phận liên quan'}
               </p>
             </div>
           </div>
@@ -219,9 +247,19 @@ export default function ModalTaoYeuCauPhoiHop({
                 {yeuCauVuaTao.noi_dung_yeu_cau}
               </div>
               <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/70 text-[11px] text-slate-500 flex-wrap">
-                <span>
-                  Tiếp nhận: <strong className="text-slate-800">{yeuCauVuaTao.ten_nguoi_nhan || 'Chờ phân công'}</strong>
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>
+                    Tiếp nhận: <strong className="text-slate-800">{yeuCauVuaTao.ten_nguoi_nhan || 'Chờ phân công'}</strong>
+                  </span>
+                  <span
+                    className={cn(
+                      'px-2 py-0.5 rounded-full text-[10px] font-semibold border',
+                      NHAN_TRANG_THAI_YEU_CAU[yeuCauVuaTao.trang_thai]?.mauBadge
+                    )}
+                  >
+                    {NHAN_TRANG_THAI_YEU_CAU[yeuCauVuaTao.trang_thai]?.label}
+                  </span>
+                </div>
                 {yeuCauVuaTao.han_hoan_thanh && (
                   <span>
                     Hạn: <strong className="text-slate-800">{formatNgay(yeuCauVuaTao.han_hoan_thanh)}</strong>
@@ -357,14 +395,67 @@ export default function ModalTaoYeuCauPhoiHop({
             )}
           </div>
 
+          {/* Loại yêu cầu (nhập text tự do, mặc định: Báo giá) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <label className="text-xs font-bold text-slate-800 block">
+                Loại yêu cầu *
+              </label>
+              <div className="flex items-center gap-1 flex-wrap">
+                {GOI_Y_LOAI_YEU_CAU.map((goiY) => {
+                  const dangChon = loaiYeuCau.trim().toLowerCase() === goiY.toLowerCase();
+                  return (
+                    <button
+                      key={goiY}
+                      type="button"
+                      onClick={() => setLoaiYeuCau(goiY)}
+                      className={cn(
+                        'px-2 py-0.5 rounded-md text-[10.5px] font-medium border cursor-pointer transition',
+                        dangChon
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'border-slate-200 hover:bg-slate-100 text-slate-600'
+                      )}
+                    >
+                      {goiY}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <input
+              type="text"
+              value={loaiYeuCau}
+              onChange={(e) => setLoaiYeuCau(e.target.value)}
+              placeholder="VD: Báo giá, Lập phương án, Khảo sát..."
+              className="w-full h-9.5 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-slate-400"
+              required
+            />
+          </div>
+
           {/* Gửi đích danh cho nhân sự */}
           <div className="space-y-1.5 relative">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <User className="size-3.5 text-primary" />
                 <span>Gửi đích danh cho *</span>
               </label>
-              <span className="text-[11px] text-slate-400">Mặc định: TPKD duyệt</span>
+              {(() => {
+                const ttDuKien = xacDinhTrangThaiBanDauYeuCau({
+                  vai_tro_nguoi_nhan: nguoiNhanChon?.vai_tro,
+                  chuc_vu_nguoi_nhan: nguoiNhanChon?.chuc_vu
+                });
+                const cfgDuKien = NHAN_TRANG_THAI_YEU_CAU[ttDuKien];
+                return (
+                  <span
+                    className={cn(
+                      'px-2 py-0.5 rounded-full text-[10.5px] font-semibold border',
+                      cfgDuKien.mauBadge
+                    )}
+                  >
+                    {cfgDuKien.label}
+                  </span>
+                );
+              })()}
             </div>
 
             <div className="relative">

@@ -36,13 +36,19 @@ import {
   moZaloChiaSeYeuCau,
   layNguoiXuLyYeuCau,
   layThoiGianHoanThanhYeuCau,
-  dinhDangThoiGianNgan
+  dinhDangThoiGianNgan,
+  taoTenYeuCauHienThi
 } from '../../thu_vien/utils/chia_se_zalo_yeu_cau';
 import type {
   YeuCauPhoiHop,
   TrangThaiYeuCauPhoiHop
 } from '../../thu_vien/types/yeu_cau_phoi_hop';
-import { NHAN_TRANG_THAI_YEU_CAU } from '../../thu_vien/types/yeu_cau_phoi_hop';
+import {
+  NHAN_TRANG_THAI_YEU_CAU,
+  LOAI_YEU_CAU_MAC_DINH,
+  GOI_Y_LOAI_YEU_CAU,
+  chuanHoaTrangThaiYeuCau
+} from '../../thu_vien/types/yeu_cau_phoi_hop';
 import type { NguoiDungDangNhap, NhanSu, PhongBan } from '../../thu_vien/types/nhan_su';
 import {
   chuyenBuocYeuCauPhoiHop,
@@ -87,7 +93,8 @@ export default function HopYeuCauPhoiHop({
 
   const ycChiTietHienTai = useMemo(() => {
     if (!yeuCauDangXemChiTiet) return null;
-    return danhSachYeuCau.find((y) => y.id === yeuCauDangXemChiTiet.id) || yeuCauDangXemChiTiet;
+    const raw = danhSachYeuCau.find((y) => y.id === yeuCauDangXemChiTiet.id) || yeuCauDangXemChiTiet;
+    return { ...raw, trang_thai: chuanHoaTrangThaiYeuCau(raw.trang_thai) };
   }, [yeuCauDangXemChiTiet, danhSachYeuCau]);
 
   // 0. Modal TPKD Phê duyệt & Chuyển đích danh (Chuyển TPKH hoặc Giao thẳng CV)
@@ -148,6 +155,7 @@ export default function HopYeuCauPhoiHop({
 
   // 4. Modal Chỉnh sửa thông tin yêu cầu ban đầu (chỉ sửa nội dung/link/hạn khi chưa duyệt)
   const [yeuCauDangSua, setYeuCauDangSua] = useState<YeuCauPhoiHop | null>(null);
+  const [suaLoaiYeuCau, setSuaLoaiYeuCau] = useState('');
   const [suaNoiDung, setSuaNoiDung] = useState('');
   const [suaLinkDrive, setSuaLinkDrive] = useState('');
   const [suaHanXong, setSuaHanXong] = useState('');
@@ -311,7 +319,9 @@ export default function HopYeuCauPhoiHop({
   // - Chuyên viên KHTH: Thấy yêu cầu được giao cho mình hoặc do chính mình tạo
   // - Trưởng phòng & Lãnh đạo (TPKD, TPKHTH, Admin, Giám đốc): Thấy toàn bộ để điều phối & phê duyệt
   const dsNguon = useMemo(() => {
-    const tatCa = danhSachYeuCau.filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+    const tatCa = danhSachYeuCau
+      .filter((x) => x.trang_thai_du_lieu !== 'da_xoa')
+      .map((x) => ({ ...x, trang_thai: chuanHoaTrangThaiYeuCau(x.trang_thai) }));
     if (!userId || laQuanLyHoacAdmin) {
       return tatCa;
     }
@@ -431,6 +441,8 @@ export default function HopYeuCauPhoiHop({
     if (!kw) return dsTheoTab;
     return dsTheoTab.filter((yc) => {
       return (
+        taoTenYeuCauHienThi(yc).toLowerCase().includes(kw) ||
+        (yc.loai_yeu_cau && yc.loai_yeu_cau.toLowerCase().includes(kw)) ||
         (yc.ten_du_an && yc.ten_du_an.toLowerCase().includes(kw)) ||
         (yc.noi_dung_yeu_cau && yc.noi_dung_yeu_cau.toLowerCase().includes(kw)) ||
         (yc.ten_nguoi_tao && yc.ten_nguoi_tao.toLowerCase().includes(kw)) ||
@@ -446,6 +458,8 @@ export default function HopYeuCauPhoiHop({
     if (!kw) return 0;
     return dsNguon.filter((yc) => {
       return (
+        taoTenYeuCauHienThi(yc).toLowerCase().includes(kw) ||
+        (yc.loai_yeu_cau && yc.loai_yeu_cau.toLowerCase().includes(kw)) ||
         (yc.ten_du_an && yc.ten_du_an.toLowerCase().includes(kw)) ||
         (yc.noi_dung_yeu_cau && yc.noi_dung_yeu_cau.toLowerCase().includes(kw)) ||
         (yc.ten_nguoi_tao && yc.ten_nguoi_tao.toLowerCase().includes(kw)) ||
@@ -542,11 +556,6 @@ export default function HopYeuCauPhoiHop({
         id: yc.danh_sach_nhan_su_thuc_hien_ids[0],
         ho_va_ten: yc.danh_sach_ten_nhan_su_thuc_hien?.[0] || 'Nhân sự'
       }]);
-    } else if (yc.nguoi_nhan_id) {
-      setDsNhanSuChon([{
-        id: yc.nguoi_nhan_id,
-        ho_va_ten: yc.ten_nguoi_nhan || 'Nhân sự'
-      }]);
     } else {
       setDsNhanSuChon([]);
     }
@@ -628,10 +637,18 @@ export default function HopYeuCauPhoiHop({
 
     setDangXuLyNop(true);
     try {
+      const laChinhTPKH =
+        vaiTro === 'truong_phong_khth' || (vaiTro === 'truong_phong' && isKHTHDepartment);
+      const dsIdThucHien = Array.isArray(modalNopDrive.yeuCau.danh_sach_nhan_su_thuc_hien_ids)
+        ? modalNopDrive.yeuCau.danh_sach_nhan_su_thuc_hien_ids
+        : [];
+      const chiCoTPKHThucHien =
+        dsIdThucHien.length === 0 ||
+        (dsIdThucHien.length === 1 && dsIdThucHien[0] === userId && laTPKH);
       const laTPKHNopThang =
         modalNopDrive.yeuCau.trang_thai === 'cho_tpkh_duyet_ket_qua' ||
-        !Array.isArray(modalNopDrive.yeuCau.danh_sach_nhan_su_thuc_hien_ids) ||
-        modalNopDrive.yeuCau.danh_sach_nhan_su_thuc_hien_ids.length === 0;
+        laChinhTPKH ||
+        chiCoTPKHThucHien;
 
       const trangThaiMoi: TrangThaiYeuCauPhoiHop = laTPKHNopThang
         ? 'cho_tpkd_duyet_ket_qua'
@@ -802,6 +819,7 @@ export default function HopYeuCauPhoiHop({
   // Mở modal sửa nội dung cơ bản
   const batDauSua = (yc: YeuCauPhoiHop) => {
     setYeuCauDangSua(yc);
+    setSuaLoaiYeuCau(yc.loai_yeu_cau?.trim() || LOAI_YEU_CAU_MAC_DINH);
     setSuaNoiDung(yc.noi_dung_yeu_cau);
     setSuaLinkDrive(yc.link_drive_dau_vao || '');
     setSuaHanXong(yc.han_hoan_thanh || '');
@@ -821,6 +839,7 @@ export default function HopYeuCauPhoiHop({
       const laDangSuaLai = yeuCauDangSua.trang_thai === 'yeu_cau_chinh_sua';
       const res = await capNhatThongTinYeuCau({
         id: yeuCauDangSua.id,
+        loai_yeu_cau: suaLoaiYeuCau.trim() || LOAI_YEU_CAU_MAC_DINH,
         noi_dung_yeu_cau: suaNoiDung.trim(),
         link_drive_dau_vao: suaLinkDrive.trim() || null,
         han_hoan_thanh: suaHanXong || null,
@@ -1052,16 +1071,29 @@ export default function HopYeuCauPhoiHop({
       };
     }
 
-    if (yc.trang_thai === 'cho_tpkh_tiep_nhan' && (laTPKH || coQuyenAdmin)) {
-      return {
-        label: 'Giao việc',
-        icon: Users,
-        className: 'bg-blue-600 hover:bg-blue-700 text-white',
-        onClick: (e: React.MouseEvent) => {
-          e.stopPropagation();
-          moModalTiepNhanTPKH(yc, 'giao_cv');
-        }
-      };
+    if (yc.trang_thai === 'cho_tpkh_tiep_nhan') {
+      if (laTPKH || coQuyenAdmin) {
+        return {
+          label: 'Giao việc',
+          icon: Users,
+          className: 'bg-blue-600 hover:bg-blue-700 text-white',
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            moModalTiepNhanTPKH(yc, 'giao_cv');
+          }
+        };
+      }
+      if (laNguoiTao) {
+        return {
+          label: 'Sửa yêu cầu',
+          icon: Pencil,
+          className: 'bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100',
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            batDauSua(yc);
+          }
+        };
+      }
     }
 
     if (
@@ -1353,7 +1385,7 @@ export default function HopYeuCauPhoiHop({
                 setTuKhoaTim(e.target.value);
                 setTrangHienTai(1);
               }}
-              placeholder="Tìm theo tên dự án, nội dung yêu cầu, người tạo..."
+              placeholder="Tìm theo tên yêu cầu, dự án, nội dung, người tạo..."
               className="w-full h-9 pl-8.5 pr-8 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
             />
             {tuKhoaTim && (
@@ -1417,39 +1449,33 @@ export default function HopYeuCauPhoiHop({
                         onClick={() => setYeuCauDangXemChiTiet(yc)}
                         className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
                       >
-                        {/* 1. Yêu cầu hỗ trợ (Dự án + Tên/Nội dung yêu cầu đầy đủ + Đính kèm) */}
+                        {/* 1. Yêu cầu hỗ trợ (Tên yêu cầu: LOẠI YÊU CẦU + DỰ ÁN, bấm xem chi tiết nội dung bên trong) */}
                         <td className="py-3.5 px-4 align-top">
                           <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {onMoChiTietDuAn ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onMoChiTietDuAn(yc.du_an_id);
-                                  }}
-                                  className="font-semibold text-blue-700 hover:text-blue-800 hover:underline transition-colors cursor-pointer inline-flex items-center gap-1.5 text-[11.5px] text-left"
-                                  title="Xem chi tiết dự án"
-                                >
-                                  <FolderKanban className="size-3.5 text-blue-600 shrink-0" />
-                                  <span>{yc.ten_du_an}</span>
-                                </button>
-                              ) : (
-                                <span className="font-semibold text-slate-700 inline-flex items-center gap-1.5 text-[11.5px]">
-                                  <FolderKanban className="size-3.5 text-blue-600 shrink-0" />
-                                  <span>{yc.ten_du_an}</span>
-                                </span>
-                              )}
+                            <div className="flex items-start gap-2 flex-wrap">
+                              <span className="text-[13px] font-bold text-slate-900 leading-snug group-hover:text-blue-700 transition-colors">
+                                {taoTenYeuCauHienThi(yc)}
+                              </span>
                               {yc.trang_thai === 'yeu_cau_chinh_sua' && (
                                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
                                   <AlertTriangle className="size-2.5" />
                                   Cần sửa
                                 </span>
                               )}
-                            </div>
-
-                            <div className="text-[13px] font-medium text-slate-900 leading-relaxed whitespace-pre-line break-words">
-                              {yc.noi_dung_yeu_cau}
+                              {onMoChiTietDuAn && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onMoChiTietDuAn(yc.du_an_id);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10.5px] font-semibold text-blue-700 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/70 transition-colors cursor-pointer shrink-0"
+                                  title={`Mở hồ sơ dự án: ${yc.ten_du_an}`}
+                                >
+                                  <FolderKanban className="size-3 shrink-0" />
+                                  <span>Hồ sơ DA</span>
+                                </button>
+                              )}
                             </div>
 
                             {renderTaiLieuBadges(yc)}
@@ -1563,9 +1589,9 @@ export default function HopYeuCauPhoiHop({
                     className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-2xs hover:border-slate-300 transition-all cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 font-semibold text-blue-700 text-xs min-w-0">
-                        <FolderKanban className="size-3.5 text-blue-600 shrink-0" />
-                        <span className="break-words">{yc.ten_du_an}</span>
+                      <div className="flex items-start gap-1.5 font-bold text-slate-900 text-[13px] leading-snug min-w-0">
+                        <FolderKanban className="size-3.5 text-blue-600 shrink-0 mt-0.5" />
+                        <span className="break-words">{taoTenYeuCauHienThi(yc)}</span>
                       </div>
                       <span
                         className={cn(
@@ -1575,10 +1601,6 @@ export default function HopYeuCauPhoiHop({
                       >
                         {tt.cfgTrangThai.label}
                       </span>
-                    </div>
-
-                    <div className="text-[13px] text-slate-900 font-medium leading-relaxed whitespace-pre-line break-words">
-                      {yc.noi_dung_yeu_cau}
                     </div>
 
                     {renderTaiLieuBadges(yc)}
@@ -1722,12 +1744,8 @@ export default function HopYeuCauPhoiHop({
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3
-                      onClick={() => onMoChiTietDuAn?.(ycChiTietHienTai.du_an_id)}
-                      className="text-base font-bold text-slate-900 hover:text-blue-600 transition-colors cursor-pointer truncate"
-                      title="Bấm để xem chi tiết dự án"
-                    >
-                      {ycChiTietHienTai.ten_du_an}
+                    <h3 className="text-base font-bold text-slate-900 leading-snug">
+                      {taoTenYeuCauHienThi(ycChiTietHienTai)}
                     </h3>
                     {(() => {
                       const cfg = NHAN_TRANG_THAI_YEU_CAU[ycChiTietHienTai.trang_thai];
@@ -1738,9 +1756,26 @@ export default function HopYeuCauPhoiHop({
                       );
                     })()}
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Tạo lúc {ycChiTietHienTai.ngay_tao ? formatNgayGio(ycChiTietHienTai.ngay_tao) : 'Hôm nay'} bởi{' '}
-                    <strong className="text-slate-700 font-semibold">{ycChiTietHienTai.ten_nguoi_tao}</strong>
+                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                    <span>
+                      Dự án:{' '}
+                      {onMoChiTietDuAn ? (
+                        <button
+                          type="button"
+                          onClick={() => onMoChiTietDuAn(ycChiTietHienTai.du_an_id)}
+                          className="font-semibold text-blue-700 hover:underline cursor-pointer"
+                        >
+                          {ycChiTietHienTai.ten_du_an}
+                        </button>
+                      ) : (
+                        <strong className="text-slate-700">{ycChiTietHienTai.ten_du_an}</strong>
+                      )}
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    <span>
+                      Tạo lúc {ycChiTietHienTai.ngay_tao ? formatNgayGio(ycChiTietHienTai.ngay_tao) : 'Hôm nay'} bởi{' '}
+                      <strong className="text-slate-700 font-semibold">{ycChiTietHienTai.ten_nguoi_tao}</strong>
+                    </span>
                   </p>
                 </div>
               </div>
@@ -1969,6 +2004,7 @@ export default function HopYeuCauPhoiHop({
                   const coQuyenSuaXoa =
                     ((laNguoiTao || coQuyenAdmin) &&
                       (ycChiTietHienTai.trang_thai === 'cho_tpkd_duyet' ||
+                        ycChiTietHienTai.trang_thai === 'cho_tpkh_tiep_nhan' ||
                         ycChiTietHienTai.trang_thai === 'yeu_cau_chinh_sua')) ||
                     coQuyenAdmin;
 
@@ -1990,6 +2026,7 @@ export default function HopYeuCauPhoiHop({
                       )}
                       {laNguoiTao &&
                         (ycChiTietHienTai.trang_thai === 'cho_tpkd_duyet' ||
+                          ycChiTietHienTai.trang_thai === 'cho_tpkh_tiep_nhan' ||
                           ycChiTietHienTai.trang_thai === 'yeu_cau_chinh_sua') && (
                           <button
                             type="button"
@@ -2977,6 +3014,42 @@ export default function HopYeuCauPhoiHop({
                   </div>
                 </div>
               )}
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <label className="text-xs font-bold text-slate-800">
+                    Loại yêu cầu *
+                  </label>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {GOI_Y_LOAI_YEU_CAU.map((goiY) => {
+                      const dangChon = suaLoaiYeuCau.trim().toLowerCase() === goiY.toLowerCase();
+                      return (
+                        <button
+                          key={goiY}
+                          type="button"
+                          onClick={() => setSuaLoaiYeuCau(goiY)}
+                          className={cn(
+                            'px-2 py-0.5 rounded-md text-[10.5px] font-medium border cursor-pointer transition',
+                            dangChon
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'border-slate-200 hover:bg-slate-100 text-slate-600'
+                          )}
+                        >
+                          {goiY}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={suaLoaiYeuCau}
+                  onChange={(e) => setSuaLoaiYeuCau(e.target.value)}
+                  className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500 placeholder:text-slate-400"
+                  placeholder="VD: Báo giá, Lập phương án, Khảo sát..."
+                  required
+                />
+              </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-800">

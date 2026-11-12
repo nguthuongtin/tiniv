@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminFirestore } from '@/thu_vien/firebase/admin_firebase';
 import { guiThongBaoTelegram } from '@/dich_vu/thong_bao/dich_vu_telegram';
 import { guiWebPushChoNhanSu } from '@/dich_vu/thong_bao/dich_vu_web_push_server';
+import {
+  LOAI_YEU_CAU_MAC_DINH,
+  xacDinhTrangThaiBanDauYeuCau
+} from '@/thu_vien/types/yeu_cau_phoi_hop';
 
 const TEN_COLLECTION = 'yeu_cau_phoi_hop';
 
@@ -92,12 +96,32 @@ export async function POST(req: NextRequest) {
       link_drive: body.link_drive_dau_vao || null
     };
 
+    const trangThaiBanDau = xacDinhTrangThaiBanDauYeuCau({
+      trang_thai_ban_dau: body.trang_thai_ban_dau || body.trang_thai,
+      vai_tro_nguoi_nhan: body.vai_tro_nguoi_nhan,
+      chuc_vu_nguoi_nhan: body.chuc_vu_nguoi_nhan
+    });
+    const laGiaoThangCV = trangThaiBanDau === 'cho_cv_khth_thuc_hien';
+
     const yeuCauMoi = {
       ...body,
       id,
-      trang_thai: 'cho_tpkd_duyet',
-      lich_su_xu_ly: [nhatKyKhoiTao],
-      ngay_tao: nowISO,
+      loai_yeu_cau: (body.loai_yeu_cau || '').trim() || LOAI_YEU_CAU_MAC_DINH,
+      danh_sach_nhan_su_thuc_hien_ids:
+        laGiaoThangCV && body.nguoi_nhan_id
+          ? [body.nguoi_nhan_id]
+          : Array.isArray(body.danh_sach_nhan_su_thuc_hien_ids) && laGiaoThangCV
+          ? body.danh_sach_nhan_su_thuc_hien_ids
+          : [],
+      danh_sach_ten_nhan_su_thuc_hien:
+        laGiaoThangCV && body.ten_nguoi_nhan
+          ? [body.ten_nguoi_nhan]
+          : Array.isArray(body.danh_sach_ten_nhan_su_thuc_hien) && laGiaoThangCV
+          ? body.danh_sach_ten_nhan_su_thuc_hien
+          : [],
+      trang_thai: trangThaiBanDau,
+      lich_su_xu_ly: Array.isArray(body.lich_su_xu_ly) && body.lich_su_xu_ly.length > 0 ? body.lich_su_xu_ly : [nhatKyKhoiTao],
+      ngay_tao: body.ngay_tao || nowISO,
       ngay_cap_nhat: nowISO,
       trang_thai_du_lieu: 'hoat_dong'
     };
@@ -128,7 +152,7 @@ export async function POST(req: NextRequest) {
         trang_thai_hanh_dong: 'dang_thuc_hien',
         nguoi_tao_id: body.nguoi_tao_id || null,
         nguoi_hoan_thanh_id: null,
-        ngay_tao: nowISO,
+        ngay_tao: body.ngay_tao || nowISO,
         ngay_cap_nhat: nowISO,
         ngay_hoan_thanh: null,
         trang_thai_du_lieu: 'hoat_dong'
@@ -173,7 +197,7 @@ export async function POST(req: NextRequest) {
             kho_khan: null,
             trang_thai: 'da_gui',
             nguoi_tao_id: body.nguoi_tao_id,
-            ngay_tao: nowISO,
+            ngay_tao: body.ngay_tao || nowISO,
             ngay_cap_nhat: nowISO,
             trang_thai_du_lieu: 'hoat_dong'
           });
@@ -247,7 +271,25 @@ export async function PUT(req: NextRequest) {
       ngay_cap_nhat: nowISO
     };
 
-    if (body.trang_thai) patch.trang_thai = body.trang_thai;
+    if (body.trang_thai) {
+      patch.trang_thai = body.trang_thai;
+      if (body.trang_thai === 'da_hoan_thanh') {
+        patch.ngay_hoan_thanh = body.ngay_hoan_thanh || nowISO;
+      } else if (
+        body.trang_thai === 'cho_tpkd_duyet' ||
+        body.trang_thai === 'cho_tpkh_tiep_nhan' ||
+        body.trang_thai === 'cho_cv_khth_thuc_hien' ||
+        body.trang_thai === 'cho_khth_thuc_hien' ||
+        body.trang_thai === 'yeu_cau_chinh_sua'
+      ) {
+        patch.ngay_hoan_thanh = null;
+      }
+    }
+    if (body.ngay_hoan_thanh !== undefined && !body.trang_thai) patch.ngay_hoan_thanh = body.ngay_hoan_thanh;
+    if (body.loai_yeu_cau !== undefined) patch.loai_yeu_cau = (body.loai_yeu_cau || '').trim() || LOAI_YEU_CAU_MAC_DINH;
+    if (body.nguoi_nhan_id !== undefined) patch.nguoi_nhan_id = body.nguoi_nhan_id;
+    if (body.ten_nguoi_nhan !== undefined) patch.ten_nguoi_nhan = body.ten_nguoi_nhan;
+    if (body.chuc_vu_nguoi_nhan !== undefined) patch.chuc_vu_nguoi_nhan = body.chuc_vu_nguoi_nhan;
     if (body.noi_dung_yeu_cau !== undefined) patch.noi_dung_yeu_cau = body.noi_dung_yeu_cau;
     if (body.link_drive_dau_vao !== undefined) patch.link_drive_dau_vao = body.link_drive_dau_vao;
     if (body.link_drive_ket_qua !== undefined) patch.link_drive_ket_qua = body.link_drive_ket_qua;
@@ -267,7 +309,10 @@ export async function PUT(req: NextRequest) {
     // Gửi thông báo Telegram cập nhật trạng thái
     if (body.trang_thai && body.trang_thai !== hienTai.trang_thai) {
       const tenTrangThaiMap: Record<string, string> = {
-        cho_tpkd_duyet: 'Chờ tiếp nhận & giao việc',
+        cho_tpkd_duyet: 'Chờ TPKD duyệt',
+        cho_tpkh_tiep_nhan: 'Chờ TPKH điều phối',
+        cho_tpkh_duyet_ket_qua: 'Chờ TPKH duyệt KQ',
+        cho_sale_nghiem_thu: 'Chờ Sale nghiệm thu',
         cho_cv_khth_thuc_hien: 'KHTH đang xử lý',
         cho_khth_thuc_hien: 'Đang xử lý / Đã phân công',
         cho_tpkd_duyet_ket_qua: 'Chờ duyệt kết quả',

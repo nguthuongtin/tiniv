@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useStoreXacThuc } from '../thu_vien/zustand/store_xac_thuc';
 import { langNgheYeuCauPhoiHop, type YeuCauPhoiHop } from '../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
+import { NHAN_TRANG_THAI_YEU_CAU } from '../thu_vien/types/yeu_cau_phoi_hop';
+import { taoTenYeuCauHienThi } from '../thu_vien/utils/chia_se_zalo_yeu_cau';
 import {
   phatChuongThongBao,
   phatThongBaoTrinhDuyet,
@@ -334,7 +336,7 @@ export default function ThanhPhanTopbar() {
         let tieuDe = 'Yêu cầu phối hợp mới';
         let loai: 'moi' | 'duyet' | 'sua' | 'giao' = 'moi';
 
-        if (yc.trang_thai === 'da_phe_duyet') {
+        if (yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet') {
           tieuDe = '✅ Kết quả đã sẵn sàng';
           loai = 'duyet';
         } else if (yc.trang_thai === 'yeu_cau_chinh_sua') {
@@ -348,7 +350,7 @@ export default function ThanhPhanTopbar() {
           loai = 'duyet';
         }
 
-        const noiDung = `${yc.ten_du_an}: ${yc.noi_dung_yeu_cau}`;
+        const noiDung = `${taoTenYeuCauHienThi(yc)}: ${yc.noi_dung_yeu_cau}`;
 
         // 1. Âm thanh Web Audio API
         phatChuongThongBao();
@@ -361,7 +363,7 @@ export default function ThanhPhanTopbar() {
           id: yc.id,
           tieuDe,
           noiDung: yc.noi_dung_yeu_cau,
-          duAn: yc.ten_du_an,
+          duAn: taoTenYeuCauHienThi(yc),
           loai
         });
         break;
@@ -557,18 +559,10 @@ export default function ThanhPhanTopbar() {
                         >
                           <div className="flex items-center justify-between text-[11px]">
                             <span className="font-bold text-indigo-700 truncate max-w-[200px]">
-                              {yc.ten_du_an}
+                              {taoTenYeuCauHienThi(yc)}
                             </span>
                             <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
-                              {yc.trang_thai === 'cho_tpkd_duyet'
-                                ? 'Chờ tiếp nhận'
-                                : (yc.trang_thai === 'cho_khth_thuc_hien' || yc.trang_thai === 'cho_cv_khth_thuc_hien')
-                                ? 'Đang xử lý'
-                                : (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet')
-                                ? 'Chờ duyệt'
-                                : yc.trang_thai === 'yeu_cau_chinh_sua'
-                                ? 'Cần sửa lại'
-                                : yc.trang_thai === 'cho_sale_nghiem_thu' ? 'Chờ nghiệm thu' : 'Đã duyệt'}
+                              {NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai]?.label || yc.trang_thai}
                             </span>
                           </div>
                           <div className="text-xs text-slate-800 font-medium truncate mt-1">

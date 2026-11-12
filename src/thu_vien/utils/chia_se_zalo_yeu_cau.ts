@@ -79,6 +79,19 @@ export function dinhDangThoiGianNgan(ngay: string | null | undefined): string {
 }
 
 /** Soạn nội dung tin nhắn gửi nhóm Zalo (tự động nhận diện gửi yêu cầu mới hoặc gửi kết quả) */
+export function taoTenYeuCauHienThi(
+  yc: Pick<YeuCauPhoiHop, 'loai_yeu_cau' | 'ten_du_an'>
+): string {
+  const loai = (yc.loai_yeu_cau || '').trim();
+  const tenDuAn = (yc.ten_du_an || '').trim();
+  if (!loai) return tenDuAn.toLocaleUpperCase('vi-VN');
+  if (!tenDuAn) return loai.toLocaleUpperCase('vi-VN');
+  const loaiUpper = loai.toLocaleUpperCase('vi-VN');
+  const duAnUpper = tenDuAn.toLocaleUpperCase('vi-VN');
+  if (duAnUpper.startsWith(loaiUpper)) return duAnUpper;
+  return `${loaiUpper} ${duAnUpper}`;
+}
+
 export function taoNoiDungTinNhanZaloYeuCau(yc: YeuCauPhoiHop): string {
   const nguoiXuLy = layNguoiXuLyYeuCau(yc);
   const { daHoanThanh, thoiGianHoanThanh, thoiGianNopKetQua } = layThoiGianHoanThanhYeuCau(yc);
@@ -87,7 +100,7 @@ export function taoNoiDungTinNhanZaloYeuCau(yc: YeuCauPhoiHop): string {
   if (daCoKetQua) {
     const tgXong = formatNgayGio(thoiGianHoanThanh || thoiGianNopKetQua || new Date());
     return [
-      `🔔 [KẾT QUẢ YÊU CẦU HỖ TRỢ: ${yc.ten_du_an.toUpperCase()}]`,
+      `🔔 [KẾT QUẢ YÊU CẦU HỖ TRỢ: ${taoTenYeuCauHienThi(yc)}]`,
       `• Nội dung: ${yc.noi_dung_yeu_cau}`,
       `• Người yêu cầu: ${yc.ten_nguoi_tao}`,
       `• Người xử lý: ${nguoiXuLy || 'KHTH'}`,
@@ -102,7 +115,7 @@ export function taoNoiDungTinNhanZaloYeuCau(yc: YeuCauPhoiHop): string {
   const hanHoanThanh = yc.han_hoan_thanh ? formatNgay(yc.han_hoan_thanh) : '';
 
   return [
-    `📌 [YÊU CẦU HỖ TRỢ: ${yc.ten_du_an.toUpperCase()}]`,
+    `📌 [YÊU CẦU HỖ TRỢ: ${taoTenYeuCauHienThi(yc)}]`,
     `• Nội dung: ${yc.noi_dung_yeu_cau}`,
     `• Người yêu cầu: ${yc.ten_nguoi_tao}`,
     `• Người tiếp nhận: ${nguoiXuLy || 'Chờ phân công'}`,

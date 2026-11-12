@@ -14,10 +14,13 @@ import {
   thamChieuCollection,
   thamChieuBanGhi
 } from '../../thu_vien/firebase/client_firebase';
-import type {
-  YeuCauPhoiHop,
-  TrangThaiYeuCauPhoiHop,
-  NhatKyXuLyYeuCau
+import {
+  LOAI_YEU_CAU_MAC_DINH,
+  chuanHoaTrangThaiYeuCau,
+  xacDinhTrangThaiBanDauYeuCau,
+  type YeuCauPhoiHop,
+  type TrangThaiYeuCauPhoiHop,
+  type NhatKyXuLyYeuCau
 } from '../../thu_vien/types/yeu_cau_phoi_hop';
 import type { NguoiDungDangNhap, NhanSu } from '../../thu_vien/types/nhan_su';
 import { themTaiLieuDuAn } from '../tai_lieu_du_an/dich_vu_tai_lieu_du_an';
@@ -45,16 +48,20 @@ export interface TaoMoiYeuCauPhoiHopDTO {
   ten_du_an: string;
   khach_hang_id?: string | null;
   ten_khach_hang?: string | null;
+  loai_yeu_cau?: string | null;
   noi_dung_yeu_cau: string;
   link_drive_dau_vao?: string | null;
   han_hoan_thanh?: string | null;
   nguoi_nhan_id?: string | null;
   ten_nguoi_nhan?: string | null;
   chuc_vu_nguoi_nhan?: string | null;
+  vai_tro_nguoi_nhan?: string | null;
+  trang_thai_ban_dau?: TrangThaiYeuCauPhoiHop | null;
 }
 
 export interface CapNhatThongTinYeuCauDTO {
   id: string;
+  loai_yeu_cau?: string | null;
   noi_dung_yeu_cau?: string;
   link_drive_dau_vao?: string | null;
   link_drive_ket_qua?: string | null;
@@ -295,13 +302,28 @@ async function luuTaiLieuKetQuaKhiPheDuyet(
 /**
  * Hợp nhất dữ liệu giữa Remote (Firestore) và Local Cache
  */
+const layMocCapNhat = (x: YeuCauPhoiHop): number =>
+  new Date(x.ngay_cap_nhat || x.ngay_tao || 0).getTime();
+
 const hopNhatDanhSach = (remote: YeuCauPhoiHop[], local: YeuCauPhoiHop[]): YeuCauPhoiHop[] => {
   const map = new Map<string, YeuCauPhoiHop>();
   local.forEach((x) => {
-    if (x && x.id) map.set(x.id, x);
+    if (x && x.id) {
+      map.set(x.id, { ...x, trang_thai: chuanHoaTrangThaiYeuCau(x.trang_thai) });
+    }
   });
   remote.forEach((x) => {
-    if (x && x.id) map.set(x.id, x);
+    if (x && x.id) {
+      const normalized = { ...x, trang_thai: chuanHoaTrangThaiYeuCau(x.trang_thai) };
+      const existing = map.get(x.id);
+      if (
+        !existing ||
+        normalized.trang_thai_du_lieu === 'da_xoa' ||
+        layMocCapNhat(normalized) >= layMocCapNhat(existing)
+      ) {
+        map.set(x.id, normalized);
+      }
+    }
   });
   const merged = Array.from(map.values()).filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
   return merged.sort((a, b) => new Date(b.ngay_tao || 0).getTime() - new Date(a.ngay_tao || 0).getTime());
@@ -471,12 +493,21 @@ export const taoYeuCauPhoiHopMoi = async (
     link_drive: dto.link_drive_dau_vao || null
   };
 
+  const loaiYeuCauChuan = dto.loai_yeu_cau?.trim() || LOAI_YEU_CAU_MAC_DINH;
+  const trangThaiBanDau = xacDinhTrangThaiBanDauYeuCau({
+    trang_thai_ban_dau: dto.trang_thai_ban_dau,
+    vai_tro_nguoi_nhan: dto.vai_tro_nguoi_nhan,
+    chuc_vu_nguoi_nhan: dto.chuc_vu_nguoi_nhan
+  });
+  const laGiaoThangCV = trangThaiBanDau === 'cho_cv_khth_thuc_hien';
+
   const yeuCauMoi: YeuCauPhoiHop = {
     id: idMoi,
     du_an_id: dto.du_an_id,
     ten_du_an: dto.ten_du_an,
     khach_hang_id: dto.khach_hang_id || null,
     ten_khach_hang: dto.ten_khach_hang || null,
+    loai_yeu_cau: loaiYeuCauChuan,
     noi_dung_yeu_cau: dto.noi_dung_yeu_cau.trim(),
     link_drive_dau_vao: dto.link_drive_dau_vao?.trim() || null,
     link_drive_ket_qua: null,
@@ -485,9 +516,9 @@ export const taoYeuCauPhoiHopMoi = async (
     nguoi_nhan_id: dto.nguoi_nhan_id || null,
     ten_nguoi_nhan: dto.ten_nguoi_nhan || null,
     chuc_vu_nguoi_nhan: dto.chuc_vu_nguoi_nhan || null,
-    danh_sach_nhan_su_thuc_hien_ids: dto.nguoi_nhan_id ? [dto.nguoi_nhan_id] : [],
-    danh_sach_ten_nhan_su_thuc_hien: dto.ten_nguoi_nhan ? [dto.ten_nguoi_nhan] : [],
-    trang_thai: 'cho_tpkd_duyet',
+    danh_sach_nhan_su_thuc_hien_ids: laGiaoThangCV && dto.nguoi_nhan_id ? [dto.nguoi_nhan_id] : [],
+    danh_sach_ten_nhan_su_thuc_hien: laGiaoThangCV && dto.ten_nguoi_nhan ? [dto.ten_nguoi_nhan] : [],
+    trang_thai: trangThaiBanDau,
     nguoi_tao_id: userId,
     ten_nguoi_tao: userName,
     phong_ban_id: nguoiThucHien?.phong_ban_id || null,
@@ -503,11 +534,18 @@ export const taoYeuCauPhoiHopMoi = async (
   ghiCacheLocal([yeuCauMoi, ...cacheHienTai.filter((x) => x.id !== idMoi)]);
   phatSuKienCapNhat(yeuCauMoi);
 
-  // 2. Ghi trực tiếp lên Firestore qua Client SDK
+  // 2. Ghi trực tiếp lên Firestore qua Client SDK (fallback qua API Server nếu client bị chặn quyền)
   try {
     await setDoc(thamChieuBanGhi(TEN_COLLECTION, idMoi), yeuCauMoi);
   } catch (err) {
-    console.warn('[taoYeuCauPhoiHopMoi] Cảnh báo ghi Firestore:', err);
+    console.warn('[taoYeuCauPhoiHopMoi] Cảnh báo ghi Firestore, chuyển sang API:', err);
+    try {
+      await fetch('/api/yeu-cau-phoi-hop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(yeuCauMoi)
+      });
+    } catch {}
   }
 
   // 3. Tự động thêm dòng tiến độ vào hồ sơ dự án
@@ -586,9 +624,10 @@ export const chuyenBuocYeuCauPhoiHop = async (
   } else if (trangThaiMoi === 'cho_tpkh_duyet_ket_qua') {
     tenHanhDong = 'CV KHTH nộp kết quả';
   } else if (trangThaiMoi === 'cho_tpkd_duyet_ket_qua' || trangThaiMoi === 'cho_lanh_dao_duyet') {
-    tenHanhDong = hienTai.trang_thai === 'cho_tpkh_tiep_nhan'
-      ? 'TPKH tự thực hiện & nộp kết quả'
-      : 'TPKH phê duyệt kết quả & Chuyển TPKD';
+    tenHanhDong =
+      hienTai.trang_thai === 'cho_tpkh_duyet_ket_qua'
+        ? 'TPKH phê duyệt kết quả & Chuyển TPKD'
+        : 'TPKH thực hiện & nộp kết quả';
   } else if (trangThaiMoi === 'cho_sale_nghiem_thu' || trangThaiMoi === 'da_phe_duyet') {
     tenHanhDong = 'TPKD phê duyệt kết quả & Bàn giao Sale';
   } else if (trangThaiMoi === 'da_hoan_thanh') {
@@ -609,10 +648,22 @@ export const chuyenBuocYeuCauPhoiHop = async (
     link_drive: linkDriveKetQua || null
   };
 
+  const trangThaiMoLai: TrangThaiYeuCauPhoiHop[] = [
+    'cho_tpkd_duyet',
+    'cho_tpkh_tiep_nhan',
+    'cho_cv_khth_thuc_hien',
+    'cho_khth_thuc_hien',
+    'yeu_cau_chinh_sua'
+  ];
+
   const capNhat: Partial<YeuCauPhoiHop> = {
     trang_thai: trangThaiMoi,
     ngay_cap_nhat: nowISO,
-    ...(trangThaiMoi === 'da_hoan_thanh' ? { ngay_hoan_thanh: nowISO } : {})
+    ...(trangThaiMoi === 'da_hoan_thanh'
+      ? { ngay_hoan_thanh: nowISO }
+      : trangThaiMoLai.includes(trangThaiMoi)
+      ? { ngay_hoan_thanh: null }
+      : {})
   };
 
   if (linkDriveKetQua) capNhat.link_drive_ket_qua = linkDriveKetQua.trim();
@@ -628,13 +679,26 @@ export const chuyenBuocYeuCauPhoiHop = async (
     (capNhat as any).ten_nguoi_thuc_hien = danhSachNhanSuThucHien[0].ho_va_ten;
     (capNhat as any).nhan_su_thuc_hien_id = danhSachNhanSuThucHien[0].id;
   } else if (params.nguoiNhanMoiId) {
+    const laGiaoTrucTiepCV =
+      trangThaiMoi === 'cho_cv_khth_thuc_hien' || trangThaiMoi === 'cho_khth_thuc_hien';
     capNhat.nguoi_nhan_id = params.nguoiNhanMoiId;
     capNhat.ten_nguoi_nhan = params.tenNguoiNhanMoi || null;
     capNhat.chuc_vu_nguoi_nhan = params.chucVuNguoiNhanMoi || null;
-    capNhat.danh_sach_nhan_su_thuc_hien_ids = [params.nguoiNhanMoiId];
-    capNhat.danh_sach_ten_nhan_su_thuc_hien = params.tenNguoiNhanMoi ? [params.tenNguoiNhanMoi] : [];
-    (capNhat as any).nguoi_thuc_hien_id = params.nguoiNhanMoiId;
-    (capNhat as any).ten_nguoi_thuc_hien = params.tenNguoiNhanMoi || null;
+    if (laGiaoTrucTiepCV) {
+      capNhat.danh_sach_nhan_su_thuc_hien_ids = [params.nguoiNhanMoiId];
+      capNhat.danh_sach_ten_nhan_su_thuc_hien = params.tenNguoiNhanMoi ? [params.tenNguoiNhanMoi] : [];
+      (capNhat as any).nguoi_thuc_hien_id = params.nguoiNhanMoiId;
+      (capNhat as any).ten_nguoi_thuc_hien = params.tenNguoiNhanMoi || null;
+    } else {
+      capNhat.danh_sach_nhan_su_thuc_hien_ids = [];
+      capNhat.danh_sach_ten_nhan_su_thuc_hien = [];
+    }
+  } else if (trangThaiMoi === 'cho_tpkd_duyet') {
+    capNhat.nguoi_nhan_id = null;
+    capNhat.ten_nguoi_nhan = null;
+    capNhat.chuc_vu_nguoi_nhan = null;
+    capNhat.danh_sach_nhan_su_thuc_hien_ids = [];
+    capNhat.danh_sach_ten_nhan_su_thuc_hien = [];
   }
 
   const lichSuCu = Array.isArray(hienTai.lich_su_xu_ly) ? hienTai.lich_su_xu_ly : [];
@@ -649,11 +713,22 @@ export const chuyenBuocYeuCauPhoiHop = async (
   ghiCacheLocal(localList.map((x) => (x.id === yeuCauId ? yeuCauCapNhat : x)));
   phatSuKienCapNhat(yeuCauCapNhat);
 
-  // 2. Ghi trực tiếp Firestore
+  // 2. Ghi trực tiếp Firestore (fallback qua API Server nếu client bị chặn quyền)
   try {
     await setDoc(thamChieuBanGhi(TEN_COLLECTION, yeuCauId), yeuCauCapNhat, { merge: true });
   } catch (err) {
-    console.warn('[chuyenBuocYeuCauPhoiHop] Cảnh báo lưu Firestore:', err);
+    console.warn('[chuyenBuocYeuCauPhoiHop] Cảnh báo lưu Firestore, chuyển sang API:', err);
+    try {
+      await fetch('/api/yeu-cau-phoi-hop', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: yeuCauId,
+          ...capNhat,
+          nhat_ky_moi: nhatKyMoi
+        })
+      });
+    } catch {}
   }
 
   // 3. TỰ ĐỘNG THỰC HIỆN TIẾN ĐỘ DỰ ÁN & KHO TÀI LIỆU
@@ -716,6 +791,7 @@ export const capNhatThongTinYeuCau = async (
     ngay_cap_nhat: nowISO
   };
 
+  if (dto.loai_yeu_cau !== undefined) patch.loai_yeu_cau = dto.loai_yeu_cau?.trim() || LOAI_YEU_CAU_MAC_DINH;
   if (dto.noi_dung_yeu_cau !== undefined) patch.noi_dung_yeu_cau = dto.noi_dung_yeu_cau.trim();
   if (dto.link_drive_dau_vao !== undefined) patch.link_drive_dau_vao = dto.link_drive_dau_vao?.trim() || null;
   if (dto.link_drive_ket_qua !== undefined) patch.link_drive_ket_qua = dto.link_drive_ket_qua?.trim() || null;
@@ -755,11 +831,23 @@ export const capNhatThongTinYeuCau = async (
   ghiCacheLocal(localList.map((x) => (x.id === dto.id ? yeuCauCapNhat : x)));
   phatSuKienCapNhat(yeuCauCapNhat);
 
-  // 2. Ghi trực tiếp Firestore
+  // 2. Ghi trực tiếp Firestore (fallback qua API Server nếu client bị chặn quyền)
   try {
     await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patch, { merge: true });
   } catch (err) {
-    console.warn('[capNhatThongTinYeuCau] Cảnh báo lưu Firestore:', err);
+    console.warn('[capNhatThongTinYeuCau] Cảnh báo lưu Firestore, chuyển sang API:', err);
+    try {
+      await fetch('/api/yeu-cau-phoi-hop', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: dto.id,
+          ...patch,
+          lich_su_xu_ly: undefined,
+          nhat_ky_moi: nhatKySua
+        })
+      });
+    } catch {}
   }
 
   return yeuCauCapNhat;
@@ -789,7 +877,13 @@ export const xoaYeuCauPhoiHop = async (
       { merge: true }
     );
   } catch (err) {
-    console.warn('[xoaYeuCauPhoiHop] Lỗi xóa Firestore:', err);
+    console.warn('[xoaYeuCauPhoiHop] Lỗi xóa Firestore, chuyển sang API:', err);
+    try {
+      const uid = encodeURIComponent(nguoiThucHien?.id || '');
+      await fetch(`/api/yeu-cau-phoi-hop?id=${encodeURIComponent(yeuCauId)}&nguoi_xoa_id=${uid}`, {
+        method: 'DELETE'
+      });
+    } catch {}
   }
 
   return true;

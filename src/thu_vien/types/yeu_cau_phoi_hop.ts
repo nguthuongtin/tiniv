@@ -31,6 +31,7 @@ export interface YeuCauPhoiHop {
   khach_hang_id?: string | null;
   ten_khach_hang?: string | null;
 
+  loai_yeu_cau?: string | null;
   noi_dung_yeu_cau: string;
   link_drive_dau_vao?: string | null;
   link_drive_ket_qua?: string | null;
@@ -143,3 +144,76 @@ export const NHAN_TRANG_THAI_YEU_CAU: Record<
     buocSo: 7
   }
 };
+
+
+export const LOAI_YEU_CAU_MAC_DINH = 'Báo giá';
+
+export const GOI_Y_LOAI_YEU_CAU = [
+  'Báo giá',
+  'Lập phương án',
+  'Khảo sát',
+  'Tờ trình / Hồ sơ'
+] as const;
+
+export function chuanHoaTrangThaiYeuCau(trangThai?: string | null): TrangThaiYeuCauPhoiHop {
+  const s = (trangThai || '').trim();
+  if (s === 'hoan_thanh' || s === 'da_hoan_thanh') return 'da_hoan_thanh';
+  if (s === 'can_chinh_sua' || s === 'yeu_cau_chinh_sua') return 'yeu_cau_chinh_sua';
+  if (s === 'cho_lanh_dao_duyet' || s === 'cho_tpkd_duyet_ket_qua') return 'cho_tpkd_duyet_ket_qua';
+  if (s === 'da_phe_duyet' || s === 'cho_sale_nghiem_thu') return 'cho_sale_nghiem_thu';
+  if (s === 'cho_khth_thuc_hien' || s === 'cho_cv_khth_thuc_hien') return 'cho_cv_khth_thuc_hien';
+  if (s === 'cho_tpkh_duyet_ket_qua') return 'cho_tpkh_duyet_ket_qua';
+  if (s === 'cho_tpkh_tiep_nhan') return 'cho_tpkh_tiep_nhan';
+  return 'cho_tpkd_duyet';
+}
+
+export function xacDinhTrangThaiBanDauYeuCau(params: {
+  trang_thai_ban_dau?: TrangThaiYeuCauPhoiHop | null;
+  vai_tro_nguoi_nhan?: string | null;
+  chuc_vu_nguoi_nhan?: string | null;
+}): TrangThaiYeuCauPhoiHop {
+  if (params.trang_thai_ban_dau) return chuanHoaTrangThaiYeuCau(params.trang_thai_ban_dau);
+
+  const vt = (params.vai_tro_nguoi_nhan || '').toLowerCase().trim();
+  const cv = (params.chuc_vu_nguoi_nhan || '').toLowerCase().trim();
+
+  if (
+    vt === 'truong_phong_khth' ||
+    (vt === 'truong_phong' && (cv.includes('khth') || cv.includes('kế hoạch') || cv.includes('tổng hợp'))) ||
+    cv.includes('tp khth') ||
+    cv.includes('tp kh') ||
+    cv.includes('trưởng phòng khth') ||
+    cv.includes('trưởng phòng kế hoạch') ||
+    (cv.includes('trưởng phòng') && (cv.includes('kế hoạch') || cv.includes('tổng hợp')))
+  ) {
+    return 'cho_tpkh_tiep_nhan';
+  }
+
+  if (
+    vt === 'truong_phong_kd' ||
+    vt === 'giam_doc' ||
+    vt === 'quan_tri_he_thong' ||
+    vt === 'admin' ||
+    (vt === 'truong_phong' && (cv.includes('kinh doanh') || cv.includes('kd') || cv.includes('sales'))) ||
+    cv.includes('tpkd') ||
+    cv.includes('tp kd') ||
+    cv.includes('trưởng phòng kinh doanh') ||
+    cv.includes('giám đốc')
+  ) {
+    return 'cho_tpkd_duyet';
+  }
+
+  if (
+    vt === 'nhan_vien_khth' ||
+    vt === 'nhan_vien_ky_thuat' ||
+    cv.includes('khth') ||
+    cv.includes('kế hoạch') ||
+    cv.includes('tổng hợp') ||
+    cv.includes('kỹ thuật') ||
+    cv.includes('chuyên viên')
+  ) {
+    return 'cho_cv_khth_thuc_hien';
+  }
+
+  return 'cho_tpkd_duyet';
+}
