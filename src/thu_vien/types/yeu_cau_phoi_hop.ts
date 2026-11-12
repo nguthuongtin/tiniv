@@ -379,8 +379,19 @@ export function layNhanTrangThaiDichDanh(
     }
   }
 
+  const laChucVuCV =
+    cvNhan.includes('chuyên viên') || cvNhan.includes('kỹ thuật');
+  const laChucVuTPKH =
+    !laChucVuCV &&
+    (cvNhan.includes('tp khth') ||
+      cvNhan.includes('tp kh') ||
+      cvNhan.includes('trưởng phòng') ||
+      cvNhan.includes('khth') ||
+      cvNhan.includes('kế hoạch') ||
+      cvNhan.includes('tổng hợp'));
+
   const tenTPKD =
-    (tenNhan && !cvNhan.includes('khth') && !cvNhan.includes('kế hoạch') && !cvNhan.includes('tổng hợp') && !cvNhan.includes('chuyên viên') && !cvNhan.includes('kỹ thuật')
+    (tenNhan && !cvNhan.includes('khth') && !cvNhan.includes('kế hoạch') && !cvNhan.includes('tổng hợp') && !laChucVuCV
       ? tenNhan
       : null) ||
     tenTPKDTuLog ||
@@ -389,20 +400,16 @@ export function layNhanTrangThaiDichDanh(
 
   const tenTPKH =
     tenTPKHTuLog ||
-    (tenNhan && (cvNhan.includes('khth') || cvNhan.includes('kế hoạch') || cvNhan.includes('tổng hợp'))
-      ? tenNhan
-      : null) ||
+    (tenNhan && laChucVuTPKH ? tenNhan : null) ||
     options?.tenTPKH?.trim() ||
-    (tenNhan && !laTPKDHoacGD(undefined, yc.chuc_vu_nguoi_nhan) ? tenNhan : null);
+    (tenNhan && !laChucVuCV && !laTPKDHoacGD(undefined, yc.chuc_vu_nguoi_nhan) ? tenNhan : null);
 
   switch (tt) {
     case 'cho_tpkd_duyet':
       return tenTPKD ? `Chờ ${rutGonTenVietTat(tenTPKD)} duyệt` : 'Chờ duyệt yêu cầu';
     case 'cho_tpkh_tiep_nhan': {
       const nguoiDieuPhoi =
-        (tenNhan && (cvNhan.includes('khth') || cvNhan.includes('kế hoạch') || cvNhan.includes('tổng hợp'))
-          ? tenNhan
-          : null) || tenTPKH;
+        (tenNhan && laChucVuTPKH ? tenNhan : null) || tenTPKH;
       return nguoiDieuPhoi ? `Chờ ${rutGonTenVietTat(nguoiDieuPhoi)} điều phối` : 'Chờ điều phối';
     }
     case 'cho_cv_khth_thuc_hien':

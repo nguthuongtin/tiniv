@@ -227,7 +227,23 @@ export default function HopYeuCauPhoiHop({
     return m;
   }, [dsPhongBanToanBo]);
 
-  // Lọc danh sách nhân sự CHỈ THUỘC PHÒNG KHTH (Kế hoạch tổng hợp)
+  const laNhanSuQuanLyHoacTPKH = (ns: NhanSu) => {
+    const cv = (ns.chuc_vu || '').toLowerCase();
+    const vt = (ns.vai_tro || '').toLowerCase();
+    const ten = (ns.ho_va_ten || '').toLowerCase();
+    return (
+      vt === 'truong_phong_khth' ||
+      vt === 'truong_phong' ||
+      vt === 'giam_doc' ||
+      vt === 'quan_tri_he_thong' ||
+      cv.includes('trưởng phòng') ||
+      cv.includes('tp khth') ||
+      cv.includes('tp kh') ||
+      ten.includes('tp khth')
+    );
+  };
+
+  // Lọc danh sách nhân sự CHUYÊN MÔN / PHÒNG KHTH & KỸ THUẬT
   const dsNhanSuKHTH = useMemo(() => {
     const dsPbKHTH = dsPhongBanToanBo.filter((pb) => {
       const ten = (pb.ten_phong_ban || '').toLowerCase();
@@ -236,36 +252,34 @@ export default function HopYeuCauPhoiHop({
         ten.includes('kế hoạch') ||
         ten.includes('khth') ||
         ten.includes('tổng hợp') ||
+        ten.includes('kỹ thuật') ||
         ma.includes('khth') ||
         ma.includes('kh')
       );
     });
     const pbIds = new Set(dsPbKHTH.map((p) => p.id));
 
-    let list = dsNhanSuToanBo.filter((ns) => {
+    return dsNhanSuToanBo.filter((ns) => {
       if (ns.trang_thai_du_lieu === 'da_xoa' || ns.trang_thai === false) return false;
       if (ns.phong_ban_id && pbIds.has(ns.phong_ban_id)) return true;
       const cv = (ns.chuc_vu || '').toLowerCase();
-      if (cv.includes('khth') || cv.includes('kế hoạch') || cv.includes('tổng hợp')) return true;
-      if (Array.isArray(ns.phong_ban_phu_trach_them) && ns.phong_ban_phu_trach_them.some((id) => pbIds.has(id))) return true;
+      const vt = (ns.vai_tro || '').toLowerCase();
+      if (
+        cv.includes('khth') ||
+        cv.includes('kế hoạch') ||
+        cv.includes('tổng hợp') ||
+        cv.includes('kỹ thuật') ||
+        vt === 'nhan_vien_ky_thuat' ||
+        vt === 'nhan_vien_khth' ||
+        vt === 'truong_phong_khth'
+      ) {
+        return true;
+      }
+      if (Array.isArray(ns.phong_ban_phu_trach_them) && ns.phong_ban_phu_trach_them.some((id) => pbIds.has(id))) {
+        return true;
+      }
       return false;
     });
-
-    if (list.length === 0) {
-      list = dsNhanSuToanBo.filter((ns) => {
-        if (ns.trang_thai_du_lieu === 'da_xoa' || ns.trang_thai === false) return false;
-        const cv = (ns.chuc_vu || '').toLowerCase();
-        const vt = (ns.vai_tro || '').toLowerCase();
-        return (
-          cv.includes('khth') ||
-          cv.includes('kế hoạch') ||
-          cv.includes('kỹ thuật') ||
-          vt === 'nhan_vien_ky_thuat'
-        );
-      });
-    }
-
-    return list;
   }, [dsNhanSuToanBo, dsPhongBanToanBo]);
 
   const { tenTPKDMacDinh, tenTPKHMacDinh } = useMemo(
@@ -329,6 +343,25 @@ export default function HopYeuCauPhoiHop({
   // Quản lý hoặc Ban giám đốc: Toàn quyền xem, điều phối & duyệt
   const laQuanLyHoacAdmin = coQuyenAdmin || laTPKD || laTPKH;
 
+  const kiemTraDuocGiaoDichDanh = (yc: YeuCauPhoiHop): boolean => {
+    const tenHienTai = nguoiDungHienTai?.ho_va_ten?.trim().toLowerCase();
+    return Boolean(
+      (yc.nguoi_nhan_id && yc.nguoi_nhan_id === userId) ||
+        (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
+          yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
+        (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
+          tenHienTai &&
+          yc.danh_sach_ten_nhan_su_thuc_hien.some(
+            (t) => t?.trim().toLowerCase() === tenHienTai
+          )) ||
+        (yc.ten_nguoi_nhan &&
+          tenHienTai &&
+          yc.ten_nguoi_nhan.trim().toLowerCase() === tenHienTai) ||
+        ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
+        ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId)
+    );
+  };
+
   // Nguồn dữ liệu theo phân quyền:
   // - Sale: Chỉ thấy các yêu cầu do chính mình tạo ("yêu cầu của sale nào thì sale đó thấy")
   // - Chuyên viên KHTH: Thấy yêu cầu được giao cho mình hoặc do chính mình tạo
@@ -343,20 +376,7 @@ export default function HopYeuCauPhoiHop({
 
     return tatCa.filter((yc) => {
       const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
-      const duocGiao =
-        (yc.nguoi_nhan_id && yc.nguoi_nhan_id === userId) ||
-        (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
-          yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
-        (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
-          !!nguoiDungHienTai?.ho_va_ten &&
-          yc.danh_sach_ten_nhan_su_thuc_hien.some(
-            (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
-          )) ||
-        (yc.ten_nguoi_nhan &&
-          !!nguoiDungHienTai?.ho_va_ten &&
-          yc.ten_nguoi_nhan.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten.trim().toLowerCase()) ||
-        ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
-        ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId);
+      const duocGiao = kiemTraDuocGiaoDichDanh(yc);
 
       // 1. Người được giao việc đích danh: LUÔN THẤY
       if (duocGiao) return true;
@@ -527,7 +547,8 @@ export default function HopYeuCauPhoiHop({
 
     setDangXuLyTPKDChuyen(true);
     try {
-      const laChuyenCV = tpkdHinhThucChuyen === 'cho_cv';
+      const laChuyenCV =
+        tpkdHinhThucChuyen === 'cho_cv' || !laNhanSuQuanLyHoacTPKH(tpkdNguoiNhanChon);
       const trangThaiMoi: TrangThaiYeuCauPhoiHop = laChuyenCV ? 'cho_cv_khth_thuc_hien' : 'cho_tpkh_tiep_nhan';
       const ghiChuMacDinh = laChuyenCV
         ? `TPKD duyệt và giao thẳng cho CV ${tpkdNguoiNhanChon.ho_va_ten}`
@@ -662,10 +683,11 @@ export default function HopYeuCauPhoiHop({
         ? modalNopDrive.yeuCau.danh_sach_nhan_su_thuc_hien_ids
         : [];
       const chiCoTPKHThucHien =
-        dsIdThucHien.length === 0 ||
-        (dsIdThucHien.length === 1 && dsIdThucHien[0] === userId && laTPKH);
+        laTPKH &&
+        (dsIdThucHien.length === 0 ||
+          (dsIdThucHien.length === 1 && dsIdThucHien[0] === userId));
       const laTPKHNopThang =
-        modalNopDrive.yeuCau.trang_thai === 'cho_tpkh_duyet_ket_qua' ||
+        (laTPKH && modalNopDrive.yeuCau.trang_thai === 'cho_tpkh_duyet_ket_qua') ||
         laChinhTPKH ||
         chiCoTPKHThucHien;
 
@@ -766,9 +788,26 @@ export default function HopYeuCauPhoiHop({
   // TPKH chuyển CV tiếp tục sửa lại kết quả theo ý kiến TPKD
   const handleTPKHChuyenCVSuaLai = async (yc: YeuCauPhoiHop) => {
     try {
+      const dsIds = Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids)
+        ? yc.danh_sach_nhan_su_thuc_hien_ids.filter(Boolean)
+        : [];
+      const dsTens = Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien)
+        ? yc.danh_sach_ten_nhan_su_thuc_hien
+        : [];
+      const danhSachNhanSu =
+        dsIds.length > 0
+          ? dsIds.map((id, idx) => ({
+              id,
+              ho_va_ten: dsTens[idx] || yc.ten_nguoi_nhan || 'Chuyên viên'
+            }))
+          : null;
+
       const res = await chuyenBuocYeuCauPhoiHop({
         yeuCauId: yc.id,
         trangThaiMoi: 'cho_cv_khth_thuc_hien',
+        danhSachNhanSuThucHien: danhSachNhanSu,
+        nguoiNhanMoiId: danhSachNhanSu?.[0]?.id ?? null,
+        tenNguoiNhanMoi: danhSachNhanSu?.[0]?.ho_va_ten ?? null,
         ghiChu: yc.ghi_chu_phan_hoi || 'TPKH chuyển Chuyên viên hiệu chỉnh lại kết quả',
         nguoiThucHien: nguoiDungHienTai
       });
@@ -1053,21 +1092,16 @@ export default function HopYeuCauPhoiHop({
   // Xác định nút hành động nhanh tương ứng theo vai trò & quyền hạn
   const layHanhDongNhanh = (yc: YeuCauPhoiHop) => {
     const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
-    const duocGiaoDichDanh =
-      (yc.nguoi_nhan_id && yc.nguoi_nhan_id === userId) ||
-      (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
-        yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
-      (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
-        !!nguoiDungHienTai?.ho_va_ten &&
-        yc.danh_sach_ten_nhan_su_thuc_hien.some(
-          (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
-        )) ||
-      (yc.ten_nguoi_nhan &&
-        !!nguoiDungHienTai?.ho_va_ten &&
-        yc.ten_nguoi_nhan.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten.trim().toLowerCase()) ||
-      ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
-      ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId);
+    const duocGiaoDichDanh = kiemTraDuocGiaoDichDanh(yc);
     const coQuyenNopKetQua = duocGiaoDichDanh || laTPKH || coQuyenAdmin;
+    const daCoLinkKetQua = layDanhSachLinkKetQua(yc).length > 0;
+    const choCVKhiChuaChuyenTPKH =
+      yc.trang_thai === 'cho_tpkh_tiep_nhan' &&
+      duocGiaoDichDanh &&
+      !laTPKH &&
+      !coQuyenAdmin &&
+      !laNguoiTao &&
+      !(yc.ghi_chu_phan_hoi || '').startsWith('TPKD yêu cầu TPKH');
 
     if (yc.trang_thai === 'cho_tpkd_duyet') {
       if (laTPKD || coQuyenAdmin) {
@@ -1118,6 +1152,17 @@ export default function HopYeuCauPhoiHop({
           }
         };
       }
+      if (choCVKhiChuaChuyenTPKH) {
+        return {
+          label: daCoLinkKetQua ? 'Nộp lại KQ' : 'Nộp kết quả',
+          icon: Send,
+          className: 'bg-teal-600 hover:bg-teal-700 text-white',
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            moModalNopDrive(yc);
+          }
+        };
+      }
       if (laNguoiTao) {
         return {
           label: 'Sửa yêu cầu',
@@ -1136,7 +1181,7 @@ export default function HopYeuCauPhoiHop({
       coQuyenNopKetQua
     ) {
       return {
-        label: layDanhSachLinkKetQua(yc).length > 0 ? 'Nộp lại KQ' : 'Nộp kết quả',
+        label: daCoLinkKetQua ? 'Nộp lại KQ' : 'Nộp kết quả',
         icon: Send,
         className: 'bg-teal-600 hover:bg-teal-700 text-white',
         onClick: (e: React.MouseEvent) => {
@@ -2199,21 +2244,15 @@ export default function HopYeuCauPhoiHop({
                 {(() => {
                   const yc = ycChiTietHienTai;
                   const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
-                  const duocGiaoDichDanh =
-                    (yc.nguoi_nhan_id && yc.nguoi_nhan_id === userId) ||
-                    (Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
-                      yc.danh_sach_nhan_su_thuc_hien_ids.some((id) => id?.trim() === userId?.trim())) ||
-                    (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) &&
-                      !!nguoiDungHienTai?.ho_va_ten &&
-                      yc.danh_sach_ten_nhan_su_thuc_hien.some(
-                        (t) => t?.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten!.trim().toLowerCase()
-                      )) ||
-                    (yc.ten_nguoi_nhan &&
-                      !!nguoiDungHienTai?.ho_va_ten &&
-                      yc.ten_nguoi_nhan.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten.trim().toLowerCase()) ||
-                    ((yc as any).nguoi_thuc_hien_id && (yc as any).nguoi_thuc_hien_id === userId) ||
-                    ((yc as any).nhan_su_thuc_hien_id && (yc as any).nhan_su_thuc_hien_id === userId);
+                  const duocGiaoDichDanh = kiemTraDuocGiaoDichDanh(yc);
                   const coQuyenNopKetQua = duocGiaoDichDanh || laTPKH || coQuyenAdmin;
+                  const choCVKhiChuaChuyenTPKH =
+                    yc.trang_thai === 'cho_tpkh_tiep_nhan' &&
+                    duocGiaoDichDanh &&
+                    !laTPKH &&
+                    !coQuyenAdmin &&
+                    !laNguoiTao &&
+                    !(yc.ghi_chu_phan_hoi || '').startsWith('TPKD yêu cầu TPKH');
 
                   return (
                     <>
@@ -2261,6 +2300,19 @@ export default function HopYeuCauPhoiHop({
                       )}
 
                       {/* Bước 2 */}
+                      {choCVKhiChuaChuyenTPKH && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setYeuCauDangXemChiTiet(null);
+                            moModalNopDrive(yc);
+                          }}
+                          className="h-8.5 px-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                        >
+                          <Send className="size-3.5" />
+                          <span>{layDanhSachLinkKetQua(yc).length > 0 ? 'Chỉnh sửa & Nộp lại KQ' : 'Nộp kết quả xử lý'}</span>
+                        </button>
+                      )}
                       {yc.trang_thai === 'cho_tpkh_tiep_nhan' && (laTPKH || coQuyenAdmin) && (
                         <>
                           {Array.isArray(yc.danh_sach_nhan_su_thuc_hien_ids) &&
@@ -2531,9 +2583,7 @@ export default function HopYeuCauPhoiHop({
                 type="button"
                 onClick={() => {
                   setTpkdHinhThucChuyen('cho_cv');
-                  if (dsNhanSuKHTH.length > 0) {
-                    setTpkdNguoiNhanChon(dsNhanSuKHTH[0]);
-                  }
+                  setTpkdNguoiNhanChon(dsNhanSuKHTH[0] || null);
                 }}
                 className={cn(
                   'py-2 px-3 rounded-lg transition-all text-center cursor-pointer',
@@ -2586,21 +2636,10 @@ export default function HopYeuCauPhoiHop({
                   {(tpkdHinhThucChuyen === 'cho_tpkh' ? dsNhanSuToanBo : dsNhanSuKHTH)
                     .filter((ns) => {
                       if (ns.trang_thai_du_lieu === 'da_xoa' || ns.trang_thai === false) return false;
-                      if (!tuKhoaTimNSTpkd) {
-                        if (tpkdHinhThucChuyen === 'cho_tpkh') {
-                          const cv = (ns.chuc_vu || '').toLowerCase();
-                          const vt = (ns.vai_tro || '').toLowerCase();
-                          const ten = (ns.ho_va_ten || '').toLowerCase();
-                          return (
-                            vt === 'truong_phong_khth' ||
-                            vt === 'truong_phong' ||
-                            cv.includes('trưởng phòng') ||
-                            cv.includes('tp') ||
-                            ten.includes('tp khth')
-                          );
-                        }
-                        return true;
+                      if (tpkdHinhThucChuyen === 'cho_tpkh' && !laNhanSuQuanLyHoacTPKH(ns)) {
+                        return false;
                       }
+                      if (!tuKhoaTimNSTpkd) return true;
                       const kw = tuKhoaTimNSTpkd.toLowerCase();
                       return (
                         ns.ho_va_ten.toLowerCase().includes(kw) ||

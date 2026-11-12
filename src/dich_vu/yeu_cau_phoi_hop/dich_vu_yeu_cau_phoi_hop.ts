@@ -634,6 +634,8 @@ export const chuyenBuocYeuCauPhoiHop = async (
   } else if (trangThaiMoi === 'cho_cv_khth_thuc_hien' || trangThaiMoi === 'cho_khth_thuc_hien') {
     tenHanhDong = ghiChu?.includes('sửa')
       ? 'TPKH yêu cầu CV sửa lại'
+      : ghiChu?.includes('TPKD')
+      ? 'TPKD duyệt & Giao thẳng CV'
       : 'TPKH phân công CV KHTH';
   } else if (trangThaiMoi === 'cho_tpkh_duyet_ket_qua') {
     tenHanhDong = 'CV KHTH nộp kết quả';
@@ -696,6 +698,9 @@ export const chuyenBuocYeuCauPhoiHop = async (
     capNhat.danh_sach_ten_nhan_su_thuc_hien = danhSachNhanSuThucHien.map((x) => x.ho_va_ten);
     capNhat.nguoi_nhan_id = danhSachNhanSuThucHien[0].id;
     capNhat.ten_nguoi_nhan = danhSachNhanSuThucHien[0].ho_va_ten;
+    if (params.chucVuNguoiNhanMoi !== undefined) {
+      capNhat.chuc_vu_nguoi_nhan = params.chucVuNguoiNhanMoi || null;
+    }
     (capNhat as any).nguoi_thuc_hien_id = danhSachNhanSuThucHien[0].id;
     (capNhat as any).ten_nguoi_thuc_hien = danhSachNhanSuThucHien[0].ho_va_ten;
     (capNhat as any).nhan_su_thuc_hien_id = danhSachNhanSuThucHien[0].id;

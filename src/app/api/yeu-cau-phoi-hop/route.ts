@@ -314,6 +314,9 @@ export async function PUT(req: NextRequest) {
     if (body.danh_sach_ten_nhan_su_thuc_hien !== undefined) patch.danh_sach_ten_nhan_su_thuc_hien = body.danh_sach_ten_nhan_su_thuc_hien;
 
     // Thêm bản ghi lịch sử nếu có
+    if (body.nguoi_thuc_hien_id !== undefined) patch.nguoi_thuc_hien_id = body.nguoi_thuc_hien_id;
+    if (body.ten_nguoi_thuc_hien !== undefined) patch.ten_nguoi_thuc_hien = body.ten_nguoi_thuc_hien;
+    if (body.nhan_su_thuc_hien_id !== undefined) patch.nhan_su_thuc_hien_id = body.nhan_su_thuc_hien_id;
     if (body.nhat_ky_moi) {
       const lichSuCu = Array.isArray(hienTai.lich_su_xu_ly) ? hienTai.lich_su_xu_ly : [];
       patch.lich_su_xu_ly = [...lichSuCu, body.nhat_ky_moi];
