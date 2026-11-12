@@ -1,5 +1,9 @@
 import dayjs from 'dayjs';
-import type { YeuCauPhoiHop } from '../types/yeu_cau_phoi_hop';
+import {
+  layDanhSachLinkDauVao,
+  layDanhSachLinkKetQua,
+  type YeuCauPhoiHop
+} from '../types/yeu_cau_phoi_hop';
 import { formatNgay, formatNgayGio } from './format_ngay';
 
 /** Lấy tên người tiếp nhận / xử lý hiển thị gọn */
@@ -102,16 +106,22 @@ export function taoTenYeuCauHienThi(
 export function taoNoiDungTinNhanZaloYeuCau(yc: YeuCauPhoiHop): string {
   const nguoiXuLy = layNguoiXuLyYeuCau(yc);
   const { daHoanThanh, thoiGianHoanThanh, thoiGianNopKetQua } = layThoiGianHoanThanhYeuCau(yc);
-  const daCoKetQua = Boolean(yc.link_drive_ket_qua) || daHoanThanh;
+  const dsKetQua = layDanhSachLinkKetQua(yc);
+  const dsDauVao = layDanhSachLinkDauVao(yc);
+  const daCoKetQua = dsKetQua.length > 0 || daHoanThanh;
 
   if (daCoKetQua) {
     const tgXong = formatNgayGio(thoiGianHoanThanh || thoiGianNopKetQua || new Date());
+    const dongLinkKetQua =
+      dsKetQua.length === 1
+        ? [`• Link kết quả: ${dsKetQua[0]}`]
+        : dsKetQua.map((link, idx) => `• Link kết quả (${idx + 1}): ${link}`);
     return [
       `🔔 [KẾT QUẢ YÊU CẦU HỖ TRỢ: ${taoTenYeuCauHienThi(yc)}]`,
       `• Nội dung: ${yc.noi_dung_yeu_cau}`,
       `• Người yêu cầu: ${yc.ten_nguoi_tao}`,
-      `• Người xử lý: ${nguoiXuLy || 'KHTH'}`,
-      yc.link_drive_ket_qua ? `• Link kết quả: ${yc.link_drive_ket_qua}` : null,
+      `• Người xử lý: ${nguoiXuLy || 'Đang cập nhật'}`,
+      ...dongLinkKetQua,
       tgXong ? `• Hoàn thành: ${tgXong}` : null
     ]
       .filter(Boolean)
@@ -120,14 +130,18 @@ export function taoNoiDungTinNhanZaloYeuCau(yc: YeuCauPhoiHop): string {
 
   const tgGui = formatNgayGio(yc.ngay_tao || new Date());
   const hanHoanThanh = yc.han_hoan_thanh ? formatNgay(yc.han_hoan_thanh) : '';
+  const dongLinkDauVao =
+    dsDauVao.length === 1
+      ? [`• Tài liệu đầu vào: ${dsDauVao[0]}`]
+      : dsDauVao.map((link, idx) => `• Tài liệu đầu vào (${idx + 1}): ${link}`);
 
   return [
     `📌 [YÊU CẦU HỖ TRỢ: ${taoTenYeuCauHienThi(yc)}]`,
     `• Nội dung: ${yc.noi_dung_yeu_cau}`,
     `• Người yêu cầu: ${yc.ten_nguoi_tao}`,
-    `• Người tiếp nhận: ${nguoiXuLy || 'Chờ phân công'}`,
+    `• Người tiếp nhận: ${nguoiXuLy || 'Chờ điều phối'}`,
     hanHoanThanh ? `• Thời hạn: ${hanHoanThanh}` : null,
-    yc.link_drive_dau_vao ? `• Tài liệu đầu vào: ${yc.link_drive_dau_vao}` : null,
+    ...dongLinkDauVao,
     tgGui ? `• Thời gian gửi: ${tgGui}` : null
   ]
     .filter(Boolean)

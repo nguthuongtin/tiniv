@@ -6,7 +6,9 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useStoreXacThuc } from '../thu_vien/zustand/store_xac_thuc';
 import { langNgheYeuCauPhoiHop, type YeuCauPhoiHop } from '../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
-import { NHAN_TRANG_THAI_YEU_CAU } from '../thu_vien/types/yeu_cau_phoi_hop';
+import { layNhanTrangThaiDichDanh, timLanhDaoMacDinhYeuCau } from '../thu_vien/types/yeu_cau_phoi_hop';
+import { danhSachNhanSu } from '../dich_vu/nhan_su/dich_vu_nhan_su';
+import type { NhanSu } from '../thu_vien/types/nhan_su';
 import { taoTenYeuCauHienThi } from '../thu_vien/utils/chia_se_zalo_yeu_cau';
 import {
   phatChuongThongBao,
@@ -253,6 +255,7 @@ export default function ThanhPhanTopbar() {
   const [moMenuMobile, setMoMenuMobile] = React.useState(false);
   const [moDropdownThongBao, setMoDropdownThongBao] = React.useState(false);
   const [dsYeuCau, setDsYeuCau] = React.useState<YeuCauPhoiHop[]>([]);
+  const [dsNhanSu, setDsNhanSu] = React.useState<NhanSu[]>([]);
   const [toastHienTai, setToastHienTai] = React.useState<{
     id: string;
     tieuDe: string;
@@ -279,8 +282,16 @@ export default function ThanhPhanTopbar() {
 
   React.useEffect(() => {
     const huy = langNgheYeuCauPhoiHop((ds) => setDsYeuCau(ds));
+    void danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong', trang_thai_hoat_dong: 'hoat_dong' })
+      .then((res) => setDsNhanSu(res.mang || []))
+      .catch(() => {});
     return () => huy();
   }, []);
+
+  const { tenTPKDMacDinh, tenTPKHMacDinh } = React.useMemo(
+    () => timLanhDaoMacDinhYeuCau(dsNhanSu),
+    [dsNhanSu]
+  );
 
   const dsViecCho = React.useMemo(() => {
     const laLanhDaoHoacAdmin = vaiTro === 'giam_doc' || vaiTro === 'quan_tri_he_thong';
@@ -562,7 +573,7 @@ export default function ThanhPhanTopbar() {
                               {taoTenYeuCauHienThi(yc)}
                             </span>
                             <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
-                              {NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai]?.label || yc.trang_thai}
+                              {layNhanTrangThaiDichDanh(yc, { tenTPKD: tenTPKDMacDinh, tenTPKH: tenTPKHMacDinh })}
                             </span>
                           </div>
                           <div className="text-xs text-slate-800 font-medium truncate mt-1">

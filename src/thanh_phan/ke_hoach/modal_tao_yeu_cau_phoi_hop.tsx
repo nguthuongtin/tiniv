@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Send, Link2, Calendar, FolderKanban, Loader2, Sparkles, Search, Check, CheckCircle2, ChevronDown, User } from 'lucide-react';
+import { X, Send, Link2, Calendar, FolderKanban, Loader2, Sparkles, Search, Check, CheckCircle2, ChevronDown, User, Plus, Trash2 } from 'lucide-react';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
 import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
@@ -13,6 +13,9 @@ import {
   LOAI_YEU_CAU_MAC_DINH,
   GOI_Y_LOAI_YEU_CAU,
   NHAN_TRANG_THAI_YEU_CAU,
+  chuanHoaDanhSachLink,
+  layNhanTrangThaiDichDanh,
+  timLanhDaoMacDinhYeuCau,
   xacDinhTrangThaiBanDauYeuCau
 } from '../../thu_vien/types/yeu_cau_phoi_hop';
 import { formatNgay } from '../../thu_vien/utils/format_ngay';
@@ -44,7 +47,7 @@ export default function ModalTaoYeuCauPhoiHop({
   const [moDropdownDuAn, setMoDropdownDuAn] = useState(false);
   const [loaiYeuCau, setLoaiYeuCau] = useState<string>(LOAI_YEU_CAU_MAC_DINH);
   const [noiDung, setNoiDung] = useState(noiDungGoiY);
-  const [linkDrive, setLinkDrive] = useState('');
+  const [dsLinkDrive, setDsLinkDrive] = useState<string[]>(['']);
   const [hanXong, setHanXong] = useState('');
   const [dangGui, setDangGui] = useState(false);
   const [loi, setLoi] = useState('');
@@ -65,7 +68,7 @@ export default function ModalTaoYeuCauPhoiHop({
       setLoaiYeuCau(LOAI_YEU_CAU_MAC_DINH);
       setNoiDung(noiDungGoiY || '');
       setNoiDung(noiDungGoiY || '');
-      setLinkDrive('');
+      setDsLinkDrive(['']);
       setLoi('');
       const d = new Date();
       d.setDate(d.getDate() + 2);
@@ -134,6 +137,11 @@ export default function ModalTaoYeuCauPhoiHop({
     return dsNhanSu.find((ns) => ns.id === nguoiNhanId) || null;
   }, [dsNhanSu, nguoiNhanId]);
 
+  const { tenTPKDMacDinh, tenTPKHMacDinh } = useMemo(
+    () => timLanhDaoMacDinhYeuCau(dsNhanSu),
+    [dsNhanSu]
+  );
+
   // Lọc danh sách nhân sự tìm kiếm
   const dsNhanSuLoc = useMemo(() => {
     if (!tuKhoaNguoiNhan.trim()) return dsNhanSu.slice(0, 50);
@@ -168,7 +176,8 @@ export default function ModalTaoYeuCauPhoiHop({
           ten_khach_hang: null,
           loai_yeu_cau: loaiYeuCau.trim() || LOAI_YEU_CAU_MAC_DINH,
           noi_dung_yeu_cau: noiDung.trim(),
-          link_drive_dau_vao: linkDrive.trim() || null,
+          link_drive_dau_vao: chuanHoaDanhSachLink(dsLinkDrive)[0] || null,
+          danh_sach_link_dau_vao: chuanHoaDanhSachLink(dsLinkDrive),
           han_hoan_thanh: hanXong || null,
           nguoi_nhan_id: nguoiNhanChon?.id || null,
           ten_nguoi_nhan: nguoiNhanChon?.ho_va_ten || null,
@@ -257,7 +266,10 @@ export default function ModalTaoYeuCauPhoiHop({
                       NHAN_TRANG_THAI_YEU_CAU[yeuCauVuaTao.trang_thai]?.mauBadge
                     )}
                   >
-                    {NHAN_TRANG_THAI_YEU_CAU[yeuCauVuaTao.trang_thai]?.label}
+                    {layNhanTrangThaiDichDanh(yeuCauVuaTao, {
+                      tenTPKD: tenTPKDMacDinh,
+                      tenTPKH: tenTPKHMacDinh
+                    })}
                   </span>
                 </div>
                 {yeuCauVuaTao.han_hoan_thanh && (
@@ -445,6 +457,22 @@ export default function ModalTaoYeuCauPhoiHop({
                   chuc_vu_nguoi_nhan: nguoiNhanChon?.chuc_vu
                 });
                 const cfgDuKien = NHAN_TRANG_THAI_YEU_CAU[ttDuKien];
+                const nhanDuKien = layNhanTrangThaiDichDanh(
+                  {
+                    trang_thai: ttDuKien,
+                    ten_nguoi_tao: userHieuLuc?.ho_va_ten || null,
+                    ten_nguoi_nhan: nguoiNhanChon?.ho_va_ten || null,
+                    chuc_vu_nguoi_nhan: nguoiNhanChon?.chuc_vu || null,
+                    danh_sach_ten_nhan_su_thuc_hien:
+                      ttDuKien === 'cho_cv_khth_thuc_hien' && nguoiNhanChon?.ho_va_ten
+                        ? [nguoiNhanChon.ho_va_ten]
+                        : []
+                  },
+                  {
+                    tenTPKD: tenTPKDMacDinh,
+                    tenTPKH: tenTPKHMacDinh
+                  }
+                );
                 return (
                   <span
                     className={cn(
@@ -452,7 +480,7 @@ export default function ModalTaoYeuCauPhoiHop({
                       cfgDuKien.mauBadge
                     )}
                   >
-                    {cfgDuKien.label}
+                    {nhanDuKien}
                   </span>
                 );
               })()}
@@ -554,22 +582,52 @@ export default function ModalTaoYeuCauPhoiHop({
             />
           </div>
 
-          {/* Link Google Drive đầu vào */}
+          {/* Link Google Drive đầu vào (hỗ trợ nhiều link) */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <Link2 className="size-3.5 text-slate-400" />
                 <span>Link Google Drive tài liệu (nếu có)</span>
               </label>
-              <span className="text-[11px] text-slate-400">Tùy chọn</span>
+              <button
+                type="button"
+                onClick={() => setDsLinkDrive((prev) => [...prev, ''])}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-primary hover:bg-primary/10 transition cursor-pointer"
+              >
+                <Plus className="size-3" />
+                <span>Thêm link</span>
+              </button>
             </div>
-            <input
-              type="url"
-              value={linkDrive}
-              onChange={(e) => setLinkDrive(e.target.value)}
-              placeholder="https://drive.google.com/..."
-              className="w-full h-9.5 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-slate-400"
-            />
+            <div className="space-y-1.5">
+              {dsLinkDrive.map((linkItem, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <input
+                    type="url"
+                    value={linkItem}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDsLinkDrive((prev) => prev.map((it, i) => (i === idx ? val : it)));
+                    }}
+                    placeholder={
+                      dsLinkDrive.length > 1
+                        ? `Link Google Drive ${idx + 1}: https://drive.google.com/...`
+                        : 'https://drive.google.com/...'
+                    }
+                    className="flex-1 h-9.5 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-primary focus:ring-1 focus:ring-primary/20 placeholder:text-slate-400"
+                  />
+                  {dsLinkDrive.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setDsLinkDrive((prev) => prev.filter((_, i) => i !== idx))}
+                      title="Xóa link này"
+                      className="size-9 rounded-xl border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 flex items-center justify-center shrink-0 transition cursor-pointer"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Hạn hoàn thành */}

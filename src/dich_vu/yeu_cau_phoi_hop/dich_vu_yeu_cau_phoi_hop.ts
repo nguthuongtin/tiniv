@@ -16,6 +16,7 @@ import {
 } from '../../thu_vien/firebase/client_firebase';
 import {
   LOAI_YEU_CAU_MAC_DINH,
+  chuanHoaDanhSachLink,
   chuanHoaTrangThaiYeuCau,
   xacDinhTrangThaiBanDauYeuCau,
   type YeuCauPhoiHop,
@@ -51,6 +52,7 @@ export interface TaoMoiYeuCauPhoiHopDTO {
   loai_yeu_cau?: string | null;
   noi_dung_yeu_cau: string;
   link_drive_dau_vao?: string | null;
+  danh_sach_link_dau_vao?: string[] | null;
   han_hoan_thanh?: string | null;
   nguoi_nhan_id?: string | null;
   ten_nguoi_nhan?: string | null;
@@ -64,7 +66,9 @@ export interface CapNhatThongTinYeuCauDTO {
   loai_yeu_cau?: string | null;
   noi_dung_yeu_cau?: string;
   link_drive_dau_vao?: string | null;
+  danh_sach_link_dau_vao?: string[] | null;
   link_drive_ket_qua?: string | null;
+  danh_sach_link_ket_qua?: string[] | null;
   han_hoan_thanh?: string | null;
   trang_thai?: TrangThaiYeuCauPhoiHop;
   ghi_chu?: string | null;
@@ -76,6 +80,7 @@ export interface ChuyenBuocDTO {
   trangThaiMoi: TrangThaiYeuCauPhoiHop;
   ghiChu?: string | null;
   linkDriveKetQua?: string | null;
+  danhSachLinkKetQua?: string[] | null;
   danhSachNhanSuThucHien?: { id: string; ho_va_ten: string }[] | null;
   hanHoanThanhMoi?: string | null;
   nguoiThucHien?: { id: string; ho_va_ten?: string | null; [key: string]: any } | null;
@@ -229,12 +234,13 @@ async function ghiNhanTienDoKhiChuyenBuoc(
 async function luuTaiLieuKetQuaKhiPheDuyet(
   hienTai: YeuCauPhoiHop,
   linkKetQua: string | null,
-  nguoiThucHien?: any
+  nguoiThucHien?: any,
+  danhSachLinkKetQua?: string[] | null
 ) {
-  if (!hienTai.du_an_id || !linkKetQua) return;
-
-  const dsLinks = trichXuatDanhSachLinks(linkKetQua);
-  if (dsLinks.length === 0) return;
+  const dsLinksTuMang = chuanHoaDanhSachLink(danhSachLinkKetQua, null);
+  const dsLinksTuChuoi = linkKetQua ? trichXuatDanhSachLinks(linkKetQua) : [];
+  const dsLinks = Array.from(new Set([...dsLinksTuMang, ...dsLinksTuChuoi]));
+  if (!hienTai.du_an_id || dsLinks.length === 0) return;
 
   const userId = nguoiThucHien?.id || 'he_thong';
   const tenNhanSuKHTH =
@@ -481,6 +487,9 @@ export const taoYeuCauPhoiHopMoi = async (
   const userId = nguoiThucHien?.id || 'thanh_vien';
   const userName = nguoiThucHien?.ho_va_ten || 'Thành viên';
 
+  const dsLinksDauVao = chuanHoaDanhSachLink(dto.danh_sach_link_dau_vao, dto.link_drive_dau_vao);
+  const linkDauVaoChinh = dsLinksDauVao[0] || null;
+
   const nhatKyKhoiTao: NhatKyXuLyYeuCau = {
     id: `log_${Date.now()}`,
     thoi_gian: nowISO,
@@ -490,7 +499,8 @@ export const taoYeuCauPhoiHopMoi = async (
     vai_tro: nguoiThucHien?.vai_tro || null,
     hanh_dong: 'Tạo yêu cầu phối hợp',
     ghi_chu: dto.noi_dung_yeu_cau,
-    link_drive: dto.link_drive_dau_vao || null
+    link_drive: linkDauVaoChinh,
+    danh_sach_link: dsLinksDauVao.length > 0 ? dsLinksDauVao : null
   };
 
   const loaiYeuCauChuan = dto.loai_yeu_cau?.trim() || LOAI_YEU_CAU_MAC_DINH;
@@ -509,8 +519,10 @@ export const taoYeuCauPhoiHopMoi = async (
     ten_khach_hang: dto.ten_khach_hang || null,
     loai_yeu_cau: loaiYeuCauChuan,
     noi_dung_yeu_cau: dto.noi_dung_yeu_cau.trim(),
-    link_drive_dau_vao: dto.link_drive_dau_vao?.trim() || null,
+    link_drive_dau_vao: linkDauVaoChinh,
+    danh_sach_link_dau_vao: dsLinksDauVao.length > 0 ? dsLinksDauVao : null,
     link_drive_ket_qua: null,
+    danh_sach_link_ket_qua: null,
     han_hoan_thanh: dto.han_hoan_thanh || null,
     ghi_chu_phan_hoi: null,
     nguoi_nhan_id: dto.nguoi_nhan_id || null,
@@ -558,8 +570,8 @@ export const taoYeuCauPhoiHopMoi = async (
       loai_tien_do: 'noi_bo',
       hanh_dong_tiep_theo: 'Bộ phận chuyên môn tiếp nhận và xử lý kết quả',
       deadline_hanh_dong: dto.han_hoan_thanh || null,
-      link_tai_lieu: dto.link_drive_dau_vao || null,
-      ten_tai_lieu: dto.link_drive_dau_vao ? 'Tài liệu đầu vào (Google Drive)' : null,
+      link_tai_lieu: linkDauVaoChinh,
+      ten_tai_lieu: linkDauVaoChinh ? 'Tài liệu đầu vào (Google Drive)' : null,
       ket_qua_thuc_hien: null,
       trang_thai_hanh_dong: 'dang_thuc_hien',
       nguoi_tao_id: userId,
@@ -587,6 +599,7 @@ export const chuyenBuocYeuCauPhoiHop = async (
     trangThaiMoi,
     ghiChu,
     linkDriveKetQua,
+    danhSachLinkKetQua,
     danhSachNhanSuThucHien,
     hanHoanThanhMoi,
     nguoiThucHien
@@ -636,6 +649,9 @@ export const chuyenBuocYeuCauPhoiHop = async (
     tenHanhDong = 'Yêu cầu chỉnh sửa';
   }
 
+  const dsLinksKetQuaMoi = chuanHoaDanhSachLink(danhSachLinkKetQua, linkDriveKetQua);
+  const linkKetQuaMoiChinh = dsLinksKetQuaMoi[0] || null;
+
   const nhatKyMoi: NhatKyXuLyYeuCau = {
     id: `log_${Date.now()}`,
     thoi_gian: nowISO,
@@ -645,7 +661,8 @@ export const chuyenBuocYeuCauPhoiHop = async (
     vai_tro: nguoiThucHien?.vai_tro || null,
     hanh_dong: tenHanhDong,
     ghi_chu: ghiChu || null,
-    link_drive: linkDriveKetQua || null
+    link_drive: linkKetQuaMoiChinh,
+    danh_sach_link: dsLinksKetQuaMoi.length > 0 ? dsLinksKetQuaMoi : null
   };
 
   const trangThaiMoLai: TrangThaiYeuCauPhoiHop[] = [
@@ -666,7 +683,10 @@ export const chuyenBuocYeuCauPhoiHop = async (
       : {})
   };
 
-  if (linkDriveKetQua) capNhat.link_drive_ket_qua = linkDriveKetQua.trim();
+  if (dsLinksKetQuaMoi.length > 0) {
+    capNhat.link_drive_ket_qua = linkKetQuaMoiChinh;
+    capNhat.danh_sach_link_ket_qua = dsLinksKetQuaMoi;
+  }
   if (hanHoanThanhMoi) capNhat.han_hoan_thanh = hanHoanThanhMoi;
   if (ghiChu) capNhat.ghi_chu_phan_hoi = ghiChu.trim();
 
@@ -732,7 +752,11 @@ export const chuyenBuocYeuCauPhoiHop = async (
   }
 
   // 3. TỰ ĐỘNG THỰC HIỆN TIẾN ĐỘ DỰ ÁN & KHO TÀI LIỆU
-  const linkKetQuaThucTe = linkDriveKetQua?.trim() || hienTai.link_drive_ket_qua || null;
+  const dsLinksKetQuaThucTe =
+    dsLinksKetQuaMoi.length > 0
+      ? dsLinksKetQuaMoi
+      : chuanHoaDanhSachLink(hienTai.danh_sach_link_ket_qua, hienTai.link_drive_ket_qua);
+  const linkKetQuaThucTe = dsLinksKetQuaThucTe[0] || null;
 
   // Việc 1: Ghi nhận cập nhật tiến độ dự án khi nộp kết quả hoặc khi kết quả được phê duyệt
   if (
@@ -762,7 +786,8 @@ export const chuyenBuocYeuCauPhoiHop = async (
     void luuTaiLieuKetQuaKhiPheDuyet(
       hienTai,
       linkKetQuaThucTe,
-      nguoiThucHien
+      nguoiThucHien,
+      dsLinksKetQuaThucTe
     );
   }
 
@@ -793,8 +818,16 @@ export const capNhatThongTinYeuCau = async (
 
   if (dto.loai_yeu_cau !== undefined) patch.loai_yeu_cau = dto.loai_yeu_cau?.trim() || LOAI_YEU_CAU_MAC_DINH;
   if (dto.noi_dung_yeu_cau !== undefined) patch.noi_dung_yeu_cau = dto.noi_dung_yeu_cau.trim();
-  if (dto.link_drive_dau_vao !== undefined) patch.link_drive_dau_vao = dto.link_drive_dau_vao?.trim() || null;
-  if (dto.link_drive_ket_qua !== undefined) patch.link_drive_ket_qua = dto.link_drive_ket_qua?.trim() || null;
+  if (dto.danh_sach_link_dau_vao !== undefined || dto.link_drive_dau_vao !== undefined) {
+    const dsLinksDauVao = chuanHoaDanhSachLink(dto.danh_sach_link_dau_vao, dto.link_drive_dau_vao);
+    patch.danh_sach_link_dau_vao = dsLinksDauVao.length > 0 ? dsLinksDauVao : null;
+    patch.link_drive_dau_vao = dsLinksDauVao[0] || null;
+  }
+  if (dto.danh_sach_link_ket_qua !== undefined || dto.link_drive_ket_qua !== undefined) {
+    const dsLinksKetQua = chuanHoaDanhSachLink(dto.danh_sach_link_ket_qua, dto.link_drive_ket_qua);
+    patch.danh_sach_link_ket_qua = dsLinksKetQua.length > 0 ? dsLinksKetQua : null;
+    patch.link_drive_ket_qua = dsLinksKetQua[0] || null;
+  }
   if (dto.han_hoan_thanh !== undefined) patch.han_hoan_thanh = dto.han_hoan_thanh || null;
   if (dto.trang_thai !== undefined) patch.trang_thai = dto.trang_thai;
   if (dto.ghi_chu !== undefined) patch.ghi_chu_phan_hoi = dto.ghi_chu || null;
@@ -806,6 +839,7 @@ export const capNhatThongTinYeuCau = async (
       ? 'Sale hiệu chỉnh & gửi lại TPKD'
       : 'Cập nhật thông tin yêu cầu';
 
+  const dsLinksNhatKy = chuanHoaDanhSachLink(dto.danh_sach_link_dau_vao, dto.link_drive_dau_vao);
   const nhatKySua: NhatKyXuLyYeuCau = {
     id: `log_${Date.now()}`,
     thoi_gian: nowISO,
@@ -815,7 +849,8 @@ export const capNhatThongTinYeuCau = async (
     vai_tro: dto.nguoiThucHien?.vai_tro || null,
     hanh_dong: hanhDong,
     ghi_chu: dto.ghi_chu || dto.noi_dung_yeu_cau || null,
-    link_drive: dto.link_drive_dau_vao || null
+    link_drive: dsLinksNhatKy[0] || null,
+    danh_sach_link: dsLinksNhatKy.length > 0 ? dsLinksNhatKy : null
   };
 
   const lichSuCu = Array.isArray(hienTai.lich_su_xu_ly) ? hienTai.lich_su_xu_ly : [];

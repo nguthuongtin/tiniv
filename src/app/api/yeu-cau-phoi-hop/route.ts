@@ -4,6 +4,8 @@ import { guiThongBaoTelegram } from '@/dich_vu/thong_bao/dich_vu_telegram';
 import { guiWebPushChoNhanSu } from '@/dich_vu/thong_bao/dich_vu_web_push_server';
 import {
   LOAI_YEU_CAU_MAC_DINH,
+  chuanHoaDanhSachLink,
+  layNhanTrangThaiDichDanh,
   xacDinhTrangThaiBanDauYeuCau
 } from '@/thu_vien/types/yeu_cau_phoi_hop';
 
@@ -84,6 +86,8 @@ export async function POST(req: NextRequest) {
     const id = body.id || `yc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const nowISO = new Date().toISOString();
 
+    const dsLinksDauVao = chuanHoaDanhSachLink(body.danh_sach_link_dau_vao, body.link_drive_dau_vao);
+    const linkDauVaoChinh = dsLinksDauVao[0] || null;
     const nhatKyKhoiTao = {
       id: `log_${Date.now()}`,
       thoi_gian: nowISO,
@@ -93,7 +97,8 @@ export async function POST(req: NextRequest) {
       vai_tro: body.vai_tro || null,
       hanh_dong: 'Tạo yêu cầu phối hợp',
       ghi_chu: body.noi_dung_yeu_cau,
-      link_drive: body.link_drive_dau_vao || null
+      link_drive: linkDauVaoChinh,
+      danh_sach_link: dsLinksDauVao.length > 0 ? dsLinksDauVao : null
     };
 
     const trangThaiBanDau = xacDinhTrangThaiBanDauYeuCau({
@@ -107,6 +112,8 @@ export async function POST(req: NextRequest) {
       ...body,
       id,
       loai_yeu_cau: (body.loai_yeu_cau || '').trim() || LOAI_YEU_CAU_MAC_DINH,
+      link_drive_dau_vao: linkDauVaoChinh,
+      danh_sach_link_dau_vao: dsLinksDauVao.length > 0 ? dsLinksDauVao : null,
       danh_sach_nhan_su_thuc_hien_ids:
         laGiaoThangCV && body.nguoi_nhan_id
           ? [body.nguoi_nhan_id]
@@ -146,8 +153,8 @@ export async function POST(req: NextRequest) {
         loai_tien_do: 'noi_bo',
         hanh_dong_tiep_theo: 'Bộ phận chuyên môn tiếp nhận và xử lý kết quả',
         deadline_hanh_dong: body.han_hoan_thanh || null,
-        link_tai_lieu: body.link_drive_dau_vao || null,
-        ten_tai_lieu: body.link_drive_dau_vao ? 'Tài liệu đầu vào (Google Drive)' : null,
+        link_tai_lieu: linkDauVaoChinh,
+        ten_tai_lieu: linkDauVaoChinh ? 'Tài liệu đầu vào (Google Drive)' : null,
         ket_qua_thuc_hien: null,
         trang_thai_hanh_dong: 'dang_thuc_hien',
         nguoi_tao_id: body.nguoi_tao_id || null,
@@ -291,8 +298,16 @@ export async function PUT(req: NextRequest) {
     if (body.ten_nguoi_nhan !== undefined) patch.ten_nguoi_nhan = body.ten_nguoi_nhan;
     if (body.chuc_vu_nguoi_nhan !== undefined) patch.chuc_vu_nguoi_nhan = body.chuc_vu_nguoi_nhan;
     if (body.noi_dung_yeu_cau !== undefined) patch.noi_dung_yeu_cau = body.noi_dung_yeu_cau;
-    if (body.link_drive_dau_vao !== undefined) patch.link_drive_dau_vao = body.link_drive_dau_vao;
-    if (body.link_drive_ket_qua !== undefined) patch.link_drive_ket_qua = body.link_drive_ket_qua;
+    if (body.danh_sach_link_dau_vao !== undefined || body.link_drive_dau_vao !== undefined) {
+      const dsLinksDauVao = chuanHoaDanhSachLink(body.danh_sach_link_dau_vao, body.link_drive_dau_vao);
+      patch.danh_sach_link_dau_vao = dsLinksDauVao.length > 0 ? dsLinksDauVao : null;
+      patch.link_drive_dau_vao = dsLinksDauVao[0] || null;
+    }
+    if (body.danh_sach_link_ket_qua !== undefined || body.link_drive_ket_qua !== undefined) {
+      const dsLinksKetQua = chuanHoaDanhSachLink(body.danh_sach_link_ket_qua, body.link_drive_ket_qua);
+      patch.danh_sach_link_ket_qua = dsLinksKetQua.length > 0 ? dsLinksKetQua : null;
+      patch.link_drive_ket_qua = dsLinksKetQua[0] || null;
+    }
     if (body.han_hoan_thanh !== undefined) patch.han_hoan_thanh = body.han_hoan_thanh;
     if (body.ghi_chu_phan_hoi !== undefined) patch.ghi_chu_phan_hoi = body.ghi_chu_phan_hoi;
     if (body.danh_sach_nhan_su_thuc_hien_ids !== undefined) patch.danh_sach_nhan_su_thuc_hien_ids = body.danh_sach_nhan_su_thuc_hien_ids;
@@ -308,22 +323,12 @@ export async function PUT(req: NextRequest) {
 
     // Gửi thông báo Telegram cập nhật trạng thái
     if (body.trang_thai && body.trang_thai !== hienTai.trang_thai) {
-      const tenTrangThaiMap: Record<string, string> = {
-        cho_tpkd_duyet: 'Chờ TPKD duyệt',
-        cho_tpkh_tiep_nhan: 'Chờ TPKH điều phối',
-        cho_tpkh_duyet_ket_qua: 'Chờ TPKH duyệt KQ',
-        cho_sale_nghiem_thu: 'Chờ Sale nghiệm thu',
-        cho_cv_khth_thuc_hien: 'KHTH đang xử lý',
-        cho_khth_thuc_hien: 'Đang xử lý / Đã phân công',
-        cho_tpkd_duyet_ket_qua: 'Chờ duyệt kết quả',
-        cho_lanh_dao_duyet: 'Chờ duyệt kết quả',
-        yeu_cau_chinh_sua: 'Cần chỉnh sửa lại',
-        da_phe_duyet: 'Đã duyệt - Kết quả sẵn sàng',
-        da_hoan_thanh: 'Đã hoàn tất',
-        can_chinh_sua: 'Cần chỉnh sửa lại',
-        hoan_thanh: 'Đã hoàn tất'
-      };
-      const ttMoi = tenTrangThaiMap[body.trang_thai] || body.trang_thai;
+      const lichSuCapNhat = Array.isArray(patch.lich_su_xu_ly) ? patch.lich_su_xu_ly : hienTai.lich_su_xu_ly;
+      const ttMoi = layNhanTrangThaiDichDanh({
+        ...hienTai,
+        ...patch,
+        lich_su_xu_ly: lichSuCapNhat
+      });
       guiThongBaoTelegram(
         `🔄 CẬP NHẬT YÊU CẦU PHỐI HỢP`,
         `• Dự án: ${hienTai.ten_du_an || hienTai.du_an_id}\n• Trạng thái mới: ${ttMoi}${body.ghi_chu_phan_hoi ? `\n• Ghi chú: ${body.ghi_chu_phan_hoi}` : ''}`

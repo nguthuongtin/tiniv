@@ -22,6 +22,7 @@ export interface NhatKyXuLyYeuCau {
   hanh_dong: string;
   ghi_chu?: string | null;
   link_drive?: string | null;
+  danh_sach_link?: string[] | null;
 }
 
 export interface YeuCauPhoiHop {
@@ -34,7 +35,9 @@ export interface YeuCauPhoiHop {
   loai_yeu_cau?: string | null;
   noi_dung_yeu_cau: string;
   link_drive_dau_vao?: string | null;
+  danh_sach_link_dau_vao?: string[] | null;
   link_drive_ket_qua?: string | null;
+  danh_sach_link_ket_qua?: string[] | null;
   han_hoan_thanh?: string | null; // YYYY-MM-DD
   ghi_chu_phan_hoi?: string | null;
 
@@ -216,4 +219,217 @@ export function xacDinhTrangThaiBanDauYeuCau(params: {
   }
 
   return 'cho_tpkd_duyet';
+}
+
+export function chuanHoaDanhSachLink(
+  links?: (string | null | undefined)[] | null,
+  fallbackSingle?: string | null
+): string[] {
+  const ketQua: string[] = [];
+  const seen = new Set<string>();
+  const themItem = (raw?: string | null) => {
+    if (!raw) return;
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    const parts = /[\r\n\s]/.test(trimmed)
+      ? trimmed.split(/[\r\n\s,;]+/).map((s) => s.trim()).filter(Boolean)
+      : [trimmed];
+    for (const p of parts) {
+      if (!seen.has(p)) {
+        seen.add(p);
+        ketQua.push(p);
+      }
+    }
+  };
+  if (Array.isArray(links)) {
+    for (const item of links) themItem(item);
+  }
+  if (fallbackSingle) themItem(fallbackSingle);
+  return ketQua;
+}
+
+export function layDanhSachLinkDauVao(
+  yc: Pick<YeuCauPhoiHop, 'danh_sach_link_dau_vao' | 'link_drive_dau_vao'>
+): string[] {
+  return chuanHoaDanhSachLink(yc.danh_sach_link_dau_vao, yc.link_drive_dau_vao);
+}
+
+export function layDanhSachLinkKetQua(
+  yc: Pick<YeuCauPhoiHop, 'danh_sach_link_ket_qua' | 'link_drive_ket_qua'>
+): string[] {
+  return chuanHoaDanhSachLink(yc.danh_sach_link_ket_qua, yc.link_drive_ket_qua);
+}
+
+export function layNhanTrangThaiDichDanh(
+  yc: {
+    trang_thai?: string | null;
+    ten_nguoi_tao?: string | null;
+    ten_nguoi_nhan?: string | null;
+    chuc_vu_nguoi_nhan?: string | null;
+    danh_sach_ten_nhan_su_thuc_hien?: string[] | null;
+    lich_su_xu_ly?: NhatKyXuLyYeuCau[] | null;
+  },
+  options?: {
+    tenTPKD?: string | null;
+    tenTPKH?: string | null;
+  }
+): string {
+  const tt = chuanHoaTrangThaiYeuCau(yc.trang_thai);
+  const cvNhan = (yc.chuc_vu_nguoi_nhan || '').toLowerCase();
+  const tenNhan = yc.ten_nguoi_nhan?.trim() || null;
+  const tenTao = yc.ten_nguoi_tao?.trim() || null;
+
+  const laTPKDHoacGD = (vt?: string | null, cv?: string | null, hd?: string | null) => {
+    const v = (vt || '').toLowerCase();
+    const c = (cv || '').toLowerCase();
+    const h = (hd || '').toLowerCase();
+    return (
+      v === 'truong_phong_kd' ||
+      v === 'giam_doc' ||
+      (v === 'truong_phong' && (c.includes('kinh doanh') || c.includes('kd') || c.includes('sales'))) ||
+      c.includes('tpkd') ||
+      c.includes('tp kd') ||
+      c.includes('trưởng phòng kinh doanh') ||
+      c.includes('giám đốc') ||
+      h.includes('tpkd')
+    );
+  };
+
+  const laTPKHTH = (vt?: string | null, cv?: string | null, hd?: string | null) => {
+    const v = (vt || '').toLowerCase();
+    const c = (cv || '').toLowerCase();
+    const h = (hd || '').toLowerCase();
+    return (
+      v === 'truong_phong_khth' ||
+      (v === 'truong_phong' && (c.includes('khth') || c.includes('kế hoạch') || c.includes('tổng hợp'))) ||
+      c.includes('tp khth') ||
+      c.includes('tp kh') ||
+      c.includes('trưởng phòng khth') ||
+      c.includes('trưởng phòng kế hoạch') ||
+      h.includes('tpkh') ||
+      h.includes('phân công')
+    );
+  };
+
+  const dsLog = yc.lich_su_xu_ly || [];
+  let tenTPKDTuLog: string | null = null;
+  let tenTPKHTuLog: string | null = null;
+  for (let i = dsLog.length - 1; i >= 0; i--) {
+    const log = dsLog[i];
+    const tenLog = log.ten_nguoi_thuc_hien?.trim();
+    if (!tenLog) continue;
+    if (!tenTPKDTuLog && laTPKDHoacGD(log.vai_tro, log.chuc_vu, log.hanh_dong)) {
+      tenTPKDTuLog = tenLog;
+    }
+    if (!tenTPKHTuLog && laTPKHTH(log.vai_tro, log.chuc_vu, log.hanh_dong)) {
+      tenTPKHTuLog = tenLog;
+    }
+  }
+
+  const tenTPKD =
+    (tenNhan && !cvNhan.includes('khth') && !cvNhan.includes('kế hoạch') && !cvNhan.includes('tổng hợp') && !cvNhan.includes('chuyên viên') && !cvNhan.includes('kỹ thuật')
+      ? tenNhan
+      : null) ||
+    tenTPKDTuLog ||
+    options?.tenTPKD?.trim() ||
+    null;
+
+  const tenTPKH =
+    tenTPKHTuLog ||
+    (tenNhan && (cvNhan.includes('khth') || cvNhan.includes('kế hoạch') || cvNhan.includes('tổng hợp'))
+      ? tenNhan
+      : null) ||
+    options?.tenTPKH?.trim() ||
+    (tenNhan && !laTPKDHoacGD(undefined, yc.chuc_vu_nguoi_nhan) ? tenNhan : null);
+
+  switch (tt) {
+    case 'cho_tpkd_duyet':
+      return tenTPKD ? `Chờ ${tenTPKD} duyệt` : 'Chờ duyệt yêu cầu';
+    case 'cho_tpkh_tiep_nhan': {
+      const nguoiDieuPhoi =
+        (tenNhan && (cvNhan.includes('khth') || cvNhan.includes('kế hoạch') || cvNhan.includes('tổng hợp'))
+          ? tenNhan
+          : null) || tenTPKH;
+      return nguoiDieuPhoi ? `Chờ ${nguoiDieuPhoi} điều phối` : 'Chờ điều phối';
+    }
+    case 'cho_cv_khth_thuc_hien':
+    case 'cho_khth_thuc_hien': {
+      const dsCV = (yc.danh_sach_ten_nhan_su_thuc_hien || [])
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const nguoiLam =
+        dsCV.length > 0
+          ? dsCV.join(', ')
+          : tenNhan && !laTPKDHoacGD(undefined, yc.chuc_vu_nguoi_nhan)
+            ? tenNhan
+            : null;
+      return nguoiLam ? `${nguoiLam} đang xử lý` : 'Đang xử lý';
+    }
+    case 'cho_tpkh_duyet_ket_qua':
+      return tenTPKH ? `Chờ ${tenTPKH} duyệt KQ` : 'Chờ duyệt kết quả';
+    case 'cho_tpkd_duyet_ket_qua':
+    case 'cho_lanh_dao_duyet': {
+      const nguoiDuyetKQ = tenTPKDTuLog || options?.tenTPKD?.trim() || tenTPKD;
+      return nguoiDuyetKQ ? `Chờ ${nguoiDuyetKQ} duyệt KQ` : 'Chờ duyệt bàn giao';
+    }
+    case 'cho_sale_nghiem_thu':
+    case 'da_phe_duyet':
+      return tenTao ? `Chờ ${tenTao} nghiệm thu` : 'Chờ nghiệm thu';
+    case 'yeu_cau_chinh_sua':
+      return tenTao ? `Chờ ${tenTao} chỉnh sửa` : 'Chờ chỉnh sửa';
+    case 'da_hoan_thanh':
+      return 'Đã hoàn thành';
+    default:
+      return 'Chờ xử lý';
+  }
+}
+
+export function timLanhDaoMacDinhYeuCau(
+  dsNhanSu: {
+    ho_va_ten?: string | null;
+    vai_tro?: string | null;
+    chuc_vu?: string | null;
+    phong_ban_id?: string | null;
+    trang_thai_du_lieu?: string | null;
+    trang_thai?: boolean | null;
+  }[],
+  mapTenPhongBan?: Map<string, string>
+): { tenTPKDMacDinh: string | null; tenTPKHMacDinh: string | null } {
+  const nsHoatDong = dsNhanSu.filter(
+    (ns) => ns.trang_thai_du_lieu !== 'da_xoa' && ns.trang_thai !== false
+  );
+  const layTenPB = (phongBanId?: string | null) =>
+    phongBanId && mapTenPhongBan ? (mapTenPhongBan.get(phongBanId) || '').toLowerCase() : '';
+
+  const tpkd = nsHoatDong.find((ns) => {
+    const cv = (ns.chuc_vu || '').toLowerCase();
+    const pb = layTenPB(ns.phong_ban_id);
+    return (
+      ns.vai_tro === 'truong_phong_kd' ||
+      (ns.vai_tro === 'truong_phong' &&
+        (cv.includes('kinh doanh') || cv.includes('kd') || pb.includes('kinh doanh') || pb.includes('kd'))) ||
+      cv.includes('tpkd') ||
+      cv.includes('tp kd') ||
+      cv.includes('trưởng phòng kinh doanh')
+    );
+  });
+
+  const tpkh = nsHoatDong.find((ns) => {
+    const cv = (ns.chuc_vu || '').toLowerCase();
+    const pb = layTenPB(ns.phong_ban_id);
+    return (
+      ns.vai_tro === 'truong_phong_khth' ||
+      (ns.vai_tro === 'truong_phong' &&
+        (cv.includes('khth') || cv.includes('kế hoạch') || pb.includes('khth') || pb.includes('kế hoạch'))) ||
+      cv.includes('tp khth') ||
+      cv.includes('tp kh') ||
+      cv.includes('trưởng phòng khth') ||
+      cv.includes('trưởng phòng kế hoạch')
+    );
+  });
+
+  return {
+    tenTPKDMacDinh: tpkd?.ho_va_ten || null,
+    tenTPKHMacDinh: tpkh?.ho_va_ten || null
+  };
 }

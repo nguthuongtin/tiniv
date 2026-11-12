@@ -28,7 +28,8 @@ import {
   ArrowRight,
   ShieldAlert,
   FileCheck2,
-  Eye
+  Eye,
+  Plus
 } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
 import { formatNgay, formatNgayGio } from '../../thu_vien/utils/format_ngay';
@@ -47,7 +48,12 @@ import {
   NHAN_TRANG_THAI_YEU_CAU,
   LOAI_YEU_CAU_MAC_DINH,
   GOI_Y_LOAI_YEU_CAU,
-  chuanHoaTrangThaiYeuCau
+  chuanHoaTrangThaiYeuCau,
+  chuanHoaDanhSachLink,
+  layDanhSachLinkDauVao,
+  layDanhSachLinkKetQua,
+  layNhanTrangThaiDichDanh,
+  timLanhDaoMacDinhYeuCau
 } from '../../thu_vien/types/yeu_cau_phoi_hop';
 import type { NguoiDungDangNhap, NhanSu, PhongBan } from '../../thu_vien/types/nhan_su';
 import {
@@ -119,7 +125,7 @@ export default function HopYeuCauPhoiHop({
   const [dsNhanSuChon, setDsNhanSuChon] = useState<{ id: string; ho_va_ten: string }[]>([]);
   const [ghiChuGiaoViec, setGhiChuGiaoViec] = useState('');
   const [hanXongGiaoViec, setHanXongGiaoViec] = useState('');
-  const [linkDriveTuLam, setLinkDriveTuLam] = useState('');
+  const [dsLinkDriveTuLam, setDsLinkDriveTuLam] = useState<string[]>(['']);
   const [tuKhoaTimNS, setTuKhoaTimNS] = useState('');
   const [dangXuLyGiaoViec, setDangXuLyGiaoViec] = useState(false);
   const [loiGiaoViec, setLoiGiaoViec] = useState('');
@@ -129,7 +135,7 @@ export default function HopYeuCauPhoiHop({
     mo: boolean;
     yeuCau: YeuCauPhoiHop | null;
   }>({ mo: false, yeuCau: null });
-  const [linkDriveNop, setLinkDriveNop] = useState('');
+  const [dsLinkDriveNop, setDsLinkDriveNop] = useState<string[]>(['']);
   const [ghiChuNop, setGhiChuNop] = useState('');
   const [dangXuLyNop, setDangXuLyNop] = useState(false);
 
@@ -157,7 +163,7 @@ export default function HopYeuCauPhoiHop({
   const [yeuCauDangSua, setYeuCauDangSua] = useState<YeuCauPhoiHop | null>(null);
   const [suaLoaiYeuCau, setSuaLoaiYeuCau] = useState('');
   const [suaNoiDung, setSuaNoiDung] = useState('');
-  const [suaLinkDrive, setSuaLinkDrive] = useState('');
+  const [suaDsLinkDrive, setSuaDsLinkDrive] = useState<string[]>(['']);
   const [suaHanXong, setSuaHanXong] = useState('');
   const [dangLuuSua, setDangLuuSua] = useState(false);
   const [loiSua, setLoiSua] = useState('');
@@ -257,6 +263,11 @@ export default function HopYeuCauPhoiHop({
 
     return list;
   }, [dsNhanSuToanBo, dsPhongBanToanBo]);
+
+  const { tenTPKDMacDinh, tenTPKHMacDinh } = useMemo(
+    () => timLanhDaoMacDinhYeuCau(dsNhanSuToanBo, mapTenPhongBan),
+    [dsNhanSuToanBo, mapTenPhongBan]
+  );
 
   // Kiểm tra phòng ban người dùng
   const isKHTHDepartment = useMemo(() => {
@@ -546,7 +557,7 @@ export default function HopYeuCauPhoiHop({
     void taiDuLieuNhanSuVaPhongBan();
     setModalGiaoViec({ mo: true, yeuCau: yc, hinhThuc });
     setGhiChuGiaoViec('');
-    setLinkDriveTuLam('');
+    setDsLinkDriveTuLam(['']);
     setHanXongGiaoViec(yc.han_hoan_thanh || '');
     setTuKhoaTimNS('');
     setLoiGiaoViec('');
@@ -597,8 +608,9 @@ export default function HopYeuCauPhoiHop({
       }
     } else {
       // TPKH Tự thực hiện & Nộp kết quả trực tiếp cho TPKD
-      if (!linkDriveTuLam.trim()) {
-        setLoiGiaoViec('Vui lòng dán link Google Drive kết quả.');
+      const dsLinksKQ = chuanHoaDanhSachLink(dsLinkDriveTuLam);
+      if (dsLinksKQ.length === 0) {
+        setLoiGiaoViec('Vui lòng dán ít nhất 1 link Google Drive kết quả.');
         return;
       }
       setDangXuLyGiaoViec(true);
@@ -606,7 +618,8 @@ export default function HopYeuCauPhoiHop({
         const res = await chuyenBuocYeuCauPhoiHop({
           yeuCauId: modalGiaoViec.yeuCau.id,
           trangThaiMoi: 'cho_tpkd_duyet_ket_qua',
-          linkDriveKetQua: linkDriveTuLam.trim(),
+          linkDriveKetQua: dsLinksKQ[0],
+          danhSachLinkKetQua: dsLinksKQ,
           ghiChu: ghiChuGiaoViec.trim() || 'TPKH tự thực hiện & nộp kết quả trực tiếp cho TPKD',
           nguoiThucHien: nguoiDungHienTai
         });
@@ -623,15 +636,17 @@ export default function HopYeuCauPhoiHop({
   // BƯỚC 3: CV KHTH Nộp kết quả
   const moModalNopDrive = (yc: YeuCauPhoiHop) => {
     setModalNopDrive({ mo: true, yeuCau: yc });
-    setLinkDriveNop(yc.link_drive_ket_qua || '');
+    const dsLinksHienTai = layDanhSachLinkKetQua(yc);
+    setDsLinkDriveNop(dsLinksHienTai.length > 0 ? dsLinksHienTai : ['']);
     setGhiChuNop('');
   };
 
   const handleXacNhanNopDrive = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!modalNopDrive.yeuCau) return;
-    if (!linkDriveNop.trim()) {
-      alert('Vui lòng dán link Google Drive kết quả.');
+    const dsLinksKQ = chuanHoaDanhSachLink(dsLinkDriveNop);
+    if (dsLinksKQ.length === 0) {
+      alert('Vui lòng dán ít nhất 1 link Google Drive kết quả.');
       return;
     }
 
@@ -657,7 +672,8 @@ export default function HopYeuCauPhoiHop({
       const res = await chuyenBuocYeuCauPhoiHop({
         yeuCauId: modalNopDrive.yeuCau.id,
         trangThaiMoi,
-        linkDriveKetQua: linkDriveNop.trim(),
+        linkDriveKetQua: dsLinksKQ[0],
+        danhSachLinkKetQua: dsLinksKQ,
         ghiChu:
           ghiChuNop.trim() ||
           (laTPKHNopThang
@@ -821,7 +837,8 @@ export default function HopYeuCauPhoiHop({
     setYeuCauDangSua(yc);
     setSuaLoaiYeuCau(yc.loai_yeu_cau?.trim() || LOAI_YEU_CAU_MAC_DINH);
     setSuaNoiDung(yc.noi_dung_yeu_cau);
-    setSuaLinkDrive(yc.link_drive_dau_vao || '');
+    const dsLinksDauVao = layDanhSachLinkDauVao(yc);
+    setSuaDsLinkDrive(dsLinksDauVao.length > 0 ? dsLinksDauVao : ['']);
     setSuaHanXong(yc.han_hoan_thanh || '');
     setLoiSua('');
   };
@@ -837,11 +854,13 @@ export default function HopYeuCauPhoiHop({
     setDangLuuSua(true);
     try {
       const laDangSuaLai = yeuCauDangSua.trang_thai === 'yeu_cau_chinh_sua';
+      const dsLinksDauVao = chuanHoaDanhSachLink(suaDsLinkDrive);
       const res = await capNhatThongTinYeuCau({
         id: yeuCauDangSua.id,
         loai_yeu_cau: suaLoaiYeuCau.trim() || LOAI_YEU_CAU_MAC_DINH,
         noi_dung_yeu_cau: suaNoiDung.trim(),
-        link_drive_dau_vao: suaLinkDrive.trim() || null,
+        link_drive_dau_vao: dsLinksDauVao[0] || null,
+        danh_sach_link_dau_vao: dsLinksDauVao,
         han_hoan_thanh: suaHanXong || null,
         trang_thai: laDangSuaLai ? 'cho_tpkd_duyet' : undefined,
         ghi_chu: laDangSuaLai
@@ -889,25 +908,25 @@ export default function HopYeuCauPhoiHop({
     },
     {
       key: 'cho_tpkd',
-      nhan: 'Chờ TPKD',
+      nhan: 'Chờ duyệt',
       count: thongKeTabs.cho_tpkd,
       badgeColor: 'bg-amber-100 text-amber-800'
     },
     {
       key: 'cho_tpkh',
-      nhan: 'Chờ TPKH',
+      nhan: 'Chờ điều phối',
       count: thongKeTabs.cho_tpkh,
       badgeColor: 'bg-indigo-100 text-indigo-800'
     },
     {
       key: 'khth_dang_lam',
-      nhan: 'KHTH đang làm',
+      nhan: 'Đang xử lý',
       count: thongKeTabs.khth_dang_lam,
       badgeColor: 'bg-sky-100 text-sky-800'
     },
     {
       key: 'cho_sale',
-      nhan: 'Chờ Sale',
+      nhan: 'Chờ nghiệm thu',
       count: thongKeTabs.cho_sale,
       badgeColor: 'bg-teal-100 text-teal-800'
     },
@@ -928,41 +947,41 @@ export default function HopYeuCauPhoiHop({
   // Component Stepper 5 bước trực quan
   const renderStepper = (yc: YeuCauPhoiHop) => {
     let buocHienTai = 2;
-    let textHienTai = '';
+    const tenCV = yc.danh_sach_ten_nhan_su_thuc_hien?.filter(Boolean).join(', ') || '';
+    const textHienTai = layNhanTrangThaiDichDanh(yc, {
+      tenTPKD: tenTPKDMacDinh,
+      tenTPKH: tenTPKHMacDinh
+    });
 
     if (yc.trang_thai === 'cho_tpkd_duyet') {
       buocHienTai = 2;
-      textHienTai = 'Chờ Trưởng phòng Kinh doanh xem xét & chuyển KHTH';
     } else if (yc.trang_thai === 'cho_tpkh_tiep_nhan') {
       buocHienTai = 3;
-      textHienTai = 'Chờ Trưởng phòng KHTH tiếp nhận (Giao việc CV hoặc Tự làm)';
     } else if (yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') {
       buocHienTai = 3;
-      const tenCV = yc.danh_sach_ten_nhan_su_thuc_hien?.length ? yc.danh_sach_ten_nhan_su_thuc_hien.join(', ') : 'CV KHTH';
-      textHienTai = `Chuyên viên KHTH (${tenCV}) đang thực hiện`;
     } else if (yc.trang_thai === 'cho_tpkh_duyet_ket_qua') {
       buocHienTai = 4;
-      textHienTai = 'CV đã nộp kết quả ➔ Chờ Trưởng phòng KHTH kiểm tra duyệt';
     } else if (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') {
       buocHienTai = 4;
-      textHienTai = 'KHTH đã gửi kết quả ➔ Chờ Trưởng phòng KD duyệt bàn giao';
     } else if (yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet') {
       buocHienTai = 5;
-      textHienTai = `Đã duyệt KQ ➔ Chờ Sale (${yc.ten_nguoi_tao}) nghiệm thu hoàn tất`;
     } else if (yc.trang_thai === 'da_hoan_thanh') {
       buocHienTai = 6;
-      textHienTai = 'Hoàn tất toàn bộ quy trình phối hợp';
     } else if (yc.trang_thai === 'yeu_cau_chinh_sua') {
       buocHienTai = 1;
-      textHienTai = 'TPKD yêu cầu sửa lại ➔ Chờ Sale chỉnh sửa & gửi lại TPKD';
     }
 
     const dsCacBuoc = [
-      { so: 1, ten: 'Khởi tạo', vaiTro: 'Sale' },
-      { so: 2, ten: 'Chuyển KHTH', vaiTro: 'TPKD' },
-      { so: 3, ten: 'Thực hiện', vaiTro: 'TPKH / CV' },
-      { so: 4, ten: 'Duyệt KQ', vaiTro: 'TPKH ➔ TPKD' },
-      { so: 5, ten: 'Nghiệm thu', vaiTro: 'Sale' }
+      { so: 1, ten: 'Khởi tạo', nguoiPhuTrach: yc.ten_nguoi_tao || 'Người tạo' },
+      { so: 2, ten: 'Duyệt chuyển', nguoiPhuTrach: tenTPKDMacDinh || 'Tiếp nhận' },
+      { so: 3, ten: 'Thực hiện', nguoiPhuTrach: tenCV || tenTPKHMacDinh || 'Xử lý' },
+      {
+        so: 4,
+        ten: 'Duyệt KQ',
+        nguoiPhuTrach:
+          [tenTPKHMacDinh, tenTPKDMacDinh].filter(Boolean).join(' ➔ ') || 'Kiểm duyệt'
+      },
+      { so: 5, ten: 'Nghiệm thu', nguoiPhuTrach: yc.ten_nguoi_tao || 'Nghiệm thu' }
     ];
 
     return (
@@ -996,8 +1015,8 @@ export default function HopYeuCauPhoiHop({
                     {b.ten}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400 hidden sm:block truncate">
-                  {b.vaiTro}
+                <span className="text-[10px] text-slate-400 hidden sm:block truncate max-w-full">
+                  {b.nguoiPhuTrach}
                 </span>
               </div>
             );
@@ -1101,7 +1120,7 @@ export default function HopYeuCauPhoiHop({
       coQuyenNopKetQua
     ) {
       return {
-        label: yc.link_drive_ket_qua ? 'Nộp lại KQ' : 'Nộp kết quả',
+        label: layDanhSachLinkKetQua(yc).length > 0 ? 'Nộp lại KQ' : 'Nộp kết quả',
         icon: Send,
         className: 'bg-teal-600 hover:bg-teal-700 text-white',
         onClick: (e: React.MouseEvent) => {
@@ -1165,6 +1184,10 @@ export default function HopYeuCauPhoiHop({
       textClass: 'text-slate-600',
       buocSo: 1
     };
+    const nhanTrangThai = layNhanTrangThaiDichDanh(yc, {
+      tenTPKD: tenTPKDMacDinh,
+      tenTPKH: tenTPKHMacDinh
+    });
     const hanhDong = layHanhDongNhanh(yc);
     const nguoiNhan = layNguoiXuLyYeuCau(yc);
     const { daHoanThanh, thoiGianHoanThanh, thoiGianNopKetQua } = layThoiGianHoanThanhYeuCau(yc);
@@ -1179,6 +1202,7 @@ export default function HopYeuCauPhoiHop({
 
     return {
       cfgTrangThai,
+      nhanTrangThai,
       hanhDong,
       nguoiNhan,
       daHoanThanh,
@@ -1286,9 +1310,58 @@ export default function HopYeuCauPhoiHop({
     );
   };
 
+  const renderInputsDanhSachLink = ({
+    danhSach,
+    setDanhSach,
+    accentFocusClass = 'focus:border-teal-500',
+    autoFocusFirst = false
+  }: {
+    danhSach: string[];
+    setDanhSach: React.Dispatch<React.SetStateAction<string[]>>;
+    accentFocusClass?: string;
+    autoFocusFirst?: boolean;
+  }) => (
+    <div className="space-y-1.5">
+      {danhSach.map((linkItem, idx) => (
+        <div key={idx} className="flex items-center gap-1.5">
+          <input
+            type="url"
+            value={linkItem}
+            onChange={(e) => {
+              const val = e.target.value;
+              setDanhSach((prev) => prev.map((it, i) => (i === idx ? val : it)));
+            }}
+            placeholder={
+              danhSach.length > 1
+                ? `Link Google Drive ${idx + 1}: https://drive.google.com/...`
+                : 'https://drive.google.com/...'
+            }
+            className={cn(
+              'flex-1 h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden placeholder:text-slate-400',
+              accentFocusClass
+            )}
+            autoFocus={autoFocusFirst && idx === 0}
+          />
+          {danhSach.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setDanhSach((prev) => prev.filter((_, i) => i !== idx))}
+              title="Xóa link này"
+              className="size-9 rounded-xl border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 flex items-center justify-center shrink-0 transition cursor-pointer"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
   const renderTaiLieuBadges = (yc: YeuCauPhoiHop, showHoSoLink = false) => {
     const coHoSo = showHoSoLink && Boolean(onMoChiTietDuAn);
-    if (!coHoSo && !yc.link_drive_dau_vao && !yc.link_drive_ket_qua) return null;
+    const dsDauVao = layDanhSachLinkDauVao(yc);
+    const dsKetQua = layDanhSachLinkKetQua(yc);
+    if (!coHoSo && dsDauVao.length === 0 && dsKetQua.length === 0) return null;
     return (
       <div className="flex items-center gap-3 flex-wrap pt-0.5 text-[11px]">
         {coHoSo && onMoChiTietDuAn && (
@@ -1305,9 +1378,10 @@ export default function HopYeuCauPhoiHop({
             <span>Hồ sơ dự án</span>
           </button>
         )}
-        {yc.link_drive_dau_vao && (
+        {dsDauVao.map((link, idx) => (
           <a
-            href={yc.link_drive_dau_vao}
+            key={`in_${idx}`}
+            href={link}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
@@ -1315,12 +1389,13 @@ export default function HopYeuCauPhoiHop({
             title="Mở file yêu cầu đầu vào"
           >
             <Link2 className="size-3 shrink-0" />
-            <span>Tài liệu đầu vào</span>
+            <span>{dsDauVao.length > 1 ? `Tài liệu đầu vào (${idx + 1})` : 'Tài liệu đầu vào'}</span>
           </a>
-        )}
-        {yc.link_drive_ket_qua && (
+        ))}
+        {dsKetQua.map((link, idx) => (
           <a
-            href={yc.link_drive_ket_qua}
+            key={`kq_${idx}`}
+            href={link}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
@@ -1328,9 +1403,9 @@ export default function HopYeuCauPhoiHop({
             title="Mở file kết quả xử lý"
           >
             <FileCheck2 className="size-3 shrink-0" />
-            <span>File kết quả</span>
+            <span>{dsKetQua.length > 1 ? `File kết quả (${idx + 1})` : 'File kết quả'}</span>
           </a>
-        )}
+        ))}
       </div>
     );
   };
@@ -1466,7 +1541,7 @@ export default function HopYeuCauPhoiHop({
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wider select-none">
                     <th className="py-3 px-4 min-w-[260px]">Yêu cầu hỗ trợ</th>
                     <th className="py-3 px-4 w-[285px]">Người YC &amp; Xử lý</th>
-                    <th className="py-3 px-3.5 w-[155px]">Trạng thái</th>
+                    <th className="py-3 px-3.5 min-w-[165px] max-w-[235px]">Trạng thái</th>
                     <th className="py-3 px-4 w-[1%] whitespace-nowrap text-right">Thao tác</th>
                   </tr>
                 </thead>
@@ -1540,14 +1615,14 @@ export default function HopYeuCauPhoiHop({
                         </td>
 
                         {/* 3. Trạng thái */}
-                        <td className="py-3 px-3.5 align-middle w-[155px]">
+                        <td className="py-3 px-3.5 align-middle min-w-[165px] max-w-[235px]">
                           <span
                             className={cn(
-                              'inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap',
+                              'inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border leading-snug',
                               tt.cfgTrangThai.mauBadge
                             )}
                           >
-                            {tt.cfgTrangThai.label}
+                            {tt.nhanTrangThai}
                           </span>
                         </td>
 
@@ -1606,11 +1681,11 @@ export default function HopYeuCauPhoiHop({
                       </div>
                       <span
                         className={cn(
-                          'px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 whitespace-nowrap',
+                          'px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 max-w-[55%] text-right leading-snug',
                           tt.cfgTrangThai.mauBadge
                         )}
                       >
-                        {tt.cfgTrangThai.label}
+                        {tt.nhanTrangThai}
                       </span>
                     </div>
 
@@ -1760,9 +1835,13 @@ export default function HopYeuCauPhoiHop({
                     </h3>
                     {(() => {
                       const cfg = NHAN_TRANG_THAI_YEU_CAU[ycChiTietHienTai.trang_thai];
+                      const nhanDichDanh = layNhanTrangThaiDichDanh(ycChiTietHienTai, {
+                        tenTPKD: tenTPKDMacDinh,
+                        tenTPKH: tenTPKHMacDinh
+                      });
                       return (
                         <span className={cn('px-2.5 py-0.5 rounded-full text-[11px] font-semibold border', cfg?.mauBadge)}>
-                          {cfg?.label || ycChiTietHienTai.trang_thai}
+                          {nhanDichDanh}
                         </span>
                       );
                     })()}
@@ -1916,59 +1995,84 @@ export default function HopYeuCauPhoiHop({
               })()}
 
               {/* TÀI LIỆU LIÊN QUAN */}
-              {(ycChiTietHienTai.link_drive_dau_vao || ycChiTietHienTai.link_drive_ket_qua) && (
-                <div className="space-y-2 pt-1">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                    Tài liệu &amp; Hồ sơ đính kèm
-                  </label>
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    {ycChiTietHienTai.link_drive_dau_vao && (
-                      <a
-                        href={ycChiTietHienTai.link_drive_dau_vao}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-semibold transition"
-                      >
-                        <Link2 className="size-3.5 text-blue-600" />
-                        <span>File yêu cầu đầu vào</span>
-                        <ExternalLink className="size-3 text-blue-500" />
-                      </a>
-                    )}
+              {(() => {
+                const dsDauVao = layDanhSachLinkDauVao(ycChiTietHienTai);
+                const dsKetQua = layDanhSachLinkKetQua(ycChiTietHienTai);
+                if (dsDauVao.length === 0 && dsKetQua.length === 0) return null;
+                return (
+                  <div className="space-y-2 pt-1">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                      Tài liệu &amp; Hồ sơ đính kèm
+                    </label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {dsDauVao.map((link, idx) => {
+                        const copyKey = `${ycChiTietHienTai.id}_in_${idx}`;
+                        return (
+                          <div key={copyKey} className="inline-flex items-center gap-1">
+                            <a
+                              href={link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-semibold transition"
+                            >
+                              <Link2 className="size-3.5 text-blue-600" />
+                              <span>{dsDauVao.length > 1 ? `Tài liệu đầu vào (${idx + 1})` : 'File yêu cầu đầu vào'}</span>
+                              <ExternalLink className="size-3 text-blue-500" />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyLink(link, copyKey)}
+                              title="Sao chép link"
+                              className="h-8 px-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                            >
+                              {daCopyLink === copyKey ? (
+                                <CheckCircle2 className="size-3.5 text-emerald-600" />
+                              ) : (
+                                <Copy className="size-3.5 text-slate-500" />
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
 
-                    {ycChiTietHienTai.link_drive_ket_qua && (
-                      <>
-                        <a
-                          href={ycChiTietHienTai.link_drive_ket_qua}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold transition"
-                        >
-                          <FileCheck2 className="size-3.5 text-emerald-600" />
-                          <span>File kết quả KHTH</span>
-                          <ExternalLink className="size-3 text-emerald-500" />
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyLink(ycChiTietHienTai.link_drive_ket_qua!, ycChiTietHienTai.id)}
-                          className="h-8 px-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 font-medium text-xs inline-flex items-center gap-1.5 cursor-pointer transition"
-                        >
-                          {daCopyLink === ycChiTietHienTai.id ? (
-                            <>
-                              <CheckCircle2 className="size-3.5 text-emerald-600" />
-                              <span className="text-emerald-700 font-semibold">Đã chép link</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="size-3.5 text-slate-500" />
-                              <span>Sao chép link</span>
-                            </>
-                          )}
-                        </button>
-                      </>
-                    )}
+                      {dsKetQua.map((link, idx) => {
+                        const copyKey = `${ycChiTietHienTai.id}_kq_${idx}`;
+                        return (
+                          <div key={copyKey} className="inline-flex items-center gap-1">
+                            <a
+                              href={link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-semibold transition"
+                            >
+                              <FileCheck2 className="size-3.5 text-emerald-600" />
+                              <span>{dsKetQua.length > 1 ? `File kết quả (${idx + 1})` : 'File kết quả KHTH'}</span>
+                              <ExternalLink className="size-3 text-emerald-500" />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyLink(link, copyKey)}
+                              className="h-8 px-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                            >
+                              {daCopyLink === copyKey ? (
+                                <>
+                                  <CheckCircle2 className="size-3.5 text-emerald-600" />
+                                  <span className="text-emerald-700 font-semibold">Đã chép</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="size-3.5 text-slate-500" />
+                                  <span>Chép link</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* LỊCH SỬ LUÂN CHUYỂN */}
               {ycChiTietHienTai.lich_su_xu_ly && ycChiTietHienTai.lich_su_xu_ly.length > 0 && (
@@ -2185,7 +2289,7 @@ export default function HopYeuCauPhoiHop({
                               className="h-8.5 px-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
                             >
                               <Send className="size-3.5" />
-                              <span>{yc.link_drive_ket_qua ? 'Chỉnh sửa & Nộp lại KQ' : 'Nộp kết quả xử lý'}</span>
+                              <span>{layDanhSachLinkKetQua(yc).length > 0 ? 'Chỉnh sửa & Nộp lại KQ' : 'Nộp kết quả xử lý'}</span>
                             </button>
                           )}
                           {(laTPKH || coQuyenAdmin) && (
@@ -2627,20 +2731,31 @@ export default function HopYeuCauPhoiHop({
                 <p className="text-slate-800 font-medium leading-relaxed">
                   {modalGiaoViec.yeuCau.noi_dung_yeu_cau}
                 </p>
-                {modalGiaoViec.yeuCau.link_drive_dau_vao && (
-                  <div className="pt-1">
-                    <a
-                      href={modalGiaoViec.yeuCau.link_drive_dau_vao}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline inline-flex items-center gap-1 font-semibold"
-                    >
-                      <Link2 className="size-3" />
-                      <span>Xem file Google Drive đính kèm</span>
-                      <ExternalLink className="size-2.5" />
-                    </a>
-                  </div>
-                )}
+                {(() => {
+                  const dsDauVao = layDanhSachLinkDauVao(modalGiaoViec.yeuCau);
+                  if (dsDauVao.length === 0) return null;
+                  return (
+                    <div className="pt-1 flex items-center gap-2.5 flex-wrap">
+                      {dsDauVao.map((link, idx) => (
+                        <a
+                          key={idx}
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline inline-flex items-center gap-1 font-semibold"
+                        >
+                          <Link2 className="size-3" />
+                          <span>
+                            {dsDauVao.length > 1
+                              ? `Xem file đính kèm (${idx + 1})`
+                              : 'Xem file Google Drive đính kèm'}
+                          </span>
+                          <ExternalLink className="size-2.5" />
+                        </a>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* HÌNH THỨC 1: GIAO VIỆC CHO CV */}
@@ -2747,22 +2862,29 @@ export default function HopYeuCauPhoiHop({
               ) : (
                 /* HÌNH THỨC 2: TPKH TỰ THỰC HIỆN */
                 <div className="space-y-3 p-3 bg-teal-50/50 rounded-xl border border-teal-100">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Link2 className="size-3.5 text-teal-600" />
-                      <span>Link Google Drive kết quả của TPKH *</span>
-                    </label>
-                    <input
-                      type="url"
-                      value={linkDriveTuLam}
-                      onChange={(e) => setLinkDriveTuLam(e.target.value)}
-                      placeholder="https://drive.google.com/..."
-                      className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-teal-500"
-                      required
-                    />
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Link2 className="size-3.5 text-teal-600" />
+                        <span>Link Google Drive kết quả *</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setDsLinkDriveTuLam((prev) => [...prev, ''])}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-teal-700 hover:bg-teal-100 transition cursor-pointer"
+                      >
+                        <Plus className="size-3" />
+                        <span>Thêm link</span>
+                      </button>
+                    </div>
+                    {renderInputsDanhSachLink({
+                      danhSach: dsLinkDriveTuLam,
+                      setDanhSach: setDsLinkDriveTuLam,
+                      accentFocusClass: 'focus:border-teal-500'
+                    })}
                   </div>
                   <p className="text-[11px] text-slate-500 italic">
-                    Khi nộp, kết quả sẽ chuyển thẳng đến Trưởng phòng Kinh doanh để phê duyệt.
+                    Khi nộp, kết quả sẽ chuyển thẳng đến {tenTPKDMacDinh || 'bộ phận duyệt'} để phê duyệt.
                   </p>
                 </div>
               )}
@@ -2824,9 +2946,9 @@ export default function HopYeuCauPhoiHop({
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Send className="size-4 text-teal-600" />
                   <span>
-                    {modalNopDrive.yeuCau.link_drive_ket_qua
-                      ? 'Hiệu chỉnh kết quả xử lý (KHTH)'
-                      : 'Nộp kết quả xử lý (KHTH)'}
+                    {layDanhSachLinkKetQua(modalNopDrive.yeuCau).length > 0
+                      ? 'Hiệu chỉnh kết quả xử lý'
+                      : 'Nộp kết quả xử lý'}
                   </span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -2856,20 +2978,27 @@ export default function HopYeuCauPhoiHop({
                 </div>
               )}
 
-              <div>
-                <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5 mb-1">
-                  <Link2 className="size-3.5 text-slate-400" />
-                  <span>Link Google Drive file kết quả *</span>
-                </label>
-                <input
-                  type="url"
-                  value={linkDriveNop}
-                  onChange={(e) => setLinkDriveNop(e.target.value)}
-                  placeholder="https://drive.google.com/..."
-                  className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-teal-500"
-                  required
-                  autoFocus
-                />
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                    <Link2 className="size-3.5 text-slate-400" />
+                    <span>Link Google Drive file kết quả *</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setDsLinkDriveNop((prev) => [...prev, ''])}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-teal-700 hover:bg-teal-50 transition cursor-pointer"
+                  >
+                    <Plus className="size-3" />
+                    <span>Thêm link</span>
+                  </button>
+                </div>
+                {renderInputsDanhSachLink({
+                  danhSach: dsLinkDriveNop,
+                  setDanhSach: setDsLinkDriveNop,
+                  accentFocusClass: 'focus:border-teal-500',
+                  autoFocusFirst: true
+                })}
               </div>
 
               <div>
@@ -2905,9 +3034,11 @@ export default function HopYeuCauPhoiHop({
                     <Send className="size-3.5" />
                   )}
                   <span>
-                    {modalNopDrive.yeuCau.link_drive_ket_qua
+                    {layDanhSachLinkKetQua(modalNopDrive.yeuCau).length > 0
                       ? 'Cập nhật & Nộp lại kết quả'
-                      : 'Nộp cho TPKH duyệt'}
+                      : laTPKH
+                        ? `Nộp cho ${tenTPKDMacDinh || 'duyệt bàn giao'}`
+                        : `Nộp cho ${tenTPKHMacDinh || 'duyệt kết quả'}`}
                   </span>
                 </button>
               </div>
@@ -3076,18 +3207,26 @@ export default function HopYeuCauPhoiHop({
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <Link2 className="size-3.5 text-slate-400" />
-                  <span>Link Google Drive tài liệu</span>
-                </label>
-                <input
-                  type="url"
-                  value={suaLinkDrive}
-                  onChange={(e) => setSuaLinkDrive(e.target.value)}
-                  placeholder="https://drive.google.com/..."
-                  className="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-hidden focus:border-blue-500 placeholder:text-slate-400"
-                />
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Link2 className="size-3.5 text-slate-400" />
+                    <span>Link Google Drive tài liệu</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setSuaDsLinkDrive((prev) => [...prev, ''])}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-blue-700 hover:bg-blue-50 transition cursor-pointer"
+                  >
+                    <Plus className="size-3" />
+                    <span>Thêm link</span>
+                  </button>
+                </div>
+                {renderInputsDanhSachLink({
+                  danhSach: suaDsLinkDrive,
+                  setDanhSach: setSuaDsLinkDrive,
+                  accentFocusClass: 'focus:border-blue-500'
+                })}
               </div>
 
               <div className="space-y-1.5">
@@ -3231,20 +3370,31 @@ export default function HopYeuCauPhoiHop({
                       <span>{log.ten_nguoi_thuc_hien}</span>
                     </div>
 
-                    {log.link_drive && (
-                      <div className="pt-1">
-                        <a
-                          href={log.link_drive}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline inline-flex items-center gap-1 font-medium text-[11px]"
-                        >
-                          <Link2 className="size-3" />
-                          <span>Link Google Drive đính kèm</span>
-                          <ExternalLink className="size-2.5" />
-                        </a>
-                      </div>
-                    )}
+                    {(() => {
+                      const dsLogLinks = chuanHoaDanhSachLink(log.danh_sach_link, log.link_drive);
+                      if (dsLogLinks.length === 0) return null;
+                      return (
+                        <div className="pt-1 flex items-center gap-2.5 flex-wrap">
+                          {dsLogLinks.map((link, linkIdx) => (
+                            <a
+                              key={linkIdx}
+                              href={link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline inline-flex items-center gap-1 font-medium text-[11px]"
+                            >
+                              <Link2 className="size-3" />
+                              <span>
+                                {dsLogLinks.length > 1
+                                  ? `Link Google Drive (${linkIdx + 1})`
+                                  : 'Link Google Drive đính kèm'}
+                              </span>
+                              <ExternalLink className="size-2.5" />
+                            </a>
+                          ))}
+                        </div>
+                      );
+                    })()}
 
                     {log.ghi_chu && (
                       <div className="p-2 rounded-lg bg-white border border-slate-100 text-[11.5px] text-slate-700 italic">
