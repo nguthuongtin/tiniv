@@ -5,8 +5,7 @@ import {
   Loader2,
   Users,
   ChevronLeft,
-  ChevronRight,
-  ListTodo
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
@@ -1464,18 +1463,7 @@ export function NoiDungKeHoachNVKD({
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-border print:hidden">
-        {/* Tiêu đề trang Bàn làm việc */}
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <ListTodo className="size-5" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-foreground">Bàn làm việc</h1>
-            <p className="text-xs text-muted-foreground">Tác nghiệp & công việc hàng ngày</p>
-          </div>
-        </div>
-
+      <div className="flex items-center justify-end gap-4 flex-wrap print:hidden">
         {/* Filters: Nhân viên (cho Quản lý) & Bộ chọn ngày */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {laQuanLyHoacGiamDoc && (

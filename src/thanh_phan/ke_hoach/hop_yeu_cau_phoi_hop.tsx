@@ -29,7 +29,8 @@ import {
   ShieldAlert,
   FileCheck2,
   Eye,
-  Plus
+  Plus,
+  RotateCcw
 } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
 import { formatNgay, formatNgayGio } from '../../thu_vien/utils/format_ngay';
@@ -53,7 +54,9 @@ import {
   layDanhSachLinkDauVao,
   layDanhSachLinkKetQua,
   layNhanTrangThaiDichDanh,
-  timLanhDaoMacDinhYeuCau
+  timLanhDaoMacDinhYeuCau,
+  rutGonTenVietTat,
+  rutGonDanhSachTenVietTat
 } from '../../thu_vien/types/yeu_cau_phoi_hop';
 import type { NguoiDungDangNhap, NhanSu, PhongBan } from '../../thu_vien/types/nhan_su';
 import {
@@ -139,7 +142,7 @@ export default function HopYeuCauPhoiHop({
   const [ghiChuNop, setGhiChuNop] = useState('');
   const [dangXuLyNop, setDangXuLyNop] = useState(false);
 
-  // 3. Modal yêu cầu chỉnh sửa đa năng (TPKD -> Sale, TPKH -> TPKD, TPKH -> CV, TPKD -> TPKH, Sale -> chạy lại)
+  // 3. Modal yêu cầu chỉnh sửa / làm lại đa năng (TPKD -> Sale, TPKH -> TPKD, TPKH -> CV, TPKD -> TPKH, Sale -> làm lại / yêu cầu lại)
   const [modalYeuCauSua, setModalYeuCauSua] = useState<{
     mo: boolean;
     yeuCau: YeuCauPhoiHop | null;
@@ -148,7 +151,8 @@ export default function HopYeuCauPhoiHop({
       | 'tpkh_tra_ve_tpkd'
       | 'tpkh_yeu_cau_cv'
       | 'tpkd_yeu_cau_tpkh'
-      | 'sale_yeu_cau_sua';
+      | 'sale_yeu_cau_sua'
+      | 'sale_yeu_cau_lai';
     tieuDe: string;
   }>({
     mo: false,
@@ -736,7 +740,7 @@ export default function HopYeuCauPhoiHop({
     }
   };
 
-  // Mở modal yêu cầu sửa đổi (5 loại)
+  // Mở modal yêu cầu sửa đổi / yêu cầu lại (6 loại)
   const moModalYeuCauSua = (
     yc: YeuCauPhoiHop,
     loaiSua:
@@ -745,6 +749,7 @@ export default function HopYeuCauPhoiHop({
       | 'tpkh_yeu_cau_cv'
       | 'tpkd_yeu_cau_tpkh'
       | 'sale_yeu_cau_sua'
+      | 'sale_yeu_cau_lai'
   ) => {
     let tieuDe = 'Yêu cầu chỉnh sửa';
     if (loaiSua === 'tpkd_tu_choi_sale') tieuDe = 'TPKD yêu cầu Sale sửa lại yêu cầu';
@@ -752,6 +757,7 @@ export default function HopYeuCauPhoiHop({
     if (loaiSua === 'tpkh_yeu_cau_cv') tieuDe = 'TPKH yêu cầu Chuyên viên chỉnh sửa kết quả';
     if (loaiSua === 'tpkd_yeu_cau_tpkh') tieuDe = 'TPKD yêu cầu TPKH rà soát sửa lại kết quả';
     if (loaiSua === 'sale_yeu_cau_sua') tieuDe = 'Sale yêu cầu hiệu chỉnh lại kết quả (Làm lại)';
+    if (loaiSua === 'sale_yeu_cau_lai') tieuDe = 'Yêu cầu thực hiện lại';
 
     setModalYeuCauSua({ mo: true, yeuCau: yc, loaiSua, tieuDe });
     setLyDoSua('');
@@ -776,7 +782,11 @@ export default function HopYeuCauPhoiHop({
     e.preventDefault();
     if (!modalYeuCauSua.yeuCau) return;
     if (!lyDoSua.trim()) {
-      alert('Vui lòng nhập nội dung cần chỉnh sửa.');
+      alert(
+        modalYeuCauSua.loaiSua === 'sale_yeu_cau_lai'
+          ? 'Vui lòng nhập nội dung cần thực hiện lại.'
+          : 'Vui lòng nhập nội dung cần chỉnh sửa.'
+      );
       return;
     }
 
@@ -802,6 +812,9 @@ export default function HopYeuCauPhoiHop({
         // "Sale vẫn có thể yêu càu sửa lại, và quy trình lại chạy lại từ đầu"
         trangThaiMoi = 'cho_tpkd_duyet';
         ghiChu = `Sale yêu cầu làm lại: ${lyDoSua.trim()}`;
+      } else if (modalYeuCauSua.loaiSua === 'sale_yeu_cau_lai') {
+        trangThaiMoi = 'cho_tpkd_duyet';
+        ghiChu = `Yêu cầu lại: ${lyDoSua.trim()}`;
       }
 
       const res = await chuyenBuocYeuCauPhoiHop({
@@ -947,7 +960,10 @@ export default function HopYeuCauPhoiHop({
   // Component Stepper 5 bước trực quan
   const renderStepper = (yc: YeuCauPhoiHop) => {
     let buocHienTai = 2;
-    const tenCV = yc.danh_sach_ten_nhan_su_thuc_hien?.filter(Boolean).join(', ') || '';
+    const tenCVRutGon = rutGonDanhSachTenVietTat(yc.danh_sach_ten_nhan_su_thuc_hien);
+    const tenTaoRutGon = rutGonTenVietTat(yc.ten_nguoi_tao);
+    const tenTPKDRutGon = rutGonTenVietTat(tenTPKDMacDinh);
+    const tenTPKHRutGon = rutGonTenVietTat(tenTPKHMacDinh);
     const textHienTai = layNhanTrangThaiDichDanh(yc, {
       tenTPKD: tenTPKDMacDinh,
       tenTPKH: tenTPKHMacDinh
@@ -972,16 +988,16 @@ export default function HopYeuCauPhoiHop({
     }
 
     const dsCacBuoc = [
-      { so: 1, ten: 'Khởi tạo', nguoiPhuTrach: yc.ten_nguoi_tao || 'Người tạo' },
-      { so: 2, ten: 'Duyệt chuyển', nguoiPhuTrach: tenTPKDMacDinh || 'Tiếp nhận' },
-      { so: 3, ten: 'Thực hiện', nguoiPhuTrach: tenCV || tenTPKHMacDinh || 'Xử lý' },
+      { so: 1, ten: 'Khởi tạo', nguoiPhuTrach: tenTaoRutGon || 'Người tạo' },
+      { so: 2, ten: 'Duyệt chuyển', nguoiPhuTrach: tenTPKDRutGon || 'Tiếp nhận' },
+      { so: 3, ten: 'Thực hiện', nguoiPhuTrach: tenCVRutGon || tenTPKHRutGon || 'Xử lý' },
       {
         so: 4,
         ten: 'Duyệt KQ',
         nguoiPhuTrach:
-          [tenTPKHMacDinh, tenTPKDMacDinh].filter(Boolean).join(' ➔ ') || 'Kiểm duyệt'
+          [tenTPKHRutGon, tenTPKDRutGon].filter(Boolean).join(' ➔ ') || 'Kiểm duyệt'
       },
-      { so: 5, ten: 'Nghiệm thu', nguoiPhuTrach: yc.ten_nguoi_tao || 'Nghiệm thu' }
+      { so: 5, ten: 'Nghiệm thu', nguoiPhuTrach: tenTaoRutGon || 'Nghiệm thu' }
     ];
 
     return (
@@ -1168,6 +1184,18 @@ export default function HopYeuCauPhoiHop({
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           handleSaleNghiemThuHoanTat(yc);
+        }
+      };
+    }
+
+    if (yc.trang_thai === 'da_hoan_thanh' && (laNguoiTao || laTPKD || coQuyenAdmin)) {
+      return {
+        label: 'Yêu cầu lại',
+        icon: RotateCcw,
+        className: 'bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100',
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          moModalYeuCauSua(yc, 'sale_yeu_cau_lai');
         }
       };
     }
@@ -1541,7 +1569,7 @@ export default function HopYeuCauPhoiHop({
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wider select-none">
                     <th className="py-3 px-4 min-w-[260px]">Yêu cầu hỗ trợ</th>
                     <th className="py-3 px-4 w-[285px]">Người YC &amp; Xử lý</th>
-                    <th className="py-3 px-3.5 min-w-[165px] max-w-[235px]">Trạng thái</th>
+                    <th className="py-3 px-3.5 min-w-[160px] max-w-[215px]">Người đang xử lý</th>
                     <th className="py-3 px-4 w-[1%] whitespace-nowrap text-right">Thao tác</th>
                   </tr>
                 </thead>
@@ -1601,7 +1629,7 @@ export default function HopYeuCauPhoiHop({
                                 className="font-semibold text-blue-700 truncate"
                                 title={`Người xử lý: ${tt.nguoiNhan}`}
                               >
-                                {tt.nguoiNhan}
+                                {rutGonDanhSachTenVietTat(tt.nguoiNhan) || tt.nguoiNhan}
                               </span>
                             ) : (
                               <span className="text-slate-400 italic text-[11px] truncate">
@@ -1614,8 +1642,8 @@ export default function HopYeuCauPhoiHop({
                           </div>
                         </td>
 
-                        {/* 3. Trạng thái */}
-                        <td className="py-3 px-3.5 align-middle min-w-[165px] max-w-[235px]">
+                        {/* 3. Người đang xử lý */}
+                        <td className="py-3 px-3.5 align-middle min-w-[160px] max-w-[215px]">
                           <span
                             className={cn(
                               'inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border leading-snug',
@@ -1712,8 +1740,11 @@ export default function HopYeuCauPhoiHop({
                             XL
                           </span>
                           {tt.nguoiNhan ? (
-                            <span className="font-semibold text-blue-700 truncate">
-                              {tt.nguoiNhan}
+                            <span
+                              className="font-semibold text-blue-700 truncate"
+                              title={`Người xử lý: ${tt.nguoiNhan}`}
+                            >
+                              {rutGonDanhSachTenVietTat(tt.nguoiNhan) || tt.nguoiNhan}
                             </span>
                           ) : (
                             <span className="text-slate-400 italic truncate">Chờ phân công</span>
@@ -1945,9 +1976,12 @@ export default function HopYeuCauPhoiHop({
 
                     <div>
                       <span className="text-[11px] text-slate-500 font-medium">Người tiếp nhận / Xử lý</span>
-                      <div className="font-semibold text-blue-700 mt-0.5 flex items-center gap-1.5">
+                      <div
+                        className="font-semibold text-blue-700 mt-0.5 flex items-center gap-1.5"
+                        title={nguoiXuLy || undefined}
+                      >
                         <UserCheck className="size-3.5 text-blue-600" />
-                        <span>{nguoiXuLy || 'Chờ phân công'}</span>
+                        <span>{nguoiXuLy ? (rutGonDanhSachTenVietTat(nguoiXuLy) || nguoiXuLy) : 'Chờ phân công'}</span>
                       </div>
                     </div>
 
@@ -2404,6 +2438,21 @@ export default function HopYeuCauPhoiHop({
                             </button>
                           </>
                         )}
+
+                      {/* BƯỚC 7: Đã hoàn thành -> Cho phép yêu cầu thực hiện lại */}
+                      {yc.trang_thai === 'da_hoan_thanh' && (laNguoiTao || laTPKD || coQuyenAdmin) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setYeuCauDangXemChiTiet(null);
+                            moModalYeuCauSua(yc, 'sale_yeu_cau_lai');
+                          }}
+                          className="h-8.5 px-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100 font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer transition"
+                        >
+                          <RotateCcw className="size-3.5 text-amber-700" />
+                          <span>Yêu cầu lại</span>
+                        </button>
+                      )}
                     </>
                   );
                 })()}
@@ -3048,63 +3097,84 @@ export default function HopYeuCauPhoiHop({
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 3: YÊU CẦU CHỈNH SỬA ĐA NĂNG                                         */}
+      {/* MODAL 3: YÊU CẦU CHỈNH SỬA / YÊU CẦU LẠI ĐA NĂNG                          */}
       {/* ========================================================================= */}
-      {modalYeuCauSua.mo && modalYeuCauSua.yeuCau && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 text-slate-900">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-rose-600">
-                <AlertTriangle className="size-5" />
-                <h3 className="text-base font-bold text-slate-900">{modalYeuCauSua.tieuDe}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setModalYeuCauSua({ mo: false, yeuCau: null, loaiSua: 'tpkd_tu_choi_sale', tieuDe: '' })}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleXacNhanYeuCauSua} className="space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-800 block mb-1">
-                  Lý do & Nội dung yêu cầu chỉnh sửa *
-                </label>
-                <textarea
-                  rows={3}
-                  value={lyDoSua}
-                  onChange={(e) => setLyDoSua(e.target.value)}
-                  placeholder="Ghi rõ các nội dung cần bổ sung, chỉnh sửa hoặc hoàn thiện lại..."
-                  className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:outline-hidden focus:border-rose-500 resize-none placeholder:text-slate-400"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+      {modalYeuCauSua.mo && modalYeuCauSua.yeuCau && (() => {
+        const laYeuCauLai = modalYeuCauSua.loaiSua === 'sale_yeu_cau_lai';
+        return (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 text-slate-900">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className={cn('flex items-center gap-2', laYeuCauLai ? 'text-amber-600' : 'text-rose-600')}>
+                  {laYeuCauLai ? <RotateCcw className="size-5" /> : <AlertTriangle className="size-5" />}
+                  <h3 className="text-base font-bold text-slate-900">{modalYeuCauSua.tieuDe}</h3>
+                </div>
                 <button
                   type="button"
                   onClick={() => setModalYeuCauSua({ mo: false, yeuCau: null, loaiSua: 'tpkd_tu_choi_sale', tieuDe: '' })}
-                  disabled={dangXuLyYeuCauSua}
-                  className="h-9 px-3.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-100 cursor-pointer transition"
+                  className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
                 >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={dangXuLyYeuCauSua}
-                  className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition"
-                >
-                  {dangXuLyYeuCauSua ? <Loader2 className="size-3.5 animate-spin" /> : <AlertTriangle className="size-3.5" />}
-                  <span>Xác nhận gửi yêu cầu sửa</span>
+                  <X className="size-4" />
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={handleXacNhanYeuCauSua} className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-800 block mb-1">
+                    {laYeuCauLai
+                      ? 'Nội dung yêu cầu thực hiện lại *'
+                      : 'Lý do & Nội dung yêu cầu chỉnh sửa *'}
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={lyDoSua}
+                    onChange={(e) => setLyDoSua(e.target.value)}
+                    placeholder={
+                      laYeuCauLai
+                        ? 'Ghi rõ các nội dung cần làm lại, bổ sung hoặc cập nhật thêm...'
+                        : 'Ghi rõ các nội dung cần bổ sung, chỉnh sửa hoặc hoàn thiện lại...'
+                    }
+                    className={cn(
+                      'w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:outline-hidden resize-none placeholder:text-slate-400',
+                      laYeuCauLai ? 'focus:border-amber-500' : 'focus:border-rose-500'
+                    )}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setModalYeuCauSua({ mo: false, yeuCau: null, loaiSua: 'tpkd_tu_choi_sale', tieuDe: '' })}
+                    disabled={dangXuLyYeuCauSua}
+                    className="h-9 px-3.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-100 cursor-pointer transition"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={dangXuLyYeuCauSua}
+                    className={cn(
+                      'h-9 px-4 rounded-xl text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50 transition',
+                      laYeuCauLai ? 'bg-amber-600 hover:bg-amber-700' : 'bg-rose-600 hover:bg-rose-700'
+                    )}
+                  >
+                    {dangXuLyYeuCauSua ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : laYeuCauLai ? (
+                      <RotateCcw className="size-3.5" />
+                    ) : (
+                      <AlertTriangle className="size-3.5" />
+                    )}
+                    <span>{laYeuCauLai ? 'Xác nhận yêu cầu lại' : 'Xác nhận gửi yêu cầu sửa'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* MODAL 4: CHỈNH SỬA THÔNG TIN YÊU CẦU BAN ĐẦU                             */}

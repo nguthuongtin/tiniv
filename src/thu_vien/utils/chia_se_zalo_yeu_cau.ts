@@ -23,22 +23,43 @@ export function layNguoiXuLyYeuCau(yc: YeuCauPhoiHop): string {
 /**
  * Trích xuất mốc hoàn thành hoặc nộp kết quả từ dữ liệu và lịch sử xử lý
  */
+const TRANG_THAI_CHUA_CO_KET_QUA = new Set([
+  'cho_tpkd_duyet',
+  'cho_tpkh_tiep_nhan',
+  'cho_cv_khth_thuc_hien',
+  'cho_khth_thuc_hien',
+  'yeu_cau_chinh_sua'
+]);
+
 export function layThoiGianHoanThanhYeuCau(yc: YeuCauPhoiHop): {
   daHoanThanh: boolean;
   thoiGianHoanThanh: string | null;
   thoiGianNopKetQua: string | null;
 } {
   const logs = Array.isArray(yc.lich_su_xu_ly) ? yc.lich_su_xu_ly : [];
+  const dangTrongChuKyTruocKQ = TRANG_THAI_CHUA_CO_KET_QUA.has(yc.trang_thai);
 
   let thoiGianNopKetQua: string | null = null;
+  let biRestartChuKy = false;
   for (let i = logs.length - 1; i >= 0; i--) {
     const hd = (logs[i]?.hanh_dong || '').toLowerCase();
+    if (
+      hd.includes('yêu cầu lại') ||
+      hd.includes('làm lại') ||
+      hd.includes('hiệu chỉnh') ||
+      hd.includes('trả lại') ||
+      hd.includes('sửa lại') ||
+      hd.includes('yêu cầu chỉnh sửa')
+    ) {
+      biRestartChuKy = true;
+      break;
+    }
     if (hd.includes('nộp kết quả') || hd.includes('tự thực hiện')) {
       thoiGianNopKetQua = logs[i].thoi_gian || null;
       break;
     }
   }
-  if (!thoiGianNopKetQua && yc.link_drive_ket_qua) {
+  if (!thoiGianNopKetQua && !biRestartChuKy && !dangTrongChuKyTruocKQ && yc.link_drive_ket_qua) {
     thoiGianNopKetQua = yc.ngay_cap_nhat || null;
   }
 
@@ -108,7 +129,8 @@ export function taoNoiDungTinNhanZaloYeuCau(yc: YeuCauPhoiHop): string {
   const { daHoanThanh, thoiGianHoanThanh, thoiGianNopKetQua } = layThoiGianHoanThanhYeuCau(yc);
   const dsKetQua = layDanhSachLinkKetQua(yc);
   const dsDauVao = layDanhSachLinkDauVao(yc);
-  const daCoKetQua = dsKetQua.length > 0 || daHoanThanh;
+  const dangTrongChuKyTruocKQ = TRANG_THAI_CHUA_CO_KET_QUA.has(yc.trang_thai);
+  const daCoKetQua = daHoanThanh || (!dangTrongChuKyTruocKQ && dsKetQua.length > 0);
 
   if (daCoKetQua) {
     const tgXong = formatNgayGio(thoiGianHoanThanh || thoiGianNopKetQua || new Date());
@@ -130,6 +152,7 @@ export function taoNoiDungTinNhanZaloYeuCau(yc: YeuCauPhoiHop): string {
 
   const tgGui = formatNgayGio(yc.ngay_tao || new Date());
   const hanHoanThanh = yc.han_hoan_thanh ? formatNgay(yc.han_hoan_thanh) : '';
+  const ghiChuYeuCau = yc.ghi_chu_phan_hoi?.trim();
   const dongLinkDauVao =
     dsDauVao.length === 1
       ? [`• Tài liệu đầu vào: ${dsDauVao[0]}`]
@@ -138,6 +161,7 @@ export function taoNoiDungTinNhanZaloYeuCau(yc: YeuCauPhoiHop): string {
   return [
     `📌 [YÊU CẦU HỖ TRỢ: ${taoTenYeuCauHienThi(yc)}]`,
     `• Nội dung: ${yc.noi_dung_yeu_cau}`,
+    ghiChuYeuCau ? `• Ghi chú: ${ghiChuYeuCau}` : null,
     `• Người yêu cầu: ${yc.ten_nguoi_tao}`,
     `• Người tiếp nhận: ${nguoiXuLy || 'Chờ điều phối'}`,
     hanHoanThanh ? `• Thời hạn: ${hanHoanThanh}` : null,

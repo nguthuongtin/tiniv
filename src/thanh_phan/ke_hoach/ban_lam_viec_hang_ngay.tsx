@@ -29,10 +29,7 @@ import {
   Send,
   XCircle,
   Circle,
-  BellRing,
   Flame,
-  ChevronDown,
-  ChevronUp,
   CalendarPlus,
   Loader2
 } from 'lucide-react';
@@ -565,9 +562,6 @@ export default function BanLamViecHangNgay({
   const [noiDungBaoCaoLichHen, setNoiDungBaoCaoLichHen] = useState('');
   const [dangLuuBaoCaoLichHen, setDangLuuBaoCaoLichHen] = useState(false);
 
-  // Mở rộng/thu gọn Banner nhắc việc thông minh
-  const [moRongCanhBao, setMoRongCanhBao] = useState(true);
-
   // Công việc đang chọn để tác nghiệp ở Cột trái
   const [viecDangChonId, setViecDangChonId] = useState<string | null>(null);
 
@@ -725,56 +719,6 @@ export default function BanLamViecHangNgay({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Danh sách lịch hẹn đã đến hoặc quá ngày hẹn nhưng chưa có kết quả (cần báo cáo ngay)
-  const dsLichHenCanBaoCao = useMemo(() => {
-    return danhSachLichGap.filter((l) => {
-      if (
-        nhanVienId &&
-        l.nguoi_phu_trach_id !== nhanVienId &&
-        l.nguoi_tao_id !== nhanVienId &&
-        (!Array.isArray(l.nguoi_tham_gia_ids) || !l.nguoi_tham_gia_ids.includes(nhanVienId))
-      ) {
-        return false;
-      }
-      return l.ngay <= homNayISO && l.trang_thai === 'sap_toi';
-    });
-  }, [danhSachLichGap, homNayISO, nhanVienId]);
-
-  // Danh sách dự án đang theo dõi nhưng >= 7 ngày chưa có tương tác / cập nhật mới
-  const dsDuAnDongBang = useMemo(() => {
-    return danhSachDuAn
-      .filter((d) => {
-        if (d.trang_thai === 'da_xoa') return false;
-        if (['hoan_thanh', 'tam_dung', 'huy'].includes(String(d.giai_doan))) return false;
-        if (nhanVienId && d.nguoi_phu_trach_id !== nhanVienId && d.nguoi_quan_ly_id !== nhanVienId) {
-          return false;
-        }
-        const ngayCu = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
-        if (!ngayCu) return false;
-        const diff = Math.floor(
-          (new Date(`${homNayISO}T00:00:00`).getTime() - new Date(`${ngayCu}T00:00:00`).getTime()) /
-            86400000
-        );
-        return diff >= 7;
-      })
-      .map((d) => {
-        const ngayCu = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
-        const soNgay = Math.floor(
-          (new Date(`${homNayISO}T00:00:00`).getTime() - new Date(`${ngayCu}T00:00:00`).getTime()) /
-            86400000
-        );
-        return {
-          id: d.id,
-          tieu_de: `Dự án ${soNgay} ngày chưa tương tác: ${d.ten_du_an}`,
-          noi_dung: `Giai đoạn "${d.giai_doan}", ${soNgay} ngày qua chưa có cập nhật tiến độ mới.`,
-          du_an_id: d.id,
-          soNgay
-        };
-      });
-  }, [danhSachDuAn, nhanVienId, homNayISO]);
-
-  const tongSoNhacNho = dsLichHenCanBaoCao.length + dsDuAnDongBang.length;
 
   // Danh sách Người liên hệ của khách hàng đang chọn trong ô thêm việc nhanh
   const dsLienHeCuaKhThemNhanh = useMemo(() => {
@@ -1541,7 +1485,7 @@ export default function BanLamViecHangNgay({
   return (
     <div className="space-y-4">
       {/* ================================================================= */}
-      {/* THANH LỊCH 7 NGÀY TRONG TUẦN + TÌM NHANH KH/DỰ ÁN + TRỢ LÝ AI      */}
+      {/* THANH LỊCH 7 NGÀY TRONG TUẦN + TÌM NHANH KH/DỰ ÁN                  */}
       {/* ================================================================= */}
       <div className="rounded-2xl border border-border bg-card p-3 shadow-xs">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
@@ -1648,7 +1592,7 @@ export default function BanLamViecHangNgay({
             )}
           </div>
 
-          {/* Ô Tìm nhanh Khách hàng / Dự án + Trợ lý AI */}
+          {/* Ô Tìm nhanh Khách hàng / Dự án */}
           <div className="flex items-center gap-2">
             <div ref={khungTimNhanhRef} className="relative flex-1 sm:w-64">
               <Search className="size-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1739,144 +1683,6 @@ export default function BanLamViecHangNgay({
           </div>
         </div>
       </div>
-
-      {/* ================================================================= */}
-      {/* TRUNG TÂM NHẮC VIỆC & CẢNH BÁO TÁC NGHIỆP TRỰC DIỆN (LỊCH HẸN CHỜ BÁO CÁO, DỰ ÁN ĐÓNG BĂNG) */}
-      {/* ================================================================= */}
-      {tongSoNhacNho > 0 && (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.04] p-3.5 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="flex size-7 rounded-xl bg-amber-500/20 text-amber-700 items-center justify-center shrink-0">
-                <BellRing className="size-4 animate-pulse" />
-              </span>
-              <div>
-                <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <span>Nhắc việc & Cảnh báo tác nghiệp</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-extrabold">
-                    {tongSoNhacNho}
-                  </span>
-                </h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Các cuộc hẹn cần báo cáo kết quả và dự án cần đẩy nhanh tiến độ
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setMoRongCanhBao(!moRongCanhBao)}
-              className="text-xs text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted cursor-pointer flex items-center gap-1 font-medium"
-            >
-              <span>{moRongCanhBao ? 'Thu gọn' : 'Xem chi tiết'}</span>
-              {moRongCanhBao ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-            </button>
-          </div>
-
-          {moRongCanhBao && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
-              {/* 1. Lịch hẹn quá hạn cần báo cáo kết quả */}
-              {dsLichHenCanBaoCao.map((lich) => (
-                <div
-                  key={`warn_lich_${lich.id}`}
-                  className="p-2.5 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] flex items-start justify-between gap-2 shadow-2xs"
-                >
-                  <div className="min-w-0 space-y-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-600 text-white shrink-0">
-                        Chờ báo cáo
-                      </span>
-                      <span className="text-xs font-bold text-rose-950 truncate">
-                        {lich.ten_khach_hang || lich.tieu_de}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-rose-900/80 line-clamp-1">
-                      Hẹn ngày {lich.ngay} ({lich.gio_bat_dau}) {lich.ten_nguoi_lien_he ? `• Gặp ${lich.ten_nguoi_lien_he}` : ''}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLichHenDangBaoCao(lich);
-                      setNoiDungBaoCaoLichHen('');
-                    }}
-                    className="h-7 px-2.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shrink-0 cursor-pointer shadow-xs transition flex items-center gap-1"
-                  >
-                    <span>Báo cáo KQ</span>
-                  </button>
-                </div>
-              ))}
-
-              {/* 2. Dự án đóng băng / lâu chưa cập nhật */}
-              {dsDuAnDongBang.map((c) => (
-                <div
-                  key={`warn_radar_${c.id}`}
-                  className="p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/[0.06] flex items-start justify-between gap-2 shadow-2xs"
-                >
-                  <div className="min-w-0 space-y-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-indigo-600 text-white shrink-0">
-                        Dự án im ắng
-                      </span>
-                      <span className="text-xs font-bold text-indigo-950 truncate">
-                        {c.tieu_de}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-indigo-900/80 line-clamp-1">
-                      {c.noi_dung}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {c.du_an_id && mapDuAn.get(c.du_an_id) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const da = mapDuAn.get(c.du_an_id!);
-                          if (da) {
-                            setDuAnThemNhanh(da);
-                            if (da.khach_hang_id) {
-                              setKhachHangThemNhanh(mapKH.get(da.khach_hang_id) || null);
-                            }
-                            setNoiDungThemHomNay(`Liên hệ thúc đẩy dự án ${da.ten_du_an}`);
-                          }
-                        }}
-                        className="h-7 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-xs transition"
-                        title="Đưa dự án này vào việc hôm nay"
-                      >
-                        + Việc hôm nay
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ================================================================= */}
-      {/* HỘP VIỆC CẦN XỬ LÝ / YÊU CẦU PHỐI HỢP LIÊN PHÒNG BAN              */}
-      {/* ================================================================= */}
-      <HopYeuCauPhoiHop
-        danhSachYeuCau={danhSachYeuCau}
-        nguoiDungHienTai={nguoiDungHienTai}
-        onXoaYeuCau={(ycId) => { setDanhSachYeuCau((prev) => prev.filter((x) => x.id !== ycId)); }}
-        onCapNhatYeuCau={(ycCapNhat) => {
-          setDanhSachYeuCau((prev) =>
-            prev.map((x) => (x.id === ycCapNhat.id ? ycCapNhat : x))
-          );
-        }}
-        onMoModalTaoYeuCau={() => {
-          setDuAnChoYeuCau(duAnThemNhanh || null);
-          setMoModalTaoYeuCau(true);
-        }}
-        onMoChiTietDuAn={(daId) => {
-          const da = danhSachDuAn.find((d) => d.id === daId);
-          if (da) {
-            setHoSoThuGonState({ mo: true, cheDo: 'du_an', duAn: da, khachHang: null });
-          }
-        }}
-      />
 
       {/* ================================================================= */}
       {/* VIỆC HÔM NAY — TẤT CẢ THAO TÁC NẰM TẠI ĐÂY                      */}
@@ -2445,6 +2251,30 @@ export default function BanLamViecHangNgay({
             )}
           </div>
         </div>
+
+      {/* ================================================================= */}
+      {/* HỘP VIỆC CẦN XỬ LÝ / YÊU CẦU PHỐI HỢP LIÊN PHÒNG BAN              */}
+      {/* ================================================================= */}
+      <HopYeuCauPhoiHop
+        danhSachYeuCau={danhSachYeuCau}
+        nguoiDungHienTai={nguoiDungHienTai}
+        onXoaYeuCau={(ycId) => { setDanhSachYeuCau((prev) => prev.filter((x) => x.id !== ycId)); }}
+        onCapNhatYeuCau={(ycCapNhat) => {
+          setDanhSachYeuCau((prev) =>
+            prev.map((x) => (x.id === ycCapNhat.id ? ycCapNhat : x))
+          );
+        }}
+        onMoModalTaoYeuCau={() => {
+          setDuAnChoYeuCau(duAnThemNhanh || null);
+          setMoModalTaoYeuCau(true);
+        }}
+        onMoChiTietDuAn={(daId) => {
+          const da = danhSachDuAn.find((d) => d.id === daId);
+          if (da) {
+            setHoSoThuGonState({ mo: true, cheDo: 'du_an', duAn: da, khachHang: null });
+          }
+        }}
+      />
 
       {/* ================================================================= */}
       {/* DRAWER HỒ SƠ THU GỌN (XEM & TƯƠNG TÁC KHÁCH HÀNG / DỰ ÁN TẠI CHỖ) */}

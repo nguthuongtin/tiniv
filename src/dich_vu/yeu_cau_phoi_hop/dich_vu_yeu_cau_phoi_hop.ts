@@ -623,7 +623,8 @@ export const chuyenBuocYeuCauPhoiHop = async (
 
   let tenHanhDong = 'Chuyển bước';
   if (trangThaiMoi === 'cho_tpkd_duyet') {
-    if (ghiChu?.includes('TPKH')) tenHanhDong = 'TPKH trả lại yêu cầu làm rõ';
+    if (ghiChu?.includes('Yêu cầu lại')) tenHanhDong = 'Yêu cầu thực hiện lại';
+    else if (ghiChu?.includes('TPKH')) tenHanhDong = 'TPKH trả lại yêu cầu làm rõ';
     else if (ghiChu?.includes('Sale')) tenHanhDong = 'Sale yêu cầu hiệu chỉnh lại';
     else tenHanhDong = ghiChu ? 'Yêu cầu làm lại / Chuyển TPKD' : 'Khởi tạo chuyển TPKD';
   } else if (trangThaiMoi === 'cho_tpkh_tiep_nhan') {
@@ -719,6 +720,9 @@ export const chuyenBuocYeuCauPhoiHop = async (
     capNhat.chuc_vu_nguoi_nhan = null;
     capNhat.danh_sach_nhan_su_thuc_hien_ids = [];
     capNhat.danh_sach_ten_nhan_su_thuc_hien = [];
+    (capNhat as any).nguoi_thuc_hien_id = null;
+    (capNhat as any).ten_nguoi_thuc_hien = null;
+    (capNhat as any).nhan_su_thuc_hien_id = null;
   }
 
   const lichSuCu = Array.isArray(hienTai.lich_su_xu_ly) ? hienTai.lich_su_xu_ly : [];

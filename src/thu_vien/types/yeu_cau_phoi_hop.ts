@@ -248,6 +248,59 @@ export function chuanHoaDanhSachLink(
   return ketQua;
 }
 
+const NHAN_HE_THONG_KHONG_RUT_GON = new Set([
+  'khth',
+  'người dùng',
+  'thành viên',
+  'hệ thống',
+  'quản trị',
+  'quản trị hệ thống',
+  'tpkd',
+  'tpkh',
+  'ban giám đốc',
+  'bgd'
+]);
+
+/** Rút gọn họ tên theo dạng viết tắt họ & chữ lót + tên chính (VD: "Dương Tiểu Linh" -> "D.T. Linh") */
+export function rutGonTenVietTat(ten?: string | null): string {
+  if (!ten) return '';
+  const chuanHoa = ten.trim().replace(/\s+/g, ' ');
+  if (!chuanHoa) return '';
+  if (NHAN_HE_THONG_KHONG_RUT_GON.has(chuanHoa.toLowerCase())) return chuanHoa;
+
+  const parts = chuanHoa.split(' ').filter(Boolean);
+  if (parts.length <= 1) return chuanHoa;
+
+  const hoLotVietTat = parts
+    .slice(0, -1)
+    .map((p) => `${p.charAt(0).toLocaleUpperCase('vi-VN')}.`)
+    .join('');
+  const tenCuoiRaw = parts[parts.length - 1];
+  const laAllCaps =
+    tenCuoiRaw.length > 1 &&
+    tenCuoiRaw === tenCuoiRaw.toLocaleUpperCase('vi-VN') &&
+    tenCuoiRaw !== tenCuoiRaw.toLocaleLowerCase('vi-VN');
+  const laAllLower =
+    tenCuoiRaw === tenCuoiRaw.toLocaleLowerCase('vi-VN') &&
+    tenCuoiRaw !== tenCuoiRaw.toLocaleUpperCase('vi-VN');
+  const tenCuoi =
+    laAllCaps || laAllLower
+      ? tenCuoiRaw.charAt(0).toLocaleUpperCase('vi-VN') + tenCuoiRaw.slice(1).toLocaleLowerCase('vi-VN')
+      : tenCuoiRaw;
+
+  return `${hoLotVietTat} ${tenCuoi}`.trim();
+}
+
+/** Rút gọn chuỗi nhiều tên phân cách bằng dấu phẩy hoặc mảng tên */
+export function rutGonDanhSachTenVietTat(ds?: string | string[] | null): string {
+  if (!ds) return '';
+  const items = Array.isArray(ds) ? ds : ds.split(',');
+  return items
+    .map((item) => rutGonTenVietTat(item))
+    .filter(Boolean)
+    .join(', ');
+}
+
 export function layDanhSachLinkDauVao(
   yc: Pick<YeuCauPhoiHop, 'danh_sach_link_dau_vao' | 'link_drive_dau_vao'>
 ): string[] {
@@ -344,39 +397,39 @@ export function layNhanTrangThaiDichDanh(
 
   switch (tt) {
     case 'cho_tpkd_duyet':
-      return tenTPKD ? `Chờ ${tenTPKD} duyệt` : 'Chờ duyệt yêu cầu';
+      return tenTPKD ? `Chờ ${rutGonTenVietTat(tenTPKD)} duyệt` : 'Chờ duyệt yêu cầu';
     case 'cho_tpkh_tiep_nhan': {
       const nguoiDieuPhoi =
         (tenNhan && (cvNhan.includes('khth') || cvNhan.includes('kế hoạch') || cvNhan.includes('tổng hợp'))
           ? tenNhan
           : null) || tenTPKH;
-      return nguoiDieuPhoi ? `Chờ ${nguoiDieuPhoi} điều phối` : 'Chờ điều phối';
+      return nguoiDieuPhoi ? `Chờ ${rutGonTenVietTat(nguoiDieuPhoi)} điều phối` : 'Chờ điều phối';
     }
     case 'cho_cv_khth_thuc_hien':
     case 'cho_khth_thuc_hien': {
       const dsCV = (yc.danh_sach_ten_nhan_su_thuc_hien || [])
-        .map((s) => s.trim())
+        .map((s) => rutGonTenVietTat(s))
         .filter(Boolean);
       const nguoiLam =
         dsCV.length > 0
           ? dsCV.join(', ')
           : tenNhan && !laTPKDHoacGD(undefined, yc.chuc_vu_nguoi_nhan)
-            ? tenNhan
+            ? rutGonTenVietTat(tenNhan)
             : null;
       return nguoiLam ? `${nguoiLam} đang xử lý` : 'Đang xử lý';
     }
     case 'cho_tpkh_duyet_ket_qua':
-      return tenTPKH ? `Chờ ${tenTPKH} duyệt KQ` : 'Chờ duyệt kết quả';
+      return tenTPKH ? `Chờ ${rutGonTenVietTat(tenTPKH)} duyệt KQ` : 'Chờ duyệt kết quả';
     case 'cho_tpkd_duyet_ket_qua':
     case 'cho_lanh_dao_duyet': {
       const nguoiDuyetKQ = tenTPKDTuLog || options?.tenTPKD?.trim() || tenTPKD;
-      return nguoiDuyetKQ ? `Chờ ${nguoiDuyetKQ} duyệt KQ` : 'Chờ duyệt bàn giao';
+      return nguoiDuyetKQ ? `Chờ ${rutGonTenVietTat(nguoiDuyetKQ)} duyệt KQ` : 'Chờ duyệt bàn giao';
     }
     case 'cho_sale_nghiem_thu':
     case 'da_phe_duyet':
-      return tenTao ? `Chờ ${tenTao} nghiệm thu` : 'Chờ nghiệm thu';
+      return tenTao ? `Chờ ${rutGonTenVietTat(tenTao)} nghiệm thu` : 'Chờ nghiệm thu';
     case 'yeu_cau_chinh_sua':
-      return tenTao ? `Chờ ${tenTao} chỉnh sửa` : 'Chờ chỉnh sửa';
+      return tenTao ? `Chờ ${rutGonTenVietTat(tenTao)} chỉnh sửa` : 'Chờ chỉnh sửa';
     case 'da_hoan_thanh':
       return 'Đã hoàn thành';
     default:
