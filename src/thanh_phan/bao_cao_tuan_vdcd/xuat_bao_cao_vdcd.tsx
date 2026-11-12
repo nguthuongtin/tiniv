@@ -198,7 +198,6 @@ export async function xuatExcelBaoCaoTuanVDCD(
 
   addPlanSheet('KH_Dong_Tien', baoCao.ke_hoach_dong_tien, false);
   addPlanSheet('KH_DA_Tiem_Nang', baoCao.ke_hoach_tiem_nang, false);
-  addPlanSheet('KH_San_Xuat', baoCao.ke_hoach_san_xuat, true);
 
   // Sheet Lịch công tác tuần tới
   const sLich = wb.addWorksheet('Lich_Cong_Tac_Tuan');
@@ -253,10 +252,6 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   const trangDongTien = useMemo(
     () => chiaTrang(baoCao.ke_hoach_dong_tien, 6),
     [baoCao.ke_hoach_dong_tien]
-  );
-  const trangSanXuat = useMemo(
-    () => chiaTrang(baoCao.ke_hoach_san_xuat, 6),
-    [baoCao.ke_hoach_san_xuat]
   );
 
   if (!mo) return null;
@@ -747,13 +742,6 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
           {trangTiemNang.map((items, idx) => (
             <SlideFrame key={`tn_${idx}`}>
               {renderBangKeHoach('- DA TIỀM NĂNG -', items, false)}
-            </SlideFrame>
-          ))}
-
-          {/* SLIDE 8+: KẾ HOẠCH SẢN XUẤT */}
-          {trangSanXuat.map((items, idx) => (
-            <SlideFrame key={`sx_${idx}`}>
-              {renderBangKeHoach('- SẢN XUẤT -', items, true)}
             </SlideFrame>
           ))}
 

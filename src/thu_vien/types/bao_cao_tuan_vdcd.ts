@@ -393,9 +393,6 @@ export function tinhSoLieuTuCRM(params: {
     ) {
       goiYTiemNang.push({ ...dongMau, id: `tn_${da.id}` });
     }
-    if (gd === 'trien_khai' || gd === 'ky_hop_dong' || gd === 'nghiem_thu') {
-      goiYSanXuat.push({ ...dongMau, id: `sx_${da.id}` });
-    }
   }
 
   const nguonPct: SoLieuNguonTiepCanTuan =
