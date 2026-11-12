@@ -611,7 +611,8 @@ export const chuyenBuocYeuCauPhoiHop = async (
 
   const capNhat: Partial<YeuCauPhoiHop> = {
     trang_thai: trangThaiMoi,
-    ngay_cap_nhat: nowISO
+    ngay_cap_nhat: nowISO,
+    ...(trangThaiMoi === 'da_hoan_thanh' ? { ngay_hoan_thanh: nowISO } : {})
   };
 
   if (linkDriveKetQua) capNhat.link_drive_ket_qua = linkDriveKetQua.trim();

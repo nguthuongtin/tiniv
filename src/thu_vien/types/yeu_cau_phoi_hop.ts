@@ -57,6 +57,7 @@ export interface YeuCauPhoiHop {
 
   ngay_tao: string;
   ngay_cap_nhat: string;
+  ngay_hoan_thanh?: string | null;
   trang_thai_du_lieu: 'hoat_dong' | 'da_xoa';
 }
 

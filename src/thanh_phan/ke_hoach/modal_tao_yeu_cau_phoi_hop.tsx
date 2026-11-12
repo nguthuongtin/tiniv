@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Send, Link2, Calendar, FolderKanban, Loader2, Sparkles, Search, Check, ChevronDown, User } from 'lucide-react';
+import { X, Send, Link2, Calendar, FolderKanban, Loader2, Sparkles, Search, Check, CheckCircle2, ChevronDown, User } from 'lucide-react';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
 import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
 import { taoYeuCauPhoiHopMoi, type YeuCauPhoiHop } from '../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
 import { cn } from '../../thu_vien/utils/cn';
+import { moZaloChiaSeYeuCau } from '../../thu_vien/utils/chia_se_zalo_yeu_cau';
+import { formatNgay } from '../../thu_vien/utils/format_ngay';
 
 interface Props {
   mo: boolean;
@@ -44,6 +46,8 @@ export default function ModalTaoYeuCauPhoiHop({
   const [nguoiNhanId, setNguoiNhanId] = useState<string>('');
   const [tuKhoaNguoiNhan, setTuKhoaNguoiNhan] = useState('');
   const [moDropdownNguoiNhan, setMoDropdownNguoiNhan] = useState(false);
+  const [yeuCauVuaTao, setYeuCauVuaTao] = useState<YeuCauPhoiHop | null>(null);
+  const [daGuiZalo, setDaGuiZalo] = useState(false);
 
   // Đồng bộ lại dữ liệu mỗi khi mở modal
   useEffect(() => {
@@ -59,6 +63,8 @@ export default function ModalTaoYeuCauPhoiHop({
       setHanXong(d.toISOString().slice(0, 10));
       setTuKhoaNguoiNhan('');
       setMoDropdownNguoiNhan(false);
+      setYeuCauVuaTao(null);
+      setDaGuiZalo(false);
 
       void danhSachNhanSu({ trang_thai_du_lieu: 'hoat_dong', trang_thai_hoat_dong: 'hoat_dong' }).then((res) => {
         const mang = res.mang || [];
@@ -147,7 +153,8 @@ export default function ModalTaoYeuCauPhoiHop({
       if (onTaoThanhCong) {
         onTaoThanhCong(yc);
       }
-      onDong();
+      setYeuCauVuaTao(yc);
+      setDaGuiZalo(false);
     } catch (err: any) {
       setLoi(err?.message || 'Không thể tạo yêu cầu. Vui lòng thử lại.');
     } finally {
@@ -161,6 +168,13 @@ export default function ModalTaoYeuCauPhoiHop({
     setHanXong(d.toISOString().slice(0, 10));
   };
 
+  const handleGuiZaloNgay = async () => {
+    if (!yeuCauVuaTao) return;
+    await moZaloChiaSeYeuCau(yeuCauVuaTao);
+    setDaGuiZalo(true);
+    setTimeout(() => setDaGuiZalo(false), 3000);
+  };
+
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 sm:p-6 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
       {/* Background card với màu nền trắng/dark tuyệt đối */}
@@ -168,15 +182,15 @@ export default function ModalTaoYeuCauPhoiHop({
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Sparkles className="size-4" />
+            <div className={cn('size-9 rounded-xl flex items-center justify-center shrink-0', yeuCauVuaTao ? 'bg-emerald-50 text-emerald-600' : 'bg-primary/10 text-primary')}>
+              {yeuCauVuaTao ? <CheckCircle2 className="size-4" /> : <Sparkles className="size-4" />}
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 leading-snug">
-                Tạo yêu cầu phối hợp
+                {yeuCauVuaTao ? 'Đã gửi yêu cầu hỗ trợ' : 'Tạo yêu cầu phối hợp'}
               </h3>
               <p className="text-xs text-slate-500">
-                Gửi nội dung cần hỗ trợ sang bộ phận liên quan
+                {yeuCauVuaTao ? yeuCauVuaTao.ten_du_an : 'Gửi nội dung cần hỗ trợ sang bộ phận liên quan'}
               </p>
             </div>
           </div>
@@ -195,6 +209,62 @@ export default function ModalTaoYeuCauPhoiHop({
           </div>
         )}
 
+        {yeuCauVuaTao ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-2 text-xs">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Nội dung yêu cầu
+              </div>
+              <div className="text-slate-900 font-medium whitespace-pre-line break-words leading-relaxed">
+                {yeuCauVuaTao.noi_dung_yeu_cau}
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/70 text-[11px] text-slate-500 flex-wrap">
+                <span>
+                  Tiếp nhận: <strong className="text-slate-800">{yeuCauVuaTao.ten_nguoi_nhan || 'Chờ phân công'}</strong>
+                </span>
+                {yeuCauVuaTao.han_hoan_thanh && (
+                  <span>
+                    Hạn: <strong className="text-slate-800">{formatNgay(yeuCauVuaTao.han_hoan_thanh)}</strong>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={onDong}
+                className="h-9 px-4 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={handleGuiZaloNgay}
+                className={cn(
+                  'h-9 px-4 rounded-xl text-xs font-bold inline-flex items-center gap-2 cursor-pointer shadow-xs transition',
+                  daGuiZalo
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
+                )}
+              >
+                {daGuiZalo ? (
+                  <>
+                    <Check className="size-3.5 stroke-[2.5]" />
+                    <span>Đã chép & Mở Zalo</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-black text-[10px] bg-white text-[#0068FF] size-4 rounded flex items-center justify-center leading-none">
+                      Z
+                    </span>
+                    <span>Gửi nội dung lên nhóm Zalo</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleGui} className="space-y-4">
           {/* Dự án áp dụng - Searchable Combobox */}
           <div className="space-y-1.5 relative">
@@ -472,6 +542,7 @@ export default function ModalTaoYeuCauPhoiHop({
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

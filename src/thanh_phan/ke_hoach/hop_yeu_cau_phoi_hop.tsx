@@ -31,7 +31,13 @@ import {
   Eye
 } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
-import { formatNgay } from '../../thu_vien/utils/format_ngay';
+import { formatNgay, formatNgayGio } from '../../thu_vien/utils/format_ngay';
+import {
+  moZaloChiaSeYeuCau,
+  layNguoiXuLyYeuCau,
+  layThoiGianHoanThanhYeuCau,
+  dinhDangThoiGianNgan
+} from '../../thu_vien/utils/chia_se_zalo_yeu_cau';
 import type {
   YeuCauPhoiHop,
   TrangThaiYeuCauPhoiHop
@@ -787,60 +793,10 @@ export default function HopYeuCauPhoiHop({
     setTimeout(() => setDaCopyLink(null), 2000);
   };
 
-  const handleChiaSeZalo = (yc: YeuCauPhoiHop) => {
-    const nguoiThucHien =
-      yc.ten_nguoi_nhan ||
-      (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0
-        ? yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')
-        : 'KHTH');
-
-    const noiDungTinNhan = [
-      `🔔 [KẾT QUẢ XỬ LÝ YÊU CẦU: ${yc.ten_du_an.toUpperCase()}]`,
-      `• Nội dung yêu cầu: ${yc.noi_dung_yeu_cau}`,
-      `• Người tạo (Sale): ${yc.ten_nguoi_tao}`,
-      `• Phụ trách thực hiện: ${nguoiThucHien}`,
-      yc.link_drive_ket_qua ? `• Link kết quả: ${yc.link_drive_ket_qua}` : null,
-      `• Thời gian hoàn thành: ${new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date())}`
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    try {
-      navigator.clipboard.writeText(noiDungTinNhan);
-    } catch (err) {
-      console.warn('Lỗi chép clipboard:', err);
-    }
-
+  const handleChiaSeZalo = async (yc: YeuCauPhoiHop) => {
+    await moZaloChiaSeYeuCau(yc);
     setDaChiaSeZaloId(yc.id);
     setTimeout(() => setDaChiaSeZaloId(null), 3000);
-
-    if (typeof window !== 'undefined') {
-      // 1. Mở trực tiếp phần mềm Zalo trên PC hoặc App Zalo trên Mobile qua custom URI scheme zalo://
-      try {
-        const a = document.createElement('a');
-        a.href = 'zalo://';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          if (a.parentNode) document.body.removeChild(a);
-        }, 300);
-      } catch {
-        try {
-          window.location.href = 'zalo://';
-        } catch {}
-      }
-
-      // 2. Dự phòng: Nếu thiết bị chưa cài phần mềm/app Zalo (sau 1.8s trang vẫn còn focus), chuyển sang Zalo Web
-      const start = Date.now();
-      setTimeout(() => {
-        if (document.hidden || Date.now() - start > 2600) return;
-        const urlZalo = yc.link_drive_ket_qua
-          ? `https://zalo.me/share?url=${encodeURIComponent(yc.link_drive_ket_qua)}`
-          : 'https://chat.zalo.me/';
-        window.open(urlZalo, '_blank', 'noopener,noreferrer');
-      }, 1800);
-    }
   };
 
   // Mở modal sửa nội dung cơ bản
@@ -1165,21 +1121,155 @@ export default function HopYeuCauPhoiHop({
       };
     }
 
-    if (yc.link_drive_ket_qua) {
-      return {
-        label: 'Xem KQ',
-        icon: ExternalLink,
-        className: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200',
-        onClick: (e: React.MouseEvent) => {
-          e.stopPropagation();
-          if (yc.link_drive_ket_qua) {
-            window.open(yc.link_drive_ket_qua, '_blank', 'noopener,noreferrer');
-          }
-        }
-      };
-    }
-
     return null;
+  };
+
+  const homNayISO = new Intl.DateTimeFormat('en-CA').format(new Date());
+
+  const layThongTinHienThiHang = (yc: YeuCauPhoiHop) => {
+    const cfgTrangThai = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai] || {
+      label: yc.trang_thai,
+      mauBadge: 'bg-slate-100 text-slate-600 border-slate-200',
+      textClass: 'text-slate-600',
+      buocSo: 1
+    };
+    const hanhDong = layHanhDongNhanh(yc);
+    const nguoiNhan = layNguoiXuLyYeuCau(yc);
+    const { daHoanThanh, thoiGianHoanThanh, thoiGianNopKetQua } = layThoiGianHoanThanhYeuCau(yc);
+    const tgYeuCauNgan = dinhDangThoiGianNgan(yc.ngay_tao);
+    const tgHoanThanhNgan = dinhDangThoiGianNgan(thoiGianHoanThanh);
+    const tgNopKQNgan = dinhDangThoiGianNgan(thoiGianNopKetQua);
+    const laQuaHan =
+      !daHoanThanh &&
+      !thoiGianNopKetQua &&
+      Boolean(yc.han_hoan_thanh) &&
+      (yc.han_hoan_thanh as string) < homNayISO;
+
+    return {
+      cfgTrangThai,
+      hanhDong,
+      nguoiNhan,
+      daHoanThanh,
+      thoiGianHoanThanh,
+      thoiGianNopKetQua,
+      tgYeuCauNgan,
+      tgHoanThanhNgan,
+      tgNopKQNgan,
+      laQuaHan
+    };
+  };
+
+  const renderMocThoiGianXL = (
+    yc: YeuCauPhoiHop,
+    tt: ReturnType<typeof layThongTinHienThiHang>
+  ) => {
+    if (tt.daHoanThanh && tt.tgHoanThanhNgan) {
+      return (
+        <span
+          className="font-mono text-[11px] font-semibold text-emerald-700 tabular-nums shrink-0 inline-flex items-center gap-0.5"
+          title={`Hoàn thành lúc: ${formatNgayGio(tt.thoiGianHoanThanh)}`}
+        >
+          <Check className="size-3 stroke-[2.5]" />
+          <span>{tt.tgHoanThanhNgan}</span>
+        </span>
+      );
+    }
+    if (tt.tgNopKQNgan) {
+      return (
+        <span
+          className="font-mono text-[11px] font-medium text-teal-700 tabular-nums shrink-0"
+          title={`Nộp kết quả lúc: ${formatNgayGio(tt.thoiGianNopKetQua)}`}
+        >
+          {tt.tgNopKQNgan}
+        </span>
+      );
+    }
+    if (yc.han_hoan_thanh) {
+      return (
+        <span
+          className={cn(
+            'font-mono text-[11px] tabular-nums shrink-0',
+            tt.laQuaHan ? 'text-rose-600 font-semibold' : 'text-amber-700 font-medium'
+          )}
+          title={`Hạn hoàn thành: ${formatNgay(yc.han_hoan_thanh)}`}
+        >
+          Hạn {formatNgay(yc.han_hoan_thanh, 'DD/MM')}
+        </span>
+      );
+    }
+    return <span className="font-mono text-[11px] text-slate-300 shrink-0">—</span>;
+  };
+
+  const renderNutGuiZalo = (yc: YeuCauPhoiHop, fullLabel = false) => {
+    const daCoKetQua = Boolean(yc.link_drive_ket_qua) || yc.trang_thai === 'da_hoan_thanh';
+    const daChep = daChiaSeZaloId === yc.id;
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          void handleChiaSeZalo(yc);
+        }}
+        className={cn(
+          'font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer transition shadow-2xs whitespace-nowrap',
+          fullLabel ? 'h-8.5 px-3 rounded-xl' : 'h-7 px-2.5 rounded-lg gap-1',
+          daChep ? 'bg-emerald-600 text-white' : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
+        )}
+        title={
+          daCoKetQua
+            ? 'Sao chép kết quả & Mở Zalo'
+            : 'Sao chép nội dung yêu cầu & Mở nhóm Zalo'
+        }
+      >
+        {daChep ? (
+          <>
+            <Check className="size-3.5 stroke-[2.5]" />
+            <span>{fullLabel ? 'Đã chép & Mở Zalo' : 'Đã chép'}</span>
+          </>
+        ) : (
+          <>
+            <span className="font-black text-[9px] bg-white text-[#0068FF] size-3.5 rounded flex items-center justify-center leading-none">
+              Z
+            </span>
+            <span>{fullLabel ? (daCoKetQua ? 'Gửi kết quả Zalo' : 'Gửi yêu cầu Zalo') : 'Gửi Zalo'}</span>
+          </>
+        )}
+      </button>
+    );
+  };
+
+  const renderTaiLieuBadges = (yc: YeuCauPhoiHop) => {
+    if (!yc.link_drive_dau_vao && !yc.link_drive_ket_qua) return null;
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+        {yc.link_drive_dau_vao && (
+          <a
+            href={yc.link_drive_dau_vao}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200/70 hover:bg-blue-100 transition"
+            title="Mở file yêu cầu đầu vào"
+          >
+            <Link2 className="size-3 shrink-0" />
+            <span>Tài liệu đầu vào</span>
+          </a>
+        )}
+        {yc.link_drive_ket_qua && (
+          <a
+            href={yc.link_drive_ket_qua}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70 hover:bg-emerald-100 transition"
+            title="Mở file kết quả xử lý"
+          >
+            <FileCheck2 className="size-3 shrink-0" />
+            <span>File kết quả</span>
+          </a>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -1188,23 +1278,18 @@ export default function HopYeuCauPhoiHop({
       <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold border border-blue-100 shadow-2xs">
-              <Sparkles className="size-5" />
+            <div className="size-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold border border-blue-100 shadow-2xs">
+              <Sparkles className="size-4.5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                  Yêu cầu phối hợp phòng ban
-                </h2>
-                {thongKeTabs.dang_chay > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                    {thongKeTabs.dang_chay} đang chạy
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Luân chuyển thông tin tác nghiệp xuyên suốt giữa Kinh doanh và Kế hoạch tổng hợp
-              </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                Yêu cầu phối hợp phòng ban
+              </h2>
+              {thongKeTabs.dang_chay > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  {thongKeTabs.dang_chay} đang chạy
+                </span>
+              )}
             </div>
           </div>
 
@@ -1311,34 +1396,20 @@ export default function HopYeuCauPhoiHop({
           </div>
         ) : (
           <div className="space-y-3">
-            {/* 1. BẢNG TRÊN DESKTOP: CỘT RÕ RÀNG, CĂN LỀ THẲNG TẮP */}
+            {/* 1. BẢNG TRÊN DESKTOP: CHIA 4 CỘT RÕ RÀNG, CĂN LỀ THẲNG TẮP */}
             <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wider select-none">
-                    <th className="py-3 px-3.5 w-[200px]">Dự án</th>
-                    <th className="py-3 px-3.5 min-w-[260px]">Nội dung yêu cầu</th>
-                    <th className="py-3 px-3.5 w-[130px]">Người tạo</th>
-                    <th className="py-3 px-3.5 w-[150px]">Người tiếp nhận</th>
-                    <th className="py-3 px-3.5 w-[110px]">Hạn xử lý</th>
-                    <th className="py-3 px-3.5 w-[160px]">Trạng thái</th>
-                    <th className="py-3 px-3.5 w-[150px] text-right">Thao tác</th>
+                    <th className="py-3 px-4 min-w-[260px]">Yêu cầu hỗ trợ</th>
+                    <th className="py-3 px-3.5 w-[270px]">Người YC &amp; Xử lý</th>
+                    <th className="py-3 px-3.5 w-[140px]">Trạng thái</th>
+                    <th className="py-3 px-4 w-[225px] text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {dsHienThi.map((yc) => {
-                    const cfgTrangThai = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai] || {
-                      label: yc.trang_thai,
-                      mauBadge: 'bg-slate-100 text-slate-600 border-slate-200',
-                      textClass: 'text-slate-600',
-                      buocSo: 1
-                    };
-                    const hanhDong = layHanhDongNhanh(yc);
-                    const nguoiNhan =
-                      yc.ten_nguoi_nhan ||
-                      (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0
-                        ? yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')
-                        : '');
+                    const tt = layThongTinHienThiHang(yc);
 
                     return (
                       <tr
@@ -1346,170 +1417,130 @@ export default function HopYeuCauPhoiHop({
                         onClick={() => setYeuCauDangXemChiTiet(yc)}
                         className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
                       >
-                        {/* 1. Dự án */}
-                        <td className="py-3 px-3.5 align-middle">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onMoChiTietDuAn?.(yc.du_an_id);
-                            }}
-                            className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors cursor-pointer inline-flex items-center gap-1.5 text-xs truncate text-left max-w-[190px]"
-                            title="Xem chi tiết dự án"
-                          >
-                            <FolderKanban className="size-3.5 text-blue-600 shrink-0" />
-                            <span className="truncate">{yc.ten_du_an}</span>
-                          </button>
-                          <div className="text-[11px] text-slate-400 mt-0.5">
-                            {formatNgay(yc.ngay_tao) || 'Hôm nay'}
-                          </div>
-                        </td>
-
-                        {/* 2. Nội dung yêu cầu */}
-                        <td className="py-3 px-3.5 align-middle">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* 1. Yêu cầu hỗ trợ (Dự án + Tên/Nội dung yêu cầu đầy đủ + Đính kèm) */}
+                        <td className="py-3.5 px-4 align-top">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {onMoChiTietDuAn ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onMoChiTietDuAn(yc.du_an_id);
+                                  }}
+                                  className="font-semibold text-blue-700 hover:text-blue-800 hover:underline transition-colors cursor-pointer inline-flex items-center gap-1.5 text-[11.5px] text-left"
+                                  title="Xem chi tiết dự án"
+                                >
+                                  <FolderKanban className="size-3.5 text-blue-600 shrink-0" />
+                                  <span>{yc.ten_du_an}</span>
+                                </button>
+                              ) : (
+                                <span className="font-semibold text-slate-700 inline-flex items-center gap-1.5 text-[11.5px]">
+                                  <FolderKanban className="size-3.5 text-blue-600 shrink-0" />
+                                  <span>{yc.ten_du_an}</span>
+                                </span>
+                              )}
                               {yc.trang_thai === 'yeu_cau_chinh_sua' && (
                                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shrink-0">
                                   <AlertTriangle className="size-2.5" />
                                   Cần sửa
                                 </span>
                               )}
-                              {yc.link_drive_dau_vao && (
-                                <a
-                                  href={yc.link_drive_dau_vao}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10.5px] font-medium bg-blue-50 text-blue-700 border border-blue-200/60 hover:bg-blue-100 transition shrink-0"
-                                  title="File yêu cầu đầu vào"
-                                >
-                                  <Link2 className="size-2.5" />
-                                  <span>Đầu vào</span>
-                                </a>
-                              )}
-                              {yc.link_drive_ket_qua && (
-                                <a
-                                  href={yc.link_drive_ket_qua}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10.5px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100 transition shrink-0"
-                                  title="File kết quả KHTH"
-                                >
-                                  <FileCheck2 className="size-2.5" />
-                                  <span>Kết quả</span>
-                                </a>
-                              )}
                             </div>
-                            <p
-                              className="text-slate-700 line-clamp-2 leading-relaxed text-[12px] font-normal"
-                              title={yc.noi_dung_yeu_cau}
-                            >
+
+                            <div className="text-[13px] font-medium text-slate-900 leading-relaxed whitespace-pre-line break-words">
                               {yc.noi_dung_yeu_cau}
-                            </p>
+                            </div>
+
+                            {renderTaiLieuBadges(yc)}
                           </div>
                         </td>
 
-                        {/* 3. Người tạo */}
-                        <td className="py-3 px-3.5 align-middle text-slate-800 font-medium whitespace-nowrap">
-                          {yc.ten_nguoi_tao}
+                        {/* 2. Người YC & Người xử lý + Thời gian YC & TG thực hiện */}
+                        <td className="py-3.5 px-3.5 align-top w-[270px]">
+                          <div className="space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                <span className="inline-flex items-center justify-center w-6 h-4 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">
+                                  YC
+                                </span>
+                                <span
+                                  className="font-semibold text-slate-800 truncate"
+                                  title={`Người yêu cầu: ${yc.ten_nguoi_tao}`}
+                                >
+                                  {yc.ten_nguoi_tao}
+                                </span>
+                              </div>
+                              <span
+                                className="font-mono text-[11px] text-slate-500 tabular-nums shrink-0"
+                                title={`Gửi lúc: ${formatNgayGio(yc.ngay_tao) || 'Không rõ'}`}
+                              >
+                                {tt.tgYeuCauNgan || '—'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                <span className="inline-flex items-center justify-center w-6 h-4 rounded bg-blue-50 text-blue-700 text-[10px] font-bold shrink-0">
+                                  XL
+                                </span>
+                                {tt.nguoiNhan ? (
+                                  <span
+                                    className="font-semibold text-blue-700 truncate"
+                                    title={`Người xử lý: ${tt.nguoiNhan}`}
+                                  >
+                                    {tt.nguoiNhan}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 italic text-[11px] truncate">
+                                    Chờ phân công
+                                  </span>
+                                )}
+                              </div>
+                              {renderMocThoiGianXL(yc, tt)}
+                            </div>
+                          </div>
                         </td>
 
-                        {/* 4. Người tiếp nhận */}
-                        <td className="py-3 px-3.5 align-middle">
-                          {nguoiNhan ? (
-                            <span
-                              className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50/70 border border-blue-100 text-blue-700 font-medium text-[11px] truncate max-w-[140px]"
-                              title={nguoiNhan}
-                            >
-                              {nguoiNhan}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 italic text-[11px]">Chờ phân công</span>
-                          )}
-                        </td>
-
-                        {/* 5. Hạn xử lý */}
-                        <td className="py-3 px-3.5 align-middle whitespace-nowrap">
-                          {yc.han_hoan_thanh ? (
-                            <span className="text-slate-700 font-medium">
-                              {formatNgay(yc.han_hoan_thanh)}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
-                        </td>
-
-                        {/* 6. Trạng thái */}
-                        <td className="py-3 px-3.5 align-middle">
+                        {/* 3. Trạng thái */}
+                        <td className="py-3.5 px-3.5 align-top w-[140px]">
                           <span
                             className={cn(
                               'inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border whitespace-nowrap',
-                              cfgTrangThai.mauBadge
+                              tt.cfgTrangThai.mauBadge
                             )}
                           >
-                            {cfgTrangThai.label}
+                            {tt.cfgTrangThai.label}
                           </span>
                         </td>
 
-                        {/* 7. Thao tác */}
-                        <td className="py-3 px-3.5 align-middle text-right whitespace-nowrap">
+                        {/* 4. Thao tác */}
+                        <td className="py-3.5 px-4 align-top text-right w-[225px]">
                           <div
-                            className="flex items-center justify-end gap-1.5"
+                            className="flex items-center justify-end gap-1.5 flex-wrap"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {hanhDong && (
+                            {tt.hanhDong && (
                               <button
                                 type="button"
-                                onClick={hanhDong.onClick}
+                                onClick={tt.hanhDong.onClick}
                                 className={cn(
-                                  'h-7 px-2.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition shadow-2xs',
-                                  hanhDong.className
+                                  'h-7 px-2.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition shadow-2xs whitespace-nowrap',
+                                  tt.hanhDong.className
                                 )}
                               >
-                                <hanhDong.icon className="size-3.5 stroke-[2.5]" />
-                                <span>{hanhDong.label}</span>
+                                <tt.hanhDong.icon className="size-3.5 stroke-[2.5]" />
+                                <span>{tt.hanhDong.label}</span>
                               </button>
                             )}
-{yc.link_drive_ket_qua && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleChiaSeZalo(yc);
-                                }}
-                                className={cn(
-                                  'h-7 px-2.5 rounded-lg font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition shadow-2xs',
-                                  daChiaSeZaloId === yc.id
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
-                                )}
-                                title="Sao chép nội dung & Mở thẳng phần mềm Zalo (PC) hoặc App Zalo (Mobile)"
-                              >
-                                {daChiaSeZaloId === yc.id ? (
-                                  <>
-                                    <Check className="size-3.5 stroke-[2.5]" />
-                                    <span>Đã chép</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="font-black text-[9px] bg-white text-[#0068FF] size-3.5 rounded flex items-center justify-center leading-none">
-                                      Z
-                                    </span>
-                                    <span>Gửi Zalo</span>
-                                  </>
-                                )}
-                              </button>
-                            )}
+                            {renderNutGuiZalo(yc)}
                             <button
                               type="button"
                               onClick={() => setYeuCauDangXemChiTiet(yc)}
-                              className="h-7 px-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                              className="h-7 w-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 inline-flex items-center justify-center cursor-pointer transition shadow-2xs shrink-0"
                               title="Xem chi tiết"
                             >
                               <Eye className="size-3.5 text-slate-500" />
-                              <span className="hidden xl:inline">Chi tiết</span>
                             </button>
                           </div>
                         </td>
@@ -1523,18 +1554,7 @@ export default function HopYeuCauPhoiHop({
             {/* 2. DANH SÁCH THẺ GỌN GÀNG TRÊN MOBILE */}
             <div className="md:hidden space-y-2.5">
               {dsHienThi.map((yc) => {
-                const cfgTrangThai = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai] || {
-                  label: yc.trang_thai,
-                  mauBadge: 'bg-slate-100 text-slate-600 border-slate-200',
-                  textClass: 'text-slate-600',
-                  buocSo: 1
-                };
-                const hanhDong = layHanhDongNhanh(yc);
-                const nguoiNhan =
-                  yc.ten_nguoi_nhan ||
-                  (Array.isArray(yc.danh_sach_ten_nhan_su_thuc_hien) && yc.danh_sach_ten_nhan_su_thuc_hien.length > 0
-                    ? yc.danh_sach_ten_nhan_su_thuc_hien.join(', ')
-                    : '');
+                const tt = layThongTinHienThiHang(yc);
 
                 return (
                   <div
@@ -1543,90 +1563,83 @@ export default function HopYeuCauPhoiHop({
                     className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-2xs hover:border-slate-300 transition-all cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                      <div className="flex items-center gap-1.5 font-semibold text-blue-700 text-xs min-w-0">
                         <FolderKanban className="size-3.5 text-blue-600 shrink-0" />
-                        <span className="truncate">{yc.ten_du_an}</span>
+                        <span className="break-words">{yc.ten_du_an}</span>
                       </div>
                       <span
                         className={cn(
-                          'px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0',
-                          cfgTrangThai.mauBadge
+                          'px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 whitespace-nowrap',
+                          tt.cfgTrangThai.mauBadge
                         )}
                       >
-                        {cfgTrangThai.label}
+                        {tt.cfgTrangThai.label}
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-700 line-clamp-2 leading-relaxed font-normal">
+                    <div className="text-[13px] text-slate-900 font-medium leading-relaxed whitespace-pre-line break-words">
                       {yc.noi_dung_yeu_cau}
-                    </p>
+                    </div>
 
-                    <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 pt-1 border-t border-slate-100 flex-wrap">
-                      <div className="flex items-center gap-1 truncate">
-                        <span>
-                          Tạo: <strong className="text-slate-800">{yc.ten_nguoi_tao}</strong>
-                        </span>
-                        {nguoiNhan && (
-                          <>
-                            <span className="text-slate-300">•</span>
-                            <span>
-                              Nhận: <strong className="text-blue-700">{nguoiNhan}</strong>
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      {yc.han_hoan_thanh && (
-                        <div className="text-slate-600 font-medium">
-                          Hạn: {formatNgay(yc.han_hoan_thanh)}
+                    {renderTaiLieuBadges(yc)}
+
+                    <div className="space-y-1.5 text-[11px] pt-2 border-t border-slate-100">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <span className="inline-flex items-center justify-center w-6 h-4 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">
+                            YC
+                          </span>
+                          <span className="font-semibold text-slate-800 truncate">
+                            {yc.ten_nguoi_tao}
+                          </span>
                         </div>
-                      )}
+                        <span className="font-mono text-[11px] text-slate-500 tabular-nums shrink-0">
+                          {tt.tgYeuCauNgan || '—'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <span className="inline-flex items-center justify-center w-6 h-4 rounded bg-blue-50 text-blue-700 text-[10px] font-bold shrink-0">
+                            XL
+                          </span>
+                          {tt.nguoiNhan ? (
+                            <span className="font-semibold text-blue-700 truncate">
+                              {tt.nguoiNhan}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic truncate">Chờ phân công</span>
+                          )}
+                        </div>
+                        {renderMocThoiGianXL(yc, tt)}
+                      </div>
                     </div>
 
                     <div
-                      className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100"
+                      className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 flex-wrap"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {hanhDong && (
+                      {tt.hanhDong && (
                         <button
                           type="button"
-                          onClick={hanhDong.onClick}
+                          onClick={tt.hanhDong.onClick}
                           className={cn(
                             'h-7 px-2.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition shadow-2xs',
-                            hanhDong.className
+                            tt.hanhDong.className
                           )}
                         >
-                          <hanhDong.icon className="size-3.5 stroke-[2.5]" />
-                          <span>{hanhDong.label}</span>
+                          <tt.hanhDong.icon className="size-3.5 stroke-[2.5]" />
+                          <span>{tt.hanhDong.label}</span>
                         </button>
                       )}
-{yc.link_drive_ket_qua && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleChiaSeZalo(yc);
-                          }}
-                          className={cn(
-                            'h-7 px-2.5 rounded-lg font-semibold text-xs inline-flex items-center gap-1 cursor-pointer transition shadow-2xs',
-                            daChiaSeZaloId === yc.id
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
-                          )}
-                          title="Mở phần mềm Zalo (PC) hoặc App Zalo (Mobile)"
-                        >
-                          <span className="font-black text-[9px] bg-white text-[#0068FF] size-3.5 rounded flex items-center justify-center leading-none">
-                            Z
-                          </span>
-                          <span>{daChiaSeZaloId === yc.id ? 'Đã chép' : 'Gửi Zalo'}</span>
-                        </button>
-                      )}
+                      {renderNutGuiZalo(yc)}
                       <button
                         type="button"
                         onClick={() => setYeuCauDangXemChiTiet(yc)}
                         className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium inline-flex items-center gap-1 cursor-pointer transition"
                       >
                         <Eye className="size-3.5 text-slate-500" />
-                        <span>Xem chi tiết</span>
+                        <span>Chi tiết</span>
                       </button>
                     </div>
                   </div>
@@ -1726,7 +1739,7 @@ export default function HopYeuCauPhoiHop({
                     })()}
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Tạo lúc {ycChiTietHienTai.ngay_tao ? formatNgay(ycChiTietHienTai.ngay_tao) : 'Hôm nay'} bởi{' '}
+                    Tạo lúc {ycChiTietHienTai.ngay_tao ? formatNgayGio(ycChiTietHienTai.ngay_tao) : 'Hôm nay'} bởi{' '}
                     <strong className="text-slate-700 font-semibold">{ycChiTietHienTai.ten_nguoi_tao}</strong>
                   </p>
                 </div>
@@ -1790,55 +1803,77 @@ export default function HopYeuCauPhoiHop({
               </div>
 
               {/* THÔNG TIN PHỐI HỢP & NHÂN SỰ */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
-                <div>
-                  <span className="text-[11px] text-slate-500 font-medium">Người tạo yêu cầu</span>
-                  <div className="font-semibold text-slate-900 mt-0.5 flex items-center gap-1.5">
-                    <User className="size-3.5 text-slate-400" />
-                    <span>{ycChiTietHienTai.ten_nguoi_tao}</span>
-                  </div>
-                </div>
+              {(() => {
+                const nguoiXuLy = layNguoiXuLyYeuCau(ycChiTietHienTai);
+                const { daHoanThanh, thoiGianHoanThanh, thoiGianNopKetQua } =
+                  layThoiGianHoanThanhYeuCau(ycChiTietHienTai);
 
-                <div>
-                  <span className="text-[11px] text-slate-500 font-medium">Người tiếp nhận / Thực hiện</span>
-                  <div className="font-semibold text-blue-700 mt-0.5 flex items-center gap-1.5">
-                    <UserCheck className="size-3.5 text-blue-600" />
-                    <span>
-                      {ycChiTietHienTai.ten_nguoi_nhan ||
-                        (Array.isArray(ycChiTietHienTai.danh_sach_ten_nhan_su_thuc_hien) &&
-                        ycChiTietHienTai.danh_sach_ten_nhan_su_thuc_hien.length > 0
-                          ? ycChiTietHienTai.danh_sach_ten_nhan_su_thuc_hien.join(', ')
-                          : 'Chưa chỉ định')}
-                    </span>
-                  </div>
-                </div>
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80">
+                    <div>
+                      <span className="text-[11px] text-slate-500 font-medium">Người yêu cầu</span>
+                      <div className="font-semibold text-slate-900 mt-0.5 flex items-center gap-1.5">
+                        <User className="size-3.5 text-slate-400" />
+                        <span>{ycChiTietHienTai.ten_nguoi_tao}</span>
+                      </div>
+                    </div>
 
-                <div>
-                  <span className="text-[11px] text-slate-500 font-medium">Ngày khởi tạo</span>
-                  <div className="font-semibold text-slate-800 mt-0.5 flex items-center gap-1.5">
-                    <CalendarDays className="size-3.5 text-slate-400" />
-                    <span>{formatNgay(ycChiTietHienTai.ngay_tao) || 'Hôm nay'}</span>
-                  </div>
-                </div>
+                    <div>
+                      <span className="text-[11px] text-slate-500 font-medium">Người tiếp nhận / Xử lý</span>
+                      <div className="font-semibold text-blue-700 mt-0.5 flex items-center gap-1.5">
+                        <UserCheck className="size-3.5 text-blue-600" />
+                        <span>{nguoiXuLy || 'Chờ phân công'}</span>
+                      </div>
+                    </div>
 
-                <div>
-                  <span className="text-[11px] text-slate-500 font-medium">Thời hạn hoàn thành</span>
-                  <div className="font-semibold text-amber-800 mt-0.5 flex items-center gap-1.5">
-                    <Clock className="size-3.5 text-amber-500" />
-                    <span>
-                      {ycChiTietHienTai.han_hoan_thanh
-                        ? formatNgay(ycChiTietHienTai.han_hoan_thanh)
-                        : 'Chưa đặt hạn'}
-                    </span>
+                    <div>
+                      <span className="text-[11px] text-slate-500 font-medium">Thời gian yêu cầu</span>
+                      <div className="font-semibold text-slate-800 mt-0.5 flex items-center gap-1.5">
+                        <CalendarDays className="size-3.5 text-slate-400" />
+                        <span>{formatNgayGio(ycChiTietHienTai.ngay_tao) || 'Hôm nay'}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      {daHoanThanh && thoiGianHoanThanh ? (
+                        <>
+                          <span className="text-[11px] text-slate-500 font-medium">Thời gian hoàn thành</span>
+                          <div className="font-semibold text-emerald-700 mt-0.5 flex items-center gap-1.5">
+                            <CheckCircle2 className="size-3.5 text-emerald-600" />
+                            <span>{formatNgayGio(thoiGianHoanThanh)}</span>
+                          </div>
+                        </>
+                      ) : thoiGianNopKetQua ? (
+                        <>
+                          <span className="text-[11px] text-slate-500 font-medium">Thời gian nộp kết quả</span>
+                          <div className="font-semibold text-teal-700 mt-0.5 flex items-center gap-1.5">
+                            <Check className="size-3.5 text-teal-600" />
+                            <span>{formatNgayGio(thoiGianNopKetQua)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[11px] text-slate-500 font-medium">Thời hạn hoàn thành</span>
+                          <div className="font-semibold text-amber-800 mt-0.5 flex items-center gap-1.5">
+                            <Clock className="size-3.5 text-amber-500" />
+                            <span>
+                              {ycChiTietHienTai.han_hoan_thanh
+                                ? formatNgay(ycChiTietHienTai.han_hoan_thanh)
+                                : 'Chưa đặt hạn'}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* TÀI LIỆU LIÊN QUAN */}
               {(ycChiTietHienTai.link_drive_dau_vao || ycChiTietHienTai.link_drive_ket_qua) && (
                 <div className="space-y-2 pt-1">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-                    Tài liệu & Hồ sơ đính kèm
+                    Tài liệu &amp; Hồ sơ đính kèm
                   </label>
                   <div className="flex items-center gap-2.5 flex-wrap">
                     {ycChiTietHienTai.link_drive_dau_vao && (
@@ -1880,31 +1915,6 @@ export default function HopYeuCauPhoiHop({
                             <>
                               <Copy className="size-3.5 text-slate-500" />
                               <span>Sao chép link</span>
-                            </>
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleChiaSeZalo(ycChiTietHienTai)}
-                          className={cn(
-                            'h-8 px-3 rounded-xl font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition',
-                            daChiaSeZaloId === ycChiTietHienTai.id
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-[#0068FF] hover:bg-[#0052cc] text-white'
-                          )}
-                          title="Sao chép tóm tắt & Mở phần mềm Zalo (PC) hoặc App Zalo (Mobile)"
-                        >
-                          {daChiaSeZaloId === ycChiTietHienTai.id ? (
-                            <>
-                              <Check className="size-3.5 stroke-[2.5]" />
-                              <span>Đã sao chép & Mở Zalo</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="font-black text-[10px] bg-white text-[#0068FF] size-4 rounded flex items-center justify-center leading-none">
-                                Z
-                              </span>
-                              <span>Gửi kết quả đến Zalo</span>
                             </>
                           )}
                         </button>
@@ -2245,6 +2255,8 @@ export default function HopYeuCauPhoiHop({
                     </>
                   );
                 })()}
+
+                {renderNutGuiZalo(ycChiTietHienTai, true)}
 
                 <button
                   type="button"
