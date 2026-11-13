@@ -103,6 +103,7 @@ const SCHEMA_HO_SO_DU_AN = z
       .number({ required_error: 'Vui lòng nhập giá trị dự kiến' })
       .gt(0, 'Giá trị dự kiến phải lớn hơn 0'),
     gia_tri_hop_dong: z.coerce.number().min(0, 'Giá trị không được âm').optional(),
+    ngay_ky_hop_dong: z.string().trim().nullable().optional(),
     tien_ve_thuc_te: z.coerce.number().min(0, 'Số tiền không được âm').optional(),
     nguoi_quan_ly_id: z.string().trim().nullable().optional(),
     nguoi_phu_trach_id: z.string().trim().nullable().optional(),
@@ -152,6 +153,7 @@ const GIA_TRI_MAC_DINH: GiaTriForm = {
   muc_do_tiem_nang: 'trung_binh',
   gia_tri_du_kien: 0,
   gia_tri_hop_dong: 0,
+  ngay_ky_hop_dong: null,
   tien_ve_thuc_te: 0,
   nguoi_quan_ly_id: null,
   nguoi_phu_trach_id: null,
@@ -339,6 +341,7 @@ export default function FormHoSoDuAnDrawer({
         muc_do_tiem_nang: (dang_sua.muc_do_tiem_nang as MucDoTiemNangKyHopDong) ?? 'trung_binh',
         gia_tri_du_kien: dang_sua.gia_tri_du_kien ?? 0,
         gia_tri_hop_dong: dang_sua.gia_tri_hop_dong ?? 0,
+        ngay_ky_hop_dong: dang_sua.ngay_ky_hop_dong ?? null,
         tien_ve_thuc_te: dang_sua.tien_ve_thuc_te ?? 0,
         nguoi_quan_ly_id: dang_sua.nguoi_quan_ly_id ?? null,
         nguoi_phu_trach_id: dang_sua.nguoi_phu_trach_id ?? null,
@@ -474,6 +477,7 @@ export default function FormHoSoDuAnDrawer({
           : layNgayHienTaiVN(),
       gia_tri_du_kien: Number(values.gia_tri_du_kien) || 0,
       gia_tri_hop_dong: Number(values.gia_tri_hop_dong) || 0,
+      ngay_ky_hop_dong: values.ngay_ky_hop_dong?.trim() || null,
       tien_ve_thuc_te: Number(values.tien_ve_thuc_te) || 0,
       trang_thai: 'hoat_dong' as const
     };

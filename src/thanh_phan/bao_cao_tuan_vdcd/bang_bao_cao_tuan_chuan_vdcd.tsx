@@ -193,10 +193,23 @@ export default function BangBaoCaoTuanChuanVDCD({
     const viecTuanNay = keHoachTuanNay?.danh_sach_tac_chien || [];
 
     // 1. Khách hàng mới tiếp cận:
-    // Quét từ Bàn làm việc & Lịch gặp (các cuộc gặp/gọi hoặc tác nghiệp gắn nhãn tiếp cận KH mới)
+    // Căn cứ vào Lịch công tác:
+    // - Lịch gặp có dấu check tiếp cận KH mới (la_tiep_can_moi)
+    // - Hoặc KH trong lịch gặp CHƯA BAO GIỜ GẶP TRƯỚC ĐÂY (không có cuộc gặp nào trong quá khứ trước tuần này)
+    // - Hoặc KH mới được tạo trên CRM trong tuần
+    // - Bàn làm việc có tác nghiệp tạo KH mới / tiếp cận KH mới
+    const khDaTungGapTruocTuanNay = new Set<string>();
+    dsLichGap.forEach((l) => {
+      if (!l.da_xoa && l.ngay < infoTuan.ngayBatDau) {
+        if (l.khach_hang_id) khDaTungGapTruocTuanNay.add(l.khach_hang_id);
+        const tenNorm = (l.ten_khach_hang || '').toLowerCase().trim();
+        if (tenNorm) khDaTungGapTruocTuanNay.add(tenNorm);
+      }
+    });
+
     const mapKhachMoi = new Map<string, MucChiTietKPI>();
 
-    // 1.1 Quét từ Lịch gặp / Lịch công tác CRM trong tuần
+    // 1.1 Quét từ Lịch công tác trong tuần
     dsLichGap.forEach((l) => {
       if (
         l.da_xoa ||
@@ -208,6 +221,15 @@ export default function BangBaoCaoTuanChuanVDCD({
       ) {
         return;
       }
+
+      const tenNorm = (l.ten_khach_hang || '').toLowerCase().trim();
+      const chuaTungGapTruocDay =
+        (!l.khach_hang_id || !khDaTungGapTruocTuanNay.has(l.khach_hang_id)) &&
+        (!tenNorm || !khDaTungGapTruocTuanNay.has(tenNorm));
+
+      const khObj = l.khach_hang_id ? mapKH.get(l.khach_hang_id) : null;
+      const khMoiTaoTrongTuan = khObj && (khObj.ngay_tao || '').slice(0, 10) >= infoTuan.ngayBatDau;
+
       const txt = (
         (l.tieu_de || '') + ' ' +
         (l.noi_dung || '') + ' ' +
@@ -215,28 +237,31 @@ export default function BangBaoCaoTuanChuanVDCD({
         (l.ten_khach_hang || '')
       ).toLowerCase();
 
-      const khObj = l.khach_hang_id ? mapKH.get(l.khach_hang_id) : null;
-      const khMoiTao = khObj && (khObj.ngay_tao || '').slice(0, 10) >= infoTuan.ngayBatDau;
-
-      const laTiepCan =
-        khMoiTao ||
+      const coTuKhoaTiepCan =
         txt.includes('tiếp cận') ||
         txt.includes('kh mới') ||
         txt.includes('khách mới') ||
         txt.includes('khách hàng mới') ||
         txt.includes('chào sân') ||
         txt.includes('gặp mới') ||
-        txt.includes('làm quen') ||
-        txt.includes('tiếp xúc') ||
-        txt.includes('khai thác mới');
+        txt.includes('làm quen');
+
+      const laTiepCan = Boolean(l.la_tiep_can_moi) || chuaTungGapTruocDay || khMoiTaoTrongTuan || coTuKhoaTiepCan;
 
       if (laTiepCan) {
-        const key = l.khach_hang_id || (l.ten_khach_hang || 'kh_gap').trim().toLowerCase();
+        const key = l.khach_hang_id || tenNorm || `lich_${l.id}`;
         if (!mapKhachMoi.has(key)) {
+          const lyDo = l.la_tiep_can_moi
+            ? 'Đánh dấu tiếp cận mới'
+            : chuaTungGapTruocDay
+            ? 'Lần đầu tiên gặp KH này'
+            : khMoiTaoTrongTuan
+            ? 'KH mới tạo trong tuần'
+            : 'Nội dung tiếp cận KH mới';
           mapKhachMoi.set(key, {
             id: `lich_${l.id}`,
-            tieuDe: l.ten_khach_hang || 'Khách hàng mới (Lịch gặp)',
-            moTa: `Lịch công tác ${l.ngay}${l.gio_bat_dau ? ` [${l.gio_bat_dau}]` : ''}: ${l.noi_dung || l.tieu_de || 'Tiếp cận khách hàng mới'}`,
+            tieuDe: l.ten_khach_hang || 'Khách hàng mới',
+            moTa: `Lịch công tác ${l.ngay}${l.gio_bat_dau ? ` [${l.gio_bat_dau}]` : ''}: ${l.noi_dung || l.tieu_de || 'Gặp gỡ trao đổi'} (${lyDo})`,
             loaiNguon: 'Lịch công tác',
             daChon: true
           });
@@ -246,6 +271,12 @@ export default function BangBaoCaoTuanChuanVDCD({
 
     // 1.2 Quét từ Bàn làm việc tuần này
     viecTuanNay.forEach((item) => {
+      const coKqTaoKH =
+        item.danh_sach_ket_qua &&
+        item.danh_sach_ket_qua.some((kq) => kq.loai_tac_nghiep === 'tao_khach_hang');
+      const khObj = item.khach_hang_id ? mapKH.get(item.khach_hang_id) : null;
+      const khMoiTao = khObj && (khObj.ngay_tao || '').slice(0, 10) >= infoTuan.ngayBatDau;
+
       const txt = (
         (item.ten_khach_hang_du_an || '') + ' ' +
         (item.noi_dung_tuan || '') + ' ' +
@@ -253,41 +284,22 @@ export default function BangBaoCaoTuanChuanVDCD({
         (item.dau_ra_cam_ket || '')
       ).toLowerCase();
 
-      const coKqTiepCan =
-        item.danh_sach_ket_qua &&
-        item.danh_sach_ket_qua.some(
-          (kq) =>
-            kq.loai_tac_nghiep === 'tao_khach_hang' ||
-            (kq.noi_dung && (
-              kq.noi_dung.toLowerCase().includes('tiếp cận') ||
-              kq.noi_dung.toLowerCase().includes('kh mới') ||
-              kq.noi_dung.toLowerCase().includes('khách mới')
-            ))
-        );
-
-      const khObj = item.khach_hang_id ? mapKH.get(item.khach_hang_id) : null;
-      const khMoiTao = khObj && (khObj.ngay_tao || '').slice(0, 10) >= infoTuan.ngayBatDau;
-
-      const laTiepCan =
+      const laTiepCanViec =
         item.loai_cong_viec === 'khach_hang' ||
-        coKqTiepCan ||
+        coKqTaoKH ||
         khMoiTao ||
         txt.includes('tiếp cận') ||
         txt.includes('kh mới') ||
         txt.includes('khách mới') ||
-        txt.includes('khách hàng mới') ||
-        txt.includes('chào mới') ||
-        txt.includes('khai thác mới') ||
-        txt.includes('tìm kiếm kh') ||
-        txt.includes('tìm kh mới');
+        txt.includes('tìm khách');
 
-      if (laTiepCan) {
-        const key = item.khach_hang_id || (item.ten_khach_hang_du_an || 'kh_viec').trim().toLowerCase();
+      if (laTiepCanViec) {
+        const key = item.khach_hang_id || (item.ten_khach_hang_du_an || '').toLowerCase().trim() || `viec_${item.id}`;
         if (!mapKhachMoi.has(key)) {
           const ht = item.hinh_thuc === 'gap_mat' ? 'Gặp trực tiếp' : item.hinh_thuc === 'goi_dien' ? 'Gọi điện' : 'Tác nghiệp';
           mapKhachMoi.set(key, {
             id: `viec_${item.id}`,
-            tieuDe: item.ten_khach_hang_du_an || 'Khách hàng mới (Bàn làm việc)',
+            tieuDe: item.ten_khach_hang_du_an || 'Khách hàng mới',
             moTa: `Bàn làm việc [${ht}]: ${item.noi_dung_tuan || item.hanh_dong_tuan || 'Tiếp cận khách hàng mới'}`,
             loaiNguon: 'Bàn làm việc',
             daChon: true
@@ -299,35 +311,28 @@ export default function BangBaoCaoTuanChuanVDCD({
     const dsChiTietKhachMoi = Array.from(mapKhachMoi.values());
     const tongKhachMoi = dsChiTietKhachMoi.length;
 
-    // 2. Tổng số báo giá đã gửi trong tuần:
-    // Căn cứ vào: Dự án có mốc giai đoạn báo giá trong tuần + Công việc gửi báo giá trên Bàn làm việc
+    // 2. Tổng số báo giá đã gửi trong tuần
     const mapBaoGia = new Map<string, MucChiTietKPI>();
 
-    // 2.1 Dự án có hoạt động chuyển giai đoạn hoặc đạt mốc báo giá trong tuần
     dsDuAnCuaNV.forEach((d) => {
-      const ngayTao = (d.ngay_tao_ho_so || d.ngay_tao || '').slice(0, 10);
-      const ngayCapNhat = (d.ngay_cap_nhat || '').slice(0, 10);
-      const laGiaiDoanBaoGia = d.giai_doan === 'bao_gia' && (
-        (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc) ||
-        (ngayCapNhat >= infoTuan.ngayBatDau && ngayCapNhat <= infoTuan.ngayKetThuc)
+      const ngayBG = d.ngay_gui_bao_gia || (
+        d.giai_doan === 'bao_gia'
+          ? (d.ngay_cap_nhat || d.ngay_tao_ho_so || d.ngay_tao || '').slice(0, 10)
+          : ''
       );
-      const laDuAnMoiBaoGia =
-        ngayTao >= infoTuan.ngayBatDau &&
-        ngayTao <= infoTuan.ngayKetThuc &&
-        d.giai_doan !== 'tiep_can';
+      const trongTuan = ngayBG >= infoTuan.ngayBatDau && ngayBG <= infoTuan.ngayKetThuc;
 
-      if (laGiaiDoanBaoGia || laDuAnMoiBaoGia) {
+      if (trongTuan || (d.giai_doan === 'bao_gia' && (d.ngay_cap_nhat || '').slice(0, 10) >= infoTuan.ngayBatDau && (d.ngay_cap_nhat || '').slice(0, 10) <= infoTuan.ngayKetThuc)) {
         mapBaoGia.set(d.id, {
           id: `da_bg_${d.id}`,
           tieuDe: d.ten_du_an,
-          moTa: `Dự án đạt mốc Báo giá • Giá trị dự kiến: ${fmtTien(d.gia_tri_du_kien || d.gia_tri_hop_dong)}`,
+          moTa: `Báo giá dự án • Giá trị dự kiến: ${fmtTien(d.gia_tri_du_kien || d.gia_tri_hop_dong)}`,
           loaiNguon: 'Hồ sơ dự án',
           daChon: true
         });
       }
     });
 
-    // 2.2 Công việc/hành động báo giá trên Bàn làm việc
     viecTuanNay.forEach((item) => {
       const txt = (
         (item.noi_dung_tuan || '') + ' ' +
@@ -335,24 +340,11 @@ export default function BangBaoCaoTuanChuanVDCD({
         (item.dau_ra_cam_ket || '')
       ).toLowerCase();
 
-      const coKqBaoGia =
-        item.danh_sach_ket_qua &&
-        item.danh_sach_ket_qua.some(
-          (kq) =>
-            kq.noi_dung && (
-              kq.noi_dung.toLowerCase().includes('báo giá') ||
-              kq.noi_dung.toLowerCase().includes('gửi bg') ||
-              kq.noi_dung.toLowerCase().includes('chào giá')
-            )
-        );
-
       const laBaoGia =
-        coKqBaoGia ||
         txt.includes('báo giá') ||
         txt.includes('gửi bg') ||
         txt.includes('chào giá') ||
-        txt.includes('lên bg') ||
-        txt.includes('gửi bảng giá');
+        txt.includes('lên bg');
 
       if (laBaoGia) {
         const key = item.du_an_id || item.khach_hang_id || (item.ten_khach_hang_du_an || 'bg_viec').trim().toLowerCase();
@@ -360,7 +352,7 @@ export default function BangBaoCaoTuanChuanVDCD({
           mapBaoGia.set(key, {
             id: `viec_bg_${item.id}`,
             tieuDe: item.ten_khach_hang_du_an || 'Gửi báo giá',
-            moTa: `Bàn làm việc: ${item.noi_dung_tuan || item.hanh_dong_tuan || 'Gửi báo giá cho khách hàng'}`,
+            moTa: `Bàn làm việc: ${item.noi_dung_tuan || item.hanh_dong_tuan || 'Gửi báo giá'}`,
             loaiNguon: 'Bàn làm việc',
             daChon: true
           });
@@ -371,10 +363,9 @@ export default function BangBaoCaoTuanChuanVDCD({
     const dsChiTietBaoGia = Array.from(mapBaoGia.values());
     const tongBaoGia = dsChiTietBaoGia.length;
 
-    // 3. Tổng số dự án đã làm việc trong tuần (tập hợp các dự án có tác nghiệp thực tế)
+    // 3. Tổng số dự án đã làm việc trong tuần
     const mapDuAnLamViec = new Map<string, MucChiTietKPI>();
 
-    // 3.1 Dự án có việc trên Bàn làm việc tuần
     viecTuanNay.forEach((item) => {
       if (item.du_an_id) {
         const da = dsDuAnCuaNV.find((d) => d.id === item.du_an_id);
@@ -390,7 +381,6 @@ export default function BangBaoCaoTuanChuanVDCD({
       }
     });
 
-    // 3.2 Dự án có lịch hẹn/lịch công tác trong tuần
     dsLichGap.forEach((l) => {
       if (
         !l.da_xoa &&
@@ -412,7 +402,6 @@ export default function BangBaoCaoTuanChuanVDCD({
       }
     });
 
-    // 3.3 Dự án có cập nhật hoạt động hoặc tạo trong tuần
     dsDuAnCuaNV.forEach((da) => {
       const ngayTao = (da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10);
       const ngayCN = (da.ngay_cap_nhat || '').slice(0, 10);
@@ -433,34 +422,30 @@ export default function BangBaoCaoTuanChuanVDCD({
     const dsChiTietDuAnLamViec = Array.from(mapDuAnLamViec.values());
     const tongDuAnDaLamViec = dsChiTietDuAnLamViec.length;
 
-    // 4. Số hợp đồng ký kết trong tuần (sự kiện ký HĐ thật sự phát sinh trong tuần)
+    // 4. Số hợp đồng ký kết trong tuần
     const mapHopDong = new Map<string, MucChiTietKPI>();
 
-    // 4.1 Dự án chuyển sang giai đoạn Ký hợp đồng có mốc trong tuần
     dsDuAnCuaNV.forEach((da) => {
-      const ngayTao = (da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10);
-      const ngayCN = (da.ngay_cap_nhat || '').slice(0, 10);
-      const laGiaiDoanKyHD =
-        da.giai_doan === 'ky_hop_dong' ||
-        da.giai_doan === 'tt_dot_1' ||
-        da.giai_doan === 'trien_khai';
-      const trongTuan =
-        (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc) ||
-        (ngayCN >= infoTuan.ngayBatDau && ngayCN <= infoTuan.ngayKetThuc);
+      const ngayKy = da.ngay_ky_hop_dong || (
+        (da.giai_doan === 'ky_hop_dong' || da.giai_doan === 'tt_dot_1' || da.giai_doan === 'trien_khai')
+          ? (da.ngay_cap_nhat || da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10)
+          : ''
+      );
+      const trongTuan = ngayKy >= infoTuan.ngayBatDau && ngayKy <= infoTuan.ngayKetThuc;
+      const giaTriHD = Number(da.gia_tri_hop_dong || 0);
 
-      if (laGiaiDoanKyHD && trongTuan && Number(da.gia_tri_hop_dong || 0) > 0) {
+      if (trongTuan && giaTriHD > 0) {
         mapHopDong.set(da.id, {
           id: `hd_${da.id}`,
           tieuDe: `Hợp đồng: ${da.ten_du_an}`,
-          moTa: `Ký kết thành công • Giá trị: ${fmtTien(da.gia_tri_hop_dong)} • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
+          moTa: `Ký kết thành công ${ngayKy ? `(Ngày ${ngayKy})` : ''} • Giá trị: ${fmtTien(giaTriHD)} • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
           loaiNguon: 'Hồ sơ dự án',
-          soTien: Number(da.gia_tri_hop_dong || 0),
+          soTien: giaTriHD,
           daChon: true
         });
       }
     });
 
-    // 4.2 Bàn làm việc có nhiệm vụ ký HĐ hoàn thành trong tuần
     viecTuanNay.forEach((item) => {
       const txt = (
         (item.noi_dung_tuan || '') + ' ' +
@@ -492,16 +477,16 @@ export default function BangBaoCaoTuanChuanVDCD({
     const dsChiTietHopDong = Array.from(mapHopDong.values());
     const tongHopDong = dsChiTietHopDong.length;
 
-    // 5. Tổng doanh thu đã thu về trong tuần (HĐ ký mới + Tiền về thực tế phát sinh trong tuần)
+    // 5. Tổng doanh thu đã thu về trong tuần
     const mapDoanhThu = new Map<string, MucChiTietKPI>();
 
-    // 5.1 Doanh số từ hợp đồng ký mới trong tuần
+    // 5.1 Doanh số từ hợp đồng mới ký
     dsChiTietHopDong.forEach((hd) => {
       if (hd.soTien && hd.soTien > 0) {
         mapDoanhThu.set(hd.id, {
           id: `dt_${hd.id}`,
           tieuDe: hd.tieuDe,
-          moTa: `Doanh số hợp đồng mới ký: ${fmtTien(hd.soTien)}`,
+          moTa: `Doanh số từ hợp đồng ký mới: ${fmtTien(hd.soTien)}`,
           loaiNguon: 'Hợp đồng ký mới',
           soTien: hd.soTien,
           daChon: true
@@ -509,7 +494,7 @@ export default function BangBaoCaoTuanChuanVDCD({
       }
     });
 
-    // 5.2 Doanh thu từ dòng tiền về thực tế trong tuần (tien_ve_thuc_te)
+    // 5.2 Dòng tiền về thực tế trong tuần (tien_ve_thuc_te)
     dsDuAnCuaNV.forEach((da) => {
       const ngayTao = (da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10);
       const ngayCN = (da.ngay_cap_nhat || '').slice(0, 10);
@@ -679,62 +664,50 @@ export default function BangBaoCaoTuanChuanVDCD({
     });
   };
 
-  // Khởi tạo số liệu: Ưu tiên dữ liệu đã lưu, nếu chưa có thì nạp tự động từ Bàn làm việc & CRM
+  // Khởi tạo số liệu: Luôn ưu tiên hiển thị số liệu thực tế sống động từ hệ thống
+  // Đảm bảo số hiển thị trên ô Thực tế ĐẠT luôn khớp 100% với danh sách Drill-down khi mở popup
+  // Chỉ dùng số đã lưu nếu người dùng đã chủ động chỉnh sửa (daSuaTay === true)
   useEffect(() => {
-    if (baoCaoHienTai?.kpi_tuan_qua) {
-      const k = baoCaoHienTai.kpi_tuan_qua as any;
-      setKpiKhachMoi({
-        keHoachTuanTruoc: k.khach_moi_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.khachMoi,
-        thucTe: k.khach_moi_thuc_te ?? soLieuThucTeTuBanLamViec.khachMoi.thucTe,
-        daSuaTay: false
-      });
-      setKpiBaoGia({
-        keHoachTuanTruoc: k.bao_gia_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.baoGia,
-        thucTe: k.bao_gia_thuc_te ?? soLieuThucTeTuBanLamViec.baoGia.thucTe,
-        daSuaTay: false
-      });
-      setKpiDuAnLamViec({
-        keHoachTuanTruoc: k.du_an_lam_viec_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.duAnLamViec,
-        thucTe: k.du_an_lam_viec_thuc_te ?? soLieuThucTeTuBanLamViec.duAnLamViec.thucTe,
-        daSuaTay: false
-      });
-      setKpiHopDong({
-        keHoachTuanTruoc: k.hop_dong_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.hopDong,
-        thucTe: k.hop_dong_thuc_te ?? soLieuThucTeTuBanLamViec.hopDong.thucTe,
-        daSuaTay: false
-      });
-      setKpiDoanhThu({
-        keHoachTuanTruoc: k.doanh_so_muc_tieu ?? k.doanh_thu_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.doanhThu,
-        thucTe: k.doanh_so_thuc_te ?? k.doanh_thu_thuc_te ?? soLieuThucTeTuBanLamViec.doanhThu.thucTe,
-        daSuaTay: false
-      });
-      return;
-    }
+    const k = baoCaoHienTai?.kpi_tuan_qua as any;
 
     setKpiKhachMoi({
-      keHoachTuanTruoc: mucTieuMacDinhTuTuanTruoc.khachMoi,
-      thucTe: soLieuThucTeTuBanLamViec.khachMoi.thucTe,
-      daSuaTay: false
+      keHoachTuanTruoc: k?.khach_moi_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.khachMoi,
+      thucTe: (k?.da_sua_tay_khach_moi && typeof k?.khach_moi_thuc_te === 'number')
+        ? k.khach_moi_thuc_te
+        : soLieuThucTeTuBanLamViec.khachMoi.thucTe,
+      daSuaTay: Boolean(k?.da_sua_tay_khach_moi)
     });
+
     setKpiBaoGia({
-      keHoachTuanTruoc: mucTieuMacDinhTuTuanTruoc.baoGia,
-      thucTe: soLieuThucTeTuBanLamViec.baoGia.thucTe,
-      daSuaTay: false
+      keHoachTuanTruoc: k?.bao_gia_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.baoGia,
+      thucTe: (k?.da_sua_tay_bao_gia && typeof k?.bao_gia_thuc_te === 'number')
+        ? k.bao_gia_thuc_te
+        : soLieuThucTeTuBanLamViec.baoGia.thucTe,
+      daSuaTay: Boolean(k?.da_sua_tay_bao_gia)
     });
+
     setKpiDuAnLamViec({
-      keHoachTuanTruoc: mucTieuMacDinhTuTuanTruoc.duAnLamViec,
-      thucTe: soLieuThucTeTuBanLamViec.duAnLamViec.thucTe,
-      daSuaTay: false
+      keHoachTuanTruoc: k?.du_an_lam_viec_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.duAnLamViec,
+      thucTe: (k?.da_sua_tay_du_an_lam_viec && typeof k?.du_an_lam_viec_thuc_te === 'number')
+        ? k.du_an_lam_viec_thuc_te
+        : soLieuThucTeTuBanLamViec.duAnLamViec.thucTe,
+      daSuaTay: Boolean(k?.da_sua_tay_du_an_lam_viec)
     });
+
     setKpiHopDong({
-      keHoachTuanTruoc: mucTieuMacDinhTuTuanTruoc.hopDong,
-      thucTe: soLieuThucTeTuBanLamViec.hopDong.thucTe,
-      daSuaTay: false
+      keHoachTuanTruoc: k?.hop_dong_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.hopDong,
+      thucTe: (k?.da_sua_tay_hop_dong && typeof k?.hop_dong_thuc_te === 'number')
+        ? k.hop_dong_thuc_te
+        : soLieuThucTeTuBanLamViec.hopDong.thucTe,
+      daSuaTay: Boolean(k?.da_sua_tay_hop_dong)
     });
+
     setKpiDoanhThu({
-      keHoachTuanTruoc: mucTieuMacDinhTuTuanTruoc.doanhThu,
-      thucTe: soLieuThucTeTuBanLamViec.doanhThu.thucTe,
-      daSuaTay: false
+      keHoachTuanTruoc: k?.doanh_so_muc_tieu ?? k?.doanh_thu_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.doanhThu,
+      thucTe: (k?.da_sua_tay_doanh_so && typeof (k?.doanh_so_thuc_te ?? k?.doanh_thu_thuc_te) === 'number')
+        ? Number(k.doanh_so_thuc_te ?? k.doanh_thu_thuc_te)
+        : soLieuThucTeTuBanLamViec.doanhThu.thucTe,
+      daSuaTay: Boolean(k?.da_sua_tay_doanh_so)
     });
   }, [baoCaoHienTai, mucTieuMacDinhTuTuanTruoc, soLieuThucTeTuBanLamViec]);
 
@@ -1031,14 +1004,24 @@ export default function BangBaoCaoTuanChuanVDCD({
           kpi_tuan_qua: {
             khach_moi_muc_tieu: kpiKhachMoi.keHoachTuanTruoc,
             khach_moi_thuc_te: kpiKhachMoi.thucTe,
+            da_sua_tay_khach_moi: kpiKhachMoi.daSuaTay,
+
             bao_gia_muc_tieu: kpiBaoGia.keHoachTuanTruoc,
             bao_gia_thuc_te: kpiBaoGia.thucTe,
+            da_sua_tay_bao_gia: kpiBaoGia.daSuaTay,
+
             du_an_lam_viec_muc_tieu: kpiDuAnLamViec.keHoachTuanTruoc,
             du_an_lam_viec_thuc_te: kpiDuAnLamViec.thucTe,
+            da_sua_tay_du_an_lam_viec: kpiDuAnLamViec.daSuaTay,
+
             hop_dong_muc_tieu: kpiHopDong.keHoachTuanTruoc,
             hop_dong_thuc_te: kpiHopDong.thucTe,
+            da_sua_tay_hop_dong: kpiHopDong.daSuaTay,
+
             doanh_so_muc_tieu: kpiDoanhThu.keHoachTuanTruoc,
             doanh_so_thuc_te: kpiDoanhThu.thucTe,
+            da_sua_tay_doanh_so: kpiDoanhThu.daSuaTay,
+
             cuoc_gap_muc_tieu: 0,
             cuoc_gap_thuc_te: 0
           } as any,

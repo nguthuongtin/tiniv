@@ -24,6 +24,9 @@ export interface HoSoDuAn {
   kenh_ban_hang?: string | null;
   tien_ve_thuc_te?: number | null;
   ngay_tao_ho_so: string;
+  ngay_ky_hop_dong?: string | null;
+  ngay_gui_bao_gia?: string | null;
+  ngay_tiep_can?: string | null;
   thoi_han_hoan_thanh: string | null;
   mo_ta: string | null;
   ghi_chu: string | null;

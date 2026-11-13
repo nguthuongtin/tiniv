@@ -26,6 +26,7 @@ export interface LichGapKH {
   ket_qua?: string | null;
   trang_thai: TrangThaiLichGap;
   la_phat_sinh?: boolean;
+  la_tiep_can_moi?: boolean;
   ghi_chu_duyet?: string | null;
   nguoi_duyet_id?: string | null;
   ten_nguoi_duyet?: string | null;

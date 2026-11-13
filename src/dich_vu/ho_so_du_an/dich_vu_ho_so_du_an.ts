@@ -74,6 +74,9 @@ const chuyenDoiDocThanhDoiTuong = (
     kenh_ban_hang: (r.kenh_ban_hang as string | null) ?? null,
     tien_ve_thuc_te: r.tien_ve_thuc_te !== undefined && r.tien_ve_thuc_te !== null ? Number(r.tien_ve_thuc_te) : 0,
     ngay_tao_ho_so: (r.ngay_tao_ho_so as string) || (r.ngay_tao ? (r.ngay_tao as string).split('T')[0] : today.split('T')[0]),
+    ngay_ky_hop_dong: (r.ngay_ky_hop_dong as string | null) ?? null,
+    ngay_gui_bao_gia: (r.ngay_gui_bao_gia as string | null) ?? null,
+    ngay_tiep_can: (r.ngay_tiep_can as string | null) ?? null,
     thoi_han_hoan_thanh: (r.thoi_han_hoan_thanh as string | null) ?? null,
     mo_ta: (r.mo_ta as string | null) ?? null,
     ghi_chu: (r.ghi_chu as string | null) ?? null,
@@ -241,6 +244,9 @@ export interface TaoMoiHoSoDuAnDTO {
   san_pham_khac_mo_ta?: string | null;
   kenh_ban_hang?: string | null;
   tien_ve_thuc_te?: number;
+  ngay_ky_hop_dong?: string | null;
+  ngay_gui_bao_gia?: string | null;
+  ngay_tiep_can?: string | null;
   ngay_tao_ho_so?: string | null;
   thoi_han_hoan_thanh?: string | null;
   mo_ta?: string | null;
@@ -341,7 +347,9 @@ export const capNhatHoSoDuAn = async (
     if (!Object.prototype.hasOwnProperty.call(dto, k)) return;
     const giaTriRaw = (dto as unknown as Record<string, unknown>)[k];
     if (giaTriRaw === undefined) return;
-    if (k === 'gia_tri_du_kien' || k === 'gia_tri_hop_dong' || k === 'tien_ve_thuc_te') {
+    if (k === 'ngay_ky_hop_dong' || k === 'ngay_gui_bao_gia' || k === 'ngay_tiep_can') {
+      (patchRaw as unknown as Record<string, unknown>)[k] = giaTriRaw ? String(giaTriRaw) : null;
+    } else if (k === 'gia_tri_du_kien' || k === 'gia_tri_hop_dong' || k === 'tien_ve_thuc_te') {
       (patchRaw as unknown as Record<string, unknown>)[k] = Number(giaTriRaw) || 0;
     } else if (k === 'danh_sach_nguoi_ho_tro_ids') {
       (patchRaw as unknown as Record<string, unknown>)[k] = Array.isArray(giaTriRaw)

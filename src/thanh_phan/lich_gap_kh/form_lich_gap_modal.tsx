@@ -135,6 +135,7 @@ export default function FormLichGapModal({
   const [nguoiThamGiaIds, setNguoiThamGiaIds] = useState<string[]>([]);
   const [trangThai, setTrangThai] = useState<TrangThaiLichGap>('da_duyet');
   const [laPhatSinh, setLaPhatSinh] = useState<boolean>(false);
+  const [laTiepCanMoi, setLaTiepCanMoi] = useState<boolean>(false);
   const [lyDoDoiHuy, setLyDoDoiHuy] = useState<string>('');
 
   const [timKiemNS, setTimKiemNS] = useState<string>('');
@@ -177,6 +178,7 @@ export default function FormLichGapModal({
       setNguoiThamGiaIds(dang_sua.nguoi_tham_gia_ids || []);
       setTrangThai(dang_sua.trang_thai || 'da_duyet');
       setLaPhatSinh(Boolean(dang_sua.la_phat_sinh));
+      setLaTiepCanMoi(Boolean(dang_sua.la_tiep_can_moi));
       setLyDoDoiHuy(dang_sua.ly_do_doi_huy || '');
     } else {
       const khId = gia_tri_mac_dinh?.khach_hang_id || '';
@@ -386,6 +388,7 @@ export default function FormLichGapModal({
       ket_qua: ketQua.trim() || null,
       trang_thai: trangThai,
       la_phat_sinh: laPhatSinh,
+      la_tiep_can_moi: laTiepCanMoi,
       ly_do_doi_huy: lyDoDoiHuy.trim() || null,
       nguon_lead_id: gia_tri_mac_dinh?.nguon_lead_id || dang_sua?.nguon_lead_id || null,
       du_an_id: dang_sua?.du_an_id || gia_tri_mac_dinh?.du_an_id || null,
@@ -432,6 +435,7 @@ export default function FormLichGapModal({
       ket_qua: ketQua.trim() || null,
       trang_thai: 'cho_duyet',
       la_phat_sinh: true,
+      la_tiep_can_moi: laTiepCanMoi,
       ly_do_doi_huy: lyDoDoiHuy.trim() || null,
       nguon_lead_id: gia_tri_mac_dinh?.nguon_lead_id || dang_sua?.nguon_lead_id || null,
       du_an_id: dang_sua?.du_an_id || gia_tri_mac_dinh?.du_an_id || null,
@@ -479,7 +483,20 @@ export default function FormLichGapModal({
           </div>
 
           <div className="flex items-center gap-2.5 ml-auto">
-            {!dang_sua && (
+                    <label className="flex items-center gap-2.5 p-3 rounded-xl border border-emerald-200/80 bg-emerald-50/50 cursor-pointer transition hover:bg-emerald-50">
+          <input
+            type="checkbox"
+            checked={laTiepCanMoi}
+            onChange={(e) => setLaTiepCanMoi(e.target.checked)}
+            className="size-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+          />
+          <div className="text-xs">
+            <span className="font-bold text-emerald-900 block">Tiếp cận khách hàng lần đầu / KH mới</span>
+            <span className="text-[11px] text-emerald-700">Đánh dấu lịch gặp này là tiếp cận KH mới để tự động ghi nhận vào KPI báo cáo tuần</span>
+          </div>
+        </label>
+
+{!dang_sua && (
               <button
                 type="button"
                 onClick={() => void handleLuuVaGuiZalo()}
