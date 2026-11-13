@@ -293,6 +293,14 @@ export function NoiDungLichCongTac({
   // Lọc danh sách lịch theo Chi nhánh & Nhân viên
   const dsLichLoc = useMemo(() => {
     return dsLich.filter((l) => {
+      // 1. Phân quyền: Lịch của sale nào thì sale đó thấy, chỉ có quản lý mới thấy hết
+      if (!laQuanLy && nguoiDungHienTai?.id) {
+        const laChuTri = l.nguoi_phu_trach_id === nguoiDungHienTai.id;
+        const laNguoiTao = l.nguoi_tao_id === nguoiDungHienTai.id;
+        const laThamGia = Array.isArray(l.nguoi_tham_gia_ids) && l.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id);
+        if (!laChuTri && !laNguoiTao && !laThamGia) return false;
+      }
+
       if (chiNhanhLoc !== 'tat_ca' && l.chi_nhanh_id !== chiNhanhLoc) {
         const ns = mapNhanSu.get(l.nguoi_phu_trach_id);
         if (ns?.chi_nhanh_id !== chiNhanhLoc) return false;
@@ -304,7 +312,7 @@ export function NoiDungLichCongTac({
       }
       return true;
     });
-  }, [dsLich, chiNhanhLoc, nhanSuLoc, mapNhanSu]);
+  }, [dsLich, laQuanLy, nguoiDungHienTai?.id, chiNhanhLoc, nhanSuLoc, mapNhanSu]);
 
   // 7 ngày của tuần đang xem
   const ds7NgayTuan = useMemo(() => layDanhSach7NgayTrongTuan(ngayDangXem), [ngayDangXem]);
@@ -702,35 +710,42 @@ export function NoiDungLichCongTac({
           </div>
         </div>
 
-        {/* Cụm lọc Chi nhánh, Nhân viên & Chuyển chế độ xem Desktop */}
+        {/* Cụm lọc Chi nhánh, Nhân viên (Chỉ Quản lý mới thấy) & Chuyển chế độ xem Desktop */}
         <div className="flex flex-wrap items-center justify-between lg:justify-end gap-2">
-          <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
-            <select
-              value={chiNhanhLoc}
-              onChange={(e) => setChiNhanhLoc(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-full sm:rounded-xl border border-slate-200 bg-slate-50/70 focus:outline-hidden focus:bg-white min-w-0 truncate"
-            >
-              <option value="tat_ca">Tất cả chi nhánh</option>
-              {dsChiNhanh.map((cn) => (
-                <option key={cn.id} value={cn.id}>
-                  {cn.ten_chi_nhanh}
-                </option>
-              ))}
-            </select>
+          {laQuanLy ? (
+            <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
+              <select
+                value={chiNhanhLoc}
+                onChange={(e) => setChiNhanhLoc(e.target.value)}
+                className="text-xs font-semibold px-3 py-2 rounded-full sm:rounded-xl border border-slate-200 bg-slate-50/70 focus:outline-hidden focus:bg-white min-w-0 truncate"
+              >
+                <option value="tat_ca">Tất cả chi nhánh</option>
+                {dsChiNhanh.map((cn) => (
+                  <option key={cn.id} value={cn.id}>
+                    {cn.ten_chi_nhanh}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              value={nhanSuLoc}
-              onChange={(e) => setNhanSuLoc(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-full sm:rounded-xl border border-slate-200 bg-slate-50/70 focus:outline-hidden focus:bg-white min-w-0 truncate sm:max-w-[170px]"
-            >
-              <option value="tat_ca">Tất cả nhân sự</option>
-              {dsNhanSu.map((ns) => (
-                <option key={ns.id} value={ns.id}>
-                  {ns.ho_va_ten}
-                </option>
-              ))}
-            </select>
-          </div>
+              <select
+                value={nhanSuLoc}
+                onChange={(e) => setNhanSuLoc(e.target.value)}
+                className="text-xs font-semibold px-3 py-2 rounded-full sm:rounded-xl border border-slate-200 bg-slate-50/70 focus:outline-hidden focus:bg-white min-w-0 truncate sm:max-w-[170px]"
+              >
+                <option value="tat_ca">Tất cả nhân sự</option>
+                {dsNhanSu.map((ns) => (
+                  <option key={ns.id} value={ns.id}>
+                    {ns.ho_va_ten}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700">
+              <UserRound className="size-3.5 text-primary" />
+              <span>Lịch của bạn ({nguoiDungHienTai?.ho_va_ten || 'Cá nhân'})</span>
+            </div>
+          )}
 
           {/* Segmented View Switcher Desktop */}
           <div className="hidden sm:flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/60">
