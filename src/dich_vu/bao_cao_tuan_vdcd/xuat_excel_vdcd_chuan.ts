@@ -422,20 +422,26 @@ export async function taoFileExcelBaoCaoTuanVDCD(
 
   const dsLich = duLieu.lichLamViecTuanToi || [];
   dsLich.forEach((l, idx) => {
+    const rawContent = l.noiDungChiTiet || 'Theo kế hoạch tác nghiệp phát sinh phòng kinh doanh';
+    // Format các đầu việc thành từng dòng ngăn nắp
+    const formattedContent = rawContent.includes('; ') ? rawContent.split('; ').join('\n• ') : rawContent;
+    const finalContent = formattedContent.startsWith('[') || formattedContent.startsWith('•') ? formattedContent : `• ${formattedContent}`;
+    const lineCount = finalContent.split('\n').length;
+
     const row = ws.addRow([
       '',
       idx + 1,
       l.tenThuNgay,
       '',
       '',
-      l.noiDungChiTiet || 'Theo kế hoạch tác nghiệp phát sinh phòng kinh doanh',
+      finalContent,
       '',
       ''
     ]);
     const rIdx = row.number;
     ws.mergeCells(`C${rIdx}:E${rIdx}`);
     ws.mergeCells(`F${rIdx}:H${rIdx}`);
-    row.height = 28;
+    row.height = Math.max(28, lineCount * 18 + 8);
 
     for (let c = 2; c <= 8; c++) {
       const cell = row.getCell(c);

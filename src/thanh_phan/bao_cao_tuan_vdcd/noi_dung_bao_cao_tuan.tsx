@@ -44,7 +44,8 @@ import {
   danhSachLichGapKH,
   taoLichGapKHMoi
 } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
-import { layTuanHienTaiISO } from '../../dich_vu/ke_hoach/dich_vu_ke_hoach';
+import { layTuanHienTaiISO, layKeHoachTuan } from '../../dich_vu/ke_hoach/dich_vu_ke_hoach';
+import type { KeHoachTuan } from '../../thu_vien/types/ke_hoach';
 import { layDanhSachGiaiDoan } from '../../thu_vien/cau_hinh/giai_doan_du_an';
 import {
   dichChuyenTuanISO,
@@ -112,6 +113,8 @@ export default function NoiDungBaoCaoTuan() {
   const [dsLichGap, setDsLichGap] = useState<LichGapKH[]>([]);
   const [dsBaoCaoTuan, setDsBaoCaoTuan] = useState<BaoCaoTuanVDCD[]>([]);
   const [dsBaoCaoTuanTruoc, setDsBaoCaoTuanTruoc] = useState<BaoCaoTuanVDCD[]>([]);
+  const [keHoachTuanNay, setKeHoachTuanNay] = useState<KeHoachTuan | null>(null);
+  const [keHoachTuanToi, setKeHoachTuanToi] = useState<KeHoachTuan | null>(null);
   const [kpiCauHinh, setKpiCauHinh] = useState<CauHinhMucTieuBaoCaoTuan | null>(null);
 
   // Bản nháp đang chỉnh sửa cho 1 nhân viên
@@ -275,6 +278,31 @@ export default function NoiDungBaoCaoTuan() {
         : null)
     );
   }, [dsNhanSu, nhanVienDangXemId, uid, nguoiDungHienTai]);
+
+  const baoCaoTuanTruocCuaNV = useMemo(() => {
+    const targetId = nhanSuMucTieu?.id;
+    if (!targetId) return null;
+    return dsBaoCaoTuanTruoc.find((b) => b.nhan_vien_id === targetId) || null;
+  }, [dsBaoCaoTuanTruoc, nhanSuMucTieu]);
+
+  // Tải Kế hoạch tác chiến tuần này & tuần tới từ Bàn làm việc
+  useEffect(() => {
+    const targetId = nhanSuMucTieu?.id;
+    if (!targetId) return;
+    let active = true;
+    void Promise.all([
+      layKeHoachTuan(targetId, tuanChon),
+      layKeHoachTuan(targetId, tuanToiISO)
+    ]).then(([khNay, khToi]) => {
+      if (active) {
+        setKeHoachTuanNay(khNay);
+        setKeHoachTuanToi(khToi);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [nhanSuMucTieu?.id, tuanChon, tuanToiISO]);
 
   // Dự án thuộc quyền sở hữu của nhân sự đang chọn
   const dsDuAnCuaNhanSu = useMemo(() => {
@@ -1226,6 +1254,9 @@ export default function NoiDungBaoCaoTuan() {
             dsSanPham={dsSanPham}
             dsLichGap={dsLichGap}
             baoCaoHienTai={formBaoCao}
+            baoCaoTuanTruoc={baoCaoTuanTruocCuaNV}
+            keHoachTuanNay={keHoachTuanNay}
+            keHoachTuanToi={keHoachTuanToi}
             onLuuBaoCao={handleLuuBaoCaoChuan}
             laQuanLy={laQuanLy}
           />
