@@ -474,7 +474,7 @@ export default function FormLichGapModal({
               <button
                 type="button"
                 onClick={() => khi_xoa(dang_sua.id, dang_sua.ten_khach_hang)}
-                className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/70 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/70 transition cursor-pointer"
               >
                 <Trash2 className="size-4" />
                 <span>Xóa</span>
@@ -483,39 +483,25 @@ export default function FormLichGapModal({
           </div>
 
           <div className="flex items-center gap-2.5 ml-auto">
-                    <label className="flex items-center gap-2.5 p-3 rounded-xl border border-emerald-200/80 bg-emerald-50/50 cursor-pointer transition hover:bg-emerald-50">
-          <input
-            type="checkbox"
-            checked={laTiepCanMoi}
-            onChange={(e) => setLaTiepCanMoi(e.target.checked)}
-            className="size-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
-          />
-          <div className="text-xs">
-            <span className="font-bold text-emerald-900 block">Tiếp cận khách hàng lần đầu / KH mới</span>
-            <span className="text-[11px] text-emerald-700">Đánh dấu lịch gặp này là tiếp cận KH mới để tự động ghi nhận vào KPI báo cáo tuần</span>
-          </div>
-        </label>
-
-{!dang_sua && (
+            {!dang_sua && (
               <button
                 type="button"
                 onClick={() => void handleLuuVaGuiZalo()}
                 disabled={dang_xu_ly}
-                className="inline-flex items-center justify-center gap-1.5 h-10 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition disabled:opacity-50 shadow-xs cursor-pointer"
-                title="Lưu lịch và tự động mở Zalo gửi nội dung xin Quản lý duyệt"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
               >
                 <Send className="size-3.5" />
                 <span>Gửi Zalo xin duyệt</span>
               </button>
             )}
-            <Nut kieu="outline" kich_thuoc="md" type="button" onClick={khi_dong} disabled={dang_xu_ly}>
+            <Nut kieu="outline" kich_thuoc="sm" type="button" onClick={khi_dong} disabled={dang_xu_ly}>
               Hủy
             </Nut>
             <button
               type="button"
               onClick={() => void handleSubmit()}
               disabled={dang_xu_ly}
-              className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white text-sm font-bold transition disabled:opacity-50 shadow-xs cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
             >
               <Save className="size-4" />
               <span>{dang_xu_ly ? 'Đang lưu...' : dang_sua ? 'Lưu thay đổi' : 'Lưu lịch hẹn'}</span>
@@ -527,16 +513,9 @@ export default function FormLichGapModal({
       <form id="form-lich-gap-kh" onSubmit={handleSubmit} className="space-y-4">
         {/* 1. Khách hàng */}
         <div className="space-y-1.5" ref={dropdownKHRef}>
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-800">
-              Khách hàng / Đơn vị <span className="text-rose-500">*</span>
-            </label>
-            {khachHangId && (
-              <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
-                <Check className="size-3" /> Đã liên kết KH
-              </span>
-            )}
-          </div>
+          <label className="block text-xs font-bold text-slate-800">
+            Khách hàng / Đơn vị <span className="text-rose-500">*</span>
+          </label>
 
           <div className="relative">
             <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
@@ -576,10 +555,7 @@ export default function FormLichGapModal({
 
             {moGoiYKH && dsKHGoiY.length > 0 && (
               <div className="absolute z-40 left-0 right-0 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100 p-1">
-                <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 flex items-center justify-between">
-                  <span>Danh sách khách hàng ({dsKHGoiY.length})</span>
-                  <span>Cuộn để xem thêm</span>
-                </div>
+                
                 {dsKHGoiY.map((kh) => {
                   const dangChon = kh.id === khachHangId;
                   return (
@@ -616,19 +592,7 @@ export default function FormLichGapModal({
         {/* 2. Người liên hệ & Số điện thoại */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="space-y-1.5" ref={dropdownNLHRef}>
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800">Người liên hệ</label>
-              {dsLienHeCuaKH.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setMoGoiYNLH((v) => !v)}
-                  className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-0.5 cursor-pointer"
-                >
-                  <span>Chọn từ {dsLienHeCuaKH.length} liên hệ</span>
-                  <ChevronDown className="size-3" />
-                </button>
-              )}
-            </div>
+            <label className="block text-xs font-bold text-slate-800">Người liên hệ</label>
 
             <div className="relative">
               <UserRound className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
@@ -642,11 +606,7 @@ export default function FormLichGapModal({
                 onFocus={() => {
                   if (dsLienHeCuaKH.length > 0) setMoGoiYNLH(true);
                 }}
-                placeholder={
-                  dsLienHeCuaKH.length > 0
-                    ? 'Chọn liên hệ có sẵn hoặc nhập mới...'
-                    : 'Họ tên người liên hệ...'
-                }
+                placeholder="Họ tên người liên hệ..."
                 className={cn(inputCls, 'pl-10', dsLienHeCuaKH.length > 0 && 'pr-8')}
               />
               {dsLienHeCuaKH.length > 0 && (
@@ -701,7 +661,7 @@ export default function FormLichGapModal({
                 type="tel"
                 value={soDienThoai}
                 onChange={(e) => setSoDienThoai(e.target.value)}
-                placeholder="Số điện thoại liên hệ..."
+                placeholder="Số điện thoại..."
                 className={cn(inputCls, 'pl-10')}
               />
             </div>
@@ -749,41 +709,26 @@ export default function FormLichGapModal({
           </div>
         </div>
 
-        {/* Cảnh báo trùng lịch (chỉ hiển thị khi phát sinh trùng) */}
+        {/* Cảnh báo trùng lịch */}
         {(coTrungCaNhan || coTrungChiNhanh) && (
-          <div className="space-y-2">
-            {coTrungCaNhan && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1">
-                <div className="font-bold flex items-center gap-1.5 text-rose-700">
-                  <AlertTriangle className="size-4 shrink-0" />
-                  <span>Trùng lịch cá nhân của nhân sự chủ trì:</span>
-                </div>
-                {canhBaoTrung.trungCaNhan.map((l) => (
-                  <div key={l.id} className="pl-5 font-medium">
-                    • {l.gio_bat_dau} – {l.gio_ket_thuc}: {l.ten_khach_hang}
-                  </div>
-                ))}
+          <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-amber-800">
+              <AlertTriangle className="size-3.5 shrink-0" />
+              <span>Lưu ý: Có lịch trùng cùng khung giờ</span>
+            </div>
+            {coTrungCaNhan && canhBaoTrung.trungCaNhan.map((l) => (
+              <div key={l.id} className="pl-5 text-[11px]">
+                • Cá nhân: {l.gio_bat_dau}–{l.gio_ket_thuc} ({l.ten_khach_hang})
               </div>
-            )}
-
-            {coTrungChiNhanh && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
-                <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                  <Clock className="size-4 shrink-0" />
-                  <span>Lịch cùng khung giờ tại Chi nhánh:</span>
+            ))}
+            {coTrungChiNhanh && canhBaoTrung.trungChiNhanh.map((l) => {
+              const ns = mapNhanSu.get(l.nguoi_phu_trach_id);
+              return (
+                <div key={l.id} className="pl-5 text-[11px]">
+                  • Chi nhánh: {l.gio_bat_dau}–{l.gio_ket_thuc} ({ns?.ho_va_ten || 'NV'} - {l.ten_khach_hang})
                 </div>
-                {canhBaoTrung.trungChiNhanh.map((l) => {
-                  const ns = mapNhanSu.get(l.nguoi_phu_trach_id);
-                  return (
-                    <div key={l.id} className="pl-5 font-medium">
-                      • {l.gio_bat_dau} – {l.gio_ket_thuc}:{' '}
-                      <span className="font-semibold">{ns?.ho_va_ten || 'NV'}</span> —{' '}
-                      <span>{l.ten_khach_hang}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+              );
+            })}
           </div>
         )}
 
@@ -796,7 +741,7 @@ export default function FormLichGapModal({
               type="text"
               value={diaDiem}
               onChange={(e) => setDiaDiem(e.target.value)}
-              placeholder="Nhập địa chỉ cơ quan, văn phòng hoặc hình thức họp..."
+              placeholder="Địa chỉ hoặc hình thức làm việc..."
               className={cn(inputCls, 'pl-10')}
             />
           </div>
@@ -826,14 +771,7 @@ export default function FormLichGapModal({
 
           {/* Cùng tham gia: Avatar Pills + Popover Picker hiện đại */}
           <div className="space-y-1.5 relative" ref={dropdownNSRef}>
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800">Cùng tham gia</label>
-              {nguoiThamGiaIds.length > 0 && (
-                <span className="text-[11px] font-semibold text-emerald-700">
-                  Đã chọn {nguoiThamGiaIds.length} người
-                </span>
-              )}
-            </div>
+            <label className="block text-xs font-bold text-slate-800">Cùng tham gia</label>
 
             <div
               onClick={() => setMoGoiYNS(true)}
@@ -961,34 +899,44 @@ export default function FormLichGapModal({
         {/* 6. Nội dung công việc */}
         <div className="space-y-1.5">
           <label className="block text-xs font-bold text-slate-800">
-            Nội dung làm việc & Chuẩn bị
+            Nội dung làm việc
           </label>
           <textarea
             rows={2}
             value={noiDung}
             onChange={(e) => setNoiDung(e.target.value)}
-            placeholder="Mục tiêu buổi gặp, nội dung trao đổi, tài liệu cần chuẩn bị..."
+            placeholder="Mục tiêu, nội dung trao đổi..."
             className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs"
           />
         </div>
 
-        {!dang_sua && (
-          <label className="flex items-center gap-2.5 p-3 rounded-xl border border-blue-200/80 bg-blue-50/50 cursor-pointer transition hover:bg-blue-50">
+        {/* Tùy chọn phân loại nhanh gọn */}
+        <div className="flex items-center gap-5 pt-1 flex-wrap">
+          <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
             <input
               type="checkbox"
-              checked={laPhatSinh}
-              onChange={(e) => {
-                setLaPhatSinh(e.target.checked);
-                if (e.target.checked) setTrangThai('cho_duyet');
-              }}
-              className="size-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+              checked={laTiepCanMoi}
+              onChange={(e) => setLaTiepCanMoi(e.target.checked)}
+              className="size-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
             />
-            <div className="text-xs">
-              <span className="font-bold text-blue-900 block">Lịch phát sinh đột xuất trong tuần (Cần duyệt gấp)</span>
-              <span className="text-[11px] text-blue-700">Tự động gắn cờ phát sinh và kích hoạt gửi duyệt Zalo 1-chạm</span>
-            </div>
+            <span>Tiếp cận khách hàng mới (KPI tuần)</span>
           </label>
-        )}
+
+          {!dang_sua && (
+            <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={laPhatSinh}
+                onChange={(e) => {
+                  setLaPhatSinh(e.target.checked);
+                  if (e.target.checked) setTrangThai('cho_duyet');
+                }}
+                className="size-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+              />
+              <span>Lịch phát sinh trong tuần</span>
+            </label>
+          )}
+        </div>
 
         {/* 7. Trạng thái & Kết quả (khi cập nhật lịch hẹn) */}
         {dang_sua && (
