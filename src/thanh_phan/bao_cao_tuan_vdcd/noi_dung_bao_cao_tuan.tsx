@@ -724,7 +724,40 @@ export default function NoiDungBaoCaoTuan() {
     });
     setDsBaoCaoTuan((prev) => [updated, ...prev.filter((x) => x.id !== updated.id)]);
     if (formBaoCao?.id === updated.id) setFormBaoCao(updated);
-    hienThongBao(trangThai === 'da_duyet' ? `Đã duyệt tuần cho ${bc.ten_nhan_vien}.` : 'Đã gửi yêu cầu điều chỉnh.');
+
+    // Đồng bộ duyệt lịch công tác tuần tới của nhân sự khi duyệt kế hoạch tuần
+    if (trangThai === 'da_duyet') {
+      const tuanToi = dichChuyenTuanISO(bc.tuan, 1);
+      const infoTuanToi = phanTichTuanISO(tuanToi);
+      const lichCanDuyet = dsLichGap.filter(
+        (l) =>
+          !l.da_xoa &&
+          l.ngay >= infoTuanToi.ngayBatDau &&
+          l.ngay <= infoTuanToi.ngayKetThuc &&
+          (l.nguoi_phu_trach_id === bc.nhan_vien_id || l.nguoi_tao_id === bc.nhan_vien_id) &&
+          l.trang_thai !== 'da_duyet'
+      );
+      for (const l of lichCanDuyet) {
+        try {
+          await capNhatLichGapKH(l.id, { trang_thai: 'da_duyet', nguoi_duyet_id: uid }, uid);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      if (lichCanDuyet.length > 0) {
+        setDsLichGap((prev) =>
+          prev.map((l) =>
+            lichCanDuyet.some((c) => c.id === l.id) ? { ...l, trang_thai: 'da_duyet' } : l
+          )
+        );
+      }
+    }
+
+    hienThongBao(
+      trangThai === 'da_duyet'
+        ? `Đã phê duyệt kế hoạch tuần cho ${bc.ten_nhan_vien} & đồng bộ duyệt ${dsLichGap.filter(l => l.ngay >= phanTichTuanISO(dichChuyenTuanISO(bc.tuan, 1)).ngayBatDau && l.ngay <= phanTichTuanISO(dichChuyenTuanISO(bc.tuan, 1)).ngayKetThuc && (l.nguoi_phu_trach_id === bc.nhan_vien_id || l.nguoi_tao_id === bc.nhan_vien_id)).length} lịch công tác tuần tới.`
+        : 'Đã gửi ý kiến định hướng yêu cầu điều chỉnh cho nhân sự.'
+    );
   };
 
   const renderBangKeHoachUI = (
@@ -1258,7 +1291,22 @@ export default function NoiDungBaoCaoTuan() {
             keHoachTuanNay={keHoachTuanNay}
             keHoachTuanToi={keHoachTuanToi}
             onLuuBaoCao={handleLuuBaoCaoChuan}
+            onDuyetBaoCao={async (trangThai, ghiChu) => {
+              if (formBaoCao) await handleDuyetTuan(formBaoCao, trangThai, ghiChu);
+            }}
+            onThuHoiBaoCao={async () => {
+              if (formBaoCao) await handleLuuBaoCaoChuan({ trang_thai: 'nhap' }, false);
+            }}
+            onCapNhatKetQuaLich={async (lich, ketQua) => {
+              await capNhatLichGapKH(lich.id, { trang_thai: 'da_hoan_thanh', ket_qua: ketQua }, uid);
+              setDsLichGap((prev) =>
+                prev.map((x) =>
+                  x.id === lich.id ? { ...x, trang_thai: 'da_hoan_thanh', ket_qua: ketQua } : x
+                )
+              );
+            }}
             laQuanLy={laQuanLy}
+            nguoiDungHienTaiId={uid}
           />
         )
       )}
