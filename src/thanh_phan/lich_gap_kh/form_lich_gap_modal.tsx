@@ -16,8 +16,10 @@ import {
   ChevronDown,
   Search,
   UserPlus,
-  Save
+  Save,
+  Send
 } from 'lucide-react';
+import { moZaloXinDuyetLich } from '../../thu_vien/utils/chia_se_zalo_lich';
 import { cn } from '../../thu_vien/utils/cn';
 import { Ban_Ve, DaiDien, Nut } from '../ui';
 import type {
@@ -131,7 +133,9 @@ export default function FormLichGapModal({
   const [ketQua, setKetQua] = useState<string>('');
   const [nguoiPhuTrachId, setNguoiPhuTrachId] = useState<string>('');
   const [nguoiThamGiaIds, setNguoiThamGiaIds] = useState<string[]>([]);
-  const [trangThai, setTrangThai] = useState<TrangThaiLichGap>('sap_toi');
+  const [trangThai, setTrangThai] = useState<TrangThaiLichGap>('da_duyet');
+  const [laPhatSinh, setLaPhatSinh] = useState<boolean>(false);
+  const [lyDoDoiHuy, setLyDoDoiHuy] = useState<string>('');
 
   const [timKiemNS, setTimKiemNS] = useState<string>('');
   const [moGoiYNS, setMoGoiYNS] = useState(false);
@@ -171,7 +175,9 @@ export default function FormLichGapModal({
       setKetQua(dang_sua.ket_qua || '');
       setNguoiPhuTrachId(dang_sua.nguoi_phu_trach_id || nguoiDungId || '');
       setNguoiThamGiaIds(dang_sua.nguoi_tham_gia_ids || []);
-      setTrangThai(dang_sua.trang_thai || 'sap_toi');
+      setTrangThai(dang_sua.trang_thai || 'da_duyet');
+      setLaPhatSinh(Boolean(dang_sua.la_phat_sinh));
+      setLyDoDoiHuy(dang_sua.ly_do_doi_huy || '');
     } else {
       const khId = gia_tri_mac_dinh?.khach_hang_id || '';
       const tenKH = gia_tri_mac_dinh?.ten_khach_hang || '';
@@ -190,7 +196,9 @@ export default function FormLichGapModal({
       setKetQua('');
       setNguoiPhuTrachId(gia_tri_mac_dinh?.nguoi_phu_trach_id || nguoiDungId || '');
       setNguoiThamGiaIds([]);
-      setTrangThai('sap_toi');
+      setTrangThai(laQuanLy ? 'da_duyet' : 'cho_duyet');
+      setLaPhatSinh(false);
+      setLyDoDoiHuy('');
     }
     setDangGoTimKH(false);
     setMoGoiYKH(false);
@@ -377,12 +385,64 @@ export default function FormLichGapModal({
       noi_dung: noiDung.trim() || null,
       ket_qua: ketQua.trim() || null,
       trang_thai: trangThai,
+      la_phat_sinh: laPhatSinh,
+      ly_do_doi_huy: lyDoDoiHuy.trim() || null,
       nguon_lead_id: gia_tri_mac_dinh?.nguon_lead_id || dang_sua?.nguon_lead_id || null,
       du_an_id: dang_sua?.du_an_id || gia_tri_mac_dinh?.du_an_id || null,
       nguoi_tao_id: dang_sua?.nguoi_tao_id || nguoiDungId || ''
     };
 
     await khi_luu(payload);
+  };
+
+  const handleLuuVaGuiZalo = async () => {
+    const tenKHChuan = (tenKhachHang || timKhachHang).trim();
+    if (!tenKHChuan) {
+      alert('Vui lòng chọn hoặc nhập tên khách hàng!');
+      return;
+    }
+    if (!ngay || !gioBatDau) {
+      alert('Vui lòng chọn ngày và giờ hẹn!');
+      return;
+    }
+
+    const nsPhuTrach = mapNhanSu.get(nguoiPhuTrachId);
+    const cnId =
+      dang_sua?.chi_nhanh_id ||
+      gia_tri_mac_dinh?.chi_nhanh_id ||
+      nsPhuTrach?.chi_nhanh_id ||
+      chiNhanhMacDinhId ||
+      null;
+
+    const payload: TaoMoiLichGapDTO = {
+      tieu_de: `Gặp KH ${tenKHChuan}`,
+      khach_hang_id: khachHangId || null,
+      ten_khach_hang: tenKHChuan,
+      nguoi_lien_he_id: nguoiLienHeId || gia_tri_mac_dinh?.nguoi_lien_he_id || dang_sua?.nguoi_lien_he_id || null,
+      ten_nguoi_lien_he: tenNguoiLienHe.trim() || null,
+      so_dien_thoai: soDienThoai.trim() || null,
+      nguoi_phu_trach_id: !laQuanLy ? (nguoiDungId || nguoiDungHienTai?.id || '') : (nguoiPhuTrachId || nguoiDungId || ''),
+      nguoi_tham_gia_ids: nguoiThamGiaIds,
+      chi_nhanh_id: cnId,
+      ngay,
+      gio_bat_dau: gioBatDau,
+      gio_ket_thuc: gioKetThuc || congThemPhut(gioBatDau, 90),
+      dia_diem: diaDiem.trim() || null,
+      noi_dung: noiDung.trim() || null,
+      ket_qua: ketQua.trim() || null,
+      trang_thai: 'cho_duyet',
+      la_phat_sinh: true,
+      ly_do_doi_huy: lyDoDoiHuy.trim() || null,
+      nguon_lead_id: gia_tri_mac_dinh?.nguon_lead_id || dang_sua?.nguon_lead_id || null,
+      du_an_id: dang_sua?.du_an_id || gia_tri_mac_dinh?.du_an_id || null,
+      nguoi_tao_id: dang_sua?.nguoi_tao_id || nguoiDungId || ''
+    };
+
+    await khi_luu(payload);
+    void moZaloXinDuyetLich({
+      lich: { ...payload, id: 'lich_moi', ngay_tao: new Date().toISOString(), ngay_cap_nhat: new Date().toISOString() },
+      tenNhanSu: nguoiDungHienTai?.ho_va_ten || 'Sale'
+    });
   };
 
   const coTrungCaNhan = canhBaoTrung.trungCaNhan.length > 0;
@@ -419,6 +479,18 @@ export default function FormLichGapModal({
           </div>
 
           <div className="flex items-center gap-2.5 ml-auto">
+            {!dang_sua && (
+              <button
+                type="button"
+                onClick={() => void handleLuuVaGuiZalo()}
+                disabled={dang_xu_ly}
+                className="inline-flex items-center justify-center gap-1.5 h-10 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition disabled:opacity-50 shadow-xs cursor-pointer"
+                title="Lưu lịch và tự động mở Zalo gửi nội dung xin Quản lý duyệt"
+              >
+                <Send className="size-3.5" />
+                <span>Gửi Zalo xin duyệt</span>
+              </button>
+            )}
             <Nut kieu="outline" kich_thuoc="md" type="button" onClick={khi_dong} disabled={dang_xu_ly}>
               Hủy
             </Nut>
@@ -883,6 +955,24 @@ export default function FormLichGapModal({
           />
         </div>
 
+        {!dang_sua && (
+          <label className="flex items-center gap-2.5 p-3 rounded-xl border border-blue-200/80 bg-blue-50/50 cursor-pointer transition hover:bg-blue-50">
+            <input
+              type="checkbox"
+              checked={laPhatSinh}
+              onChange={(e) => {
+                setLaPhatSinh(e.target.checked);
+                if (e.target.checked) setTrangThai('cho_duyet');
+              }}
+              className="size-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+            />
+            <div className="text-xs">
+              <span className="font-bold text-blue-900 block">Lịch phát sinh đột xuất trong tuần (Cần duyệt gấp)</span>
+              <span className="text-[11px] text-blue-700">Tự động gắn cờ phát sinh và kích hoạt gửi duyệt Zalo 1-chạm</span>
+            </div>
+          </label>
+        )}
+
         {/* 7. Trạng thái & Kết quả (khi cập nhật lịch hẹn) */}
         {dang_sua && (
           <div className="space-y-3 pt-2 border-t border-slate-100">
@@ -907,6 +997,21 @@ export default function FormLichGapModal({
                 ))}
               </div>
             </div>
+
+            {(trangThai === 'doi_lich' || trangThai === 'huy') && (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-amber-800">
+                  Lý do dời lịch / hủy hẹn <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={lyDoDoiHuy}
+                  onChange={(e) => setLyDoDoiHuy(e.target.value)}
+                  placeholder="VD: Khách bận đột xuất, hẹn lại tuần sau..."
+                  className={inputCls}
+                />
+              </div>
+            )}
 
             {trangThai === 'da_hoan_thanh' && (
               <div className="space-y-1.5">

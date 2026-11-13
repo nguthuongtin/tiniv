@@ -231,10 +231,10 @@ export const SO_LIEU_NGUON_TRONG = (): SoLieuNguonTiepCanTuan => ({
   dau_thau_online: 0
 });
 
-const GIAI_DOAN_DANG_TIEP_CAN = new Set(['moi_tao', 'tiep_can', 'khao_sat', 'len_giai_phap']);
+const GIAI_DOAN_DANG_TIEP_CAN = new Set(['moi_tao', 'tiep_can', 'khao_sat', 'len_giai_phap', 'co_chu_truong']);
 const GIAI_DOAN_BAO_GIA = new Set(['bao_gia', 'dam_phan']);
-const GIAI_DOAN_HOP_DONG = new Set(['ky_hop_dong', 'trien_khai', 'nghiem_thu', 'hoan_thanh']);
-const GIAI_DOAN_KHONG_PHU_HOP = new Set(['tam_dung', 'huy']);
+const GIAI_DOAN_HOP_DONG = new Set(['ky_hop_dong', 'tt_dot_1', 'trien_khai', 'hoan_thanh_tt_dot_2', 'nghiem_thu', 'hoan_thanh']);
+const GIAI_DOAN_KHONG_PHU_HOP = new Set(['tam_dung', 'huy', 'tam_dung_huy']);
 
 function chuanHoaKenhTiepCan(raw?: string | null): keyof SoLieuNguonTiepCanTuan {
   const s = (raw || '').toLowerCase();
@@ -307,7 +307,7 @@ export function tinhSoLieuTuCRM(params: {
 
     // Slide 3: bỏ các dự án đã nghiệm thu/hoàn thành hoặc dừng ở kỳ trước
     const daKetThucKyTruoc =
-      (gd === 'hoan_thanh' || gd === 'nghiem_thu' || GIAI_DOAN_KHONG_PHU_HOP.has(gd)) &&
+      (gd === 'hoan_thanh' || gd === 'hoan_thanh_tt_dot_2' || gd === 'nghiem_thu' || GIAI_DOAN_KHONG_PHU_HOP.has(gd)) &&
       ngayCapNhat < infoTuan.ngayBatDau;
 
     if (!daKetThucKyTruoc) {
@@ -377,7 +377,7 @@ export function tinhSoLieuTuCRM(params: {
       de_xuat: ''
     };
 
-    if (gd === 'dam_phan' || gd === 'ky_hop_dong') {
+    if (gd === 'dam_phan' || gd === 'co_chu_truong' || gd === 'ky_hop_dong' || gd === 'tt_dot_1') {
       goiYDongTien.push({
         ...dongMau,
         id: `d_${da.id}`,
@@ -388,8 +388,10 @@ export function tinhSoLieuTuCRM(params: {
     if (
       !GIAI_DOAN_KHONG_PHU_HOP.has(gd) &&
       gd !== 'hoan_thanh' &&
+      gd !== 'hoan_thanh_tt_dot_2' &&
       gd !== 'nghiem_thu' &&
-      gd !== 'trien_khai'
+      gd !== 'trien_khai' &&
+      gd !== 'tt_dot_1'
     ) {
       goiYTiemNang.push({ ...dongMau, id: `tn_${da.id}` });
     }

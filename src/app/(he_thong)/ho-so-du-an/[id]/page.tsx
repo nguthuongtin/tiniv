@@ -138,6 +138,10 @@ const DS_TAB: { key: TenTab; nhan: string; bieuTuong: any; dem?: number }[] = [
 ];
 
 const TEN_GIAI_DOAN_DA: Record<string, string> = {
+  co_chu_truong: 'Có chủ trương',
+  tt_dot_1: 'TT đợt 1',
+  hoan_thanh_tt_dot_2: 'Hoàn thành và TT đợt 2',
+  tam_dung_huy: 'Tạm dừng/Hủy',
   moi_tao: 'Mới tạo',
   tiep_can: 'Tiếp cận',
   khao_sat: 'Khảo sát',
@@ -153,6 +157,9 @@ const TEN_GIAI_DOAN_DA: Record<string, string> = {
 };
 
 const GIAI_DOAN_DANG_TRIEN_KHAI: string[] = [
+  'co_chu_truong',
+  'tt_dot_1',
+  'hoan_thanh_tt_dot_2',
   'moi_tao',
   'tiep_can',
   'khao_sat',
@@ -166,6 +173,10 @@ const GIAI_DOAN_DANG_TRIEN_KHAI: string[] = [
 ];
 
 const MAP_HIEU_GIAI_DOAN: Record<string, string> = {
+  co_chu_truong: 'bg-blue-50 text-blue-700 border-blue-200/80',
+  tt_dot_1: 'bg-emerald-50 text-emerald-800 border-emerald-300/80',
+  hoan_thanh_tt_dot_2: 'bg-emerald-100/80 text-emerald-900 border-emerald-400/80',
+  tam_dung_huy: 'bg-rose-50 text-[#FF3B30] border-rose-200/80',
   moi_tao: 'bg-slate-100 text-slate-700 border-slate-200/80',
   tiep_can: 'bg-sky-50 text-sky-700 border-sky-200/80',
   khao_sat: 'bg-cyan-50 text-cyan-700 border-cyan-200/80',

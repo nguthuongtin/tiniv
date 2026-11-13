@@ -122,7 +122,7 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     event_them: 'ebms:ho_so_du_an:them_moi'
   },
   '/bao-cao-tuan': {
-    nhan: 'Báo cáo tuần (Thử nghiệm)',
+    nhan: 'Báo cáo tuần',
     nhan_mobile: 'BC Tuần',
     mo_ta: 'Báo cáo, kế hoạch & duyệt lịch công tác tuần',
     icon: Calendar,

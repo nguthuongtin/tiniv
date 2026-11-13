@@ -43,7 +43,7 @@ const rawToCauHinh = (raw: any | null | undefined): CauHinhGiaiDoanDuAnHeThong =
     } satisfies CauHinhMotGiaiDoan);
   }
   for (const [k, override] of map.entries()) {
-    if (setDaThem.has(k)) continue;
+    if (setDaThem.has(k) || ['moi_tao', 'khao_sat', 'len_giai_phap', 'dam_phan', 'nghiem_thu', 'hoan_thanh', 'tam_dung', 'huy'].includes(k)) continue;
     const DS_KIEU_HOP_LE: CauHinhMotGiaiDoan['kieu'][] = ['muted', 'primary', 'warning', 'success', 'danger'];
     const kieuHopLe = DS_KIEU_HOP_LE.includes(String(override?.kieu ?? 'muted') as any)
       ? (override.kieu as CauHinhMotGiaiDoan['kieu'])

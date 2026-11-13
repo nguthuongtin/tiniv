@@ -120,7 +120,7 @@ export default function BoCucGoc({
             </aside>
             <main className="flex-1 h-full overflow-y-auto min-w-0 flex flex-col overflow-x-hidden">
               <ThanhPhanTopbar />
-              <div className="w-full max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 pb-[calc(84px+env(safe-area-inset-bottom,0px))] md:pb-12 flex-1 min-w-0">
+              <div className="w-full max-w-none px-3 sm:px-4 lg:px-6 py-3 sm:py-5 lg:py-6 pb-[calc(84px+env(safe-area-inset-bottom,0px))] md:pb-10 flex-1 min-w-0">
                 {children}
               </div>
               <ThanhDieuHuongDuoi />

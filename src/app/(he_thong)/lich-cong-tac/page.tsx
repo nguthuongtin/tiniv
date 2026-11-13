@@ -18,7 +18,10 @@ import {
   RotateCcw,
   LayoutGrid,
   Columns3,
-  ListFilter
+  ListFilter,
+  ListTodo,
+  BarChart3,
+  CalendarCheck
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '../../../thu_vien/utils/cn';
@@ -519,6 +522,40 @@ export default function TrangLichCongTac() {
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-5">
+      {/* THANH ĐIỀU HƯỚNG 3-TRONG-1 HỢP NHẤT */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-2.5 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="inline-flex items-center rounded-xl bg-slate-100 p-1 text-xs font-semibold gap-1">
+            <Link
+              href="/ban-lam-viec?tab=ban_lam_viec"
+              className="h-8 px-3.5 rounded-lg inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition cursor-pointer"
+            >
+              <ListTodo className="size-4 text-blue-600" />
+              <span>Bàn làm việc (Hôm nay)</span>
+            </Link>
+
+            <div
+              className="h-8 px-3.5 rounded-lg inline-flex items-center gap-2 bg-white text-slate-900 shadow-2xs font-bold"
+            >
+              <CalendarCheck className="size-4 text-emerald-600" />
+              <span>Lịch công tác (Tuần &amp; Tháng)</span>
+            </div>
+
+            <Link
+              href="/ban-lam-viec?tab=bao_cao_tuan"
+              className="h-8 px-3.5 rounded-lg inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition cursor-pointer"
+            >
+              <BarChart3 className="size-4 text-[#D11317]" />
+              <span>Kế hoạch &amp; Báo cáo tuần</span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="hidden lg:flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+          <Sparkles className="size-3.5 text-amber-500" />
+          <span>Dữ liệu tác nghiệp, lịch hẹn &amp; dự án đồng bộ tự động</span>
+        </div>
+      </div>
       <ThanhSoLieu
         items={[
           {

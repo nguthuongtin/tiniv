@@ -105,6 +105,10 @@ const TEN_GIAI_DOAN_MAC_DINH: Record<
 );
 
 const GD_COLORS: Record<string, { badge: string; dotBg: string }> = {
+  co_chu_truong: { badge: 'bg-blue-50 text-blue-700 border-blue-200/80', dotBg: 'bg-blue-600' },
+  tt_dot_1: { badge: 'bg-emerald-50 text-emerald-800 border-emerald-300/80', dotBg: 'bg-emerald-500' },
+  hoan_thanh_tt_dot_2: { badge: 'bg-emerald-50 text-emerald-900 border-emerald-400/80', dotBg: 'bg-emerald-600' },
+  tam_dung_huy: { badge: 'bg-rose-50 text-rose-700 border-rose-200/80', dotBg: 'bg-rose-500' },
   moi_tao: { badge: 'bg-violet-50 text-violet-700 border-violet-200/80', dotBg: 'bg-violet-600' },
   tiep_can: { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200/80', dotBg: 'bg-indigo-600' },
   khao_sat: { badge: 'bg-emerald-50 text-emerald-800 border-emerald-300/80', dotBg: 'bg-emerald-500' },
