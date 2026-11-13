@@ -121,6 +121,15 @@ function ONhapSoTien({
   );
 }
 
+export interface MucChiTietKPI {
+  id: string;
+  tieuDe: string;
+  moTa?: string;
+  loaiNguon?: 'Bàn làm việc' | 'Lịch công tác' | 'Hồ sơ dự án' | 'Dòng tiền về thực tế' | 'Hợp đồng ký mới' | 'Phát sinh ngoài' | string;
+  soTien?: number;
+  daChon?: boolean;
+}
+
 interface Props {
   tuan: string;
   nhanSu: NhanSu;
@@ -172,73 +181,216 @@ export default function BangBaoCaoTuanChuanVDCD({
   }, [dsDuAn, nhanSu.id]);
 
   // --------------------------------------------------------------------------
-  // CƠ CHẾ THEO DÕI TỰ ĐỘNG LẤY DỮ LIỆU TỪ BÀN LÀM VIỆC & CRM (KHỐI I)
+  // CƠ CHẾ THEO DÕI TỰ ĐỘNG THÔNG MINH TỪ BÀN LÀM VIỆC & CRM (KHỐI I)
   // Thứ tự 5 chỉ số:
-  // 1. Số lượng KH mới tiếp cận
-  // 2. Tổng số báo giá đã gửi trong tuần (hồ sơ dự án chuyển sang báo giá & công việc gửi BG)
-  // 3. Tổng số dự án đã làm việc trong tuần (tập hợp dự án có hoạt động/tác nghiệp)
-  // 4. Số hợp đồng ký kết
-  // 5. Tổng doanh thu đã thu về trong tuần
+  // 1. Số lượng KH mới tiếp cận (từ Bàn làm việc & Lịch gặp)
+  // 2. Tổng số báo giá đã gửi trong tuần (dự án chuyển sang báo giá & việc gửi BG)
+  // 3. Tổng số dự án đã làm việc trong tuần (tập hợp dự án có tác nghiệp/bám sát)
+  // 4. Số hợp đồng ký kết trong tuần (sự kiện ký HĐ thật sự & việc hoàn thành)
+  // 5. Tổng doanh thu đã thu về trong tuần (Doanh số HĐ mới ký + dòng tiền thực về)
   // --------------------------------------------------------------------------
   const soLieuThucTeTuBanLamViec = useMemo(() => {
     const viecTuanNay = keHoachTuanNay?.danh_sach_tac_chien || [];
 
     // 1. Khách hàng mới tiếp cận:
-    const dsKhMoi = dsKhachHang.filter((k) => {
-      const ngay = (k.ngay_tao || '').slice(0, 10);
-      return (
-        ngay >= infoTuan.ngayBatDau &&
-        ngay <= infoTuan.ngayKetThuc &&
-        (k.nguoi_tao_id === nhanSu.id || k.nguoi_phu_trach_id === nhanSu.id)
-      );
+    // Quét từ Bàn làm việc & Lịch gặp (các cuộc gặp/gọi hoặc tác nghiệp gắn nhãn tiếp cận KH mới)
+    const mapKhachMoi = new Map<string, MucChiTietKPI>();
+
+    // 1.1 Quét từ Lịch gặp / Lịch công tác CRM trong tuần
+    dsLichGap.forEach((l) => {
+      if (
+        l.da_xoa ||
+        l.ngay < infoTuan.ngayBatDau ||
+        l.ngay > infoTuan.ngayKetThuc ||
+        (l.nguoi_phu_trach_id !== nhanSu.id &&
+          l.nguoi_tao_id !== nhanSu.id &&
+          (!Array.isArray(l.nguoi_tham_gia_ids) || !l.nguoi_tham_gia_ids.includes(nhanSu.id)))
+      ) {
+        return;
+      }
+      const txt = (
+        (l.tieu_de || '') + ' ' +
+        (l.noi_dung || '') + ' ' +
+        (l.ket_qua || '') + ' ' +
+        (l.ten_khach_hang || '')
+      ).toLowerCase();
+
+      const khObj = l.khach_hang_id ? mapKH.get(l.khach_hang_id) : null;
+      const khMoiTao = khObj && (khObj.ngay_tao || '').slice(0, 10) >= infoTuan.ngayBatDau;
+
+      const laTiepCan =
+        khMoiTao ||
+        txt.includes('tiếp cận') ||
+        txt.includes('kh mới') ||
+        txt.includes('khách mới') ||
+        txt.includes('khách hàng mới') ||
+        txt.includes('chào sân') ||
+        txt.includes('gặp mới') ||
+        txt.includes('làm quen') ||
+        txt.includes('tiếp xúc') ||
+        txt.includes('khai thác mới');
+
+      if (laTiepCan) {
+        const key = l.khach_hang_id || (l.ten_khach_hang || 'kh_gap').trim().toLowerCase();
+        if (!mapKhachMoi.has(key)) {
+          mapKhachMoi.set(key, {
+            id: `lich_${l.id}`,
+            tieuDe: l.ten_khach_hang || 'Khách hàng mới (Lịch gặp)',
+            moTa: `Lịch công tác ${l.ngay}${l.gio_bat_dau ? ` [${l.gio_bat_dau}]` : ''}: ${l.noi_dung || l.tieu_de || 'Tiếp cận khách hàng mới'}`,
+            loaiNguon: 'Lịch công tác',
+            daChon: true
+          });
+        }
+      }
     });
-    const idKhMoiSet = new Set(dsKhMoi.map((k) => k.id));
-    const dsViecTiepCan = viecTuanNay.filter((item) => {
+
+    // 1.2 Quét từ Bàn làm việc tuần này
+    viecTuanNay.forEach((item) => {
+      const txt = (
+        (item.ten_khach_hang_du_an || '') + ' ' +
+        (item.noi_dung_tuan || '') + ' ' +
+        (item.hanh_dong_tuan || '') + ' ' +
+        (item.dau_ra_cam_ket || '')
+      ).toLowerCase();
+
+      const coKqTiepCan =
+        item.danh_sach_ket_qua &&
+        item.danh_sach_ket_qua.some(
+          (kq) =>
+            kq.loai_tac_nghiep === 'tao_khach_hang' ||
+            (kq.noi_dung && (
+              kq.noi_dung.toLowerCase().includes('tiếp cận') ||
+              kq.noi_dung.toLowerCase().includes('kh mới') ||
+              kq.noi_dung.toLowerCase().includes('khách mới')
+            ))
+        );
+
+      const khObj = item.khach_hang_id ? mapKH.get(item.khach_hang_id) : null;
+      const khMoiTao = khObj && (khObj.ngay_tao || '').slice(0, 10) >= infoTuan.ngayBatDau;
+
       const laTiepCan =
         item.loai_cong_viec === 'khach_hang' ||
-        item.loai_hanh_dong === 'phat_sinh' ||
-        (item.danh_sach_ket_qua &&
-          item.danh_sach_ket_qua.some((kq) => kq.loai_tac_nghiep === 'tao_khach_hang'));
-      return laTiepCan && (!item.khach_hang_id || !idKhMoiSet.has(item.khach_hang_id));
-    });
-    const tongKhachMoi = dsKhMoi.length + dsViecTiepCan.length;
+        coKqTiepCan ||
+        khMoiTao ||
+        txt.includes('tiếp cận') ||
+        txt.includes('kh mới') ||
+        txt.includes('khách mới') ||
+        txt.includes('khách hàng mới') ||
+        txt.includes('chào mới') ||
+        txt.includes('khai thác mới') ||
+        txt.includes('tìm kiếm kh') ||
+        txt.includes('tìm kh mới');
 
-    // 2. Tổng số báo giá đã gửi trong tuần (căn vào dự án đổi sang trạng thái báo giá + việc gửi báo giá)
-    const dsDuAnBaoGia = dsDuAnCuaNV.filter((d) => {
-      const ngay = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
-      return (
-        d.giai_doan === 'bao_gia' &&
-        ngay >= infoTuan.ngayBatDau &&
-        ngay <= infoTuan.ngayKetThuc
-      );
+      if (laTiepCan) {
+        const key = item.khach_hang_id || (item.ten_khach_hang_du_an || 'kh_viec').trim().toLowerCase();
+        if (!mapKhachMoi.has(key)) {
+          const ht = item.hinh_thuc === 'gap_mat' ? 'Gặp trực tiếp' : item.hinh_thuc === 'goi_dien' ? 'Gọi điện' : 'Tác nghiệp';
+          mapKhachMoi.set(key, {
+            id: `viec_${item.id}`,
+            tieuDe: item.ten_khach_hang_du_an || 'Khách hàng mới (Bàn làm việc)',
+            moTa: `Bàn làm việc [${ht}]: ${item.noi_dung_tuan || item.hanh_dong_tuan || 'Tiếp cận khách hàng mới'}`,
+            loaiNguon: 'Bàn làm việc',
+            daChon: true
+          });
+        }
+      }
     });
-    const idDuAnBaoGiaSet = new Set(dsDuAnBaoGia.map((d) => d.id));
-    const dsViecBaoGia = viecTuanNay.filter((item) => {
-      const txt = (item.noi_dung_tuan + ' ' + (item.hanh_dong_tuan || '')).toLowerCase();
+
+    const dsChiTietKhachMoi = Array.from(mapKhachMoi.values());
+    const tongKhachMoi = dsChiTietKhachMoi.length;
+
+    // 2. Tổng số báo giá đã gửi trong tuần:
+    // Căn cứ vào: Dự án có mốc giai đoạn báo giá trong tuần + Công việc gửi báo giá trên Bàn làm việc
+    const mapBaoGia = new Map<string, MucChiTietKPI>();
+
+    // 2.1 Dự án có hoạt động chuyển giai đoạn hoặc đạt mốc báo giá trong tuần
+    dsDuAnCuaNV.forEach((d) => {
+      const ngayTao = (d.ngay_tao_ho_so || d.ngay_tao || '').slice(0, 10);
+      const ngayCapNhat = (d.ngay_cap_nhat || '').slice(0, 10);
+      const laGiaiDoanBaoGia = d.giai_doan === 'bao_gia' && (
+        (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc) ||
+        (ngayCapNhat >= infoTuan.ngayBatDau && ngayCapNhat <= infoTuan.ngayKetThuc)
+      );
+      const laDuAnMoiBaoGia =
+        ngayTao >= infoTuan.ngayBatDau &&
+        ngayTao <= infoTuan.ngayKetThuc &&
+        d.giai_doan !== 'tiep_can';
+
+      if (laGiaiDoanBaoGia || laDuAnMoiBaoGia) {
+        mapBaoGia.set(d.id, {
+          id: `da_bg_${d.id}`,
+          tieuDe: d.ten_du_an,
+          moTa: `Dự án đạt mốc Báo giá • Giá trị dự kiến: ${fmtTien(d.gia_tri_du_kien || d.gia_tri_hop_dong)}`,
+          loaiNguon: 'Hồ sơ dự án',
+          daChon: true
+        });
+      }
+    });
+
+    // 2.2 Công việc/hành động báo giá trên Bàn làm việc
+    viecTuanNay.forEach((item) => {
+      const txt = (
+        (item.noi_dung_tuan || '') + ' ' +
+        (item.hanh_dong_tuan || '') + ' ' +
+        (item.dau_ra_cam_ket || '')
+      ).toLowerCase();
+
+      const coKqBaoGia =
+        item.danh_sach_ket_qua &&
+        item.danh_sach_ket_qua.some(
+          (kq) =>
+            kq.noi_dung && (
+              kq.noi_dung.toLowerCase().includes('báo giá') ||
+              kq.noi_dung.toLowerCase().includes('gửi bg') ||
+              kq.noi_dung.toLowerCase().includes('chào giá')
+            )
+        );
+
       const laBaoGia =
+        coKqBaoGia ||
         txt.includes('báo giá') ||
         txt.includes('gửi bg') ||
         txt.includes('chào giá') ||
-        (item.danh_sach_ket_qua &&
-          item.danh_sach_ket_qua.some((kq) => kq.noi_dung && kq.noi_dung.toLowerCase().includes('báo giá')));
-      return laBaoGia && (!item.du_an_id || !idDuAnBaoGiaSet.has(item.du_an_id));
-    });
-    const tongBaoGia = dsDuAnBaoGia.length + dsViecBaoGia.length;
+        txt.includes('lên bg') ||
+        txt.includes('gửi bảng giá');
 
-    // 3. Tổng số dự án đã làm việc trong tuần (tập hợp các dự án có tác nghiệp)
-    const idDuAnDaLamViecSet = new Set<string>();
-    // Từ công việc trên bàn làm việc có gắn dự án
-    viecTuanNay.forEach((item) => {
-      if (item.du_an_id) idDuAnDaLamViecSet.add(item.du_an_id);
-    });
-    // Từ dự án có cập nhật trong tuần
-    dsDuAnCuaNV.forEach((d) => {
-      const ngay = (d.ngay_cap_nhat || '').slice(0, 10);
-      if (ngay >= infoTuan.ngayBatDau && ngay <= infoTuan.ngayKetThuc) {
-        idDuAnDaLamViecSet.add(d.id);
+      if (laBaoGia) {
+        const key = item.du_an_id || item.khach_hang_id || (item.ten_khach_hang_du_an || 'bg_viec').trim().toLowerCase();
+        if (!mapBaoGia.has(key)) {
+          mapBaoGia.set(key, {
+            id: `viec_bg_${item.id}`,
+            tieuDe: item.ten_khach_hang_du_an || 'Gửi báo giá',
+            moTa: `Bàn làm việc: ${item.noi_dung_tuan || item.hanh_dong_tuan || 'Gửi báo giá cho khách hàng'}`,
+            loaiNguon: 'Bàn làm việc',
+            daChon: true
+          });
+        }
       }
     });
-    // Từ lịch hẹn tuần này có gắn dự án
+
+    const dsChiTietBaoGia = Array.from(mapBaoGia.values());
+    const tongBaoGia = dsChiTietBaoGia.length;
+
+    // 3. Tổng số dự án đã làm việc trong tuần (tập hợp các dự án có tác nghiệp thực tế)
+    const mapDuAnLamViec = new Map<string, MucChiTietKPI>();
+
+    // 3.1 Dự án có việc trên Bàn làm việc tuần
+    viecTuanNay.forEach((item) => {
+      if (item.du_an_id) {
+        const da = dsDuAnCuaNV.find((d) => d.id === item.du_an_id);
+        if (da && !mapDuAnLamViec.has(da.id)) {
+          mapDuAnLamViec.set(da.id, {
+            id: `da_lam_${da.id}`,
+            tieuDe: da.ten_du_an,
+            moTa: `Bàn làm việc: ${item.noi_dung_tuan} • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
+            loaiNguon: 'Bàn làm việc',
+            daChon: true
+          });
+        }
+      }
+    });
+
+    // 3.2 Dự án có lịch hẹn/lịch công tác trong tuần
     dsLichGap.forEach((l) => {
       if (
         !l.da_xoa &&
@@ -247,86 +399,168 @@ export default function BangBaoCaoTuanChuanVDCD({
         (l.nguoi_phu_trach_id === nhanSu.id || l.nguoi_tao_id === nhanSu.id) &&
         l.du_an_id
       ) {
-        idDuAnDaLamViecSet.add(l.du_an_id);
+        const da = dsDuAnCuaNV.find((d) => d.id === l.du_an_id);
+        if (da && !mapDuAnLamViec.has(da.id)) {
+          mapDuAnLamViec.set(da.id, {
+            id: `da_lam_${da.id}`,
+            tieuDe: da.ten_du_an,
+            moTa: `Lịch công tác ${l.ngay}: ${l.noi_dung || l.tieu_de || 'Làm việc dự án'}`,
+            loaiNguon: 'Lịch công tác',
+            daChon: true
+          });
+        }
       }
     });
-    const dsDuAnDaLamViec = Array.from(idDuAnDaLamViecSet)
-      .map((id) => dsDuAnCuaNV.find((d) => d.id === id))
-      .filter(Boolean) as HoSoDuAn[];
-    const tongDuAnDaLamViec = dsDuAnDaLamViec.length;
 
-    // 4. Số hợp đồng ký kết trong tuần
-    const dsDuAnKyHD = dsDuAnCuaNV.filter((d) => {
-      const ngay = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
-      return (
-        ngay >= infoTuan.ngayBatDau &&
-        ngay <= infoTuan.ngayKetThuc &&
-        (d.giai_doan === 'ky_hop_dong' || d.giai_doan === 'tt_dot_1' || d.giai_doan === 'trien_khai')
-      );
+    // 3.3 Dự án có cập nhật hoạt động hoặc tạo trong tuần
+    dsDuAnCuaNV.forEach((da) => {
+      const ngayTao = (da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10);
+      const ngayCN = (da.ngay_cap_nhat || '').slice(0, 10);
+      const coCapNhat =
+        (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc) ||
+        (ngayCN >= infoTuan.ngayBatDau && ngayCN <= infoTuan.ngayKetThuc);
+      if (coCapNhat && !mapDuAnLamViec.has(da.id)) {
+        mapDuAnLamViec.set(da.id, {
+          id: `da_lam_${da.id}`,
+          tieuDe: da.ten_du_an,
+          moTa: `Cập nhật tiến độ dự án • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
+          loaiNguon: 'Hồ sơ dự án',
+          daChon: true
+        });
+      }
     });
-    const dsViecKyHD = viecTuanNay.filter((item) => {
-      const txt = (item.noi_dung_tuan + ' ' + (item.hanh_dong_tuan || '')).toLowerCase();
-      return txt.includes('hợp đồng') || txt.includes('ký hđ') || txt.includes('chốt hđ');
-    });
-    const tongHopDong = Math.max(dsDuAnKyHD.length, dsViecKyHD.length);
 
-    // 5. Tổng doanh thu đã thu về trong tuần (Dòng tiền về thực tế + HĐ ký mới)
-    const dsDuAnTrongTuan = dsDuAnCuaNV.filter((d) => {
-      const ngayCapNhat = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
-      return (
-        ngayCapNhat >= infoTuan.ngayBatDau &&
-        ngayCapNhat <= infoTuan.ngayKetThuc &&
-        (Number(d.tien_ve_thuc_te || 0) > 0 || Number(d.gia_tri_hop_dong || 0) > 0)
-      );
+    const dsChiTietDuAnLamViec = Array.from(mapDuAnLamViec.values());
+    const tongDuAnDaLamViec = dsChiTietDuAnLamViec.length;
+
+    // 4. Số hợp đồng ký kết trong tuần (sự kiện ký HĐ thật sự phát sinh trong tuần)
+    const mapHopDong = new Map<string, MucChiTietKPI>();
+
+    // 4.1 Dự án chuyển sang giai đoạn Ký hợp đồng có mốc trong tuần
+    dsDuAnCuaNV.forEach((da) => {
+      const ngayTao = (da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10);
+      const ngayCN = (da.ngay_cap_nhat || '').slice(0, 10);
+      const laGiaiDoanKyHD =
+        da.giai_doan === 'ky_hop_dong' ||
+        da.giai_doan === 'tt_dot_1' ||
+        da.giai_doan === 'trien_khai';
+      const trongTuan =
+        (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc) ||
+        (ngayCN >= infoTuan.ngayBatDau && ngayCN <= infoTuan.ngayKetThuc);
+
+      if (laGiaiDoanKyHD && trongTuan && Number(da.gia_tri_hop_dong || 0) > 0) {
+        mapHopDong.set(da.id, {
+          id: `hd_${da.id}`,
+          tieuDe: `Hợp đồng: ${da.ten_du_an}`,
+          moTa: `Ký kết thành công • Giá trị: ${fmtTien(da.gia_tri_hop_dong)} • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
+          loaiNguon: 'Hồ sơ dự án',
+          soTien: Number(da.gia_tri_hop_dong || 0),
+          daChon: true
+        });
+      }
     });
-    const dtThucTe = dsDuAnTrongTuan.reduce(
-      (acc, d) => acc + Number(d.tien_ve_thuc_te || d.gia_tri_hop_dong || 0),
-      0
-    );
+
+    // 4.2 Bàn làm việc có nhiệm vụ ký HĐ hoàn thành trong tuần
+    viecTuanNay.forEach((item) => {
+      const txt = (
+        (item.noi_dung_tuan || '') + ' ' +
+        (item.hanh_dong_tuan || '') + ' ' +
+        (item.dau_ra_cam_ket || '')
+      ).toLowerCase();
+      const laViecKyHD =
+        txt.includes('ký hợp đồng') ||
+        txt.includes('ký hđ') ||
+        txt.includes('chốt hđ') ||
+        txt.includes('chốt hợp đồng');
+      const daXong = item.da_hoan_thanh || item.trang_thai_ket_qua === 'dat_muc_tieu';
+
+      if (laViecKyHD && daXong) {
+        const key = item.du_an_id || item.khach_hang_id || (item.ten_khach_hang_du_an || 'hd_viec').trim().toLowerCase();
+        if (!mapHopDong.has(key)) {
+          mapHopDong.set(key, {
+            id: `hd_viec_${item.id}`,
+            tieuDe: item.ten_khach_hang_du_an || 'Ký hợp đồng mới',
+            moTa: `Bàn làm việc: ${item.noi_dung_tuan || item.hanh_dong_tuan} (Đã hoàn thành)`,
+            loaiNguon: 'Bàn làm việc',
+            soTien: 0,
+            daChon: true
+          });
+        }
+      }
+    });
+
+    const dsChiTietHopDong = Array.from(mapHopDong.values());
+    const tongHopDong = dsChiTietHopDong.length;
+
+    // 5. Tổng doanh thu đã thu về trong tuần (HĐ ký mới + Tiền về thực tế phát sinh trong tuần)
+    const mapDoanhThu = new Map<string, MucChiTietKPI>();
+
+    // 5.1 Doanh số từ hợp đồng ký mới trong tuần
+    dsChiTietHopDong.forEach((hd) => {
+      if (hd.soTien && hd.soTien > 0) {
+        mapDoanhThu.set(hd.id, {
+          id: `dt_${hd.id}`,
+          tieuDe: hd.tieuDe,
+          moTa: `Doanh số hợp đồng mới ký: ${fmtTien(hd.soTien)}`,
+          loaiNguon: 'Hợp đồng ký mới',
+          soTien: hd.soTien,
+          daChon: true
+        });
+      }
+    });
+
+    // 5.2 Doanh thu từ dòng tiền về thực tế trong tuần (tien_ve_thuc_te)
+    dsDuAnCuaNV.forEach((da) => {
+      const ngayTao = (da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10);
+      const ngayCN = (da.ngay_cap_nhat || '').slice(0, 10);
+      const trongTuan =
+        (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc) ||
+        (ngayCN >= infoTuan.ngayBatDau && ngayCN <= infoTuan.ngayKetThuc);
+      const tienThucTe = Number(da.tien_ve_thuc_te || 0);
+
+      if (trongTuan && tienThucTe > 0 && !mapDoanhThu.has(`dt_hd_${da.id}`)) {
+        mapDoanhThu.set(`tienve_${da.id}`, {
+          id: `dt_tienve_${da.id}`,
+          tieuDe: `Dòng tiền về: ${da.ten_du_an}`,
+          moTa: `Thực thu đợt thanh toán: ${fmtTien(tienThucTe)} • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
+          loaiNguon: 'Dòng tiền về thực tế',
+          soTien: tienThucTe,
+          daChon: true
+        });
+      }
+    });
+
+    const dsChiTietDoanhThu = Array.from(mapDoanhThu.values());
+    const tongDoanhThu = dsChiTietDoanhThu.reduce((sum, item) => sum + Number(item.soTien || 0), 0);
 
     return {
       khachMoi: {
         thucTe: tongKhachMoi,
-        chiTiet: `${dsKhMoi.length} KH mới trên CRM + ${dsViecTiepCan.length} việc tiếp cận trên Bàn làm việc`,
-        danhSach: [
-          ...dsKhMoi.map((k) => ({ tieuDe: k.ten_khach_hang, moTa: 'Khách hàng mới tạo trên CRM' })),
-          ...dsViecTiepCan.map((v) => ({ tieuDe: v.ten_khach_hang_du_an || 'Khách hàng', moTa: v.noi_dung_tuan }))
-        ]
+        chiTiet: `${tongKhachMoi} KH mới (quét từ Bàn làm việc & Lịch gặp)`,
+        danhSach: dsChiTietKhachMoi
       },
       baoGia: {
         thucTe: tongBaoGia,
-        chiTiet: `${dsDuAnBaoGia.length} dự án chuyển sang báo giá + ${dsViecBaoGia.length} công việc báo giá`,
-        danhSach: [
-          ...dsDuAnBaoGia.map((d) => ({ tieuDe: d.ten_du_an, moTa: 'Dự án chuyển sang trạng thái Báo giá' })),
-          ...dsViecBaoGia.map((v) => ({ tieuDe: v.ten_khach_hang_du_an || 'Khách hàng', moTa: v.noi_dung_tuan }))
-        ]
+        chiTiet: `${tongBaoGia} báo giá (từ mốc dự án & công việc)`,
+        danhSach: dsChiTietBaoGia
       },
       duAnLamViec: {
         thucTe: tongDuAnDaLamViec,
-        chiTiet: `${tongDuAnDaLamViec} dự án có tác nghiệp / bám sát tiến độ trong tuần qua`,
-        danhSach: dsDuAnDaLamViec.map((d) => ({
-          tieuDe: d.ten_du_an,
-          moTa: `Giai đoạn: ${layCauHinhGiaiDoanTheoKey(d.giai_doan).nhan_day_du} • Tiềm năng: ${BANG_TIEM_NANG_DU_AN[d.muc_do_tiem_nang]?.nhan || d.muc_do_tiem_nang}`
-        }))
+        chiTiet: `${tongDuAnDaLamViec} dự án có tác nghiệp trong tuần`,
+        danhSach: dsChiTietDuAnLamViec
       },
       hopDong: {
         thucTe: tongHopDong,
-        chiTiet: `${dsDuAnKyHD.length} dự án lên giai đoạn HĐ + ${dsViecKyHD.length} việc ký HĐ hoàn thành`,
-        danhSach: [
-          ...dsDuAnKyHD.map((d) => ({ tieuDe: d.ten_du_an, moTa: 'Dự án đã ký hợp đồng' })),
-          ...dsViecKyHD.map((v) => ({ tieuDe: v.ten_khach_hang_du_an || 'Khách hàng', moTa: v.noi_dung_tuan }))
-        ]
+        chiTiet: `${tongHopDong} hợp đồng ký kết trong tuần`,
+        danhSach: dsChiTietHopDong
       },
       doanhThu: {
-        thucTe: dtThucTe,
-        chiTiet: `${dsDuAnTrongTuan.length} dự án phát sinh dòng tiền / HĐ trong tuần qua`,
-        danhSach: dsDuAnTrongTuan.map((d) => ({
-          tieuDe: d.ten_du_an,
-          moTa: fmtTien(d.tien_ve_thuc_te || d.gia_tri_hop_dong)
-        }))
+        thucTe: tongDoanhThu,
+        chiTiet: `${fmtTien(tongDoanhThu)} (Doanh số HĐ mới & thực thu)`,
+        danhSach: dsChiTietDoanhThu
       }
     };
-  }, [dsDuAnCuaNV, dsKhachHang, dsLichGap, keHoachTuanNay, infoTuan, nhanSu.id]);
+  }, [dsDuAnCuaNV, dsLichGap, keHoachTuanNay, infoTuan, nhanSu.id, mapKH]);
 
   // Kế hoạch tuần trước lấy từ Cam kết tuần trước (Khối III của tuần trước đưa qua)
   const mucTieuMacDinhTuTuanTruoc = useMemo(() => {
@@ -349,13 +583,101 @@ export default function BangBaoCaoTuanChuanVDCD({
   const [kpiHopDong, setKpiHopDong] = useState({ keHoachTuanTruoc: 4, thucTe: 0, daSuaTay: false });
   const [kpiDoanhThu, setKpiDoanhThu] = useState({ keHoachTuanTruoc: 150000000, thucTe: 0, daSuaTay: false });
 
-  // Modal xem chi tiết số liệu Drill-down
+  // Modal xem chi tiết số liệu Drill-down (Checklist tương tác & Thêm nhanh)
   const [modalDrillDownKPI, setModalDrillDownKPI] = useState<{
     mo: boolean;
+    chiSoKey: 'khachMoi' | 'baoGia' | 'duAnLamViec' | 'hopDong' | 'doanhThu' | '';
     tieuDe: string;
     moTa: string;
-    danhSach: { tieuDe: string; moTa?: string }[];
-  }>({ mo: false, tieuDe: '', moTa: '', danhSach: [] });
+    laTien?: boolean;
+    danhSach: MucChiTietKPI[];
+  }>({ mo: false, chiSoKey: '', tieuDe: '', moTa: '', laTien: false, danhSach: [] });
+
+  const [dangThemNhanh, setDangThemNhanh] = useState(false);
+  const [mucThemMoi, setMucThemMoi] = useState({ tieuDe: '', moTa: '', soTien: 0 });
+
+  const moModalDrillDown = (
+    chiSoKey: 'khachMoi' | 'baoGia' | 'duAnLamViec' | 'hopDong' | 'doanhThu',
+    tieuDe: string,
+    moTa: string,
+    laTien: boolean = false
+  ) => {
+    const goc = soLieuThucTeTuBanLamViec[chiSoKey].danhSach;
+    setModalDrillDownKPI({
+      mo: true,
+      chiSoKey,
+      tieuDe,
+      moTa,
+      laTien,
+      danhSach: goc.map((m) => ({ ...m, daChon: true }))
+    });
+    setDangThemNhanh(false);
+    setMucThemMoi({ tieuDe: '', moTa: '', soTien: 0 });
+  };
+
+  const toggleChonMuc = (id: string) => {
+    setModalDrillDownKPI((p) => ({
+      ...p,
+      danhSach: p.danhSach.map((m) => (m.id === id ? { ...m, daChon: !m.daChon } : m))
+    }));
+  };
+
+  const chonTatCa = (chon: boolean) => {
+    setModalDrillDownKPI((p) => ({
+      ...p,
+      danhSach: p.danhSach.map((m) => ({ ...m, daChon: chon }))
+    }));
+  };
+
+  const themMucPhatSinhNgoai = () => {
+    if (!mucThemMoi.tieuDe.trim()) return;
+    const itemMoi: MucChiTietKPI = {
+      id: `ngoai_${Date.now()}`,
+      tieuDe: mucThemMoi.tieuDe.trim(),
+      moTa: mucThemMoi.moTa.trim() || 'Mục phát sinh ngoài hệ thống',
+      loaiNguon: 'Phát sinh ngoài',
+      soTien: Number(mucThemMoi.soTien || 0),
+      daChon: true
+    };
+    setModalDrillDownKPI((p) => ({
+      ...p,
+      danhSach: [itemMoi, ...p.danhSach]
+    }));
+    setMucThemMoi({ tieuDe: '', moTa: '', soTien: 0 });
+    setDangThemNhanh(false);
+  };
+
+  const xoaMucPhatSinh = (id: string) => {
+    setModalDrillDownKPI((p) => ({
+      ...p,
+      danhSach: p.danhSach.filter((m) => m.id !== id)
+    }));
+  };
+
+  const apDungVaoBaoCao = () => {
+    const { chiSoKey, laTien, danhSach } = modalDrillDownKPI;
+    const dsChon = danhSach.filter((m) => m.daChon);
+    if (laTien) {
+      const tongTien = dsChon.reduce((sum, m) => sum + Number(m.soTien || 0), 0);
+      setKpiDoanhThu((p) => ({ ...p, thucTe: tongTien, daSuaTay: true }));
+    } else {
+      const sl = dsChon.length;
+      if (chiSoKey === 'khachMoi') {
+        setKpiKhachMoi((p) => ({ ...p, thucTe: sl, daSuaTay: true }));
+      } else if (chiSoKey === 'baoGia') {
+        setKpiBaoGia((p) => ({ ...p, thucTe: sl, daSuaTay: true }));
+      } else if (chiSoKey === 'duAnLamViec') {
+        setKpiDuAnLamViec((p) => ({ ...p, thucTe: sl, daSuaTay: true }));
+      } else if (chiSoKey === 'hopDong') {
+        setKpiHopDong((p) => ({ ...p, thucTe: sl, daSuaTay: true }));
+      }
+    }
+    setModalDrillDownKPI((p) => ({ ...p, mo: false }));
+    setThongBao({
+      loai: 'tc',
+      nd: `Đã cập nhật chỉ số thực tế (${laTien ? fmtTien(dsChon.reduce((sum, m) => sum + Number(m.soTien || 0), 0)) : `${dsChon.length} mục`}) vào báo cáo!`
+    });
+  };
 
   // Khởi tạo số liệu: Ưu tiên dữ liệu đã lưu, nếu chưa có thì nạp tự động từ Bàn làm việc & CRM
   useEffect(() => {
@@ -892,12 +1214,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                   <button
                     type="button"
                     onClick={() =>
-                      setModalDrillDownKPI({
-                        mo: true,
-                        tieuDe: 'Chi tiết Khách hàng mới tiếp cận tuần qua',
-                        moTa: soLieuThucTeTuBanLamViec.khachMoi.chiTiet,
-                        danhSach: soLieuThucTeTuBanLamViec.khachMoi.danhSach
-                      })
+                      moModalDrillDown('khachMoi', 'Chi tiết Khách hàng mới tiếp cận tuần qua', soLieuThucTeTuBanLamViec.khachMoi.chiTiet)
                     }
                     className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
                   >
@@ -949,12 +1266,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                   <button
                     type="button"
                     onClick={() =>
-                      setModalDrillDownKPI({
-                        mo: true,
-                        tieuDe: 'Chi tiết Báo giá đã gửi trong tuần qua',
-                        moTa: soLieuThucTeTuBanLamViec.baoGia.chiTiet,
-                        danhSach: soLieuThucTeTuBanLamViec.baoGia.danhSach
-                      })
+                      moModalDrillDown('baoGia', 'Chi tiết Báo giá đã gửi trong tuần qua', soLieuThucTeTuBanLamViec.baoGia.chiTiet)
                     }
                     className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
                   >
@@ -1006,12 +1318,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                   <button
                     type="button"
                     onClick={() =>
-                      setModalDrillDownKPI({
-                        mo: true,
-                        tieuDe: 'Chi tiết Dự án đã làm việc trong tuần qua',
-                        moTa: soLieuThucTeTuBanLamViec.duAnLamViec.chiTiet,
-                        danhSach: soLieuThucTeTuBanLamViec.duAnLamViec.danhSach
-                      })
+                      moModalDrillDown('duAnLamViec', 'Chi tiết Dự án đã làm việc trong tuần qua', soLieuThucTeTuBanLamViec.duAnLamViec.chiTiet)
                     }
                     className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
                   >
@@ -1063,12 +1370,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                   <button
                     type="button"
                     onClick={() =>
-                      setModalDrillDownKPI({
-                        mo: true,
-                        tieuDe: 'Chi tiết Hợp đồng / Đơn hàng ký kết tuần qua',
-                        moTa: soLieuThucTeTuBanLamViec.hopDong.chiTiet,
-                        danhSach: soLieuThucTeTuBanLamViec.hopDong.danhSach
-                      })
+                      moModalDrillDown('hopDong', 'Chi tiết Hợp đồng / Đơn hàng ký kết tuần qua', soLieuThucTeTuBanLamViec.hopDong.chiTiet)
                     }
                     className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
                   >
@@ -1120,12 +1422,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                   <button
                     type="button"
                     onClick={() =>
-                      setModalDrillDownKPI({
-                        mo: true,
-                        tieuDe: 'Chi tiết Doanh thu thực tế tuần qua',
-                        moTa: soLieuThucTeTuBanLamViec.doanhThu.chiTiet,
-                        danhSach: soLieuThucTeTuBanLamViec.doanhThu.danhSach
-                      })
+                      moModalDrillDown('doanhThu', 'Chi tiết Doanh thu thực tế tuần qua', soLieuThucTeTuBanLamViec.doanhThu.chiTiet, true)
                     }
                     className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
                   >
@@ -1621,61 +1918,220 @@ export default function BangBaoCaoTuanChuanVDCD({
         </div>
       </div>
 
-      {/* MODAL DRILL-DOWN CHI TIẾT SỐ LIỆU KPI KHỐI I */}
-      {modalDrillDownKPI.mo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wide">
-                  {modalDrillDownKPI.tieuDe}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {modalDrillDownKPI.moTa}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setModalDrillDownKPI((p) => ({ ...p, mo: false }))}
-                className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
+      {/* MODAL DRILL-DOWN CHI TIẾT SỐ LIỆU KPI KHỐI I (INTERACTIVE CHECKLIST) */}
+      {modalDrillDownKPI.mo && (() => {
+        const dsChon = modalDrillDownKPI.danhSach.filter((m) => m.daChon);
+        const tongTienChon = dsChon.reduce((sum, m) => sum + Number(m.soTien || 0), 0);
+        const tatCaDaChon = modalDrillDownKPI.danhSach.length > 0 && dsChon.length === modalDrillDownKPI.danhSach.length;
 
-            <div className="p-4 overflow-y-auto divide-y divide-border/60 max-h-[420px] text-xs">
-              {modalDrillDownKPI.danhSach.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  Chưa có dữ liệu chi tiết ghi nhận trong khoảng thời gian này.
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
+              {/* Header */}
+              <div className="p-4 border-b border-border flex items-start justify-between gap-3 bg-muted/40">
+                <div>
+                  <h3 className="text-sm font-extrabold text-foreground uppercase tracking-wide flex items-center gap-2">
+                    <Sparkles className="size-4 text-amber-500" />
+                    <span>{modalDrillDownKPI.tieuDe}</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {modalDrillDownKPI.moTa} • Tick chọn hoặc bỏ chọn để cập nhật số thực tế
+                  </p>
                 </div>
-              ) : (
-                modalDrillDownKPI.danhSach.map((item, idx) => (
-                  <div key={idx} className="py-2.5 flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-bold text-foreground">{item.tieuDe}</div>
-                      {item.moTa && (
-                        <div className="text-[11px] text-muted-foreground mt-0.5">
-                          {item.moTa}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setModalDrillDownKPI((p) => ({ ...p, mo: false }))}
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
 
-            <div className="p-3 bg-muted/40 border-t border-border flex justify-end">
-              <button
-                type="button"
-                onClick={() => setModalDrillDownKPI((p) => ({ ...p, mo: false }))}
-                className="h-8.5 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold cursor-pointer"
-              >
-                Đóng
-              </button>
+              {/* Toolbar */}
+              <div className="px-4 py-2.5 border-b border-border/80 flex items-center justify-between gap-2 bg-background flex-wrap text-xs">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => chonTatCa(!tatCaDaChon)}
+                    className="px-2.5 py-1 rounded-lg border border-border hover:bg-muted font-medium text-foreground cursor-pointer"
+                  >
+                    {tatCaDaChon ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </button>
+                  <span className="text-muted-foreground text-[11px]">
+                    Đã chọn <b className="text-primary font-bold">{dsChon.length}</b>/{modalDrillDownKPI.danhSach.length} mục
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setDangThemNhanh((v) => !v)}
+                  className="px-2.5 py-1 rounded-lg border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="size-3.5" />
+                  <span>Thêm mục ngoài hệ thống</span>
+                </button>
+              </div>
+
+              {/* Form thêm nhanh mục ngoài */}
+              {dangThemNhanh && (
+                <div className="p-3.5 bg-blue-50/50 border-b border-blue-200/80 text-xs animate-in slide-in-from-top-2">
+                  <div className="font-bold text-blue-900 mb-2">Thêm mục phát sinh thực tế ngoài hệ thống:</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Tên khách hàng / dự án / việc..."
+                      value={mucThemMoi.tieuDe}
+                      onChange={(e) => setMucThemMoi({ ...mucThemMoi, tieuDe: e.target.value })}
+                      className="px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Ghi chú (kết quả / người liên hệ)..."
+                      value={mucThemMoi.moTa}
+                      onChange={(e) => setMucThemMoi({ ...mucThemMoi, moTa: e.target.value })}
+                      className="px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs"
+                    />
+                  </div>
+                  {modalDrillDownKPI.laTien && (
+                    <div className="mb-2">
+                      <ONhapSoTien
+                        giaTri={mucThemMoi.soTien}
+                        onChange={(val) => setMucThemMoi({ ...mucThemMoi, soTien: val })}
+                        placeholder="Số tiền thực tế (VNĐ)..."
+                        className="w-full sm:w-60 px-2.5 py-1.5 bg-background border border-border rounded-lg text-xs font-mono font-bold"
+                      />
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDangThemNhanh(false)}
+                      className="px-3 py-1 rounded-lg text-muted-foreground hover:bg-muted cursor-pointer"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={themMucPhatSinhNgoai}
+                      disabled={!mucThemMoi.tieuDe.trim()}
+                      className="px-3 py-1 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
+                    >
+                      Thêm vào danh sách
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Danh sách checklist */}
+              <div className="p-4 overflow-y-auto divide-y divide-border/60 max-h-[380px] text-xs">
+                {modalDrillDownKPI.danhSach.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    Chưa có mục nào được ghi nhận. Bạn có thể bấm "Thêm mục ngoài hệ thống" ở trên để bổ sung.
+                  </div>
+                ) : (
+                  modalDrillDownKPI.danhSach.map((item) => {
+                    const laPhatSinhNgoai = item.id.startsWith('ngoai_');
+                    return (
+                      <div
+                        key={item.id}
+                        className={cn(
+                          'py-2.5 px-2 rounded-xl flex items-start justify-between gap-3 transition-colors',
+                          item.daChon ? 'bg-primary/5 hover:bg-primary/10' : 'opacity-60 hover:opacity-100 hover:bg-muted/40'
+                        )}
+                      >
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(item.daChon)}
+                            onChange={() => toggleChonMuc(item.id)}
+                            className="mt-1 size-4 rounded text-primary focus:ring-primary cursor-pointer shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-foreground">{item.tieuDe}</span>
+                              {item.loaiNguon && (
+                                <span
+                                  className={cn(
+                                    'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                                    item.loaiNguon === 'Bàn làm việc' && 'bg-blue-100 text-blue-800',
+                                    item.loaiNguon === 'Lịch công tác' && 'bg-amber-100 text-amber-800',
+                                    item.loaiNguon === 'Hồ sơ dự án' && 'bg-purple-100 text-purple-800',
+                                    item.loaiNguon === 'Phát sinh ngoài' && 'bg-emerald-100 text-emerald-800',
+                                    item.loaiNguon === 'Hợp đồng ký mới' && 'bg-emerald-100 text-emerald-800',
+                                    item.loaiNguon === 'Dòng tiền về thực tế' && 'bg-teal-100 text-teal-800'
+                                  )}
+                                >
+                                  {item.loaiNguon}
+                                </span>
+                              )}
+                            </div>
+                            {item.moTa && (
+                              <div className="text-[11px] text-muted-foreground mt-0.5">
+                                {item.moTa}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {modalDrillDownKPI.laTien && item.soTien !== undefined && (
+                            <span className="font-mono text-xs font-bold text-emerald-700">
+                              {fmtTien(item.soTien)}
+                            </span>
+                          )}
+                          {laPhatSinhNgoai && (
+                            <button
+                              type="button"
+                              onClick={() => xoaMucPhatSinh(item.id)}
+                              className="p-1 rounded text-red-500 hover:bg-red-50 cursor-pointer"
+                              title="Xóa mục phát sinh này"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-3.5 bg-muted/40 border-t border-border flex items-center justify-between gap-3 flex-wrap">
+                <div className="text-xs">
+                  {modalDrillDownKPI.laTien ? (
+                    <span>
+                      Tổng doanh thu chọn: <b className="text-emerald-700 font-mono text-sm">{fmtTien(tongTienChon)}</b>
+                    </span>
+                  ) : (
+                    <span>
+                      Đã chọn: <b className="text-primary font-bold">{dsChon.length}</b> mục thực tế
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalDrillDownKPI((p) => ({ ...p, mo: false }))}
+                    className="h-8.5 px-3.5 rounded-xl border border-border bg-card hover:bg-muted text-foreground text-xs font-semibold cursor-pointer"
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    type="button"
+                    onClick={apDungVaoBaoCao}
+                    className="h-8.5 px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  >
+                    <Check className="size-3.5" />
+                    <span>Áp dụng vào báo cáo</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MODAL CHỌN THÊM DỰ ÁN TRỌNG ĐIỂM (KHỐI II) */}
       {moModalChonDA && (
