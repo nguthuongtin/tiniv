@@ -172,7 +172,7 @@ export default function BangBaoCaoTuanChuanVDCD({
         item.loai_hanh_dong === 'phat_sinh' ||
         (item.danh_sach_ket_qua &&
           item.danh_sach_ket_qua.some((kq) => kq.loai_tac_nghiep === 'tao_khach_hang'));
-      return laTiepCan && item.da_hoan_thanh && (!item.khach_hang_id || !idKhMoiSet.has(item.khach_hang_id));
+      return laTiepCan && (!item.khach_hang_id || !idKhMoiSet.has(item.khach_hang_id));
     });
     const tongKhachMoi = dsKhMoi.length + dsViecTiepCan.length;
 
@@ -184,16 +184,17 @@ export default function BangBaoCaoTuanChuanVDCD({
         l.ngay >= infoTuan.ngayBatDau &&
         l.ngay <= infoTuan.ngayKetThuc &&
         (l.nguoi_phu_trach_id === nhanSu.id || l.nguoi_tao_id === nhanSu.id) &&
-        (l.trang_thai === 'da_hoan_thanh' || Boolean(l.ket_qua))
+        (l.trang_thai === 'da_hoan_thanh' || Boolean(l.ket_qua) || l.trang_thai === 'da_duyet')
     );
 
     // - Công việc gặp mặt trực tiếp hoàn thành trên Bàn làm việc (ItemKeHoachTuan)
     const dsViecGapMat = viecTuanNay.filter((item) => {
       const laGap =
         item.hinh_thuc === 'gap_mat' ||
+        (item as any).loai_cong_viec === 'lich_gap' ||
         (item.danh_sach_ket_qua &&
           item.danh_sach_ket_qua.some((kq) => kq.loai_tac_nghiep === 'gap_mat'));
-      return laGap && (item.da_hoan_thanh || (item.danh_sach_ket_qua && item.danh_sach_ket_qua.length > 0));
+      return laGap;
     });
     const tongCuocGap = dsLichGapXong.length + dsViecGapMat.length;
 
@@ -212,8 +213,7 @@ export default function BangBaoCaoTuanChuanVDCD({
     const dsViecKyHD = viecTuanNay.filter((item) => {
       const txt = (item.noi_dung_tuan + ' ' + (item.hanh_dong_tuan || '')).toLowerCase();
       return (
-        (txt.includes('hợp đồng') || txt.includes('ký hđ') || txt.includes('chốt hđ')) &&
-        item.da_hoan_thanh
+        txt.includes('hợp đồng') || txt.includes('ký hđ') || txt.includes('chốt hđ')
       );
     });
     const tongHopDong = Math.max(dsDuAnKyHD.length, dsViecKyHD.length);
@@ -427,8 +427,9 @@ export default function BangBaoCaoTuanChuanVDCD({
       const dsDongLich = lichTrongNgay.map((l) => {
         const gio = l.gio_bat_dau ? `[${l.gio_bat_dau}] ` : '';
         const ten = l.ten_khach_hang || 'Khách hàng';
+        const diaDiem = l.dia_diem ? ` (${l.dia_diem})` : '';
         const nd = l.noi_dung || l.tieu_de || 'Lịch công tác';
-        return `${gio}${ten}: ${nd}`;
+        return `${gio}${ten}${diaDiem} - ${nd}`;
       });
 
       // 2. Nhiệm vụ trên Bàn làm việc (ItemKeHoachTuan) được xếp cho ngày này
@@ -445,10 +446,14 @@ export default function BangBaoCaoTuanChuanVDCD({
         return `[${ht}] ${ten}: ${nd}`;
       });
 
-      const tongHopTuHeThong = [...dsDongLich, ...dsDongViec].join('; ');
+      const tongHopArray = [...dsDongLich, ...dsDongViec];
+      const tongHopTuHeThong = tongHopArray.length > 1
+        ? tongHopArray.map((line) => `• ${line}`).join('\n')
+        : (tongHopArray[0] || '');
+
       const noiDungCustom = ghiChuLichNgay[d.ngay];
       const noiDungCuoi =
-        noiDungCustom !== undefined ? noiDungCustom : (tongHopTuHeThong || '');
+        (noiDungCustom && noiDungCustom.trim()) ? noiDungCustom : (tongHopTuHeThong || '');
 
       return {
         thuIndex: idx + 1,

@@ -1775,73 +1775,70 @@ export default function BanLamViecHangNgay({
 
   return (
     <div className="space-y-4">
-      {/* THANH ĐIỀU HƯỚNG TINH GỌN: HỖ TRỢ, BÁO CÁO TUẦN, THÊM VIỆC & TÌM NHANH */}
-      <div className="rounded-2xl border border-border bg-card p-2.5 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Nút chuyển xem Yêu cầu hỗ trợ */}
+      {/* THANH ĐIỀU HƯỚNG DẠNG 2 TAB RÕ RÀNG: [ 📋 BÀN LÀM VIỆC | ⚡ YÊU CẦU HỖ TRỢ ] */}
+      <div className="rounded-2xl border border-border bg-card p-2 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
+        {/* TAB CHÍNH */}
+        <div className="inline-flex items-center rounded-xl bg-muted/70 p-1 text-xs font-semibold gap-1">
           <button
             type="button"
-            onClick={() => setTabHienThi(tabHienThi === 'yeu_cau_ho_tro' ? 'lich_tuan' : 'yeu_cau_ho_tro')}
+            onClick={() => setTabHienThi('lich_tuan')}
             className={cn(
-              'h-8 px-3 rounded-xl border text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer',
-              tabHienThi === 'yeu_cau_ho_tro'
-                ? 'bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-300'
-                : 'bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground'
+              'h-9 px-4 rounded-lg inline-flex items-center gap-2 transition cursor-pointer',
+              tabHienThi === 'lich_tuan'
+                ? 'bg-card text-foreground shadow-2xs font-bold border border-border/70'
+                : 'text-muted-foreground hover:text-foreground'
             )}
-            title="Xem và xử lý các yêu cầu phối hợp kỹ thuật / báo giá"
           >
-            <Sparkles className="size-3.5 text-amber-500" />
+            <ListTodo className="size-4 text-primary" />
+            <span>Bàn làm việc</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTabHienThi('yeu_cau_ho_tro')}
+            className={cn(
+              'h-9 px-4 rounded-lg inline-flex items-center gap-2 transition cursor-pointer',
+              tabHienThi === 'yeu_cau_ho_tro'
+                ? 'bg-card text-amber-900 shadow-2xs font-bold border border-amber-500/40'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Sparkles className="size-4 text-amber-500" />
             <span>Yêu cầu hỗ trợ</span>
             {soYeuCauCanXuLy > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-black">
+              <span className="px-2 py-0.2 rounded-full bg-amber-500 text-white text-[11px] font-black">
                 {soYeuCauCanXuLy}
               </span>
             )}
           </button>
         </div>
 
-        {/* Cụm Thao tác Nhanh: [ 📊 Báo cáo tuần ] + [ + Thêm việc ] */}
+        {/* Cụm Thao tác Nhanh: [ + Thêm việc ] + Ô Tìm nhanh */}
         <div className="flex items-center gap-2 flex-wrap">
-          {onMoBaoCaoTuan && (
+          {tabHienThi === 'lich_tuan' ? (
             <button
               type="button"
-              onClick={onMoBaoCaoTuan}
-              className="h-8.5 px-3.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold inline-flex items-center gap-2 transition cursor-pointer shadow-2xs"
-              title="Mở bảng tổng kết tự động và nộp báo cáo tuần"
+              onClick={() => moFormThemCongViec(ngayChon, 'goi_dien')}
+              className="h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs hover:bg-primary/90 transition"
+              title="Bấm vào để mở Form nhập công việc hôm nay"
             >
-              <BarChart3 className="size-3.5 text-rose-600" />
-              <span>Báo cáo tuần</span>
-              <span
-                className={cn(
-                  'px-1.5 py-0.5 rounded-md text-[10.5px] font-black',
-                  (tyLeHoanThanh ?? 0) >= 80
-                    ? 'bg-emerald-500/15 text-emerald-700'
-                    : 'bg-amber-500/15 text-amber-700'
-                )}
-              >
-                {tyLeHoanThanh ?? 0}%
-              </span>
+              <Plus className="size-3.5 stroke-[2.5]" />
+              <span>+ Thêm việc</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setDuAnChoYeuCau(duAnThemNhanh || null);
+                setMoModalTaoYeuCau(true);
+              }}
+              className="h-9 px-3.5 rounded-xl bg-amber-600 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs hover:bg-amber-700 transition"
+              title="Tạo yêu cầu phối hợp hỗ trợ kỹ thuật / báo giá"
+            >
+              <Plus className="size-3.5 stroke-[2.5]" />
+              <span>+ Gửi yêu cầu</span>
             </button>
           )}
-
-          <a
-            href="/bao-cao-tuan"
-            className="h-8.5 px-3 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-800 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-            title="Mở Báo cáo tuần chuẩn VDCD & Xuất Excel"
-          >
-            <FileSpreadsheet className="size-3.5 text-rose-600" />
-            <span>Báo cáo tuần &amp; Xuất Excel</span>
-          </a>
-
-          <button
-            type="button"
-            onClick={() => moFormThemCongViec(ngayChon, 'goi_dien')}
-            className="h-8.5 px-3.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs hover:bg-primary/90 transition"
-            title="Bấm vào để mở Form nhập công việc cho Lịch"
-          >
-            <Plus className="size-3.5 stroke-[2.5]" />
-            <span>+ Thêm việc</span>
-          </button>
 
           {/* Ô Tìm nhanh Khách hàng / Dự án (Ctrl+K) */}
           <div ref={khungTimNhanhRef} className="relative sm:w-60">
@@ -1968,10 +1965,6 @@ export default function BanLamViecHangNgay({
                   const laHomNay = n.iso === homNayISO;
                   const dsViecTrongNgay = ds.filter((v) => kiemTraViecThuocNgay(v, n.iso));
                   const soViec = dsViecTrongNgay.length;
-                  const soXong = dsViecTrongNgay.filter(
-                    (v) => v.da_hoan_thanh || (v as any).trang_thai_vat_chung === 'da_lay'
-                  ).length;
-                  const hoanTatHet = soViec > 0 && soXong === soViec;
 
                   return (
                     <button
@@ -2026,15 +2019,13 @@ export default function BanLamViecHangNgay({
                         {soViec > 0 ? (
                           <span
                             className={cn(
-                              'px-1.5 py-0.2 rounded-full text-[10px] font-mono font-extrabold leading-tight',
+                              'px-2 py-0.2 rounded-full text-[10px] font-mono font-extrabold leading-tight',
                               dangChon
                                 ? 'bg-white/20 text-white'
-                                : hoanTatHet
-                                ? 'bg-emerald-500/15 text-emerald-700'
-                                : 'bg-primary/10 text-primary'
+                                : 'bg-emerald-500/15 text-emerald-700'
                             )}
                           >
-                            {soXong}/{soViec}
+                            {soViec} việc
                           </span>
                         ) : (
                           <span
@@ -2081,16 +2072,9 @@ export default function BanLamViecHangNgay({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-muted-foreground">
-                    {dsViecNgayChon.length} công việc
-                  </span>
-                  {soViecNgayDaXong > 0 && (
-                    <span className="text-xs font-bold text-emerald-700 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                      Đã xong {soViecNgayDaXong}/{dsViecNgayChon.length}
-                    </span>
-                  )}
-                </div>
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                  {dsViecNgayChon.length} công việc đã thực hiện
+                </span>
               </div>
 
               {laSuaDuoc && (
@@ -2548,33 +2532,14 @@ export default function BanLamViecHangNgay({
               <div className="divide-y divide-border/60">
                 {dsViecNgayChon.map((item, idx) => {
                   const dangSua = idDangSua === item.id;
-                  const daXong = Boolean(item.da_hoan_thanh || (item as any).trang_thai_vat_chung === 'da_lay');
 
                   return (
                     <div
                       key={item.id}
-                      className={cn(
-                        'p-3 sm:px-4 flex items-center justify-between gap-3 hover:bg-muted/20 transition-colors',
-                        daXong && 'bg-muted/10'
-                      )}
+                      className="p-3 sm:px-4 flex items-center justify-between gap-3 hover:bg-muted/20 transition-colors"
                     >
-                      {/* Cột trái: Checkbox + STT + Nội dung công việc full width có Link */}
+                      {/* Cột trái: STT + Nội dung công việc full width có Link */}
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        {/* Checkbox hoàn thành 1 chạm */}
-                        <button
-                          type="button"
-                          onClick={() => onDoiNhanhHoanThanh(item.id, !daXong)}
-                          className={cn(
-                            'size-5.5 rounded-lg border flex items-center justify-center transition-colors cursor-pointer shrink-0',
-                            daXong
-                              ? 'bg-emerald-600 border-emerald-600 text-white shadow-2xs'
-                              : 'border-slate-300 hover:border-primary bg-background text-transparent hover:text-slate-300'
-                          )}
-                          title={daXong ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}
-                        >
-                          <Check className="size-3 stroke-[2.5]" />
-                        </button>
-
                         <span className="size-5 rounded-md bg-muted text-muted-foreground font-bold text-[11px] flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
@@ -2615,15 +2580,15 @@ export default function BanLamViecHangNgay({
                           </div>
                         ) : (
                           <div className="min-w-0 flex-1">
-                            <div className={cn('text-xs font-medium text-foreground', daXong && 'line-through text-muted-foreground')}>
+                            <div className="text-xs font-medium text-foreground">
                               {renderDongNoiDung1Dong(item)}
                             </div>
 
-                            {/* Dòng kết quả thực tế nếu đã ghi nhận */}
-                            {item.ket_qua_thuc_te && (
+                            {/* Dòng kết quả thực tế nếu có ghi nhận thêm */}
+                            {item.ket_qua_thuc_te && item.ket_qua_thuc_te !== item.noi_dung_tuan && item.ket_qua_thuc_te !== item.hanh_dong_tuan && (
                               <div className="mt-1 text-[11px] text-emerald-800 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md inline-flex items-center gap-1.5 flex-wrap">
                                 <CheckCircle2 className="size-3 text-emerald-600 shrink-0" />
-                                <span className="font-bold">Kết quả:</span>
+                                <span className="font-bold">Chi tiết:</span>
                                 <span>{item.ket_qua_thuc_te}</span>
                               </div>
                             )}
@@ -2631,19 +2596,9 @@ export default function BanLamViecHangNgay({
                         )}
                       </div>
 
-                      {/* Cột phải: Thao tác (Check-in, Yêu cầu phối hợp, Sửa, Xóa) */}
+                      {/* Cột phải: Thao tác (Yêu cầu phối hợp, Sửa, Xóa) */}
                       {laSuaDuoc && !dangSua && (
                         <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => onCheckIn1Cham(item)}
-                            className="h-7 px-2.5 rounded-lg border border-border hover:bg-muted text-foreground text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                            title="Ghi nhận kết quả / Cập nhật tiến độ"
-                          >
-                            <Clock className="size-3 text-primary" />
-                            <span className="hidden sm:inline">Tiến độ</span>
-                          </button>
-
                           {timDuAnCuaItem(item) && (
                             <button
                               type="button"
