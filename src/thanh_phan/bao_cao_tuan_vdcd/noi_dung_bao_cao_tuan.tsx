@@ -42,6 +42,7 @@ import BangBaoCaoTuanChuanVDCD from './bang_bao_cao_tuan_chuan_vdcd';
 import {
   capNhatLichGapKH,
   danhSachLichGapKH,
+  langNgheLichGapKH,
   taoLichGapKHMoi
 } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
 import { layTuanHienTaiISO, layKeHoachTuan } from '../../dich_vu/ke_hoach/dich_vu_ke_hoach';
@@ -249,6 +250,14 @@ export default function NoiDungBaoCaoTuan() {
   useEffect(() => {
     void taiDuLieu();
   }, [taiDuLieu]);
+
+  // Lắng nghe dữ liệu Lịch công tác real-time để tự động cập nhật kết quả vào Báo cáo
+  useEffect(() => {
+    const unsub = langNgheLichGapKH((ds) => {
+      if (ds && ds.length > 0) setDsLichGap(ds);
+    });
+    return () => unsub();
+  }, []);
 
   const mapChiNhanh = useMemo(
     () => new Map(dsChiNhanh.map((c) => [c.id, c.ten_chi_nhanh])),

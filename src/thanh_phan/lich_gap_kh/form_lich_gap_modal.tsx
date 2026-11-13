@@ -470,7 +470,7 @@ export default function FormLichGapModal({
       cuoi={
         <div className="w-full flex items-center justify-between gap-2.5">
           <div>
-            {dang_sua && khi_xoa && (
+            {dang_sua && khi_xoa && laQuanLy && (
               <button
                 type="button"
                 onClick={() => khi_xoa(dang_sua.id, dang_sua.ten_khach_hang)}

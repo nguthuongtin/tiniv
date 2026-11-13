@@ -811,6 +811,8 @@ export default function BangBaoCaoTuanChuanVDCD({
   // --------------------------------------------------------------------------
   // STATE KHỐI IV: KẾ HOẠCH LỊCH LÀM VIỆC TUẦN TỚI (KHỬ TRÙNG LẶP TUYỆT ĐỐI)
   // --------------------------------------------------------------------------
+  const [tabChinh, setTabChinh] = useState<'bao_cao' | 'ke_hoach'>('bao_cao');
+
   // Trạng thái phê duyệt & Điều hành
   const laSepXemNhanVien = laQuanLy && nhanSu.id !== nguoiDungHienTaiId;
   const [modalYeuCauDieuChinh, setModalYeuCauDieuChinh] = useState(false);
@@ -903,8 +905,11 @@ export default function BangBaoCaoTuanChuanVDCD({
       // 2. Nhiệm vụ trên Bàn làm việc (ItemKeHoachTuan) được xếp cho ngày này
       const viecTrongNgay = dsViec.filter((item) => kiemTraViecThuocNgay(item, d.ngay));
 
-      // LỌC KHỬ TRÙNG: Loại bỏ việc trùng với lịch hẹn công tác
+      // LỌC KHỬ TRÙNG TUYỆT ĐỐI: Bỏ qua item đồng bộ từ lịch công tác & trùng lịch
       const viecKhongTrung = viecTrongNgay.filter((item) => {
+        if (item.id && (item.id.startsWith('tuan_lich_') || item.id.startsWith('lich_'))) {
+          return false;
+        }
         if ((item as any).lich_gap_id && lichTrongNgay.some((l) => l.id === (item as any).lich_gap_id)) {
           return false;
         }
@@ -1344,6 +1349,62 @@ export default function BangBaoCaoTuanChuanVDCD({
         </div>
       )}
 
+      {/* =================================================================== */}
+      {/* THANH ĐIỀU HƯỚNG 2 TAB: BÁO CÁO TUẦN QUA & KẾ HOẠCH TUẦN TỚI        */}
+      {/* =================================================================== */}
+      <div className="flex items-center gap-2 border-b border-border pb-2.5">
+        <button
+          type="button"
+          onClick={() => setTabChinh('bao_cao')}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer',
+            tabChinh === 'bao_cao'
+              ? 'bg-primary text-primary-foreground shadow-2xs'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+          )}
+        >
+          <CalendarCheck className="size-4" />
+          <span>BÁO CÁO TUẦN QUA</span>
+          <span
+            className={cn(
+              'text-[10px] px-2 py-0.5 rounded-full font-bold',
+              tabChinh === 'bao_cao'
+                ? 'bg-white/20 text-white'
+                : 'bg-muted text-muted-foreground'
+            )}
+          >
+            Đánh giá &amp; Lịch thực tế
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTabChinh('ke_hoach')}
+          className={cn(
+            'flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer',
+            tabChinh === 'ke_hoach'
+              ? 'bg-primary text-primary-foreground shadow-2xs'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+          )}
+        >
+          <Target className="size-4" />
+          <span>KẾ HOẠCH TUẦN TỚI</span>
+          <span
+            className={cn(
+              'text-[10px] px-2 py-0.5 rounded-full font-bold',
+              tabChinh === 'ke_hoach'
+                ? 'bg-white/20 text-white'
+                : 'bg-muted text-muted-foreground'
+            )}
+          >
+            Chỉ tiêu &amp; Lịch 7 ngày
+          </span>
+        </button>
+      </div>
+
+      {/* TAB 1: BÁO CÁO TUẦN QUA */}
+      {tabChinh === 'bao_cao' && (
+        <div className="space-y-4 animate-in fade-in">
       {/* =================================================================== */}
       {/* KHỐI I: ĐÁNH GIÁ KẾT QUẢ THỰC HIỆN CHỈ TIÊU TUẦN QUA */}
       {/* =================================================================== */}
@@ -1968,6 +2029,12 @@ export default function BangBaoCaoTuanChuanVDCD({
         </div>
       </div>
 
+        </div>
+      )}
+
+      {/* TAB 2: KẾ HOẠCH TUẦN TỚI */}
+      {tabChinh === 'ke_hoach' && (
+        <div className="space-y-4 animate-in fade-in">
       {/* =================================================================== */}
       {/* KHỐI III: CHỈ TIÊU CAM KẾT TUẦN TỚI */}
       {/* =================================================================== */}
@@ -2275,6 +2342,9 @@ export default function BangBaoCaoTuanChuanVDCD({
           </table>
         </div>
       </div>
+
+        </div>
+      )}
 
       {/* MODAL DRILL-DOWN CHI TIẾT SỐ LIỆU KPI KHỐI I (INTERACTIVE CHECKLIST) */}
       {modalDrillDownKPI.mo && (() => {

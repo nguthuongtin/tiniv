@@ -476,6 +476,10 @@ export function NoiDungLichCongTac({
   };
 
   const handleXoaLich = async (id: string, tenKH: string) => {
+    if (!laQuanLy) {
+      alert('Chỉ Cấp Quản lý mới có quyền xóa lịch làm việc/công tác đã tạo. Bạn có thể cập nhật nội dung hoặc dời lịch.');
+      return;
+    }
     if (!confirm(`Bạn có chắc muốn xóa lịch gặp "${tenKH}"?`)) return;
     try {
       const lichCanXoa = dsLich.find((l) => l.id === id);
