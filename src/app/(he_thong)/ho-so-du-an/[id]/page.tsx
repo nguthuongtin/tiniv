@@ -157,19 +157,13 @@ const TEN_GIAI_DOAN_DA: Record<string, string> = {
 };
 
 const GIAI_DOAN_DANG_TRIEN_KHAI: string[] = [
-  'co_chu_truong',
-  'tt_dot_1',
-  'hoan_thanh_tt_dot_2',
-  'moi_tao',
   'tiep_can',
-  'khao_sat',
-  'len_giai_phap',
   'bao_gia',
-  'dam_phan',
+  'co_chu_truong',
   'ky_hop_dong',
+  'tt_dot_1',
   'trien_khai',
-  'nghiem_thu',
-  'hoan_thanh'
+  'hoan_thanh_tt_dot_2'
 ];
 
 const MAP_HIEU_GIAI_DOAN: Record<string, string> = {
@@ -192,8 +186,8 @@ const MAP_HIEU_GIAI_DOAN: Record<string, string> = {
 };
 
 function BadgeGiaiDoan({ value }: { value?: string | null }) {
-  const cls = MAP_HIEU_GIAI_DOAN[value ?? 'moi_tao'] ?? 'bg-slate-100 text-slate-700 border-slate-200';
-  const ten = TEN_GIAI_DOAN_DA[value ?? 'moi_tao'] ?? value ?? 'Mới tạo';
+  const cls = MAP_HIEU_GIAI_DOAN[value ?? 'tiep_can'] ?? 'bg-slate-100 text-slate-700 border-slate-200';
+  const ten = TEN_GIAI_DOAN_DA[value ?? 'tiep_can'] ?? value ?? 'Mới tạo';
   return (
     <span className={cn('text-[11px] px-2.5 py-0.5 rounded-full font-semibold border inline-flex items-center', cls)}>
       {ten}
@@ -623,11 +617,11 @@ export default function TrangChiTietHoSoDuAn() {
     setDangXuLyKhac((o) => ({ ...o, [key]: true }));
     try {
       const viTriHienTai = GIAI_DOAN_DANG_TRIEN_KHAI.indexOf(String(hda.giai_doan));
-      let giaiDoanMoi: GiaiDoanDuAn = 'moi_tao';
+      let giaiDoanMoi: GiaiDoanDuAn = 'tiep_can';
       if (viTriHienTai >= 0 && viTriHienTai < GIAI_DOAN_DANG_TRIEN_KHAI.length - 1) {
         giaiDoanMoi = GIAI_DOAN_DANG_TRIEN_KHAI[viTriHienTai + 1] as GiaiDoanDuAn;
       } else if (hda.giai_doan === 'hoan_thanh' || hda.giai_doan === 'huy' || hda.giai_doan === 'tam_dung') {
-        giaiDoanMoi = 'moi_tao';
+        giaiDoanMoi = 'tiep_can';
       } else {
         giaiDoanMoi = 'hoan_thanh';
       }
@@ -759,18 +753,14 @@ export default function TrangChiTietHoSoDuAn() {
   }, [dsTDKhachHang.length, dsYeuCauDA.length, dsLichDA.length, dsTDNoiBo.length, dsTL.length]);
 
   const CAC_GIAI_DOAN_OPT: Array<{ value: GiaiDoanDuAn | string; nhan: string }> = [
-    { value: 'moi_tao', nhan: '1. Mới tạo' },
-    { value: 'tiep_can', nhan: '2. Tiếp cận' },
-    { value: 'khao_sat', nhan: '3. Khảo sát' },
-    { value: 'len_giai_phap', nhan: '4. Lên giải pháp' },
-    { value: 'bao_gia', nhan: '5. Báo giá' },
-    { value: 'dam_phan', nhan: '6. Đàm phán' },
-    { value: 'ky_hop_dong', nhan: '7. Ký hợp đồng' },
-    { value: 'trien_khai', nhan: '8. Triển khai' },
-    { value: 'nghiem_thu', nhan: '9. Nghiệm thu' },
-    { value: 'hoan_thanh', nhan: '✓ Hoàn thành' },
-    { value: 'tam_dung', nhan: '⏸ Tạm dừng' },
-    { value: 'huy', nhan: '✕ Đã hủy' }
+    { value: 'tiep_can', nhan: '1. Tiếp cận' },
+    { value: 'bao_gia', nhan: '2. Báo giá' },
+    { value: 'co_chu_truong', nhan: '3. Có chủ trương' },
+    { value: 'ky_hop_dong', nhan: '4. Ký HĐ' },
+    { value: 'tt_dot_1', nhan: '5. TT đợt 1' },
+    { value: 'trien_khai', nhan: '6. Triển khai' },
+    { value: 'hoan_thanh_tt_dot_2', nhan: '7. Hoàn thành & TT đợt 2' },
+    { value: 'tam_dung_huy', nhan: '8. Tạm dừng / Hủy' }
   ];
 
   const [tamGiaiDoan, setTamGiaiDoan] = useState<string>('');
@@ -779,7 +769,7 @@ export default function TrangChiTietHoSoDuAn() {
 
   useEffect(() => {
     if (hda) {
-      setTamGiaiDoan(String(hda.giai_doan ?? 'moi_tao'));
+      setTamGiaiDoan(String(hda.giai_doan ?? 'tiep_can'));
       setTamTrangThai((hda.trang_thai as any) ?? 'hoat_dong');
     }
   }, [hda]);
@@ -1252,16 +1242,13 @@ export default function TrangChiTietHoSoDuAn() {
         >
           <div className="flex items-center min-w-[760px] justify-between px-1">
             {[
-              { key: 'moi_tao', stt: 1, label: 'Mới tạo' },
-              { key: 'tiep_can', stt: 2, label: 'Tiếp cận' },
-              { key: 'khao_sat', stt: 3, label: 'Khảo sát' },
-              { key: 'len_giai_phap', stt: 4, label: 'Giải pháp' },
-              { key: 'bao_gia', stt: 5, label: 'Báo giá' },
-              { key: 'dam_phan', stt: 6, label: 'Đàm phán' },
-              { key: 'ky_hop_dong', stt: 7, label: 'Ký HĐ' },
-              { key: 'trien_khai', stt: 8, label: 'Triển khai' },
-              { key: 'nghiem_thu', stt: 9, label: 'Nghiệm thu' },
-              { key: 'hoan_thanh', stt: 10, label: 'Hoàn thành' }
+              { key: 'tiep_can', stt: 1, label: 'Tiếp cận' },
+              { key: 'bao_gia', stt: 2, label: 'Báo giá' },
+              { key: 'co_chu_truong', stt: 3, label: 'Có chủ trương' },
+              { key: 'ky_hop_dong', stt: 4, label: 'Ký HĐ' },
+              { key: 'tt_dot_1', stt: 5, label: 'TT đợt 1' },
+              { key: 'trien_khai', stt: 6, label: 'Triển khai' },
+              { key: 'hoan_thanh_tt_dot_2', stt: 7, label: 'Hoàn thành & TT đợt 2' }
             ].map((step, idx, arr) => {
               const currentIdx = arr.findIndex((x) => x.key === hda?.giai_doan);
               const isPast = currentIdx >= 0 && idx < currentIdx;
@@ -2003,7 +1990,7 @@ export default function TrangChiTietHoSoDuAn() {
         mo={moModalHuy}
         onDong={() => {
           setMoModalHuy(false);
-          if (hda) setTamGiaiDoan(String(hda.giai_doan ?? 'moi_tao'));
+          if (hda) setTamGiaiDoan(String(hda.giai_doan ?? 'tiep_can'));
         }}
         onXacNhan={xuLyXacNhanHuy}
         dangXuLy={!!dangXuLyKhac['cgd_manual']}
@@ -2207,18 +2194,14 @@ function RightBar({ phanTram }: { phanTram: number }) {
 }
 
 const GIAI_DOAN_DA_SO_THU_TU: Array<{ k: string; so: number; mau: 'from-slate-500 to-slate-700' | 'from-indigo-500 to-blue-600' | 'from-amber-500 to-orange-600' | 'from-emerald-500 to-teal-600' | 'from-rose-500 to-pink-600' | 'from-yellow-500 to-amber-600' }> = [
-  { k: 'moi_tao', so: 1, mau: 'from-slate-500 to-slate-700' },
-  { k: 'tiep_can', so: 2, mau: 'from-indigo-500 to-blue-600' },
-  { k: 'khao_sat', so: 3, mau: 'from-indigo-500 to-blue-600' },
-  { k: 'len_giai_phap', so: 4, mau: 'from-indigo-500 to-blue-600' },
-  { k: 'bao_gia', so: 5, mau: 'from-amber-500 to-orange-600' },
-  { k: 'dam_phan', so: 6, mau: 'from-amber-500 to-orange-600' },
-  { k: 'ky_hop_dong', so: 7, mau: 'from-yellow-500 to-amber-600' },
-  { k: 'trien_khai', so: 8, mau: 'from-indigo-500 to-blue-600' },
-  { k: 'nghiem_thu', so: 9, mau: 'from-indigo-500 to-blue-600' },
-  { k: 'hoan_thanh', so: 10, mau: 'from-emerald-500 to-teal-600' },
-  { k: 'tam_dung', so: 11, mau: 'from-yellow-500 to-amber-600' },
-  { k: 'huy', so: 12, mau: 'from-rose-500 to-pink-600' }
+  { k: 'tiep_can', so: 1, mau: 'from-indigo-500 to-blue-600' },
+  { k: 'bao_gia', so: 2, mau: 'from-amber-500 to-orange-600' },
+  { k: 'co_chu_truong', so: 3, mau: 'from-indigo-500 to-blue-600' },
+  { k: 'ky_hop_dong', so: 4, mau: 'from-yellow-500 to-amber-600' },
+  { k: 'tt_dot_1', so: 5, mau: 'from-emerald-500 to-teal-600' },
+  { k: 'trien_khai', so: 6, mau: 'from-indigo-500 to-blue-600' },
+  { k: 'hoan_thanh_tt_dot_2', so: 7, mau: 'from-emerald-500 to-teal-600' },
+  { k: 'tam_dung_huy', so: 8, mau: 'from-rose-500 to-pink-600' }
 ];
 
 function CardGiaiDoanDuAn(props: {

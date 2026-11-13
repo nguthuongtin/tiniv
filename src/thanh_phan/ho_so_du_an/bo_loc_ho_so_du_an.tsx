@@ -13,18 +13,14 @@ import type { NhanSu } from '../../thu_vien/types/nhan_su';
 
 const CAC_GIAI_DOAN: Array<{ gia_tri: 'tat_ca' | GiaiDoanDuAn; nhan: string }> = [
   { gia_tri: 'tat_ca', nhan: 'Tất cả giai đoạn' },
-  { gia_tri: 'moi_tao', nhan: 'Mới tạo' },
-  { gia_tri: 'tiep_can', nhan: 'Tiếp cận' },
-  { gia_tri: 'khao_sat', nhan: 'Khảo sát' },
-  { gia_tri: 'len_giai_phap', nhan: 'Lên giải pháp' },
-  { gia_tri: 'bao_gia', nhan: 'Báo giá' },
-  { gia_tri: 'dam_phan', nhan: 'Đàm phán' },
-  { gia_tri: 'ky_hop_dong', nhan: 'Ký hợp đồng' },
-  { gia_tri: 'trien_khai', nhan: 'Triển khai' },
-  { gia_tri: 'nghiem_thu', nhan: 'Nghiệm thu' },
-  { gia_tri: 'hoan_thanh', nhan: 'Hoàn thành' },
-  { gia_tri: 'tam_dung', nhan: 'Tạm dừng' },
-  { gia_tri: 'huy', nhan: 'Đã hủy' }
+  { gia_tri: 'tiep_can', nhan: '1. Tiếp cận' },
+  { gia_tri: 'bao_gia', nhan: '2. Báo giá' },
+  { gia_tri: 'co_chu_truong', nhan: '3. Có chủ trương' },
+  { gia_tri: 'ky_hop_dong', nhan: '4. Ký HĐ' },
+  { gia_tri: 'tt_dot_1', nhan: '5. TT đợt 1' },
+  { gia_tri: 'trien_khai', nhan: '6. Triển khai' },
+  { gia_tri: 'hoan_thanh_tt_dot_2', nhan: '7. Hoàn thành & TT đợt 2' },
+  { gia_tri: 'tam_dung_huy', nhan: '8. Tạm dừng / Hủy' }
 ];
 
 const CAC_MUC_TIEM_NANG: Array<{

@@ -10,14 +10,15 @@ export interface DuLieuBaoCaoTuanVDCDChuan {
     chuc_vu?: string;
     phong_ban?: string;
   };
-  // Khối I: Đánh giá kết quả KPI tuần qua
+  // Khối I: Đánh giá kết quả KPI tuần qua (5 chỉ số)
   kpiTuanQua: {
-    doanhSo: { mucTieu: number; thucTe: number; danhGia?: string };
-    khachHangMoi: { mucTieu: number; thucTe: number; danhGia?: string };
-    cuocGapTrucTiep: { mucTieu: number; thucTe: number; danhGia?: string };
-    hopDongKy: { mucTieu: number; thucTe: number; danhGia?: string };
+    khachHangMoi: { mucTieu: number; thucTe: number };
+    baoGia: { mucTieu: number; thucTe: number };
+    duAnLamViec: { mucTieu: number; thucTe: number };
+    hopDongKy: { mucTieu: number; thucTe: number };
+    doanhThu: { mucTieu: number; thucTe: number };
   };
-  // Khối II: Danh sách dự án trọng điểm đang bám sát (sắp xếp theo mức độ tiềm năng)
+  // Khối II: Danh sách dự án trọng điểm đang bám sát (sắp xếp theo mức độ tiềm năng cao trở lên)
   danhSachDuAnTrongDiem: {
     stt?: number;
     id: string;
@@ -29,16 +30,16 @@ export interface DuLieuBaoCaoTuanVDCDChuan {
     giaTriDeal: number;
     giaiDoanKey: string;
     tenGiaiDoan: string;
-    mucDoTiemNang: string; // 'rat_cao' | 'cao' | 'trung_binh' | 'thap' | 'rat_thap'
-    xacSuatPct: number; // 90, 70, 50...
+    mucDoTiemNang: string; // 'rat_cao' | 'cao'
+    xacSuatPct: number; // 90, 70...
   }[];
-  // Khối III: Chỉ tiêu cam kết tuần tới
+  // Khối III: Chỉ tiêu cam kết tuần tới (5 chỉ số tương ứng)
   camKetTuanToi: {
-    doanhSo: { target: number; min: number; max: number };
     khachHangMoi: { target: number; min: number; max: number };
-    cuocHenDemo: { target: number; min: number; max: number };
-    baoGiaMoi: { target: number; min: number; max: number };
+    baoGia: { target: number; min: number; max: number };
+    duAnLamViec: { target: number; min: number; max: number };
     hopDongMoi: { target: number; min: number; max: number };
+    doanhThu: { target: number; min: number; max: number };
   };
   // Khối IV: Kế hoạch lịch làm việc tuần tới (Lấy từ lịch làm việc có sẵn)
   lichLamViecTuanToi: {
@@ -155,98 +156,101 @@ export async function taoFileExcelBaoCaoTuanVDCD(
   const rSec1 = ws.addRow([]);
   styleSectionHeader(rSec1, 'I. ĐÁNH GIÁ KẾT QUẢ THỰC HIỆN CHỈ TIÊU TUẦN QUA');
 
-  const rHead1 = ws.addRow(['', 'STT', 'Chỉ tiêu KPI tuần', 'ĐVT', 'Mục tiêu giao', 'Thực tế đạt', 'Tỷ lệ hoàn thành', 'Đánh giá kết quả']);
+  const rHead1 = ws.addRow(['', 'STT', 'Chỉ tiêu đánh giá tuần qua', '', 'ĐVT', 'Kế hoạch tuần trước', 'Thực tế đạt', '']);
   styleTableHeader(rHead1);
+  ws.mergeCells(`C${rHead1.number}:D${rHead1.number}`);
+  ws.mergeCells(`G${rHead1.number}:H${rHead1.number}`);
 
   const kpiData = [
     {
       stt: 1,
-      ten: 'Doanh số bán lẻ / Dự án',
-      dvt: 'VNĐ',
-      mucTieu: duLieu.kpiTuanQua.doanhSo.mucTieu,
-      thucTe: duLieu.kpiTuanQua.doanhSo.thucTe,
-      laTien: true,
-      danhGia: duLieu.kpiTuanQua.doanhSo.danhGia || tinhDanhGiaKPI(duLieu.kpiTuanQua.doanhSo.thucTe, duLieu.kpiTuanQua.doanhSo.mucTieu)
-    },
-    {
-      stt: 2,
       ten: 'Số lượng khách hàng mới tiếp cận',
       dvt: 'Khách hàng',
       mucTieu: duLieu.kpiTuanQua.khachHangMoi.mucTieu,
       thucTe: duLieu.kpiTuanQua.khachHangMoi.thucTe,
-      laTien: false,
-      danhGia: duLieu.kpiTuanQua.khachHangMoi.danhGia || tinhDanhGiaKPI(duLieu.kpiTuanQua.khachHangMoi.thucTe, duLieu.kpiTuanQua.khachHangMoi.mucTieu)
+      laTien: false
+    },
+    {
+      stt: 2,
+      ten: 'Tổng số báo giá đã gửi trong tuần',
+      dvt: 'Báo giá',
+      mucTieu: duLieu.kpiTuanQua.baoGia.mucTieu,
+      thucTe: duLieu.kpiTuanQua.baoGia.thucTe,
+      laTien: false
     },
     {
       stt: 3,
-      ten: 'Số lượng cuộc gặp / trao đổi trực tiếp',
-      dvt: 'Lượt',
-      mucTieu: duLieu.kpiTuanQua.cuocGapTrucTiep.mucTieu,
-      thucTe: duLieu.kpiTuanQua.cuocGapTrucTiep.thucTe,
-      laTien: false,
-      danhGia: duLieu.kpiTuanQua.cuocGapTrucTiep.danhGia || tinhDanhGiaKPI(duLieu.kpiTuanQua.cuocGapTrucTiep.thucTe, duLieu.kpiTuanQua.cuocGapTrucTiep.mucTieu)
+      ten: 'Tổng số dự án đã làm việc trong tuần',
+      dvt: 'Dự án',
+      mucTieu: duLieu.kpiTuanQua.duAnLamViec.mucTieu,
+      thucTe: duLieu.kpiTuanQua.duAnLamViec.thucTe,
+      laTien: false
     },
     {
       stt: 4,
-      ten: 'Số hợp đồng / đơn hàng ký kết',
+      ten: 'Số hợp đồng ký kết',
       dvt: 'Hợp đồng',
       mucTieu: duLieu.kpiTuanQua.hopDongKy.mucTieu,
       thucTe: duLieu.kpiTuanQua.hopDongKy.thucTe,
-      laTien: false,
-      danhGia: duLieu.kpiTuanQua.hopDongKy.danhGia || tinhDanhGiaKPI(duLieu.kpiTuanQua.hopDongKy.thucTe, duLieu.kpiTuanQua.hopDongKy.mucTieu)
+      laTien: false
+    },
+    {
+      stt: 5,
+      ten: 'Tổng doanh thu đã thu về trong tuần',
+      dvt: 'VNĐ',
+      mucTieu: duLieu.kpiTuanQua.doanhThu.mucTieu,
+      thucTe: duLieu.kpiTuanQua.doanhThu.thucTe,
+      laTien: true
     }
   ];
 
-  let sumRatio = 0;
   for (const item of kpiData) {
-    const ratio = item.mucTieu > 0 ? (item.thucTe / item.mucTieu) * 100 : (item.thucTe > 0 ? 100 : 0);
-    sumRatio += ratio;
-
     const row = ws.addRow([
       '',
       item.stt,
       item.ten,
+      '',
       item.dvt,
       item.laTien ? formatTienTe(item.mucTieu) : item.mucTieu,
       item.laTien ? formatTienTe(item.thucTe) : item.thucTe,
-      formatPct(ratio),
-      item.danhGia
+      ''
     ]);
+    const rIdx = row.number;
+    ws.mergeCells(`C${rIdx}:D${rIdx}`);
+    ws.mergeCells(`G${rIdx}:H${rIdx}`);
     row.height = 24;
     for (let c = 2; c <= 8; c++) {
       const cell = row.getCell(c);
       cell.font = { name: 'Calibri', size: 10 };
       cell.border = borderThin;
-      if (c === 2 || c === 4) cell.alignment = { vertical: 'middle', horizontal: 'center' };
-      else if (c === 5 || c === 6) cell.alignment = { vertical: 'middle', horizontal: 'right' };
-      else if (c === 7) cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      if (c === 2 || c === 5) cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      else if (c === 6 || c === 7) cell.alignment = { vertical: 'middle', horizontal: 'right' };
       else cell.alignment = { vertical: 'middle', horizontal: 'left' };
     }
   }
 
-  // Dòng Tổng hợp Doanh số & KPI Trung bình
-  const avgRatio = Math.round(sumRatio / kpiData.length);
-  const ratioDS = duLieu.kpiTuanQua.doanhSo.mucTieu > 0
-    ? (duLieu.kpiTuanQua.doanhSo.thucTe / duLieu.kpiTuanQua.doanhSo.mucTieu) * 100
-    : 0;
+  // Dòng Tổng hợp Doanh thu thực tế
   const rTot1 = ws.addRow([
     '',
     '',
-    'TỔNG HỢP DOANH SỐ TUẦN (VNĐ)',
+    'TỔNG DOANH THU THỰC TẾ TUẦN (VNĐ)',
+    '',
     'VNĐ',
-    formatTienTe(duLieu.kpiTuanQua.doanhSo.mucTieu),
-    formatTienTe(duLieu.kpiTuanQua.doanhSo.thucTe),
-    formatPct(ratioDS),
-    `KPI TB: ${avgRatio}%`
+    formatTienTe(duLieu.kpiTuanQua.doanhThu.mucTieu),
+    formatTienTe(duLieu.kpiTuanQua.doanhThu.thucTe),
+    ''
   ]);
+  const rTot1Idx = rTot1.number;
+  ws.mergeCells(`C${rTot1Idx}:D${rTot1Idx}`);
+  ws.mergeCells(`G${rTot1Idx}:H${rTot1Idx}`);
   rTot1.height = 26;
   for (let c = 2; c <= 8; c++) {
     const cell = rTot1.getCell(c);
     cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF991B1B' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
     cell.border = borderThin;
-    if (c === 2 || c === 4 || c === 7 || c === 8) cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    else if (c === 5 || c === 6) cell.alignment = { vertical: 'middle', horizontal: 'right' };
+    if (c === 2 || c === 5) cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    else if (c === 6 || c === 7) cell.alignment = { vertical: 'middle', horizontal: 'right' };
     else cell.alignment = { vertical: 'middle', horizontal: 'left' };
   }
 
@@ -340,15 +344,6 @@ export async function taoFileExcelBaoCaoTuanVDCD(
   const dsCamKet = [
     {
       stt: 1,
-      ten: 'Doanh số cam kết tuần',
-      dvt: 'VNĐ',
-      laTien: true,
-      target: duLieu.camKetTuanToi.doanhSo.target,
-      min: duLieu.camKetTuanToi.doanhSo.min,
-      max: duLieu.camKetTuanToi.doanhSo.max
-    },
-    {
-      stt: 2,
       ten: 'Số lượng khách hàng mới tiếp cận',
       dvt: 'Khách hàng',
       laTien: false,
@@ -357,31 +352,40 @@ export async function taoFileExcelBaoCaoTuanVDCD(
       max: duLieu.camKetTuanToi.khachHangMoi.max
     },
     {
-      stt: 3,
-      ten: 'Số lượng cuộc hẹn demo / gặp trực tiếp',
-      dvt: 'Cuộc hẹn',
+      stt: 2,
+      ten: 'Tổng số báo giá dự kiến gửi',
+      dvt: 'Báo giá',
       laTien: false,
-      target: duLieu.camKetTuanToi.cuocHenDemo.target,
-      min: duLieu.camKetTuanToi.cuocHenDemo.min,
-      max: duLieu.camKetTuanToi.cuocHenDemo.max
+      target: duLieu.camKetTuanToi.baoGia.target,
+      min: duLieu.camKetTuanToi.baoGia.min,
+      max: duLieu.camKetTuanToi.baoGia.max
+    },
+    {
+      stt: 3,
+      ten: 'Tổng số dự án dự kiến làm việc',
+      dvt: 'Dự án',
+      laTien: false,
+      target: duLieu.camKetTuanToi.duAnLamViec.target,
+      min: duLieu.camKetTuanToi.duAnLamViec.min,
+      max: duLieu.camKetTuanToi.duAnLamViec.max
     },
     {
       stt: 4,
-      ten: 'Số lượng báo giá mới gửi cho KH',
-      dvt: 'Báo giá',
-      laTien: false,
-      target: duLieu.camKetTuanToi.baoGiaMoi.target,
-      min: duLieu.camKetTuanToi.baoGiaMoi.min,
-      max: duLieu.camKetTuanToi.baoGiaMoi.max
-    },
-    {
-      stt: 5,
       ten: 'Số hợp đồng / đơn hàng ký mới',
       dvt: 'Hợp đồng',
       laTien: false,
       target: duLieu.camKetTuanToi.hopDongMoi.target,
       min: duLieu.camKetTuanToi.hopDongMoi.min,
       max: duLieu.camKetTuanToi.hopDongMoi.max
+    },
+    {
+      stt: 5,
+      ten: 'Tổng doanh thu dự kiến thu về',
+      dvt: 'VNĐ',
+      laTien: true,
+      target: duLieu.camKetTuanToi.doanhThu.target,
+      min: duLieu.camKetTuanToi.doanhThu.min,
+      max: duLieu.camKetTuanToi.doanhThu.max
     }
   ];
 

@@ -148,7 +148,7 @@ const GIA_TRI_MAC_DINH: GiaTriForm = {
   nguoi_lien_he_id: null,
   chi_nhanh_id: null,
   phong_ban_id: null,
-  giai_doan: 'moi_tao',
+  giai_doan: 'tiep_can',
   muc_do_tiem_nang: 'trung_binh',
   gia_tri_du_kien: 0,
   gia_tri_hop_dong: 0,
@@ -335,7 +335,7 @@ export default function FormHoSoDuAnDrawer({
         nguoi_lien_he_id: dang_sua.nguoi_lien_he_id ?? null,
         chi_nhanh_id: dang_sua.chi_nhanh_id ?? null,
         phong_ban_id: dang_sua.phong_ban_id ?? null,
-        giai_doan: (dang_sua.giai_doan as GiaiDoanDuAn) ?? 'moi_tao',
+        giai_doan: (dang_sua.giai_doan as GiaiDoanDuAn) ?? 'tiep_can',
         muc_do_tiem_nang: (dang_sua.muc_do_tiem_nang as MucDoTiemNangKyHopDong) ?? 'trung_binh',
         gia_tri_du_kien: dang_sua.gia_tri_du_kien ?? 0,
         gia_tri_hop_dong: dang_sua.gia_tri_hop_dong ?? 0,
@@ -641,18 +641,14 @@ export default function FormHoSoDuAnDrawer({
                     control={control}
                     render={({ field }) => (
                       <Chon {...field} id="f-hda-gd" phan_hoi={errors.giai_doan?.message ?? null}>
-                        <option value="moi_tao">🌱 Mới tạo</option>
-                        <option value="tiep_can">📞 Tiếp cận</option>
-                        <option value="khao_sat">📋 Khảo sát</option>
-                        <option value="len_giai_phap">💡 Lên giải pháp</option>
-                        <option value="bao_gia">📊 Báo giá</option>
-                        <option value="dam_phan">🤝 Đàm phán</option>
-                        <option value="ky_hop_dong">✍️ Ký hợp đồng</option>
-                        <option value="trien_khai">🚀 Triển khai</option>
-                        <option value="nghiem_thu">✅ Nghiệm thu</option>
-                        <option value="hoan_thanh">🎉 Hoàn thành</option>
-                        <option value="tam_dung">⏸️ Tạm dừng</option>
-                        <option value="huy">❌ Đã hủy</option>
+                        <option value="tiep_can">📞 1. Tiếp cận</option>
+                        <option value="bao_gia">📊 2. Báo giá</option>
+                        <option value="co_chu_truong">🏛️ 3. Có chủ trương</option>
+                        <option value="ky_hop_dong">✍️ 4. Ký HĐ</option>
+                        <option value="tt_dot_1">💰 5. TT đợt 1</option>
+                        <option value="trien_khai">🚀 6. Triển khai</option>
+                        <option value="hoan_thanh_tt_dot_2">🎉 7. Hoàn thành & TT đợt 2</option>
+                        <option value="tam_dung_huy">⏸️ 8. Tạm dừng / Hủy</option>
                       </Chon>
                     )}
                   />

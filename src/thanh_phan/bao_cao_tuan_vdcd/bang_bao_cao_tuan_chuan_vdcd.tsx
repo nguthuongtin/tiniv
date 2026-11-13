@@ -84,6 +84,43 @@ export const BANG_TIEM_NANG_DU_AN: Record<
 const fmtTien = (val?: number | null) =>
   new Intl.NumberFormat('vi-VN').format(Math.round(Number(val || 0))) + ' ₫';
 
+function ONhapSoTien({
+  giaTri,
+  onChange,
+  className,
+  placeholder = '0',
+  disabled = false
+}: {
+  giaTri: number;
+  onChange: (val: number) => void;
+  className?: string;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  const [chuoi, setChuoi] = useState(() => (giaTri ? Number(giaTri).toLocaleString('vi-VN') : ''));
+
+  useEffect(() => {
+    setChuoi(giaTri ? Number(giaTri).toLocaleString('vi-VN') : '');
+  }, [giaTri]);
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={chuoi}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/\D/g, '');
+        const num = raw ? parseInt(raw, 10) : 0;
+        setChuoi(raw ? Number(raw).toLocaleString('vi-VN') : '');
+        onChange(num);
+      }}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={className}
+    />
+  );
+}
+
 interface Props {
   tuan: string;
   nhanSu: NhanSu;
@@ -136,9 +173,104 @@ export default function BangBaoCaoTuanChuanVDCD({
 
   // --------------------------------------------------------------------------
   // CƠ CHẾ THEO DÕI TỰ ĐỘNG LẤY DỮ LIỆU TỪ BÀN LÀM VIỆC & CRM (KHỐI I)
+  // Thứ tự 5 chỉ số:
+  // 1. Số lượng KH mới tiếp cận
+  // 2. Tổng số báo giá đã gửi trong tuần (hồ sơ dự án chuyển sang báo giá & công việc gửi BG)
+  // 3. Tổng số dự án đã làm việc trong tuần (tập hợp dự án có hoạt động/tác nghiệp)
+  // 4. Số hợp đồng ký kết
+  // 5. Tổng doanh thu đã thu về trong tuần
   // --------------------------------------------------------------------------
   const soLieuThucTeTuBanLamViec = useMemo(() => {
-    // 1. Doanh số tuần qua (Tiền về thực tế + Hợp đồng ký mới trong tuần)
+    const viecTuanNay = keHoachTuanNay?.danh_sach_tac_chien || [];
+
+    // 1. Khách hàng mới tiếp cận:
+    const dsKhMoi = dsKhachHang.filter((k) => {
+      const ngay = (k.ngay_tao || '').slice(0, 10);
+      return (
+        ngay >= infoTuan.ngayBatDau &&
+        ngay <= infoTuan.ngayKetThuc &&
+        (k.nguoi_tao_id === nhanSu.id || k.nguoi_phu_trach_id === nhanSu.id)
+      );
+    });
+    const idKhMoiSet = new Set(dsKhMoi.map((k) => k.id));
+    const dsViecTiepCan = viecTuanNay.filter((item) => {
+      const laTiepCan =
+        item.loai_cong_viec === 'khach_hang' ||
+        item.loai_hanh_dong === 'phat_sinh' ||
+        (item.danh_sach_ket_qua &&
+          item.danh_sach_ket_qua.some((kq) => kq.loai_tac_nghiep === 'tao_khach_hang'));
+      return laTiepCan && (!item.khach_hang_id || !idKhMoiSet.has(item.khach_hang_id));
+    });
+    const tongKhachMoi = dsKhMoi.length + dsViecTiepCan.length;
+
+    // 2. Tổng số báo giá đã gửi trong tuần (căn vào dự án đổi sang trạng thái báo giá + việc gửi báo giá)
+    const dsDuAnBaoGia = dsDuAnCuaNV.filter((d) => {
+      const ngay = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
+      return (
+        d.giai_doan === 'bao_gia' &&
+        ngay >= infoTuan.ngayBatDau &&
+        ngay <= infoTuan.ngayKetThuc
+      );
+    });
+    const idDuAnBaoGiaSet = new Set(dsDuAnBaoGia.map((d) => d.id));
+    const dsViecBaoGia = viecTuanNay.filter((item) => {
+      const txt = (item.noi_dung_tuan + ' ' + (item.hanh_dong_tuan || '')).toLowerCase();
+      const laBaoGia =
+        txt.includes('báo giá') ||
+        txt.includes('gửi bg') ||
+        txt.includes('chào giá') ||
+        (item.danh_sach_ket_qua &&
+          item.danh_sach_ket_qua.some((kq) => kq.noi_dung && kq.noi_dung.toLowerCase().includes('báo giá')));
+      return laBaoGia && (!item.du_an_id || !idDuAnBaoGiaSet.has(item.du_an_id));
+    });
+    const tongBaoGia = dsDuAnBaoGia.length + dsViecBaoGia.length;
+
+    // 3. Tổng số dự án đã làm việc trong tuần (tập hợp các dự án có tác nghiệp)
+    const idDuAnDaLamViecSet = new Set<string>();
+    // Từ công việc trên bàn làm việc có gắn dự án
+    viecTuanNay.forEach((item) => {
+      if (item.du_an_id) idDuAnDaLamViecSet.add(item.du_an_id);
+    });
+    // Từ dự án có cập nhật trong tuần
+    dsDuAnCuaNV.forEach((d) => {
+      const ngay = (d.ngay_cap_nhat || '').slice(0, 10);
+      if (ngay >= infoTuan.ngayBatDau && ngay <= infoTuan.ngayKetThuc) {
+        idDuAnDaLamViecSet.add(d.id);
+      }
+    });
+    // Từ lịch hẹn tuần này có gắn dự án
+    dsLichGap.forEach((l) => {
+      if (
+        !l.da_xoa &&
+        l.ngay >= infoTuan.ngayBatDau &&
+        l.ngay <= infoTuan.ngayKetThuc &&
+        (l.nguoi_phu_trach_id === nhanSu.id || l.nguoi_tao_id === nhanSu.id) &&
+        l.du_an_id
+      ) {
+        idDuAnDaLamViecSet.add(l.du_an_id);
+      }
+    });
+    const dsDuAnDaLamViec = Array.from(idDuAnDaLamViecSet)
+      .map((id) => dsDuAnCuaNV.find((d) => d.id === id))
+      .filter(Boolean) as HoSoDuAn[];
+    const tongDuAnDaLamViec = dsDuAnDaLamViec.length;
+
+    // 4. Số hợp đồng ký kết trong tuần
+    const dsDuAnKyHD = dsDuAnCuaNV.filter((d) => {
+      const ngay = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
+      return (
+        ngay >= infoTuan.ngayBatDau &&
+        ngay <= infoTuan.ngayKetThuc &&
+        (d.giai_doan === 'ky_hop_dong' || d.giai_doan === 'tt_dot_1' || d.giai_doan === 'trien_khai')
+      );
+    });
+    const dsViecKyHD = viecTuanNay.filter((item) => {
+      const txt = (item.noi_dung_tuan + ' ' + (item.hanh_dong_tuan || '')).toLowerCase();
+      return txt.includes('hợp đồng') || txt.includes('ký hđ') || txt.includes('chốt hđ');
+    });
+    const tongHopDong = Math.max(dsDuAnKyHD.length, dsViecKyHD.length);
+
+    // 5. Tổng doanh thu đã thu về trong tuần (Dòng tiền về thực tế + HĐ ký mới)
     const dsDuAnTrongTuan = dsDuAnCuaNV.filter((d) => {
       const ngayCapNhat = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
       return (
@@ -152,81 +284,7 @@ export default function BangBaoCaoTuanChuanVDCD({
       0
     );
 
-    // 2. Số lượng KH mới tiếp cận:
-    // - Khách hàng mới do nhân sự tạo trong tuần
-    const dsKhMoi = dsKhachHang.filter((k) => {
-      const ngay = (k.ngay_tao || '').slice(0, 10);
-      return (
-        ngay >= infoTuan.ngayBatDau &&
-        ngay <= infoTuan.ngayKetThuc &&
-        (k.nguoi_tao_id === nhanSu.id || k.nguoi_phu_trach_id === nhanSu.id)
-      );
-    });
-
-    // - Công việc tiếp cận khách hàng trên Bàn làm việc (ItemKeHoachTuan)
-    const viecTuanNay = keHoachTuanNay?.danh_sach_tac_chien || [];
-    const idKhMoiSet = new Set(dsKhMoi.map((k) => k.id));
-    const dsViecTiepCan = viecTuanNay.filter((item) => {
-      const laTiepCan =
-        item.loai_cong_viec === 'khach_hang' ||
-        item.loai_hanh_dong === 'phat_sinh' ||
-        (item.danh_sach_ket_qua &&
-          item.danh_sach_ket_qua.some((kq) => kq.loai_tac_nghiep === 'tao_khach_hang'));
-      return laTiepCan && (!item.khach_hang_id || !idKhMoiSet.has(item.khach_hang_id));
-    });
-    const tongKhachMoi = dsKhMoi.length + dsViecTiepCan.length;
-
-    // 3. Số lượng cuộc gặp / trao đổi trực tiếp:
-    // - Lịch gặp hoàn thành từ Lịch công tác CRM
-    const dsLichGapXong = dsLichGap.filter(
-      (l) =>
-        !l.da_xoa &&
-        l.ngay >= infoTuan.ngayBatDau &&
-        l.ngay <= infoTuan.ngayKetThuc &&
-        (l.nguoi_phu_trach_id === nhanSu.id || l.nguoi_tao_id === nhanSu.id) &&
-        (l.trang_thai === 'da_hoan_thanh' || Boolean(l.ket_qua) || l.trang_thai === 'da_duyet')
-    );
-
-    // - Công việc gặp mặt trực tiếp hoàn thành trên Bàn làm việc (ItemKeHoachTuan)
-    const dsViecGapMat = viecTuanNay.filter((item) => {
-      const laGap =
-        item.hinh_thuc === 'gap_mat' ||
-        (item as any).loai_cong_viec === 'lich_gap' ||
-        (item.danh_sach_ket_qua &&
-          item.danh_sach_ket_qua.some((kq) => kq.loai_tac_nghiep === 'gap_mat'));
-      return laGap;
-    });
-    const tongCuocGap = dsLichGapXong.length + dsViecGapMat.length;
-
-    // 4. Số hợp đồng / đơn hàng ký kết:
-    // - Dự án chuyển sang giai đoạn hợp đồng trong tuần
-    const dsDuAnKyHD = dsDuAnCuaNV.filter((d) => {
-      const ngay = (d.ngay_cap_nhat || d.ngay_tao || '').slice(0, 10);
-      return (
-        ngay >= infoTuan.ngayBatDau &&
-        ngay <= infoTuan.ngayKetThuc &&
-        (d.giai_doan === 'ky_hop_dong' || d.giai_doan === 'tt_dot_1' || d.giai_doan === 'trien_khai')
-      );
-    });
-
-    // - Công việc ký hợp đồng hoàn thành trên Bàn làm việc
-    const dsViecKyHD = viecTuanNay.filter((item) => {
-      const txt = (item.noi_dung_tuan + ' ' + (item.hanh_dong_tuan || '')).toLowerCase();
-      return (
-        txt.includes('hợp đồng') || txt.includes('ký hđ') || txt.includes('chốt hđ')
-      );
-    });
-    const tongHopDong = Math.max(dsDuAnKyHD.length, dsViecKyHD.length);
-
     return {
-      doanhSo: {
-        thucTe: dtThucTe,
-        chiTiet: `${dsDuAnTrongTuan.length} dự án phát sinh dòng tiền/HĐ trong tuần qua`,
-        danhSach: dsDuAnTrongTuan.map((d) => ({
-          tieuDe: d.ten_du_an,
-          moTa: fmtTien(d.tien_ve_thuc_te || d.gia_tri_hop_dong)
-        }))
-      },
       khachMoi: {
         thucTe: tongKhachMoi,
         chiTiet: `${dsKhMoi.length} KH mới trên CRM + ${dsViecTiepCan.length} việc tiếp cận trên Bàn làm việc`,
@@ -235,13 +293,21 @@ export default function BangBaoCaoTuanChuanVDCD({
           ...dsViecTiepCan.map((v) => ({ tieuDe: v.ten_khach_hang_du_an || 'Khách hàng', moTa: v.noi_dung_tuan }))
         ]
       },
-      cuocGap: {
-        thucTe: tongCuocGap,
-        chiTiet: `${dsLichGapXong.length} lịch công tác hoàn thành + ${dsViecGapMat.length} cuộc gặp trên Bàn làm việc`,
+      baoGia: {
+        thucTe: tongBaoGia,
+        chiTiet: `${dsDuAnBaoGia.length} dự án chuyển sang báo giá + ${dsViecBaoGia.length} công việc báo giá`,
         danhSach: [
-          ...dsLichGapXong.map((l) => ({ tieuDe: l.ten_khach_hang || 'Lịch công tác', moTa: l.noi_dung || l.tieu_de || 'Lịch hẹn' })),
-          ...dsViecGapMat.map((v) => ({ tieuDe: v.ten_khach_hang_du_an || 'Khách hàng', moTa: v.noi_dung_tuan }))
+          ...dsDuAnBaoGia.map((d) => ({ tieuDe: d.ten_du_an, moTa: 'Dự án chuyển sang trạng thái Báo giá' })),
+          ...dsViecBaoGia.map((v) => ({ tieuDe: v.ten_khach_hang_du_an || 'Khách hàng', moTa: v.noi_dung_tuan }))
         ]
+      },
+      duAnLamViec: {
+        thucTe: tongDuAnDaLamViec,
+        chiTiet: `${tongDuAnDaLamViec} dự án có tác nghiệp / bám sát tiến độ trong tuần qua`,
+        danhSach: dsDuAnDaLamViec.map((d) => ({
+          tieuDe: d.ten_du_an,
+          moTa: `Giai đoạn: ${layCauHinhGiaiDoanTheoKey(d.giai_doan).nhan_day_du} • Tiềm năng: ${BANG_TIEM_NANG_DU_AN[d.muc_do_tiem_nang]?.nhan || d.muc_do_tiem_nang}`
+        }))
       },
       hopDong: {
         thucTe: tongHopDong,
@@ -250,28 +316,38 @@ export default function BangBaoCaoTuanChuanVDCD({
           ...dsDuAnKyHD.map((d) => ({ tieuDe: d.ten_du_an, moTa: 'Dự án đã ký hợp đồng' })),
           ...dsViecKyHD.map((v) => ({ tieuDe: v.ten_khach_hang_du_an || 'Khách hàng', moTa: v.noi_dung_tuan }))
         ]
+      },
+      doanhThu: {
+        thucTe: dtThucTe,
+        chiTiet: `${dsDuAnTrongTuan.length} dự án phát sinh dòng tiền / HĐ trong tuần qua`,
+        danhSach: dsDuAnTrongTuan.map((d) => ({
+          tieuDe: d.ten_du_an,
+          moTa: fmtTien(d.tien_ve_thuc_te || d.gia_tri_hop_dong)
+        }))
       }
     };
   }, [dsDuAnCuaNV, dsKhachHang, dsLichGap, keHoachTuanNay, infoTuan, nhanSu.id]);
 
-  // Mục tiêu kế thừa từ Cam kết tuần trước (Khối III của tuần trước)
+  // Kế hoạch tuần trước lấy từ Cam kết tuần trước (Khối III của tuần trước đưa qua)
   const mucTieuMacDinhTuTuanTruoc = useMemo(() => {
-    const ck = baoCaoTuanTruoc?.cam_ket_tuan_toi;
+    const ck = baoCaoTuanTruoc?.cam_ket_tuan_toi as any;
     return {
-      doanhSo: ck?.doanh_so?.target ?? 150000000,
       khachMoi: ck?.khach_moi?.target ?? 20,
-      cuocGap: ck?.cuoc_hen?.target ?? 35,
-      hopDong: ck?.hop_dong?.target ?? 4
+      baoGia: ck?.bao_gia?.target ?? 4,
+      duAnLamViec: ck?.du_an_lam_viec?.target ?? 5,
+      hopDong: ck?.hop_dong?.target ?? 4,
+      doanhThu: ck?.doanh_so?.target ?? ck?.doanh_thu?.target ?? 150000000
     };
   }, [baoCaoTuanTruoc]);
 
   // --------------------------------------------------------------------------
-  // STATE KHỐI I: ĐÁNH GIÁ KẾT QUẢ KPI TUẦN QUA
+  // STATE KHỐI I: ĐÁNH GIÁ KẾT QUẢ KPI TUẦN QUA (5 CHỈ SỐ)
   // --------------------------------------------------------------------------
-  const [kpiDoanhSo, setKpiDoanhSo] = useState({ mucTieu: 150000000, thucTe: 0, daSuaTay: false });
-  const [kpiKhachMoi, setKpiKhachMoi] = useState({ mucTieu: 20, thucTe: 0, daSuaTay: false });
-  const [kpiCuocGap, setKpiCuocGap] = useState({ mucTieu: 35, thucTe: 0, daSuaTay: false });
-  const [kpiHopDong, setKpiHopDong] = useState({ mucTieu: 4, thucTe: 0, daSuaTay: false });
+  const [kpiKhachMoi, setKpiKhachMoi] = useState({ keHoachTuanTruoc: 20, thucTe: 0, daSuaTay: false });
+  const [kpiBaoGia, setKpiBaoGia] = useState({ keHoachTuanTruoc: 4, thucTe: 0, daSuaTay: false });
+  const [kpiDuAnLamViec, setKpiDuAnLamViec] = useState({ keHoachTuanTruoc: 5, thucTe: 0, daSuaTay: false });
+  const [kpiHopDong, setKpiHopDong] = useState({ keHoachTuanTruoc: 4, thucTe: 0, daSuaTay: false });
+  const [kpiDoanhThu, setKpiDoanhThu] = useState({ keHoachTuanTruoc: 150000000, thucTe: 0, daSuaTay: false });
 
   // Modal xem chi tiết số liệu Drill-down
   const [modalDrillDownKPI, setModalDrillDownKPI] = useState<{
@@ -284,41 +360,68 @@ export default function BangBaoCaoTuanChuanVDCD({
   // Khởi tạo số liệu: Ưu tiên dữ liệu đã lưu, nếu chưa có thì nạp tự động từ Bàn làm việc & CRM
   useEffect(() => {
     if (baoCaoHienTai?.kpi_tuan_qua) {
-      const k = baoCaoHienTai.kpi_tuan_qua;
-      setKpiDoanhSo({ mucTieu: k.doanh_so_muc_tieu, thucTe: k.doanh_so_thuc_te, daSuaTay: false });
-      setKpiKhachMoi({ mucTieu: k.khach_moi_muc_tieu, thucTe: k.khach_moi_thuc_te, daSuaTay: false });
-      setKpiCuocGap({ mucTieu: k.cuoc_gap_muc_tieu, thucTe: k.cuoc_gap_thuc_te, daSuaTay: false });
-      setKpiHopDong({ mucTieu: k.hop_dong_muc_tieu, thucTe: k.hop_dong_thuc_te, daSuaTay: false });
+      const k = baoCaoHienTai.kpi_tuan_qua as any;
+      setKpiKhachMoi({
+        keHoachTuanTruoc: k.khach_moi_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.khachMoi,
+        thucTe: k.khach_moi_thuc_te ?? soLieuThucTeTuBanLamViec.khachMoi.thucTe,
+        daSuaTay: false
+      });
+      setKpiBaoGia({
+        keHoachTuanTruoc: k.bao_gia_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.baoGia,
+        thucTe: k.bao_gia_thuc_te ?? soLieuThucTeTuBanLamViec.baoGia.thucTe,
+        daSuaTay: false
+      });
+      setKpiDuAnLamViec({
+        keHoachTuanTruoc: k.du_an_lam_viec_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.duAnLamViec,
+        thucTe: k.du_an_lam_viec_thuc_te ?? soLieuThucTeTuBanLamViec.duAnLamViec.thucTe,
+        daSuaTay: false
+      });
+      setKpiHopDong({
+        keHoachTuanTruoc: k.hop_dong_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.hopDong,
+        thucTe: k.hop_dong_thuc_te ?? soLieuThucTeTuBanLamViec.hopDong.thucTe,
+        daSuaTay: false
+      });
+      setKpiDoanhThu({
+        keHoachTuanTruoc: k.doanh_so_muc_tieu ?? k.doanh_thu_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.doanhThu,
+        thucTe: k.doanh_so_thuc_te ?? k.doanh_thu_thuc_te ?? soLieuThucTeTuBanLamViec.doanhThu.thucTe,
+        daSuaTay: false
+      });
       return;
     }
 
-    setKpiDoanhSo({
-      mucTieu: mucTieuMacDinhTuTuanTruoc.doanhSo,
-      thucTe: soLieuThucTeTuBanLamViec.doanhSo.thucTe,
-      daSuaTay: false
-    });
     setKpiKhachMoi({
-      mucTieu: mucTieuMacDinhTuTuanTruoc.khachMoi,
+      keHoachTuanTruoc: mucTieuMacDinhTuTuanTruoc.khachMoi,
       thucTe: soLieuThucTeTuBanLamViec.khachMoi.thucTe,
       daSuaTay: false
     });
-    setKpiCuocGap({
-      mucTieu: mucTieuMacDinhTuTuanTruoc.cuocGap,
-      thucTe: soLieuThucTeTuBanLamViec.cuocGap.thucTe,
+    setKpiBaoGia({
+      keHoachTuanTruoc: mucTieuMacDinhTuTuanTruoc.baoGia,
+      thucTe: soLieuThucTeTuBanLamViec.baoGia.thucTe,
+      daSuaTay: false
+    });
+    setKpiDuAnLamViec({
+      keHoachTuanTruoc: mucTieuMacDinhTuTuanTruoc.duAnLamViec,
+      thucTe: soLieuThucTeTuBanLamViec.duAnLamViec.thucTe,
       daSuaTay: false
     });
     setKpiHopDong({
-      mucTieu: mucTieuMacDinhTuTuanTruoc.hopDong,
+      keHoachTuanTruoc: mucTieuMacDinhTuTuanTruoc.hopDong,
       thucTe: soLieuThucTeTuBanLamViec.hopDong.thucTe,
+      daSuaTay: false
+    });
+    setKpiDoanhThu({
+      keHoachTuanTruoc: mucTieuMacDinhTuTuanTruoc.doanhThu,
+      thucTe: soLieuThucTeTuBanLamViec.doanhThu.thucTe,
       daSuaTay: false
     });
   }, [baoCaoHienTai, mucTieuMacDinhTuTuanTruoc, soLieuThucTeTuBanLamViec]);
 
   const dongBoLaiKPITuBanLamViec = () => {
-    setKpiDoanhSo((prev) => ({ ...prev, thucTe: soLieuThucTeTuBanLamViec.doanhSo.thucTe, daSuaTay: false }));
     setKpiKhachMoi((prev) => ({ ...prev, thucTe: soLieuThucTeTuBanLamViec.khachMoi.thucTe, daSuaTay: false }));
-    setKpiCuocGap((prev) => ({ ...prev, thucTe: soLieuThucTeTuBanLamViec.cuocGap.thucTe, daSuaTay: false }));
+    setKpiBaoGia((prev) => ({ ...prev, thucTe: soLieuThucTeTuBanLamViec.baoGia.thucTe, daSuaTay: false }));
+    setKpiDuAnLamViec((prev) => ({ ...prev, thucTe: soLieuThucTeTuBanLamViec.duAnLamViec.thucTe, daSuaTay: false }));
     setKpiHopDong((prev) => ({ ...prev, thucTe: soLieuThucTeTuBanLamViec.hopDong.thucTe, daSuaTay: false }));
+    setKpiDoanhThu((prev) => ({ ...prev, thucTe: soLieuThucTeTuBanLamViec.doanhThu.thucTe, daSuaTay: false }));
     setThongBao({
       loai: 'tc',
       nd: 'Đã cập nhật lại toàn bộ số liệu thực tế tự động từ Bàn làm việc & CRM!'
@@ -327,38 +430,43 @@ export default function BangBaoCaoTuanChuanVDCD({
 
   // --------------------------------------------------------------------------
   // STATE KHỐI II: DANH SÁCH DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT (TIỀM NĂNG CAO)
+  // Chỉ liệt kê những dự án có mức độ tiềm năng từ CAO trở lên ('cao', 'rat_cao')
   // --------------------------------------------------------------------------
   const [idsDuAnChon, setIdsDuAnChon] = useState<string[]>([]);
   const [moModalChonDA, setMoModalChonDA] = useState(false);
 
-  useEffect(() => {
-    if (baoCaoHienTai?.du_an_trong_diem_ids && baoCaoHienTai.du_an_trong_diem_ids.length > 0) {
-      setIdsDuAnChon(baoCaoHienTai.du_an_trong_diem_ids);
-      return;
-    }
-
-    // Tự động chọn các dự án có tiềm năng 'rat_cao' hoặc 'cao', chưa hoàn thành/hủy
-    const dsLoc = dsDuAnCuaNV
+  // Bộ lọc dự án tiềm năng cao trở lên
+  const dsDuAnTiemNangCaoNV = useMemo(() => {
+    return dsDuAnCuaNV
       .filter(
         (d) =>
+          (d.muc_do_tiem_nang === 'rat_cao' || d.muc_do_tiem_nang === 'cao') &&
           d.giai_doan !== 'hoan_thanh_tt_dot_2' &&
           d.giai_doan !== 'tam_dung_huy'
       )
       .sort((a, b) => {
-        const score = (tn?: string) => (tn === 'rat_cao' ? 5 : tn === 'cao' ? 4 : tn === 'trung_binh' ? 3 : 2);
+        const score = (tn?: string) => (tn === 'rat_cao' ? 5 : 4);
         return score(b.muc_do_tiem_nang) - score(a.muc_do_tiem_nang);
-      })
-      .slice(0, 6)
-      .map((d) => d.id);
+      });
+  }, [dsDuAnCuaNV]);
 
-    setIdsDuAnChon(dsLoc);
-  }, [baoCaoHienTai, dsDuAnCuaNV]);
+  useEffect(() => {
+    if (baoCaoHienTai?.du_an_trong_diem_ids && baoCaoHienTai.du_an_trong_diem_ids.length > 0) {
+      const idHopLe = baoCaoHienTai.du_an_trong_diem_ids.filter((id) =>
+        dsDuAnTiemNangCaoNV.some((d) => d.id === id)
+      );
+      setIdsDuAnChon(idHopLe.length > 0 ? idHopLe : dsDuAnTiemNangCaoNV.slice(0, 6).map((d) => d.id));
+      return;
+    }
+
+    setIdsDuAnChon(dsDuAnTiemNangCaoNV.slice(0, 6).map((d) => d.id));
+  }, [baoCaoHienTai, dsDuAnTiemNangCaoNV]);
 
   const dsDuAnTrongDiem = useMemo(() => {
     return idsDuAnChon
-      .map((id) => dsDuAnCuaNV.find((d) => d.id === id))
+      .map((id) => dsDuAnTiemNangCaoNV.find((d) => d.id === id))
       .filter(Boolean) as HoSoDuAn[];
-  }, [idsDuAnChon, dsDuAnCuaNV]);
+  }, [idsDuAnChon, dsDuAnTiemNangCaoNV]);
 
   const tongGiaTriDealTrongDiem = useMemo(() => {
     return dsDuAnTrongDiem.reduce((acc, d) => {
@@ -368,31 +476,31 @@ export default function BangBaoCaoTuanChuanVDCD({
   }, [dsDuAnTrongDiem]);
 
   // --------------------------------------------------------------------------
-  // STATE KHỐI III: CHỈ TIÊU CAM KẾT TUẦN TỚI
+  // STATE KHỐI III: CHỈ TIÊU CAM KẾT TUẦN TỚI (5 CHỈ SỐ TƯƠNG ỨNG)
   // --------------------------------------------------------------------------
   const [camKet, setCamKet] = useState({
-    doanhSo: { target: 180000000, min: 150000000, max: 220000000 },
-    khachMoi: { target: 25, min: 20, max: 30 },
-    cuocHen: { target: 15, min: 12, max: 18 },
+    khachMoi: { target: 20, min: 15, max: 25 },
     baoGia: { target: 4, min: 2, max: 6 },
-    hopDong: { target: 5, min: 3, max: 7 }
+    duAnLamViec: { target: 5, min: 3, max: 8 },
+    hopDong: { target: 4, min: 2, max: 6 },
+    doanhThu: { target: 180000000, min: 150000000, max: 220000000 }
   });
 
   useEffect(() => {
     if (baoCaoHienTai?.cam_ket_tuan_toi) {
-      const c = baoCaoHienTai.cam_ket_tuan_toi;
+      const c = baoCaoHienTai.cam_ket_tuan_toi as any;
       setCamKet({
-        doanhSo: c.doanh_so || { target: 180000000, min: 150000000, max: 220000000 },
-        khachMoi: c.khach_moi || { target: 25, min: 20, max: 30 },
-        cuocHen: c.cuoc_hen || { target: 15, min: 12, max: 18 },
+        khachMoi: c.khach_moi || { target: 20, min: 15, max: 25 },
         baoGia: c.bao_gia || { target: 4, min: 2, max: 6 },
-        hopDong: c.hop_dong || { target: 5, min: 3, max: 7 }
+        duAnLamViec: c.du_an_lam_viec || { target: 5, min: 3, max: 8 },
+        hopDong: c.hop_dong || { target: 4, min: 2, max: 6 },
+        doanhThu: c.doanh_so || c.doanh_thu || { target: 180000000, min: 150000000, max: 220000000 }
       });
     }
   }, [baoCaoHienTai]);
 
   // --------------------------------------------------------------------------
-  // STATE KHỐI IV: KẾ HOẠCH LỊCH LÀM VIỆC TUẦN TỚI (Lấy từ Lịch & Bàn làm việc)
+  // STATE KHỐI IV: KẾ HOẠCH LỊCH LÀM VIỆC TUẦN TỚI (KHỬ TRÙNG LẶP TUYỆT ĐỐI)
   // --------------------------------------------------------------------------
   const [ghiChuLichNgay, setGhiChuLichNgay] = useState<Record<string, string>>({});
 
@@ -417,7 +525,7 @@ export default function BangBaoCaoTuanChuanVDCD({
       .sort((a, b) => `${a.ngay}_${a.gio_bat_dau}`.localeCompare(`${b.ngay}_${b.gio_bat_dau}`));
   }, [dsLichGap, nhanSu.id, infoTuanToi]);
 
-  // Gom lịch làm việc tuần tới theo 7 ngày (tự động lấy cả từ Bàn làm việc và Lịch công tác)
+  // Gom lịch làm việc tuần tới theo 7 ngày (khử trùng hoàn toàn giữa Lịch công tác & Bàn làm việc)
   const danhSach7NgayTuanToi = useMemo(() => {
     const dsViec = keHoachTuanToi?.danh_sach_tac_chien || [];
 
@@ -429,12 +537,37 @@ export default function BangBaoCaoTuanChuanVDCD({
         const ten = l.ten_khach_hang || 'Khách hàng';
         const diaDiem = l.dia_diem ? ` (${l.dia_diem})` : '';
         const nd = l.noi_dung || l.tieu_de || 'Lịch công tác';
-        return `${gio}${ten}${diaDiem} - ${nd}`;
+        return `${gio}${ten}${diaDiem} - ${nd}`.trim();
       });
 
       // 2. Nhiệm vụ trên Bàn làm việc (ItemKeHoachTuan) được xếp cho ngày này
       const viecTrongNgay = dsViec.filter((item) => kiemTraViecThuocNgay(item, d.ngay));
-      const dsDongViec = viecTrongNgay.map((item) => {
+
+      // LỌC KHỬ TRÙNG: Loại bỏ việc trùng với lịch hẹn công tác
+      const viecKhongTrung = viecTrongNgay.filter((item) => {
+        if ((item as any).lich_gap_id && lichTrongNgay.some((l) => l.id === (item as any).lich_gap_id)) {
+          return false;
+        }
+        const tenViec = (item.ten_khach_hang_du_an || '').toLowerCase().trim();
+        const ndViec = (item.noi_dung_tuan || item.hanh_dong_tuan || '').toLowerCase().trim();
+        const trungLich = lichTrongNgay.some((l) => {
+          const tenLich = (l.ten_khach_hang || '').toLowerCase().trim();
+          const ndLich = (l.noi_dung || l.tieu_de || '').toLowerCase().trim();
+          if (l.khach_hang_id && item.khach_hang_id && l.khach_hang_id === item.khach_hang_id) {
+            return true;
+          }
+          if (tenLich && tenViec && (tenLich.includes(tenViec) || tenViec.includes(tenLich))) {
+            return true;
+          }
+          if (ndLich && ndViec && (ndLich.includes(ndViec) || ndViec.includes(ndLich))) {
+            return true;
+          }
+          return false;
+        });
+        return !trungLich;
+      });
+
+      const dsDongViec = viecKhongTrung.map((item) => {
         const ht =
           item.hinh_thuc === 'gap_mat'
             ? 'Gặp trực tiếp'
@@ -443,13 +576,23 @@ export default function BangBaoCaoTuanChuanVDCD({
             : 'Tác nghiệp';
         const ten = item.ten_khach_hang_du_an || 'Khách hàng';
         const nd = item.noi_dung_tuan || item.hanh_dong_tuan || item.dau_ra_cam_ket || 'Công việc';
-        return `[${ht}] ${ten}: ${nd}`;
+        return `[${ht}] ${ten}: ${nd}`.trim();
       });
 
-      const tongHopArray = [...dsDongLich, ...dsDongViec];
+      // Khử trùng tuyệt đối các dòng có nội dung giống nhau
+      const setDong = new Set<string>();
+      const tongHopArray: string[] = [];
+      [...dsDongLich, ...dsDongViec].forEach((dong) => {
+        const clean = dong.trim();
+        if (clean && !setDong.has(clean)) {
+          setDong.add(clean);
+          tongHopArray.push(clean);
+        }
+      });
+
       const tongHopTuHeThong = tongHopArray.length > 1
         ? tongHopArray.map((line) => `• ${line}`).join('\n')
-        : (tongHopArray[0] || '');
+        : (tongHopArray[0] ? `• ${tongHopArray[0]}` : '');
 
       const noiDungCustom = ghiChuLichNgay[d.ngay];
       const noiDungCuoi =
@@ -459,9 +602,9 @@ export default function BangBaoCaoTuanChuanVDCD({
         thuIndex: idx + 1,
         tenThuNgay: `${d.thuNhan === 'CN' ? 'Chủ Nhật' : `Thứ ${d.thuNhan.replace('T', '')}`} (${d.ngayNgan})`,
         ngayISO: d.ngay,
-        soLich: lichTrongNgay.length + viecTrongNgay.length,
+        soLich: lichTrongNgay.length + viecKhongTrung.length,
         soLichCongTac: lichTrongNgay.length,
-        soViecBanLamViec: viecTrongNgay.length,
+        soViecBanLamViec: viecKhongTrung.length,
         noiDung: noiDungCuoi,
         noiDungGocHeThong: tongHopTuHeThong
       };
@@ -499,16 +642,17 @@ export default function BangBaoCaoTuanChuanVDCD({
         phong_ban: 'Kinh doanh'
       },
       kpiTuanQua: {
-        doanhSo: { mucTieu: kpiDoanhSo.mucTieu, thucTe: kpiDoanhSo.thucTe },
-        khachHangMoi: { mucTieu: kpiKhachMoi.mucTieu, thucTe: kpiKhachMoi.thucTe },
-        cuocGapTrucTiep: { mucTieu: kpiCuocGap.mucTieu, thucTe: kpiCuocGap.thucTe },
-        hopDongKy: { mucTieu: kpiHopDong.mucTieu, thucTe: kpiHopDong.thucTe }
+        khachHangMoi: { mucTieu: kpiKhachMoi.keHoachTuanTruoc, thucTe: kpiKhachMoi.thucTe },
+        baoGia: { mucTieu: kpiBaoGia.keHoachTuanTruoc, thucTe: kpiBaoGia.thucTe },
+        duAnLamViec: { mucTieu: kpiDuAnLamViec.keHoachTuanTruoc, thucTe: kpiDuAnLamViec.thucTe },
+        hopDongKy: { mucTieu: kpiHopDong.keHoachTuanTruoc, thucTe: kpiHopDong.thucTe },
+        doanhThu: { mucTieu: kpiDoanhThu.keHoachTuanTruoc, thucTe: kpiDoanhThu.thucTe }
       },
       danhSachDuAnTrongDiem: dsDuAnTrongDiem.map((d, idx) => {
         const kh = d.khach_hang_id ? mapKH.get(d.khach_hang_id) : null;
         const nlh = d.nguoi_lien_he_id ? mapNLH.get(d.nguoi_lien_he_id) : null;
         const cfgGD = layCauHinhGiaiDoanTheoKey(d.giai_doan);
-        const cfgTN = BANG_TIEM_NANG_DU_AN[d.muc_do_tiem_nang] || BANG_TIEM_NANG_DU_AN.trung_binh;
+        const cfgTN = BANG_TIEM_NANG_DU_AN[d.muc_do_tiem_nang] || BANG_TIEM_NANG_DU_AN.cao;
         const sp = d.san_pham_dich_vu_id ? mapSP.get(d.san_pham_dich_vu_id) : d.san_pham_khac_mo_ta;
 
         return {
@@ -527,11 +671,11 @@ export default function BangBaoCaoTuanChuanVDCD({
         };
       }),
       camKetTuanToi: {
-        doanhSo: camKet.doanhSo,
         khachHangMoi: camKet.khachMoi,
-        cuocHenDemo: camKet.cuocHen,
-        baoGiaMoi: camKet.baoGia,
-        hopDongMoi: camKet.hopDong
+        baoGia: camKet.baoGia,
+        duAnLamViec: camKet.duAnLamViec,
+        hopDongMoi: camKet.hopDong,
+        doanhThu: camKet.doanhThu
       },
       lichLamViecTuanToi: danhSach7NgayTuanToi.map((d) => ({
         thu: d.thuIndex,
@@ -563,23 +707,28 @@ export default function BangBaoCaoTuanChuanVDCD({
       await onLuuBaoCao(
         {
           kpi_tuan_qua: {
-            doanh_so_muc_tieu: kpiDoanhSo.mucTieu,
-            doanh_so_thuc_te: kpiDoanhSo.thucTe,
-            khach_moi_muc_tieu: kpiKhachMoi.mucTieu,
+            khach_moi_muc_tieu: kpiKhachMoi.keHoachTuanTruoc,
             khach_moi_thuc_te: kpiKhachMoi.thucTe,
-            cuoc_gap_muc_tieu: kpiCuocGap.mucTieu,
-            cuoc_gap_thuc_te: kpiCuocGap.thucTe,
-            hop_dong_muc_tieu: kpiHopDong.mucTieu,
-            hop_dong_thuc_te: kpiHopDong.thucTe
-          },
+            bao_gia_muc_tieu: kpiBaoGia.keHoachTuanTruoc,
+            bao_gia_thuc_te: kpiBaoGia.thucTe,
+            du_an_lam_viec_muc_tieu: kpiDuAnLamViec.keHoachTuanTruoc,
+            du_an_lam_viec_thuc_te: kpiDuAnLamViec.thucTe,
+            hop_dong_muc_tieu: kpiHopDong.keHoachTuanTruoc,
+            hop_dong_thuc_te: kpiHopDong.thucTe,
+            doanh_so_muc_tieu: kpiDoanhThu.keHoachTuanTruoc,
+            doanh_so_thuc_te: kpiDoanhThu.thucTe,
+            cuoc_gap_muc_tieu: 0,
+            cuoc_gap_thuc_te: 0
+          } as any,
           du_an_trong_diem_ids: idsDuAnChon,
           cam_ket_tuan_toi: {
-            doanh_so: camKet.doanhSo,
             khach_moi: camKet.khachMoi,
-            cuoc_hen: camKet.cuocHen,
             bao_gia: camKet.baoGia,
-            hop_dong: camKet.hopDong
-          },
+            du_an_lam_viec: camKet.duAnLamViec,
+            hop_dong: camKet.hopDong,
+            doanh_so: camKet.doanhThu,
+            cuoc_hen: { target: 0, min: 0, max: 0 }
+          } as any,
           ghi_chu_lich_ngay: ghiChuLichNgay,
           trang_thai: nopBaoCao ? 'cho_duyet' : 'nhap'
         },
@@ -728,94 +877,16 @@ export default function BangBaoCaoTuanChuanVDCD({
             <thead>
               <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
                 <th className="py-2.5 px-3 text-center w-12">STT</th>
-                <th className="py-2.5 px-4 text-left">Chỉ tiêu KPI tuần</th>
+                <th className="py-2.5 px-4 text-left">Chỉ tiêu đánh giá tuần qua</th>
                 <th className="py-2.5 px-3 text-center w-28">ĐVT</th>
-                <th className="py-2.5 px-4 text-right w-36">Mục tiêu giao</th>
-                <th className="py-2.5 px-4 text-right w-36">Thực tế đạt</th>
-                <th className="py-2.5 px-3 text-center w-28">Tỷ lệ hoàn thành</th>
-                <th className="py-2.5 px-4 text-left w-48">Đánh giá kết quả</th>
+                <th className="py-2.5 px-4 text-right w-44">Kế hoạch tuần trước</th>
+                <th className="py-2.5 px-4 text-right w-44">Thực tế đạt</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {/* Dòng 1: Doanh số */}
+              {/* Dòng 1: Khách hàng mới tiếp cận */}
               <tr className="hover:bg-muted/20">
                 <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">1</td>
-                <td className="py-2.5 px-4">
-                  <div className="font-bold text-foreground">Doanh số bán lẻ / Dự án</div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setModalDrillDownKPI({
-                        mo: true,
-                        tieuDe: 'Chi tiết Doanh số phát sinh tuần qua',
-                        moTa: soLieuThucTeTuBanLamViec.doanhSo.chiTiet,
-                        danhSach: soLieuThucTeTuBanLamViec.doanhSo.danhSach
-                      })
-                    }
-                    className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
-                  >
-                    <Sparkles className="size-3 text-amber-500 shrink-0" />
-                    <span>{soLieuThucTeTuBanLamViec.doanhSo.chiTiet} (Xem chi tiết)</span>
-                  </button>
-                </td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">VNĐ</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={kpiDoanhSo.mucTieu}
-                    onChange={(e) => setKpiDoanhSo({ ...kpiDoanhSo, mucTieu: Number(e.target.value) })}
-                    className="w-28 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={kpiDoanhSo.thucTe}
-                    onChange={(e) =>
-                      setKpiDoanhSo({ ...kpiDoanhSo, thucTe: Number(e.target.value), daSuaTay: true })
-                    }
-                    className="w-28 text-right font-mono text-xs font-bold text-emerald-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
-                  />
-                  {kpiDoanhSo.daSuaTay && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setKpiDoanhSo((p) => ({
-                          ...p,
-                          thucTe: soLieuThucTeTuBanLamViec.doanhSo.thucTe,
-                          daSuaTay: false
-                        }))
-                      }
-                      className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
-                    >
-                      (Lấy lại số CRM)
-                    </button>
-                  )}
-                </td>
-                <td className="py-2.5 px-3 text-center font-mono font-bold text-foreground">
-                  {kpiDoanhSo.mucTieu > 0
-                    ? `${((kpiDoanhSo.thucTe / kpiDoanhSo.mucTieu) * 100).toFixed(1)}%`
-                    : '—'}
-                </td>
-                <td className="py-2.5 px-4">
-                  <span
-                    className={cn(
-                      'px-2 py-0.5 rounded text-[10.5px] font-bold',
-                      kpiDoanhSo.thucTe >= kpiDoanhSo.mucTieu
-                        ? 'bg-emerald-500/15 text-emerald-700'
-                        : 'bg-amber-500/15 text-amber-700'
-                    )}
-                  >
-                    {kpiDoanhSo.thucTe >= kpiDoanhSo.mucTieu
-                      ? `Vượt chỉ tiêu (+${Math.round(((kpiDoanhSo.thucTe - kpiDoanhSo.mucTieu) / kpiDoanhSo.mucTieu) * 100)}%)`
-                      : 'Chưa đạt chỉ tiêu'}
-                  </span>
-                </td>
-              </tr>
-
-              {/* Dòng 2: Khách hàng mới */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">2</td>
                 <td className="py-2.5 px-4">
                   <div className="font-bold text-foreground">Số lượng khách hàng mới tiếp cận</div>
                   <button
@@ -838,9 +909,9 @@ export default function BangBaoCaoTuanChuanVDCD({
                 <td className="py-2.5 px-4 text-right">
                   <input
                     type="number"
-                    value={kpiKhachMoi.mucTieu}
-                    onChange={(e) => setKpiKhachMoi({ ...kpiKhachMoi, mucTieu: Number(e.target.value) })}
-                    className="w-20 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                    value={kpiKhachMoi.keHoachTuanTruoc}
+                    onChange={(e) => setKpiKhachMoi({ ...kpiKhachMoi, keHoachTuanTruoc: Number(e.target.value) })}
+                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
                   />
                 </td>
                 <td className="py-2.5 px-4 text-right">
@@ -850,7 +921,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                     onChange={(e) =>
                       setKpiKhachMoi({ ...kpiKhachMoi, thucTe: Number(e.target.value), daSuaTay: true })
                     }
-                    className="w-20 text-right font-mono text-xs font-bold text-blue-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                    className="w-24 text-right font-mono text-xs font-bold text-blue-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
                   />
                   {kpiKhachMoi.daSuaTay && (
                     <button
@@ -868,73 +939,54 @@ export default function BangBaoCaoTuanChuanVDCD({
                     </button>
                   )}
                 </td>
-                <td className="py-2.5 px-3 text-center font-mono font-bold text-foreground">
-                  {kpiKhachMoi.mucTieu > 0
-                    ? `${((kpiKhachMoi.thucTe / kpiKhachMoi.mucTieu) * 100).toFixed(1)}%`
-                    : '—'}
-                </td>
-                <td className="py-2.5 px-4">
-                  <span
-                    className={cn(
-                      'px-2 py-0.5 rounded text-[10.5px] font-bold',
-                      kpiKhachMoi.thucTe >= kpiKhachMoi.mucTieu
-                        ? 'bg-emerald-500/15 text-emerald-700'
-                        : 'bg-amber-500/15 text-amber-700'
-                    )}
-                  >
-                    {kpiKhachMoi.thucTe >= kpiKhachMoi.mucTieu
-                      ? `Đạt chỉ tiêu (${Math.round((kpiKhachMoi.thucTe / kpiKhachMoi.mucTieu) * 100)}%)`
-                      : 'Chưa đạt chỉ tiêu'}
-                  </span>
-                </td>
               </tr>
 
-              {/* Dòng 3: Cuộc gặp trực tiếp */}
+              {/* Dòng 2: Tổng số báo giá đã gửi */}
               <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">3</td>
+                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">2</td>
                 <td className="py-2.5 px-4">
-                  <div className="font-bold text-foreground">Số lượng cuộc gặp / trao đổi trực tiếp</div>
+                  <div className="font-bold text-foreground">Tổng số báo giá đã gửi trong tuần</div>
                   <button
                     type="button"
                     onClick={() =>
                       setModalDrillDownKPI({
                         mo: true,
-                        tieuDe: 'Chi tiết Cuộc gặp / Trao đổi trực tiếp tuần qua',
-                        moTa: soLieuThucTeTuBanLamViec.cuocGap.chiTiet,
-                        danhSach: soLieuThucTeTuBanLamViec.cuocGap.danhSach
+                        tieuDe: 'Chi tiết Báo giá đã gửi trong tuần qua',
+                        moTa: soLieuThucTeTuBanLamViec.baoGia.chiTiet,
+                        danhSach: soLieuThucTeTuBanLamViec.baoGia.danhSach
                       })
                     }
                     className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
                   >
                     <Sparkles className="size-3 text-amber-500 shrink-0" />
-                    <span>{soLieuThucTeTuBanLamViec.cuocGap.chiTiet} (Xem chi tiết)</span>
+                    <span>{soLieuThucTeTuBanLamViec.baoGia.chiTiet} (Xem chi tiết)</span>
                   </button>
                 </td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Lượt</td>
+                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Báo giá</td>
                 <td className="py-2.5 px-4 text-right">
                   <input
                     type="number"
-                    value={kpiCuocGap.mucTieu}
-                    onChange={(e) => setKpiCuocGap({ ...kpiCuocGap, mucTieu: Number(e.target.value) })}
-                    className="w-20 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                    value={kpiBaoGia.keHoachTuanTruoc}
+                    onChange={(e) => setKpiBaoGia({ ...kpiBaoGia, keHoachTuanTruoc: Number(e.target.value) })}
+                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
                   />
                 </td>
                 <td className="py-2.5 px-4 text-right">
                   <input
                     type="number"
-                    value={kpiCuocGap.thucTe}
+                    value={kpiBaoGia.thucTe}
                     onChange={(e) =>
-                      setKpiCuocGap({ ...kpiCuocGap, thucTe: Number(e.target.value), daSuaTay: true })
+                      setKpiBaoGia({ ...kpiBaoGia, thucTe: Number(e.target.value), daSuaTay: true })
                     }
-                    className="w-20 text-right font-mono text-xs font-bold text-teal-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                    className="w-24 text-right font-mono text-xs font-bold text-amber-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
                   />
-                  {kpiCuocGap.daSuaTay && (
+                  {kpiBaoGia.daSuaTay && (
                     <button
                       type="button"
                       onClick={() =>
-                        setKpiCuocGap((p) => ({
+                        setKpiBaoGia((p) => ({
                           ...p,
-                          thucTe: soLieuThucTeTuBanLamViec.cuocGap.thucTe,
+                          thucTe: soLieuThucTeTuBanLamViec.baoGia.thucTe,
                           daSuaTay: false
                         }))
                       }
@@ -944,32 +996,70 @@ export default function BangBaoCaoTuanChuanVDCD({
                     </button>
                   )}
                 </td>
-                <td className="py-2.5 px-3 text-center font-mono font-bold text-foreground">
-                  {kpiCuocGap.mucTieu > 0
-                    ? `${((kpiCuocGap.thucTe / kpiCuocGap.mucTieu) * 100).toFixed(1)}%`
-                    : '—'}
-                </td>
+              </tr>
+
+              {/* Dòng 3: Tổng số dự án đã làm việc trong tuần */}
+              <tr className="hover:bg-muted/20">
+                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">3</td>
                 <td className="py-2.5 px-4">
-                  <span
-                    className={cn(
-                      'px-2 py-0.5 rounded text-[10.5px] font-bold',
-                      kpiCuocGap.thucTe >= kpiCuocGap.mucTieu
-                        ? 'bg-emerald-500/15 text-emerald-700'
-                        : 'bg-amber-500/15 text-amber-700'
-                    )}
+                  <div className="font-bold text-foreground">Tổng số dự án đã làm việc trong tuần</div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setModalDrillDownKPI({
+                        mo: true,
+                        tieuDe: 'Chi tiết Dự án đã làm việc trong tuần qua',
+                        moTa: soLieuThucTeTuBanLamViec.duAnLamViec.chiTiet,
+                        danhSach: soLieuThucTeTuBanLamViec.duAnLamViec.danhSach
+                      })
+                    }
+                    className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
                   >
-                    {kpiCuocGap.thucTe >= kpiCuocGap.mucTieu
-                      ? `Đạt chỉ tiêu (${Math.round((kpiCuocGap.thucTe / kpiCuocGap.mucTieu) * 100)}%)`
-                      : 'Chưa đạt chỉ tiêu'}
-                  </span>
+                    <Sparkles className="size-3 text-amber-500 shrink-0" />
+                    <span>{soLieuThucTeTuBanLamViec.duAnLamViec.chiTiet} (Xem chi tiết)</span>
+                  </button>
+                </td>
+                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Dự án</td>
+                <td className="py-2.5 px-4 text-right">
+                  <input
+                    type="number"
+                    value={kpiDuAnLamViec.keHoachTuanTruoc}
+                    onChange={(e) => setKpiDuAnLamViec({ ...kpiDuAnLamViec, keHoachTuanTruoc: Number(e.target.value) })}
+                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                  />
+                </td>
+                <td className="py-2.5 px-4 text-right">
+                  <input
+                    type="number"
+                    value={kpiDuAnLamViec.thucTe}
+                    onChange={(e) =>
+                      setKpiDuAnLamViec({ ...kpiDuAnLamViec, thucTe: Number(e.target.value), daSuaTay: true })
+                    }
+                    className="w-24 text-right font-mono text-xs font-bold text-indigo-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                  />
+                  {kpiDuAnLamViec.daSuaTay && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setKpiDuAnLamViec((p) => ({
+                          ...p,
+                          thucTe: soLieuThucTeTuBanLamViec.duAnLamViec.thucTe,
+                          daSuaTay: false
+                        }))
+                      }
+                      className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
+                    >
+                      (Lấy lại số CRM)
+                    </button>
+                  )}
                 </td>
               </tr>
 
-              {/* Dòng 4: Hợp đồng ký kết */}
+              {/* Dòng 4: Số hợp đồng ký kết */}
               <tr className="hover:bg-muted/20">
                 <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">4</td>
                 <td className="py-2.5 px-4">
-                  <div className="font-bold text-foreground">Số hợp đồng / đơn hàng ký kết</div>
+                  <div className="font-bold text-foreground">Số hợp đồng ký kết</div>
                   <button
                     type="button"
                     onClick={() =>
@@ -990,9 +1080,9 @@ export default function BangBaoCaoTuanChuanVDCD({
                 <td className="py-2.5 px-4 text-right">
                   <input
                     type="number"
-                    value={kpiHopDong.mucTieu}
-                    onChange={(e) => setKpiHopDong({ ...kpiHopDong, mucTieu: Number(e.target.value) })}
-                    className="w-20 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                    value={kpiHopDong.keHoachTuanTruoc}
+                    onChange={(e) => setKpiHopDong({ ...kpiHopDong, keHoachTuanTruoc: Number(e.target.value) })}
+                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
                   />
                 </td>
                 <td className="py-2.5 px-4 text-right">
@@ -1002,7 +1092,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                     onChange={(e) =>
                       setKpiHopDong({ ...kpiHopDong, thucTe: Number(e.target.value), daSuaTay: true })
                     }
-                    className="w-20 text-right font-mono text-xs font-bold text-purple-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                    className="w-24 text-right font-mono text-xs font-bold text-purple-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
                   />
                   {kpiHopDong.daSuaTay && (
                     <button
@@ -1020,45 +1110,71 @@ export default function BangBaoCaoTuanChuanVDCD({
                     </button>
                   )}
                 </td>
-                <td className="py-2.5 px-3 text-center font-mono font-bold text-foreground">
-                  {kpiHopDong.mucTieu > 0
-                    ? `${((kpiHopDong.thucTe / kpiHopDong.mucTieu) * 100).toFixed(1)}%`
-                    : '—'}
-                </td>
+              </tr>
+
+              {/* Dòng 5: Tổng doanh thu đã thu về trong tuần */}
+              <tr className="hover:bg-muted/20">
+                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">5</td>
                 <td className="py-2.5 px-4">
-                  <span
-                    className={cn(
-                      'px-2 py-0.5 rounded text-[10.5px] font-bold',
-                      kpiHopDong.thucTe >= kpiHopDong.mucTieu
-                        ? 'bg-emerald-500/15 text-emerald-700'
-                        : 'bg-amber-500/15 text-amber-700'
-                    )}
+                  <div className="font-bold text-foreground">Tổng doanh thu đã thu về trong tuần</div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setModalDrillDownKPI({
+                        mo: true,
+                        tieuDe: 'Chi tiết Doanh thu thực tế tuần qua',
+                        moTa: soLieuThucTeTuBanLamViec.doanhThu.chiTiet,
+                        danhSach: soLieuThucTeTuBanLamViec.doanhThu.danhSach
+                      })
+                    }
+                    className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
                   >
-                    {kpiHopDong.thucTe >= kpiHopDong.mucTieu
-                      ? `Vượt chỉ tiêu (+${Math.round(((kpiHopDong.thucTe - kpiHopDong.mucTieu) / kpiHopDong.mucTieu) * 100)}%)`
-                      : 'Chưa đạt chỉ tiêu'}
-                  </span>
+                    <Sparkles className="size-3 text-amber-500 shrink-0" />
+                    <span>{soLieuThucTeTuBanLamViec.doanhThu.chiTiet} (Xem chi tiết)</span>
+                  </button>
+                </td>
+                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">VNĐ</td>
+                <td className="py-2.5 px-4 text-right">
+                  <ONhapSoTien
+                    giaTri={kpiDoanhThu.keHoachTuanTruoc}
+                    onChange={(val) => setKpiDoanhThu({ ...kpiDoanhThu, keHoachTuanTruoc: val })}
+                    className="w-32 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary"
+                  />
+                </td>
+                <td className="py-2.5 px-4 text-right">
+                  <ONhapSoTien
+                    giaTri={kpiDoanhThu.thucTe}
+                    onChange={(val) => setKpiDoanhThu({ ...kpiDoanhThu, thucTe: val, daSuaTay: true })}
+                    className="w-32 text-right font-mono text-xs font-bold text-emerald-600 bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary"
+                  />
+                  {kpiDoanhThu.daSuaTay && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setKpiDoanhThu((p) => ({
+                          ...p,
+                          thucTe: soLieuThucTeTuBanLamViec.doanhThu.thucTe,
+                          daSuaTay: false
+                        }))
+                      }
+                      className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
+                    >
+                      (Lấy lại số CRM)
+                    </button>
+                  )}
                 </td>
               </tr>
 
               {/* Dòng Tổng kết Khối I */}
               <tr className="bg-red-500/[0.04] font-bold text-xs border-t border-red-500/20">
                 <td colSpan={3} className="py-3 px-4 text-left text-red-950 font-black">
-                  TỔNG HỢP DOANH SỐ TUẦN (VNĐ)
+                  TỔNG DOANH THU THỰC TẾ TUẦN (VNĐ)
                 </td>
                 <td className="py-3 px-4 text-right font-mono text-foreground font-extrabold">
-                  {fmtTien(kpiDoanhSo.mucTieu)}
+                  {fmtTien(kpiDoanhThu.keHoachTuanTruoc)}
                 </td>
                 <td className="py-3 px-4 text-right font-mono text-emerald-700 font-black text-sm">
-                  {fmtTien(kpiDoanhSo.thucTe)}
-                </td>
-                <td className="py-3 px-3 text-center font-mono text-primary font-black">
-                  {kpiDoanhSo.mucTieu > 0
-                    ? `${((kpiDoanhSo.thucTe / kpiDoanhSo.mucTieu) * 100).toFixed(1)}%`
-                    : '100%'}
-                </td>
-                <td className="py-3 px-4 font-bold text-red-800">
-                  {kpiDoanhSo.thucTe >= kpiDoanhSo.mucTieu ? 'Hoàn thành chỉ tiêu doanh số' : 'Chưa đạt chỉ tiêu'}
+                  {fmtTien(kpiDoanhThu.thucTe)}
                 </td>
               </tr>
             </tbody>
@@ -1225,49 +1341,13 @@ export default function BangBaoCaoTuanChuanVDCD({
                 <th className="py-2.5 px-4 text-right w-40">Mục tiêu (Target)</th>
                 <th className="py-2.5 px-4 text-right w-40">Mức tối thiểu (Min)</th>
                 <th className="py-2.5 px-4 text-right w-40">Mức thách thức (Max)</th>
+                <th className="py-2.5 px-4 text-left">Ghi chú</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {/* 1. Doanh số cam kết */}
+              {/* 1. Khách hàng mới */}
               <tr className="hover:bg-muted/20">
                 <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">1</td>
-                <td className="py-2.5 px-4 font-bold text-foreground">Doanh số cam kết tuần</td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">VNĐ</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.doanhSo.target}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, doanhSo: { ...camKet.doanhSo, target: Number(e.target.value) } })
-                    }
-                    className="w-32 text-right font-mono text-xs font-bold text-emerald-700 bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.doanhSo.min}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, doanhSo: { ...camKet.doanhSo, min: Number(e.target.value) } })
-                    }
-                    className="w-32 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.doanhSo.max}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, doanhSo: { ...camKet.doanhSo, max: Number(e.target.value) } })
-                    }
-                    className="w-32 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-              </tr>
-
-              {/* 2. Khách hàng mới */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">2</td>
                 <td className="py-2.5 px-4 font-bold text-foreground">Số lượng khách hàng mới tiếp cận</td>
                 <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Khách hàng</td>
                 <td className="py-2.5 px-4 text-right">
@@ -1300,49 +1380,13 @@ export default function BangBaoCaoTuanChuanVDCD({
                     className="w-24 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-1.5 py-0.5"
                   />
                 </td>
+                <td className="py-2.5 px-4 text-muted-foreground text-[11px]">Khai thác mới từ thị trường</td>
               </tr>
 
-              {/* 3. Cuộc hẹn demo */}
+              {/* 2. Báo giá */}
               <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">3</td>
-                <td className="py-2.5 px-4 font-bold text-foreground">Số lượng cuộc hẹn demo / gặp trực tiếp</td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Cuộc hẹn</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.cuocHen.target}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, cuocHen: { ...camKet.cuocHen, target: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-bold text-teal-700 bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.cuocHen.min}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, cuocHen: { ...camKet.cuocHen, min: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.cuocHen.max}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, cuocHen: { ...camKet.cuocHen, max: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-              </tr>
-
-              {/* 4. Báo giá mới gửi */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">4</td>
-                <td className="py-2.5 px-4 font-bold text-foreground">Số lượng báo giá mới gửi cho KH</td>
+                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">2</td>
+                <td className="py-2.5 px-4 font-bold text-foreground">Tổng số báo giá dự kiến gửi</td>
                 <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Báo giá</td>
                 <td className="py-2.5 px-4 text-right">
                   <input
@@ -1374,11 +1418,50 @@ export default function BangBaoCaoTuanChuanVDCD({
                     className="w-24 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-1.5 py-0.5"
                   />
                 </td>
+                <td className="py-2.5 px-4 text-muted-foreground text-[11px]">Báo giá dự toán khảo sát / đo đạc</td>
               </tr>
 
-              {/* 5. Hợp đồng ký mới */}
+              {/* 3. Dự án làm việc */}
               <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">5</td>
+                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">3</td>
+                <td className="py-2.5 px-4 font-bold text-foreground">Tổng số dự án dự kiến làm việc</td>
+                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Dự án</td>
+                <td className="py-2.5 px-4 text-right">
+                  <input
+                    type="number"
+                    value={camKet.duAnLamViec.target}
+                    onChange={(e) =>
+                      setCamKet({ ...camKet, duAnLamViec: { ...camKet.duAnLamViec, target: Number(e.target.value) } })
+                    }
+                    className="w-24 text-right font-mono text-xs font-bold text-indigo-700 bg-transparent border border-border/80 rounded px-1.5 py-0.5"
+                  />
+                </td>
+                <td className="py-2.5 px-4 text-right">
+                  <input
+                    type="number"
+                    value={camKet.duAnLamViec.min}
+                    onChange={(e) =>
+                      setCamKet({ ...camKet, duAnLamViec: { ...camKet.duAnLamViec, min: Number(e.target.value) } })
+                    }
+                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5"
+                  />
+                </td>
+                <td className="py-2.5 px-4 text-right">
+                  <input
+                    type="number"
+                    value={camKet.duAnLamViec.max}
+                    onChange={(e) =>
+                      setCamKet({ ...camKet, duAnLamViec: { ...camKet.duAnLamViec, max: Number(e.target.value) } })
+                    }
+                    className="w-24 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-1.5 py-0.5"
+                  />
+                </td>
+                <td className="py-2.5 px-4 text-muted-foreground text-[11px]">Bám sát tiến độ & tác nghiệp dự án</td>
+              </tr>
+
+              {/* 4. Hợp đồng ký mới */}
+              <tr className="hover:bg-muted/20">
+                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">4</td>
                 <td className="py-2.5 px-4 font-bold text-foreground">Số hợp đồng / đơn hàng ký mới</td>
                 <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Hợp đồng</td>
                 <td className="py-2.5 px-4 text-right">
@@ -1411,6 +1494,42 @@ export default function BangBaoCaoTuanChuanVDCD({
                     className="w-24 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-1.5 py-0.5"
                   />
                 </td>
+                <td className="py-2.5 px-4 text-muted-foreground text-[11px]">Chốt HĐ các dự án tiềm năng cao</td>
+              </tr>
+
+              {/* 5. Tổng doanh thu dự kiến thu về */}
+              <tr className="hover:bg-muted/20">
+                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">5</td>
+                <td className="py-2.5 px-4 font-bold text-foreground">Tổng doanh thu dự kiến thu về</td>
+                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">VNĐ</td>
+                <td className="py-2.5 px-4 text-right">
+                  <ONhapSoTien
+                    giaTri={camKet.doanhThu.target}
+                    onChange={(val) =>
+                      setCamKet({ ...camKet, doanhThu: { ...camKet.doanhThu, target: val } })
+                    }
+                    className="w-32 text-right font-mono text-xs font-bold text-emerald-700 bg-transparent border border-border/80 rounded px-2 py-0.5"
+                  />
+                </td>
+                <td className="py-2.5 px-4 text-right">
+                  <ONhapSoTien
+                    giaTri={camKet.doanhThu.min}
+                    onChange={(val) =>
+                      setCamKet({ ...camKet, doanhThu: { ...camKet.doanhThu, min: val } })
+                    }
+                    className="w-32 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-2 py-0.5"
+                  />
+                </td>
+                <td className="py-2.5 px-4 text-right">
+                  <ONhapSoTien
+                    giaTri={camKet.doanhThu.max}
+                    onChange={(val) =>
+                      setCamKet({ ...camKet, doanhThu: { ...camKet.doanhThu, max: val } })
+                    }
+                    className="w-32 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-2 py-0.5"
+                  />
+                </td>
+                <td className="py-2.5 px-4 text-muted-foreground text-[11px]">Dòng tiền thực tế & ký kết mới</td>
               </tr>
             </tbody>
           </table>
@@ -1581,12 +1700,12 @@ export default function BangBaoCaoTuanChuanVDCD({
             </div>
 
             <div className="p-4 overflow-y-auto divide-y divide-border/60 max-h-[460px] text-xs">
-              {dsDuAnCuaNV.length === 0 ? (
+              {dsDuAnTiemNangCaoNV.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground">
-                  Nhân sự chưa có hồ sơ dự án nào trong hệ thống.
+                  Không có dự án nào có mức tiềm năng Cao hoặc Rất cao đang theo dõi.
                 </div>
               ) : (
-                dsDuAnCuaNV.map((d) => {
+                dsDuAnTiemNangCaoNV.map((d) => {
                   const daChon = idsDuAnChon.includes(d.id);
                   const kh = d.khach_hang_id ? mapKH.get(d.khach_hang_id) : null;
                   const cfgGD = layCauHinhGiaiDoanTheoKey(d.giai_doan);
