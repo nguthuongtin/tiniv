@@ -82,6 +82,7 @@ import BanLamViecHangNgay from './ban_lam_viec_hang_ngay';
 import type { GoiYTaoLichHenNhanh } from './drawer_ho_so_thu_gon';
 import FormTacChienTuanDrawer from './form_tac_chien_tuan_drawer';
 import FormCapNhatTienDoTuan from './form_cap_nhat_tien_do_tuan';
+import DrawerTongKetTuan from './drawer_tong_ket_tuan';
 import FormKhachHangDrawer from '../khach_hang/form_khach_hang_drawer';
 import FormHoSoDuAnDrawer from '../ho_so_du_an/form_ho_so_du_an_drawer';
 import FormLichGapModal from '../lich_gap_kh/form_lich_gap_modal';
@@ -134,9 +135,13 @@ export default function TrangKeHoachNVKD() {
 }
 
 export function NoiDungKeHoachNVKD({
-  tabKhoiTao
+  tabKhoiTao,
+  cheDoXem = 'tuan',
+  onDoiCheDoXem
 }: {
   tabKhoiTao?: string;
+  cheDoXem?: 'tuan' | 'thang';
+  onDoiCheDoXem?: (mode: 'tuan' | 'thang') => void;
 } = {}) {
   const nguoiDungHienTai = useStoreXacThuc((s) => s.nguoiDungHienTai);
   const laQuanLyHoacGiamDoc =
@@ -242,6 +247,7 @@ export function NoiDungKeHoachNVKD({
 
   // Drawers Cập nhật tiến độ
   const [moCapNhatTienDoTuan, setMoCapNhatTienDoTuan] = useState(false);
+  const [moDrawerBaoCaoTuan, setMoDrawerBaoCaoTuan] = useState(false);
   const [itemTuanDangCapNhat, setItemTuanDangCapNhat] = useState<ItemKeHoachTuan | null>(null);
 
   const phamVi = useMemo(() => {
@@ -1456,6 +1462,13 @@ export function NoiDungKeHoachNVKD({
       laQuanLyHoacGiamDoc
   );
 
+  const dsItemTuan = keHoachTuan?.danh_sach_tac_chien ?? [];
+  const soHoanThanhTuan = dsItemTuan.filter(
+    (x) => x.da_hoan_thanh || (x as any).trang_thai_vat_chung === 'da_lay'
+  ).length;
+  const tyLeHoanThanhTuan =
+    dsItemTuan.length > 0 ? Math.round((soHoanThanhTuan / dsItemTuan.length) * 100) : 0;
+
   const nhanVienDangXem = useMemo(() => {
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
     return dsNhanSu.find((x) => x.id === targetId) || null;
@@ -1527,6 +1540,10 @@ export function NoiDungKeHoachNVKD({
         </div>
       ) : (
         <BanLamViecHangNgay
+          cheDoXem={cheDoXem}
+          onDoiCheDoXem={onDoiCheDoXem}
+          onMoBaoCaoTuan={() => setMoDrawerBaoCaoTuan(true)}
+          tyLeHoanThanh={tyLeHoanThanhTuan}
           keHoachTuan={keHoachTuan}
           keHoachThang={keHoachThang}
           nhanVienId={nhanVienChonId || nguoiDungHienTai?.id}
@@ -1708,6 +1725,18 @@ export function NoiDungKeHoachNVKD({
         onDong={() => setMoCapNhatTienDoTuan(false)}
         item={itemTuanDangCapNhat}
         onLuu={xuLyCapNhatTienDoTuan}
+      />
+
+      {/* Drawer Tổng kết & Báo cáo Tuần */}
+      <DrawerTongKetTuan
+        mo={moDrawerBaoCaoTuan}
+        onDong={() => setMoDrawerBaoCaoTuan(false)}
+        keHoach={keHoachTuan}
+        baoCaoHienTai={baoCaoTuan}
+        nhanVien={nhanVienDangXem}
+        tuan={tuanChon}
+        onLuuBaoCao={xuLyLuuBaoCaoTuan}
+        danhSachKhachHang={dsKhachHangHieuLuc}
       />
     </Bo_Cuc_Trang>
   );

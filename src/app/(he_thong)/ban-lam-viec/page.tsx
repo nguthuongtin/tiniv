@@ -1,120 +1,80 @@
 'use client';
 
-import React, { Suspense, useMemo, useState } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import {
-  ListTodo,
-  CalendarCheck,
-  Calendar,
-  BarChart3,
-  Sparkles
-} from 'lucide-react';
-import { cn } from '../../../thu_vien/utils/cn';
 import { NoiDungKeHoachNVKD } from '../../../thanh_phan/ke_hoach/NoiDungKeHoachNVKD';
-import TrangLichCongTac from '../lich-cong-tac/page';
-import NoiDungBaoCaoTuan from '../../../thanh_phan/bao_cao_tuan_vdcd/noi_dung_bao_cao_tuan';
+import { NoiDungLichCongTac } from '../../../thanh_phan/lich_gap_kh/noi_dung_lich_cong_tac';
 
-type TabKhuVuc = 'ban_lam_viec' | 'lich_cong_tac' | 'bao_cao_tuan';
+type CheDoXem = 'tuan' | 'thang';
 
 function NoiDungBanLamViecHopNhat() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tabParam = (searchParams.get('tab') as TabKhuVuc) || 'ban_lam_viec';
+  const viewParam = (searchParams.get('view') as CheDoXem) || (searchParams.get('tab') === 'lich_cong_tac' ? 'thang' : 'tuan');
 
-  const [tabHienTai, setTabHienTai] = useState<TabKhuVuc>(() => {
-    if (tabParam === 'lich_cong_tac' || tabParam === 'bao_cao_tuan') {
-      return tabParam;
+  const [cheDoXem, setCheDoXem] = useState<CheDoXem>(viewParam === 'thang' ? 'thang' : 'tuan');
+
+  useEffect(() => {
+    if (viewParam === 'thang' || viewParam === 'tuan') {
+      setCheDoXem(viewParam);
     }
-    return 'ban_lam_viec';
-  });
+  }, [viewParam]);
 
-  const chuyenTab = (tabMoi: TabKhuVuc) => {
-    setTabHienTai(tabMoi);
+  const chuyenCheDoXem = (mode: CheDoXem) => {
+    setCheDoXem(mode);
     const params = new URLSearchParams(searchParams.toString());
-    if (tabMoi === 'ban_lam_viec') {
-      params.delete('tab');
+    params.delete('tab');
+    if (mode === 'tuan') {
+      params.delete('view');
     } else {
-      params.set('tab', tabMoi);
+      params.set('view', mode);
     }
     const q = params.toString();
     router.replace(`/ban-lam-viec${q ? `?${q}` : ''}`, { scroll: false });
   };
 
   return (
-    <div className="space-y-4 w-full">
-      {/* THANH ĐIỀU HƯỚNG 3-TRONG-1 HỢP NHẤT (BÀN LÀM VIỆC - LỊCH - BÁO CÁO TUẦN) */}
-      <div className="rounded-2xl border border-slate-200/90 bg-white p-2.5 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <div className="inline-flex items-center rounded-xl bg-slate-100 p-1 text-xs font-semibold gap-1">
-            <button
-              type="button"
-              onClick={() => chuyenTab('ban_lam_viec')}
-              className={cn(
-                'h-8 px-3.5 rounded-lg inline-flex items-center gap-2 transition cursor-pointer',
-                tabHienTai === 'ban_lam_viec'
-                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              )}
-            >
-              <CalendarCheck className="size-4 text-blue-600" />
-              <span>Bàn làm việc &amp; Lịch tuần</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => chuyenTab('lich_cong_tac')}
-              className={cn(
-                'h-8 px-3.5 rounded-lg inline-flex items-center gap-2 transition cursor-pointer',
-                tabHienTai === 'lich_cong_tac'
-                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              )}
-            >
-              <Calendar className="size-4 text-emerald-600" />
-              <span>Lịch tháng</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => chuyenTab('bao_cao_tuan')}
-              className={cn(
-                'h-8 px-3.5 rounded-lg inline-flex items-center gap-2 transition cursor-pointer',
-                tabHienTai === 'bao_cao_tuan'
-                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              )}
-            >
-              <BarChart3 className="size-4 text-[#D11317]" />
-              <span>Kế hoạch &amp; Báo cáo tuần</span>
-            </button>
+    <div className="w-full min-w-0">
+      {cheDoXem === 'tuan' ? (
+        <NoiDungKeHoachNVKD
+          cheDoXem={cheDoXem}
+          onDoiCheDoXem={chuyenCheDoXem}
+        />
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 bg-card border border-border p-2.5 rounded-2xl shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-foreground">
+                Lịch công tác bao quát tháng
+              </span>
+            </div>
+            <div className="inline-flex items-center rounded-xl bg-muted/70 p-1 text-xs font-semibold gap-1">
+              <button
+                type="button"
+                onClick={() => chuyenCheDoXem('tuan')}
+                className="h-8 px-3 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer transition"
+              >
+                📅 Tuần tác nghiệp
+              </button>
+              <button
+                type="button"
+                onClick={() => chuyenCheDoXem('thang')}
+                className="h-8 px-3 rounded-lg bg-card text-foreground shadow-2xs font-bold border border-border/70 cursor-pointer transition"
+              >
+                📆 Lịch tháng
+              </button>
+            </div>
           </div>
+          <NoiDungLichCongTac cheDoXemMacDinh="thang" anThanh3Tab={true} />
         </div>
-
-        <div className="hidden lg:flex items-center gap-2 text-[11px] font-semibold text-slate-500">
-          <Sparkles className="size-3.5 text-amber-500" />
-          <span>Dữ liệu tác nghiệp, lịch hẹn &amp; dự án đồng bộ tự động</span>
-        </div>
-      </div>
-
-      {/* NỘI DUNG TƯƠNG ỨNG VỚI TAB */}
-      <div className="w-full min-w-0">
-        {tabHienTai === 'ban_lam_viec' && (
-          <NoiDungKeHoachNVKD tabKhoiTao="ban_lam_viec" />
-        )}
-        {tabHienTai === 'lich_cong_tac' && (
-          <TrangLichCongTac />
-        )}
-        {tabHienTai === 'bao_cao_tuan' && (
-          <NoiDungBaoCaoTuan />
-        )}
-      </div>
+      )}
     </div>
   );
 }
 
 export default function TrangBanLamViec() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Đang nạp bàn làm việc...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-xs text-muted-foreground">Đang tải bàn làm việc...</div>}>
       <NoiDungBanLamViecHopNhat />
     </Suspense>
   );

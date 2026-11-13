@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Send, Printer, Calendar, DollarSign, MapPin, Users, Target, FileSpreadsheet, ExternalLink, FileText, MessageSquareQuote } from 'lucide-react';
+import Link from 'next/link';
+import { Save, Send, Printer, Calendar, DollarSign, MapPin, Users, Target, FileSpreadsheet, ExternalLink, FileText, MessageSquareQuote, PhoneCall, Car, Building2 } from 'lucide-react';
 import type { KeHoachTuan, LoaiMucTieuThang } from '../../thu_vien/types/ke_hoach';
 import type { BaoCaoKeHoachTuan } from '../../thu_vien/types/bao_cao_ke_hoach';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
@@ -67,6 +68,9 @@ export default function DrawerTongKetTuan({
   const ds = keHoach?.danh_sach_tac_chien ?? [];
   const soHoanThanh = ds.filter((x) => x.da_hoan_thanh || (x as any).trang_thai_vat_chung === 'da_lay').length;
   const tyLeHoanThanh = ds.length > 0 ? Math.round((soHoanThanh / ds.length) * 100) : 0;
+  const soCuocGoi = ds.filter((x) => x.hinh_thuc === 'goi_dien').length;
+  const soGapTrucTiep = ds.filter((x) => x.hinh_thuc === 'gap_mat').length;
+  const soViecDuAn = ds.filter((x) => Boolean(x.du_an_id || x.du_an_du_kien)).length;
 
   useEffect(() => {
     if (baoCaoHienTai) {
@@ -157,19 +161,41 @@ export default function DrawerTongKetTuan({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/60 text-center">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 pt-2 border-t border-border/60 text-center">
             <div className="p-2 bg-background rounded-lg">
               <span className="text-[10px] text-muted-foreground block">Tổng việc</span>
-              <span className="text-lg font-black text-foreground">{ds.length}</span>
+              <span className="text-base font-black text-foreground">{ds.length}</span>
             </div>
             <div className="p-2 bg-background rounded-lg">
               <span className="text-[10px] text-muted-foreground block">Đã xong</span>
-              <span className="text-lg font-black text-emerald-600">{soHoanThanh}</span>
+              <span className="text-base font-black text-emerald-600">{soHoanThanh}</span>
             </div>
             <div className="p-2 bg-background rounded-lg">
               <span className="text-[10px] text-muted-foreground block">Hoàn thành</span>
-              <span className="text-lg font-black text-primary">{tyLeHoanThanh}%</span>
+              <span className="text-base font-black text-primary">{tyLeHoanThanh}%</span>
             </div>
+            <div className="p-2 bg-background rounded-lg">
+              <span className="text-[10px] text-muted-foreground block">Cuộc gọi</span>
+              <span className="text-base font-black text-blue-600">{soCuocGoi}</span>
+            </div>
+            <div className="p-2 bg-background rounded-lg">
+              <span className="text-[10px] text-muted-foreground block">Gặp mặt</span>
+              <span className="text-base font-black text-teal-600">{soGapTrucTiep}</span>
+            </div>
+            <div className="p-2 bg-background rounded-lg">
+              <span className="text-[10px] text-muted-foreground block">Dự án</span>
+              <span className="text-base font-black text-purple-600">{soViecDuAn}</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
+            <span className="text-muted-foreground text-[11px]">Tự động đồng bộ từ Bàn làm việc &amp; CRM</span>
+            <Link
+              href="/bao-cao-tuan"
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+            >
+              <span>Xem bảng chi tiết dòng tiền &amp; dự án VDCD</span>
+              <ExternalLink className="size-3" />
+            </Link>
           </div>
         </div>
 

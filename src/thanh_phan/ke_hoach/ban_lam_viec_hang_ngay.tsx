@@ -38,7 +38,8 @@ import {
   Share2,
   Layers,
   RotateCcw,
-  ListTodo
+  ListTodo,
+  BarChart3
 } from 'lucide-react';
 import { moZaloXinDuyetLich } from '../../thu_vien/utils/chia_se_zalo_lich';
 import ModalFormCongViecDaNang, { type KieuCongViec } from './modal_form_cong_viec_da_nang';
@@ -104,6 +105,10 @@ export interface DoiTuongThucThiTask {
 }
 
 interface Props {
+  cheDoXem?: 'tuan' | 'thang';
+  onDoiCheDoXem?: (mode: 'tuan' | 'thang') => void;
+  onMoBaoCaoTuan?: () => void;
+  tyLeHoanThanh?: number;
   keHoachTuan: KeHoachTuan | null;
   keHoachThang?: KeHoachThang | null;
   nhanVienId?: string;
@@ -275,6 +280,10 @@ interface MentionItem {
 }
 
 export default function BanLamViecHangNgay({
+  cheDoXem = 'tuan',
+  onDoiCheDoXem,
+  onMoBaoCaoTuan,
+  tyLeHoanThanh,
   keHoachTuan,
   keHoachThang,
   nhanVienId,
@@ -1764,47 +1773,87 @@ export default function BanLamViecHangNgay({
 
   return (
     <div className="space-y-4">
-      {/* THANH ĐIỀU HƯỚNG: LỊCH TÁC NGHIỆP TUẦN & YÊU CẦU HỖ TRỢ */}
+      {/* THANH ĐIỀU HƯỚNG TINH GỌN: CHẾ ĐỘ XEM, HỖ TRỢ, BÁO CÁO TUẦN & THÊM VIỆC */}
       <div className="rounded-2xl border border-border bg-card p-2.5 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <div className="inline-flex items-center rounded-xl bg-muted/60 p-1 text-xs font-semibold gap-1">
-            <button
-              type="button"
-              onClick={() => setTabHienThi('lich_tuan')}
-              className={cn(
-                'h-8 px-3.5 rounded-lg inline-flex items-center gap-2 transition cursor-pointer',
-                tabHienThi === 'lich_tuan'
-                  ? 'bg-card text-foreground shadow-2xs font-bold border border-border/70'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Calendar className="size-4 text-blue-600" />
-              <span>Lịch tác nghiệp tuần (7 ngày)</span>
-            </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 1. Bộ chuyển View: [ 📅 Tuần | 📆 Tháng ] */}
+          {onDoiCheDoXem && (
+            <div className="inline-flex items-center rounded-xl bg-muted/70 p-1 text-xs font-semibold gap-1">
+              <button
+                type="button"
+                onClick={() => onDoiCheDoXem('tuan')}
+                className={cn(
+                  'h-8 px-3 rounded-lg inline-flex items-center gap-1.5 transition cursor-pointer',
+                  cheDoXem === 'tuan'
+                    ? 'bg-card text-foreground shadow-2xs font-bold border border-border/70'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Calendar className="size-3.5 text-blue-600" />
+                <span>Tuần</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onDoiCheDoXem('thang')}
+                className={cn(
+                  'h-8 px-3 rounded-lg inline-flex items-center gap-1.5 transition cursor-pointer',
+                  cheDoXem === 'thang'
+                    ? 'bg-card text-foreground shadow-2xs font-bold border border-border/70'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <CalendarClock className="size-3.5 text-emerald-600" />
+                <span>Tháng</span>
+              </button>
+            </div>
+          )}
 
-            <button
-              type="button"
-              onClick={() => setTabHienThi('yeu_cau_ho_tro')}
-              className={cn(
-                'h-8 px-3.5 rounded-lg inline-flex items-center gap-2 transition cursor-pointer',
-                tabHienThi === 'yeu_cau_ho_tro'
-                  ? 'bg-card text-foreground shadow-2xs font-bold border border-border/70'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Sparkles className="size-4 text-amber-500" />
-              <span>Yêu cầu hỗ trợ</span>
-              {soYeuCauCanXuLy > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-800 text-[10px] font-bold">
-                  {soYeuCauCanXuLy}
-                </span>
-              )}
-            </button>
-          </div>
+          {/* 2. Nút chuyển xem Yêu cầu hỗ trợ */}
+          <button
+            type="button"
+            onClick={() => setTabHienThi(tabHienThi === 'yeu_cau_ho_tro' ? 'lich_tuan' : 'yeu_cau_ho_tro')}
+            className={cn(
+              'h-8 px-3 rounded-xl border text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer',
+              tabHienThi === 'yeu_cau_ho_tro'
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-300'
+                : 'bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground'
+            )}
+            title="Xem và xử lý các yêu cầu phối hợp kỹ thuật / báo giá"
+          >
+            <Sparkles className="size-3.5 text-amber-500" />
+            <span>Yêu cầu hỗ trợ</span>
+            {soYeuCauCanXuLy > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-black">
+                {soYeuCauCanXuLy}
+              </span>
+            )}
+          </button>
         </div>
 
-        {/* Cụm Thao tác Nhanh & Ô Tìm Kiếm Quick Finder */}
+        {/* Cụm Thao tác Nhanh: [ 📊 Báo cáo tuần ] + [ + Thêm việc ] */}
         <div className="flex items-center gap-2 flex-wrap">
+          {onMoBaoCaoTuan && (
+            <button
+              type="button"
+              onClick={onMoBaoCaoTuan}
+              className="h-8.5 px-3.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold inline-flex items-center gap-2 transition cursor-pointer shadow-2xs"
+              title="Mở bảng tổng kết tự động và nộp báo cáo tuần"
+            >
+              <BarChart3 className="size-3.5 text-rose-600" />
+              <span>Báo cáo tuần</span>
+              <span
+                className={cn(
+                  'px-1.5 py-0.5 rounded-md text-[10.5px] font-black',
+                  (tyLeHoanThanh ?? 0) >= 80
+                    ? 'bg-emerald-500/15 text-emerald-700'
+                    : 'bg-amber-500/15 text-amber-700'
+                )}
+              >
+                {tyLeHoanThanh ?? 0}%
+              </span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => moFormThemCongViec(ngayChon, 'goi_dien')}
@@ -1812,7 +1861,7 @@ export default function BanLamViecHangNgay({
             title="Bấm vào để mở Form nhập công việc cho Lịch"
           >
             <Plus className="size-3.5 stroke-[2.5]" />
-            <span>+ Thêm công việc vào Lịch</span>
+            <span>+ Thêm việc</span>
           </button>
 
           {/* Ô Tìm nhanh Khách hàng / Dự án (Ctrl+K) */}
