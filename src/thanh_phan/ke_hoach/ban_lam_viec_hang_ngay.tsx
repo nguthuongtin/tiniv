@@ -39,7 +39,8 @@ import {
   Layers,
   RotateCcw,
   ListTodo,
-  BarChart3
+  BarChart3,
+  FileSpreadsheet
 } from 'lucide-react';
 import { moZaloXinDuyetLich } from '../../thu_vien/utils/chia_se_zalo_lich';
 import ModalFormCongViecDaNang, { type KieuCongViec } from './modal_form_cong_viec_da_nang';
@@ -1854,6 +1855,15 @@ export default function BanLamViecHangNgay({
             </button>
           )}
 
+          <a
+            href="/bao-cao-tuan"
+            className="h-8.5 px-3 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-800 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+            title="Mở Báo cáo tuần chuẩn VDCD & Xuất Excel"
+          >
+            <FileSpreadsheet className="size-3.5 text-rose-600" />
+            <span>Báo cáo tuần &amp; Xuất Excel</span>
+          </a>
+
           <button
             type="button"
             onClick={() => moFormThemCongViec(ngayChon, 'goi_dien')}
@@ -1980,16 +1990,9 @@ export default function BanLamViecHangNgay({
         <>
           {/* GIAO DIỆN LỊCH 7 CỘT (NHƯ LỊCH CÔNG TÁC, NGÀY HÔM NAY TO NHẤT) */}
           <div className="bg-card rounded-2xl border border-border shadow-xs overflow-hidden">
-            {/* DESKTOP: 7 CỘT CHUẨN GOOGLE CALENDAR (Hôm nay 1.75fr to nhất) */}
+            {/* DESKTOP: 7 CỘT ĐỀU NHAU CHUẨN MỰC (Hôm nay viền xanh nổi bật, không lệch cột) */}
             <div className="hidden sm:block overflow-x-auto">
-              <div
-                className="min-w-[1080px] grid divide-x divide-border"
-                style={{
-                  gridTemplateColumns: cacNgayTrongTuan
-                    .map((n) => (n.iso === homNayISO ? '1.75fr' : '1fr'))
-                    .join(' ')
-                }}
-              >
+              <div className="min-w-[1080px] grid grid-cols-7 divide-x divide-border">
                 {cacNgayTrongTuan.map((cotNgay) => {
                   const laHomNay = cotNgay.iso === homNayISO;
                   const dangChon = cotNgay.iso === ngayChon;

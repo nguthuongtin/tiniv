@@ -123,6 +123,27 @@ export interface BaoCaoTuanVDCD {
   ngay_duyet?: string | null;
   ghi_chu_chung?: string | null;
 
+  // Dữ liệu mở rộng mẫu chuẩn Sales VDCD (Google Sheet template)
+  kpi_tuan_qua?: {
+    doanh_so_muc_tieu: number;
+    doanh_so_thuc_te: number;
+    khach_moi_muc_tieu: number;
+    khach_moi_thuc_te: number;
+    cuoc_gap_muc_tieu: number;
+    cuoc_gap_thuc_te: number;
+    hop_dong_muc_tieu: number;
+    hop_dong_thuc_te: number;
+  };
+  du_an_trong_diem_ids?: string[];
+  cam_ket_tuan_toi?: {
+    doanh_so: { target: number; min: number; max: number };
+    khach_moi: { target: number; min: number; max: number };
+    cuoc_hen: { target: number; min: number; max: number };
+    bao_gia: { target: number; min: number; max: number };
+    hop_dong: { target: number; min: number; max: number };
+  };
+  ghi_chu_lich_ngay?: Record<string, string>;
+
   ngay_tao: string;
   ngay_cap_nhat: string;
 }
