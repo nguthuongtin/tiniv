@@ -530,15 +530,15 @@ export default function TrangLichCongTac() {
               href="/ban-lam-viec?tab=ban_lam_viec"
               className="h-8 px-3.5 rounded-lg inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition cursor-pointer"
             >
-              <ListTodo className="size-4 text-blue-600" />
-              <span>Bàn làm việc (Hôm nay)</span>
+              <CalendarCheck className="size-4 text-blue-600" />
+              <span>Bàn làm việc &amp; Lịch tuần</span>
             </Link>
 
             <div
               className="h-8 px-3.5 rounded-lg inline-flex items-center gap-2 bg-white text-slate-900 shadow-2xs font-bold"
             >
-              <CalendarCheck className="size-4 text-emerald-600" />
-              <span>Lịch công tác (Tuần &amp; Tháng)</span>
+              <CalendarIcon className="size-4 text-emerald-600" />
+              <span>Lịch tháng</span>
             </div>
 
             <Link

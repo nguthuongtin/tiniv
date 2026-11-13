@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ListTodo, CalendarCheck, BarChart3, Sparkles } from 'lucide-react';
+import { ListTodo, CalendarCheck, Calendar, BarChart3, Sparkles } from 'lucide-react';
 import { Bo_Cuc_Trang } from '../../../thanh_phan/ui';
 import NoiDungBaoCaoTuan from '../../../thanh_phan/bao_cao_tuan_vdcd/noi_dung_bao_cao_tuan';
 
@@ -16,16 +16,16 @@ export default function TrangBaoCaoTuanPage() {
               href="/ban-lam-viec?tab=ban_lam_viec"
               className="h-8 px-3.5 rounded-lg inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition"
             >
-              <ListTodo className="size-4 text-blue-600" />
-              <span>Bàn làm việc (Hôm nay)</span>
+              <CalendarCheck className="size-4 text-blue-600" />
+              <span>Bàn làm việc &amp; Lịch tuần</span>
             </Link>
 
             <Link
               href="/ban-lam-viec?tab=lich_cong_tac"
               className="h-8 px-3.5 rounded-lg inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition"
             >
-              <CalendarCheck className="size-4 text-emerald-600" />
-              <span>Lịch công tác (Tuần &amp; Tháng)</span>
+              <Calendar className="size-4 text-emerald-600" />
+              <span>Lịch tháng</span>
             </Link>
 
             <div

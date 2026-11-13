@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import {
   ListTodo,
   CalendarCheck,
+  Calendar,
   BarChart3,
   Sparkles
 } from 'lucide-react';
@@ -55,8 +56,8 @@ function NoiDungBanLamViecHopNhat() {
                   : 'text-slate-600 hover:text-slate-900'
               )}
             >
-              <ListTodo className="size-4 text-blue-600" />
-              <span>Bàn làm việc (Hôm nay)</span>
+              <CalendarCheck className="size-4 text-blue-600" />
+              <span>Bàn làm việc &amp; Lịch tuần</span>
             </button>
 
             <button
@@ -69,8 +70,8 @@ function NoiDungBanLamViecHopNhat() {
                   : 'text-slate-600 hover:text-slate-900'
               )}
             >
-              <CalendarCheck className="size-4 text-emerald-600" />
-              <span>Lịch công tác (Tuần &amp; Tháng)</span>
+              <Calendar className="size-4 text-emerald-600" />
+              <span>Lịch tháng</span>
             </button>
 
             <button
