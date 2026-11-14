@@ -46,6 +46,7 @@ const DANH_MUC_SIDEBAR: MucSidebar[] = [
     quyen: 'lanh_dao.xem'
   },
   { href: '/lich-cong-tac', icon: CalendarCheck, nhan: 'Lịch làm việc', nhom: 'Module' },
+  { href: '/yeu-cau-ho-tro', icon: Sparkles, nhan: 'Yêu cầu hỗ trợ', nhom: 'Module' },
   { href: '/khach-hang', icon: Building2, nhan: 'Khách hàng', nhom: 'Module' },
   { href: '/ban-do-3d', icon: MapPin, nhan: 'Bản đồ địa bàn', nhom: 'Module' },
   { href: '/ho-so-du-an', icon: FolderKanban, nhan: 'Hồ sơ dự án', nhom: 'Module', quyen: 'du_an.xem' },
@@ -125,6 +126,7 @@ const useSidebarShared = () => {
 
   const nhomHienTai = (() => {
     if (pathname === '/') return 'Tổng quan';
+    if (pathname.startsWith('/yeu-cau-ho-tro')) return 'Yêu cầu hỗ trợ';
     if (pathname.startsWith('/lich-cong-tac') || pathname.startsWith('/ban-lam-viec') || pathname.startsWith('/ke-hoach')) return 'Lịch làm việc';
     if (pathname.startsWith('/bao-cao-tuan')) return 'Báo cáo tuần';
     if (pathname.startsWith('/bao-cao-cong-viec')) return 'Báo cáo công việc';

@@ -82,6 +82,13 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     icon: TrendingUp,
     placeholder_tim: 'Tìm kiếm nhân sự, dự án...'
   },
+    '/yeu-cau-ho-tro': {
+    nhan: 'Yêu cầu hỗ trợ',
+    nhan_mobile: 'Hỗ trợ',
+    mo_ta: 'Phối hợp phòng ban, hỗ trợ kỹ thuật, khảo sát & báo giá',
+    icon: Sparkles,
+    placeholder_tim: 'Tìm yêu cầu hỗ trợ, dự án...'
+  },
   '/lich-cong-tac': {
     nhan: 'Lịch làm việc',
     nhan_mobile: 'Lịch làm việc',
@@ -569,9 +576,7 @@ export default function ThanhPhanTopbar() {
                   ) : (
                     <div className="max-h-72 overflow-y-auto space-y-1.5 divide-y divide-slate-100">
                       {dsViecCho.slice(0, 8).map((yc) => (
-                        <Link
-                          key={yc.id}
-                          href="/ke-hoach"
+                        <Link key={yc.id} href="/yeu-cau-ho-tro"
                           onClick={() => setMoDropdownThongBao(false)}
                           className="block pt-2 first:pt-0 hover:bg-slate-50 p-2 rounded-xl transition"
                         >
@@ -595,11 +600,11 @@ export default function ThanhPhanTopbar() {
                       {dsViecCho.length > 8 && (
                         <div className="pt-2 text-center">
                           <Link
-                            href="/ke-hoach"
+                            href="/yeu-cau-ho-tro"
                             onClick={() => setMoDropdownThongBao(false)}
-                            className="inline-block text-[11px] font-semibold text-emerald-700 hover:underline py-1"
+                            className="inline-block text-[11px] font-semibold text-amber-700 hover:underline py-1"
                           >
-                            Xem thêm {dsViecCho.length - 8} yêu cầu khác trong Bàn làm việc →
+                            Xem tất cả {dsViecCho.length} yêu cầu trong Hộp yêu cầu hỗ trợ →
                           </Link>
                         </div>
                       )}
@@ -647,16 +652,16 @@ export default function ThanhPhanTopbar() {
             </Link>
 
             <Link
-              href="/ban-lam-viec"
+              href="/yeu-cau-ho-tro"
               onClick={() => setMoMenuMobile(false)}
               className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
             >
-              <div className="size-9 rounded-[14px] bg-emerald-500/15 text-[#107555] flex items-center justify-center shrink-0">
-                <ListTodo className="size-[18px]" />
+              <div className="size-9 rounded-[14px] bg-amber-500/15 text-amber-700 flex items-center justify-center shrink-0">
+                <Sparkles className="size-[18px]" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-bold leading-snug">Bàn làm việc</div>
-                <div className="text-[11px] text-slate-400 leading-tight">Tác nghiệp & công việc ngày</div>
+                <div className="font-bold leading-snug">Yêu cầu hỗ trợ</div>
+                <div className="text-[11px] text-slate-400 leading-tight">Phối hợp liên phòng ban</div>
               </div>
             </Link>
 

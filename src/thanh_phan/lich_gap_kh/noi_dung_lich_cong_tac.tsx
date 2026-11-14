@@ -26,6 +26,17 @@ import {
   Check
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import HopYeuCauPhoiHop from '../ke_hoach/hop_yeu_cau_phoi_hop';
+import ModalTaoYeuCauPhoiHop from '../ke_hoach/modal_tao_yeu_cau_phoi_hop';
+import {
+  danhSachYeuCauPhoiHop,
+  langNgheYeuCauPhoiHop,
+  type YeuCauPhoiHop
+} from '../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
+import { danhSachHoSoDuAn } from '../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
+import type { HoSoDuAn } from '../../thu_vien/types/du_an';
+
 import { cn } from '../../thu_vien/utils/cn';
 import { formatNgay } from '../../thu_vien/utils/format_ngay';
 import { useStoreXacThuc } from '../../thu_vien/zustand/store_xac_thuc';
@@ -196,6 +207,7 @@ const layPhutHienTai = (): number => {
 export interface PropsTrangLichCongTac {
   cheDoXemMacDinh?: CheDoXem;
   anThanh3Tab?: boolean;
+  tabKhoiTao?: 'lich_lam_viec' | 'yeu_cau_ho_tro';
 }
 
 export function NoiDungLichCongTac({
@@ -203,6 +215,25 @@ export function NoiDungLichCongTac({
   anThanh3Tab = true
 }: PropsTrangLichCongTac = {}) {
   const { nguoiDungHienTai } = useStoreXacThuc();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [tabChinh, setTabChinh] = useState<'lich_lam_viec' | 'yeu_cau_ho_tro'>('lich_lam_viec');
+  const [danhSachYeuCau, setDanhSachYeuCau] = useState<YeuCauPhoiHop[]>([]);
+  const [dsHoSoDuAn, setDsHoSoDuAn] = useState<HoSoDuAn[]>([]);
+  const [moModalTaoYeuCau, setMoModalTaoYeuCau] = useState(false);
+  const [duAnChoYeuCau, setDuAnChoYeuCau] = useState<HoSoDuAn | null>(null);
+
+  useEffect(() => {
+    const tabParam = searchParams?.get('tab');
+    if (tabParam === 'yeu_cau_ho_tro') {
+      setTabChinh('yeu_cau_ho_tro');
+    }
+  }, [searchParams]);
+
+  const soYeuCauCanXuLy = useMemo(() => {
+    return danhSachYeuCau.filter((yc) => yc.trang_thai !== 'da_hoan_thanh').length;
+  }, [danhSachYeuCau]);
+
   const homNayISO = useMemo(
     () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date()),
     []
@@ -259,12 +290,16 @@ export function NoiDungLichCongTac({
 
   const taiDanhMuc = useCallback(async () => {
     try {
-      const [khs, nlhs, nss, cns] = await Promise.all([
+      const [khs, nlhs, nss, cns, das, ycs] = await Promise.all([
         danhSachKhachHang(),
         danhSachNguoiLienHe(),
         danhSachNhanSu(),
-        danhSachChiNhanh()
+        danhSachChiNhanh(),
+        danhSachHoSoDuAn(),
+        danhSachYeuCauPhoiHop()
       ]);
+      setDsHoSoDuAn(Array.isArray(das) ? das : (das as any)?.mang || []);
+      setDanhSachYeuCau(Array.isArray(ycs) ? ycs : []);
       setDsKhachHang(Array.isArray(khs) ? khs : (khs as any)?.mang || []);
       setDsNguoiLienHe(Array.isArray(nlhs) ? nlhs : (nlhs as any)?.mang || []);
       const mangNS = Array.isArray(nss) ? nss : (nss as any)?.mang || [];
@@ -288,7 +323,13 @@ export function NoiDungLichCongTac({
       setDsLich(data);
       setDangTai(false);
     });
-    return () => unsub();
+    const unsubYC = langNgheYeuCauPhoiHop((data) => {
+      setDanhSachYeuCau(data);
+    });
+    return () => {
+      unsub();
+      unsubYC();
+    };
   }, [taiDanhMuc, nguoiDungHienTai?.id]);
 
   const mapNhanSu = useMemo(() => {
@@ -599,28 +640,76 @@ export function NoiDungLichCongTac({
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-5">
-      {!anThanh3Tab && (
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-2.5 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="inline-flex items-center rounded-xl bg-slate-100 p-1 text-xs font-semibold gap-1">
-              <Link
-                href="/ban-lam-viec?view=tuan"
-                className="h-8 px-3.5 rounded-lg inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 transition cursor-pointer"
-              >
-                <CalendarCheck className="size-4 text-blue-600" />
-                <span>Bàn làm việc &amp; Lịch tuần</span>
-              </Link>
+      {/* THANH ĐIỀU HƯỚNG TAB: LỊCH LÀM VIỆC & YÊU CẦU HỖ TRỢ */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setTabChinh('lich_lam_viec')}
+            className={cn(
+              'h-9 px-4 rounded-lg inline-flex items-center gap-2 text-xs font-bold transition cursor-pointer',
+              tabChinh === 'lich_lam_viec'
+                ? 'bg-white text-emerald-800 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            )}
+          >
+            <CalendarCheck className="size-4 text-emerald-600" />
+            <span>Lịch làm việc</span>
+          </button>
 
-              <div
-                className="h-8 px-3.5 rounded-lg inline-flex items-center gap-2 bg-white text-slate-900 shadow-2xs font-bold"
-              >
-                <CalendarIcon className="size-4 text-emerald-600" />
-                <span>Lịch tháng</span>
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setTabChinh('yeu_cau_ho_tro')}
+            className={cn(
+              'h-9 px-4 rounded-lg inline-flex items-center gap-2 text-xs font-bold transition cursor-pointer',
+              tabChinh === 'yeu_cau_ho_tro'
+                ? 'bg-white text-amber-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            )}
+          >
+            <Sparkles className="size-4 text-amber-500" />
+            <span>Yêu cầu hỗ trợ</span>
+            {soYeuCauCanXuLy > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-black">
+                {soYeuCauCanXuLy}
+              </span>
+            )}
+          </button>
         </div>
-      )}
+
+        {tabChinh === 'yeu_cau_ho_tro' && (
+          <button
+            type="button"
+            onClick={() => {
+              setDuAnChoYeuCau(null);
+              setMoModalTaoYeuCau(true);
+            }}
+            className="h-9 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs cursor-pointer transition active:scale-95"
+          >
+            <Plus className="size-4" />
+            <span>+ Gửi yêu cầu hỗ trợ</span>
+          </button>
+        )}
+      </div>
+
+      {tabChinh === 'yeu_cau_ho_tro' ? (
+        <HopYeuCauPhoiHop
+          danhSachYeuCau={danhSachYeuCau}
+          nguoiDungHienTai={nguoiDungHienTai}
+          onXoaYeuCau={(ycId) => setDanhSachYeuCau((prev) => prev.filter((x) => x.id !== ycId))}
+          onCapNhatYeuCau={(ycCapNhat) =>
+            setDanhSachYeuCau((prev) =>
+              prev.map((x) => (x.id === ycCapNhat.id ? ycCapNhat : x))
+            )
+          }
+          onMoModalTaoYeuCau={() => {
+            setDuAnChoYeuCau(null);
+            setMoModalTaoYeuCau(true);
+          }}
+          onMoChiTietDuAn={(daId) => router.push(`/ho-so-du-an/${daId}`)}
+        />
+      ) : (
+        <>
       <ThanhSoLieu
         items={[
           {
@@ -1797,6 +1886,9 @@ export function NoiDungLichCongTac({
           )}
         </>
       )}
+        </>
+      )}
+
 
       {/* Modal Đăng ký / Chỉnh sửa lịch */}
       <FormLichGapModal
@@ -1817,6 +1909,18 @@ export function NoiDungLichCongTac({
         khi_xoa={handleXoaLich}
         dang_xu_ly={dangLuu}
       />
+      {/* Modal Tạo Yêu Cầu Hỗ Trợ */}
+      <ModalTaoYeuCauPhoiHop
+        mo={moModalTaoYeuCau}
+        onDong={() => setMoModalTaoYeuCau(false)}
+        duAnMacDinh={duAnChoYeuCau}
+        danhSachDuAn={dsHoSoDuAn}
+        nguoiDungHienTai={nguoiDungHienTai}
+        onTaoThanhCong={(ycMoi) => {
+          setDanhSachYeuCau((prev) => [ycMoi, ...prev.filter((x) => x.id !== ycMoi.id)]);
+        }}
+      />
+
     </Bo_Cuc_Trang>
   );
 }
