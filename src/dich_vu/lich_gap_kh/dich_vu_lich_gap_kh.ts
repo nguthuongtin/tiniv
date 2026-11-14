@@ -104,6 +104,10 @@ const chuyenDoiDocThanhLichGap = (id: string, raw: DocumentData | undefined | nu
     noi_dung: r.noi_dung || null,
     ket_qua: r.ket_qua || null,
     trang_thai: (r.trang_thai as TrangThaiLichGap) || 'sap_toi',
+    la_phat_sinh: Boolean(r.la_phat_sinh),
+    la_tiep_can_moi: Boolean(r.la_tiep_can_moi),
+    loai_lich: r.loai_lich || 'cong_tac_di_chuyen',
+    loai_viec_vp: r.loai_viec_vp || undefined,
     nguon_lead_id: r.nguon_lead_id || null,
     du_an_id: r.du_an_id || null,
     nguoi_tao_id: r.nguoi_tao_id || '',
@@ -499,4 +503,43 @@ export const kiemTraTrungLich = (
   }
 
   return { trungCaNhan, trungChiNhanh };
+};
+
+
+export const taoNhanhViecVanPhong = async (params: {
+  tieu_de: string;
+  ngay: string;
+  gio_bat_dau?: string;
+  khach_hang_id?: string | null;
+  ten_khach_hang?: string;
+  du_an_id?: string | null;
+  loai_viec_vp?: import('../../thu_vien/types/lich_gap_kh').LoaiViecVanPhong;
+  la_tiep_can_moi?: boolean;
+  nguoi_phu_trach_id: string;
+  nguoi_tao_id: string;
+  chi_nhanh_id?: string | null;
+}): Promise<LichGapKH> => {
+  const gioBD = params.gio_bat_dau || '08:30';
+  const dto: TaoMoiLichGapDTO = {
+    tieu_de: params.tieu_de.trim(),
+    ten_khach_hang: params.ten_khach_hang?.trim() || 'Làm việc tại văn phòng',
+    khach_hang_id: params.khach_hang_id || null,
+    du_an_id: params.du_an_id || null,
+    ngay: params.ngay,
+    gio_bat_dau: gioBD,
+    gio_ket_thuc: '09:30',
+    dia_diem: 'Tại văn phòng',
+    noi_dung: params.tieu_de.trim(),
+    ket_qua: null,
+    trang_thai: 'da_duyet', // Việc tại văn phòng tự động duyệt không cần xin duyệt
+    la_phat_sinh: false,
+    la_tiep_can_moi: Boolean(params.la_tiep_can_moi),
+    loai_lich: 'van_phong',
+    loai_viec_vp: params.loai_viec_vp || 'khac',
+    nguoi_phu_trach_id: params.nguoi_phu_trach_id,
+    nguoi_tao_id: params.nguoi_tao_id,
+    chi_nhanh_id: params.chi_nhanh_id || null,
+    nguoi_tham_gia_ids: []
+  };
+  return await taoLichGapKHMoi(dto);
 };

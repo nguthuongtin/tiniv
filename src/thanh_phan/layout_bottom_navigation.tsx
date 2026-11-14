@@ -13,7 +13,7 @@ import { cn } from '../thu_vien/utils/cn';
 
 const MUC_DUOI_CO_BAN = [
   { href: '/', icon: Home, nhan: 'Tổng quan' },
-  { href: '/lich-cong-tac', icon: CalendarCheck, nhan: 'Lịch hẹn' },
+  { href: '/lich-cong-tac', icon: CalendarCheck, nhan: 'Lịch làm việc' },
   { href: '/ho-so-du-an', icon: FolderKanban, nhan: 'Dự án', laTrungTam: true },
   { href: '/khach-hang', icon: Building2, nhan: 'Khách hàng' },
   { href: '/bao-cao-cong-viec', icon: FileText, nhan: 'Báo cáo' }
@@ -37,7 +37,7 @@ export default function ThanhDieuHuongDuoi() {
                 ? pathname === '/' ||
                   pathname === '/tong-quan-lanh-dao' ||
                   (pathname.startsWith('/bao-cao') && !pathname.startsWith('/bao-cao-cong-viec'))
-                : pathname.startsWith(muc.href);
+                : pathname.startsWith(muc.href) || (muc.href === '/lich-cong-tac' && (pathname.startsWith('/ban-lam-viec') || pathname.startsWith('/ke-hoach')));
             const laGiua = 'laTrungTam' in muc && muc.laTrungTam;
 
             return (

@@ -21,13 +21,21 @@ import {
   ListFilter,
   ListTodo,
   BarChart3,
-  CalendarCheck
+  CalendarCheck,
+  Briefcase,
+  Check
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '../../thu_vien/utils/cn';
 import { formatNgay } from '../../thu_vien/utils/format_ngay';
 import { useStoreXacThuc } from '../../thu_vien/zustand/store_xac_thuc';
-import type { LichGapKH, TrangThaiLichGap } from '../../thu_vien/types/lich_gap_kh';
+import type {
+  LichGapKH,
+  TrangThaiLichGap,
+  LoaiLichLamViec,
+  LoaiViecVanPhong
+} from '../../thu_vien/types/lich_gap_kh';
+import { NHAN_LOAI_VIEC_VAN_PHONG } from '../../thu_vien/types/lich_gap_kh';
 import { DANH_SACH_TRANG_THAI_LICH_GAP } from '../../thu_vien/types/lich_gap_kh';
 import type { KhachHang, NguoiLienHe } from '../../thu_vien/types/khach_hang';
 import type { NhanSu, ChiNhanh } from '../../thu_vien/types/nhan_su';
@@ -37,6 +45,7 @@ import {
   taoLichGapKHMoi,
   capNhatLichGapKH,
   xoaLichGapKH,
+  taoNhanhViecVanPhong,
   type TaoMoiLichGapDTO,
   type CapNhatLichGapDTO
 } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
@@ -225,6 +234,10 @@ export function NoiDungLichCongTac({
   }, []);
   const [chiNhanhLoc, setChiNhanhLoc] = useState<string>('tat_ca');
   const [nhanSuLoc, setNhanSuLoc] = useState<string>('tat_ca');
+  const [locLoaiLich, setLocLoaiLich] = useState<'tat_ca' | 'cong_tac_di_chuyen' | 'van_phong'>('tat_ca');
+  const [tenViecVPNhanh, setTenViecVPNhanh] = useState('');
+  const [loaiViecVPNhanh, setLoaiViecVPNhanh] = useState<LoaiViecVanPhong>('goi_dien');
+  const [dangThemNhanhVP, setDangThemNhanhVP] = useState(false);
 
   useEffect(() => {
     setNgayChonTrongThang(ngayDangXem);
@@ -475,7 +488,51 @@ export function NoiDungLichCongTac({
     }
   };
 
-  const handleXoaLich = async (id: string, tenKH: string) => {
+  const handleThemNhanhViecVP = async () => {
+    if (!tenViecVPNhanh.trim()) return;
+    setDangThemNhanhVP(true);
+    try {
+      const lichMoi = await taoNhanhViecVanPhong({
+        tieu_de: tenViecVPNhanh.trim(),
+        ngay: ngayChonTuan || homNayISO,
+        gio_bat_dau: '08:30',
+        loai_viec_vp: loaiViecVPNhanh,
+        nguoi_phu_trach_id: nguoiDungHienTai?.id || '',
+        nguoi_tao_id: nguoiDungHienTai?.id || '',
+        chi_nhanh_id: nguoiDungHienTai?.chi_nhanh_id || null
+      });
+      setTenViecVPNhanh('');
+      setDsLich((prev) => [lichMoi, ...prev]);
+      void dongBoLichGapSangKeHoachTuanVaBaoCaoNgay({
+        lich: lichMoi,
+        nguoiThucHien: nguoiDungHienTai
+      });
+    } catch (err) {
+      console.error('Lỗi thêm nhanh việc VP:', err);
+      alert('Không thể thêm việc văn phòng. Vui lòng thử lại!');
+    } finally {
+      setDangThemNhanhVP(false);
+    }
+  };
+
+  const handleToggleXong = async (lich: LichGapKH, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const trangThaiMoi = lich.trang_thai === 'da_hoan_thanh' ? 'da_duyet' : 'da_hoan_thanh';
+    try {
+      await capNhatLichGapKH(lich.id, { trang_thai: trangThaiMoi }, nguoiDungHienTai?.id);
+      setDsLich((prev) =>
+        prev.map((x) => (x.id === lich.id ? { ...x, trang_thai: trangThaiMoi } : x))
+      );
+      void dongBoLichGapSangKeHoachTuanVaBaoCaoNgay({
+        lich: { ...lich, trang_thai: trangThaiMoi },
+        nguoiThucHien: nguoiDungHienTai
+      });
+    } catch (err) {
+      console.error('Lỗi cập nhật hoàn thành việc:', err);
+    }
+  };
+
+    const handleXoaLich = async (id: string, tenKH: string) => {
     if (!laQuanLy) {
       alert('Chỉ Cấp Quản lý mới có quyền xóa lịch làm việc/công tác đã tạo. Bạn có thể cập nhật nội dung hoặc dời lịch.');
       return;
@@ -794,15 +851,118 @@ export function NoiDungLichCongTac({
             </button>
           </div>
 
-          <Nut
-            kieu="primary"
-            kich_thuoc="sm"
-            onClick={() => handleMoThemNhanh(homNayISO, '09:00')}
-            className="hidden sm:inline-flex bg-[#107555] hover:bg-emerald-800 rounded-xl"
+          <div className="hidden sm:flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setGiaTriMacDinhModal({
+                  ngay: homNayISO,
+                  gio_bat_dau: '08:30',
+                  loai_lich: 'van_phong'
+                });
+                setLichDangSua(null);
+                setMoModal(true);
+              }}
+              className="h-8.5 px-3 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-700 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+            >
+              <Briefcase className="size-3.5" />
+              <span>+ Việc tại VP</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setGiaTriMacDinhModal({
+                  ngay: homNayISO,
+                  gio_bat_dau: '09:00',
+                  loai_lich: 'cong_tac_di_chuyen'
+                });
+                setLichDangSua(null);
+                setMoModal(true);
+              }}
+              className="h-8.5 px-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+            >
+              <Plus className="size-4" />
+              <span>+ Công tác ngoài</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* BỘ LỌC PHÂN LOẠI & THANH THÊM NHANH VIỆC TẠI VĂN PHÒNG */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        {/* Bộ lọc loại lịch: Tất cả, Công tác ngoài, Việc tại VP */}
+        <div className="inline-flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 gap-1 text-xs">
+          <button
+            type="button"
+            onClick={() => setLocLoaiLich('tat_ca')}
+            className={cn(
+              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer',
+              locLoaiLich === 'tat_ca'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-800'
+            )}
           >
-            <Plus className="size-4 mr-1.5" />
-            Đặt lịch gặp KH
-          </Nut>
+            Tất cả lịch
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocLoaiLich('cong_tac_di_chuyen')}
+            className={cn(
+              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1',
+              locLoaiLich === 'cong_tac_di_chuyen'
+                ? 'bg-white text-emerald-800 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-800'
+            )}
+          >
+            <span>🚗 Công tác ngoài</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocLoaiLich('van_phong')}
+            className={cn(
+              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1',
+              locLoaiLich === 'van_phong'
+                ? 'bg-white text-blue-800 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-800'
+            )}
+          >
+            <span>🏢 Việc tại VP</span>
+          </button>
+        </div>
+
+        {/* Thanh thêm nhanh việc tại văn phòng */}
+        <div className="flex-1 max-w-xl flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+          <input
+            type="text"
+            value={tenViecVPNhanh}
+            onChange={(e) => setTenViecVPNhanh(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleThemNhanhViecVP();
+            }}
+            placeholder="Gõ việc tại VP (VD: Gọi điện khách hàng, gửi báo giá...)"
+            className="flex-1 h-8 px-2.5 text-xs text-slate-900 placeholder:text-slate-400 bg-transparent focus:outline-none"
+          />
+          <select
+            value={loaiViecVPNhanh}
+            onChange={(e) => setLoaiViecVPNhanh(e.target.value as LoaiViecVanPhong)}
+            className="h-8 px-2 text-[11px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer focus:outline-none"
+          >
+            {(['goi_dien', 'gui_bao_gia', 'soan_hop_dong', 'cham_soc', 'hop_noi_bo', 'khac'] as LoaiViecVanPhong[]).map((k) => (
+              <option key={k} value={k}>
+                {NHAN_LOAI_VIEC_VAN_PHONG[k]}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => void handleThemNhanhViecVP()}
+            disabled={dangThemNhanhVP || !tenViecVPNhanh.trim()}
+            className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold inline-flex items-center gap-1 transition cursor-pointer shrink-0"
+          >
+            <Plus className="size-3.5" />
+            <span>Thêm</span>
+          </button>
         </div>
       </div>
 
@@ -859,14 +1019,40 @@ export function NoiDungLichCongTac({
                                 </div>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => handleMoThemNhanh(cotNgay.iso, '09:00')}
-                                className="size-7 rounded-lg bg-white border border-slate-200/80 text-slate-500 hover:text-emerald-700 hover:border-emerald-300 flex items-center justify-center transition cursor-pointer shadow-2xs"
-                                title="Thêm lịch vào ngày này"
-                              >
-                                <Plus className="size-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setGiaTriMacDinhModal({
+                                      ngay: cotNgay.iso,
+                                      gio_bat_dau: '08:30',
+                                      loai_lich: 'van_phong'
+                                    });
+                                    setLichDangSua(null);
+                                    setMoModal(true);
+                                  }}
+                                  className="size-6.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 flex items-center justify-center transition cursor-pointer shadow-2xs"
+                                  title="Thêm việc tại văn phòng"
+                                >
+                                  <Briefcase className="size-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setGiaTriMacDinhModal({
+                                      ngay: cotNgay.iso,
+                                      gio_bat_dau: '09:00',
+                                      loai_lich: 'cong_tac_di_chuyen'
+                                    });
+                                    setLichDangSua(null);
+                                    setMoModal(true);
+                                  }}
+                                  className="size-6.5 rounded-lg bg-white border border-slate-200/80 text-slate-500 hover:text-emerald-700 hover:border-emerald-300 flex items-center justify-center transition cursor-pointer shadow-2xs"
+                                  title="Thêm lịch công tác ngoài"
+                                >
+                                  <Plus className="size-3" />
+                                </button>
+                              </div>
                             </div>
 
                             {/* Danh sách thẻ sự kiện trong ngày */}
@@ -877,6 +1063,55 @@ export function NoiDungLichCongTac({
                                 const ttObj = DANH_SACH_TRANG_THAI_LICH_GAP.find(
                                   (t) => t.key === lich.trang_thai
                                 );
+                                const laViecVP = lich.loai_lich === 'van_phong';
+                                const daHoanThanh = lich.trang_thai === 'da_hoan_thanh';
+
+                                if (laViecVP) {
+                                  return (
+                                    <div
+                                      key={lich.id}
+                                      onClick={() => {
+                                        setLichDangSua(lich);
+                                        setMoModal(true);
+                                      }}
+                                      className={cn(
+                                        'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs space-y-1',
+                                        daHoanThanh
+                                          ? 'bg-slate-50/80 border-slate-200 opacity-70'
+                                          : 'bg-blue-50/70 border-blue-200/90 hover:bg-blue-100/70 border-l-4 border-l-blue-500'
+                                      )}
+                                    >
+                                      <div className="flex items-center justify-between gap-1">
+                                        <span className="text-[9.5px] font-bold text-blue-700 bg-white/90 px-1.5 py-0.5 rounded-md border border-blue-200/50">
+                                          🏢 {NHAN_LOAI_VIEC_VAN_PHONG[lich.loai_viec_vp || 'khac']}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => void handleToggleXong(lich, e)}
+                                          className={cn(
+                                            'size-5 rounded-md border flex items-center justify-center transition cursor-pointer shrink-0',
+                                            daHoanThanh
+                                              ? 'bg-emerald-600 border-emerald-600 text-white'
+                                              : 'bg-white border-slate-300 text-slate-400 hover:border-emerald-500'
+                                          )}
+                                          title={daHoanThanh ? 'Đã xong (Bấm để mở lại)' : 'Đánh dấu hoàn thành'}
+                                        >
+                                          <Check className="size-3" strokeWidth={3} />
+                                        </button>
+                                      </div>
+
+                                      <div className={cn('text-xs font-bold leading-snug line-clamp-2 text-slate-900', daHoanThanh && 'line-through text-slate-500')}>
+                                        {lich.noi_dung || lich.tieu_de || lich.ten_khach_hang}
+                                      </div>
+
+                                      {lich.ten_khach_hang && lich.ten_khach_hang !== 'Làm việc tại văn phòng' && (
+                                        <div className="text-[10.5px] text-slate-500 truncate">
+                                          {lich.ten_khach_hang}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                }
 
                                 return (
                                   <div

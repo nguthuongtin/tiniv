@@ -83,9 +83,9 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     placeholder_tim: 'Tìm kiếm nhân sự, dự án...'
   },
   '/lich-cong-tac': {
-    nhan: 'Lịch công tác',
-    nhan_mobile: 'Lịch hẹn',
-    mo_ta: 'Lịch hẹn gặp và làm việc với khách hàng',
+    nhan: 'Lịch làm việc',
+    nhan_mobile: 'Lịch làm việc',
+    mo_ta: 'Kế hoạch công tác và công việc hàng ngày',
     icon: Calendar,
     placeholder_tim: 'Tìm lịch hẹn...'
   },

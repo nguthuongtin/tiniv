@@ -26,7 +26,7 @@ import type {
   LichGapKH,
   TrangThaiLichGap
 } from '../../thu_vien/types/lich_gap_kh';
-import { DANH_SACH_TRANG_THAI_LICH_GAP } from '../../thu_vien/types/lich_gap_kh';
+import { DANH_SACH_TRANG_THAI_LICH_GAP, NHAN_LOAI_VIEC_VAN_PHONG, type LoaiLichLamViec, type LoaiViecVanPhong } from '../../thu_vien/types/lich_gap_kh';
 import type { KhachHang, NguoiLienHe } from '../../thu_vien/types/khach_hang';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
 import { danhSachNguoiLienHe } from '../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
@@ -66,6 +66,8 @@ export interface GiaTriMacDinhLichGap {
   noi_dung?: string | null;
   nguon_lead_id?: string | null;
   du_an_id?: string | null;
+  loai_lich?: LoaiLichLamViec;
+  loai_viec_vp?: LoaiViecVanPhong;
 }
 
 interface FormLichGapModalProps {
@@ -134,6 +136,8 @@ export default function FormLichGapModal({
   const [nguoiPhuTrachId, setNguoiPhuTrachId] = useState<string>('');
   const [nguoiThamGiaIds, setNguoiThamGiaIds] = useState<string[]>([]);
   const [trangThai, setTrangThai] = useState<TrangThaiLichGap>('da_duyet');
+  const [loaiLich, setLoaiLich] = useState<LoaiLichLamViec>('cong_tac_di_chuyen');
+  const [loaiViecVP, setLoaiViecVP] = useState<LoaiViecVanPhong>('goi_dien');
   const [laPhatSinh, setLaPhatSinh] = useState<boolean>(false);
   const [laTiepCanMoi, setLaTiepCanMoi] = useState<boolean>(false);
   const [lyDoDoiHuy, setLyDoDoiHuy] = useState<string>('');
@@ -177,6 +181,8 @@ export default function FormLichGapModal({
       setNguoiPhuTrachId(dang_sua.nguoi_phu_trach_id || nguoiDungId || '');
       setNguoiThamGiaIds(dang_sua.nguoi_tham_gia_ids || []);
       setTrangThai(dang_sua.trang_thai || 'da_duyet');
+      setLoaiLich(dang_sua.loai_lich || 'cong_tac_di_chuyen');
+      setLoaiViecVP(dang_sua.loai_viec_vp || 'goi_dien');
       setLaPhatSinh(Boolean(dang_sua.la_phat_sinh));
       setLaTiepCanMoi(Boolean(dang_sua.la_tiep_can_moi));
       setLyDoDoiHuy(dang_sua.ly_do_doi_huy || '');
@@ -463,7 +469,7 @@ export default function FormLichGapModal({
             <Calendar className="size-4.5" />
           </div>
           <span className="font-bold text-slate-900 text-base sm:text-lg">
-            {dang_sua ? 'Cập nhật lịch hẹn' : 'Đăng ký lịch hẹn'}
+            {dang_sua ? (loaiLich === 'van_phong' ? 'Cập nhật việc tại văn phòng' : 'Cập nhật lịch công tác') : (loaiLich === 'van_phong' ? 'Thêm việc tại văn phòng' : 'Đăng ký lịch công tác')}
           </span>
         </div>
       }
@@ -483,7 +489,7 @@ export default function FormLichGapModal({
           </div>
 
           <div className="flex items-center gap-2.5 ml-auto">
-            {!dang_sua && (
+            {!dang_sua && loaiLich === 'cong_tac_di_chuyen' && (
               <button
                 type="button"
                 onClick={() => void handleLuuVaGuiZalo()}
@@ -511,6 +517,64 @@ export default function FormLichGapModal({
       }
     >
       <form id="form-lich-gap-kh" onSubmit={handleSubmit} className="space-y-4">
+        {/* Bộ chọn phân loại: Công tác ngoài vs Việc tại VP */}
+        <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+          <button
+            type="button"
+            onClick={() => {
+              setLoaiLich('cong_tac_di_chuyen');
+              if (!laQuanLy && !dang_sua) setTrangThai('cho_duyet');
+            }}
+            className={cn(
+              'h-9 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer',
+              loaiLich === 'cong_tac_di_chuyen'
+                ? 'bg-white text-emerald-800 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            )}
+          >
+            <span>🚗 Công tác di chuyển</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setLoaiLich('van_phong');
+              if (!dang_sua) setTrangThai('da_duyet');
+            }}
+            className={cn(
+              'h-9 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer',
+              loaiLich === 'van_phong'
+                ? 'bg-white text-blue-800 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            )}
+          >
+            <span>🏢 Làm việc tại VP</span>
+          </button>
+        </div>
+
+        {loaiLich === 'van_phong' && (
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-800">Loại tác nghiệp văn phòng</label>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+              {(['goi_dien', 'gui_bao_gia', 'soan_hop_dong', 'cham_soc', 'hop_noi_bo', 'khac'] as LoaiViecVanPhong[]).map((lv) => (
+                <button
+                  key={lv}
+                  type="button"
+                  onClick={() => setLoaiViecVP(lv)}
+                  className={cn(
+                    'h-8 px-2 rounded-lg text-[11px] font-bold border transition text-center cursor-pointer',
+                    loaiViecVP === lv
+                      ? 'bg-blue-50 border-blue-400 text-blue-700 shadow-2xs'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  {NHAN_LOAI_VIEC_VAN_PHONG[lv]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 1. Khách hàng */}
         <div className="space-y-1.5" ref={dropdownKHRef}>
           <label className="block text-xs font-bold text-slate-800">
@@ -919,7 +983,7 @@ export default function FormLichGapModal({
               onChange={(e) => setLaTiepCanMoi(e.target.checked)}
               className="size-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
             />
-            <span>Tiếp cận khách hàng mới (KPI tuần)</span>
+            <span>Tiếp cận khách hàng mới</span>
           </label>
 
           {!dang_sua && (

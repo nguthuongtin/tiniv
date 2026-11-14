@@ -276,7 +276,7 @@ export default function BangBaoCaoTuanChuanVDCD({
             id: `lich_${l.id}`,
             tieuDe: l.ten_khach_hang || 'Khách hàng mới',
             moTa: `Lịch công tác ${l.ngay}${l.gio_bat_dau ? ` [${l.gio_bat_dau}]` : ''}: ${l.noi_dung || l.tieu_de || 'Gặp gỡ trao đổi'} (${lyDo})`,
-            loaiNguon: 'Lịch công tác',
+            loaiNguon: 'Lịch làm việc',
             daChon: true
           });
         }
@@ -373,6 +373,35 @@ export default function BangBaoCaoTuanChuanVDCD({
         }
       }
     });
+    // 2.1 Quét từ Lịch làm việc (việc VP gửi báo giá hoặc lịch gặp báo giá)
+    dsLichGap.forEach((l) => {
+      if (
+        !l.da_xoa &&
+        l.ngay >= infoTuan.ngayBatDau &&
+        l.ngay <= infoTuan.ngayKetThuc &&
+        (l.nguoi_phu_trach_id === nhanSu.id || l.nguoi_tao_id === nhanSu.id)
+      ) {
+        const txt = ((l.tieu_de || '') + ' ' + (l.noi_dung || '') + ' ' + (l.ket_qua || '')).toLowerCase();
+        const laBaoGia =
+          l.loai_viec_vp === 'gui_bao_gia' ||
+          txt.includes('báo giá') ||
+          txt.includes('gửi bg') ||
+          txt.includes('chào giá');
+        if (laBaoGia) {
+          const key = l.du_an_id || l.khach_hang_id || (l.ten_khach_hang || 'bg_lich').trim().toLowerCase();
+          if (!mapBaoGia.has(key)) {
+            mapBaoGia.set(key, {
+              id: `lich_bg_${l.id}`,
+              tieuDe: l.ten_khach_hang || l.tieu_de || 'Gửi báo giá',
+              moTa: `Lịch làm việc ${l.ngay}: ${l.noi_dung || l.tieu_de || 'Gửi báo giá'}`,
+              loaiNguon: 'Lịch làm việc',
+              daChon: true
+            });
+          }
+        }
+      }
+    });
+
 
     const dsChiTietBaoGia = Array.from(mapBaoGia.values());
     const tongBaoGia = dsChiTietBaoGia.length;
@@ -409,7 +438,7 @@ export default function BangBaoCaoTuanChuanVDCD({
             id: `da_lam_${da.id}`,
             tieuDe: da.ten_du_an,
             moTa: `Lịch công tác ${l.ngay}: ${l.noi_dung || l.tieu_de || 'Làm việc dự án'}`,
-            loaiNguon: 'Lịch công tác',
+            loaiNguon: 'Lịch làm việc',
             daChon: true
           });
         }
@@ -487,6 +516,38 @@ export default function BangBaoCaoTuanChuanVDCD({
         }
       }
     });
+    // 4.1 Quét từ Lịch làm việc (soạn / chốt hợp đồng)
+    dsLichGap.forEach((l) => {
+      if (
+        !l.da_xoa &&
+        l.ngay >= infoTuan.ngayBatDau &&
+        l.ngay <= infoTuan.ngayKetThuc &&
+        (l.nguoi_phu_trach_id === nhanSu.id || l.nguoi_tao_id === nhanSu.id)
+      ) {
+        const txt = ((l.tieu_de || '') + ' ' + (l.noi_dung || '') + ' ' + (l.ket_qua || '')).toLowerCase();
+        const laHopDong =
+          l.loai_viec_vp === 'soan_hop_dong' ||
+          txt.includes('ký hợp đồng') ||
+          txt.includes('ký hđ') ||
+          txt.includes('chốt hđ') ||
+          txt.includes('chốt hợp đồng');
+        const daXong = l.trang_thai === 'da_hoan_thanh' || Boolean(l.ket_qua);
+        if (laHopDong && daXong) {
+          const key = l.du_an_id || l.khach_hang_id || (l.ten_khach_hang || 'hd_lich').trim().toLowerCase();
+          if (!mapHopDong.has(key)) {
+            mapHopDong.set(key, {
+              id: `lich_hd_${l.id}`,
+              tieuDe: l.ten_khach_hang || l.tieu_de || 'Ký kết hợp đồng',
+              moTa: `Lịch làm việc ${l.ngay}: ${l.noi_dung || l.tieu_de || 'Ký kết hợp đồng'}${l.ket_qua ? ` (KQ: ${l.ket_qua})` : ''}`,
+              loaiNguon: 'Lịch làm việc',
+              soTien: 0,
+              daChon: true
+            });
+          }
+        }
+      }
+    });
+
 
     const dsChiTietHopDong = Array.from(mapHopDong.values());
     const tongHopDong = dsChiTietHopDong.length;
@@ -535,7 +596,7 @@ export default function BangBaoCaoTuanChuanVDCD({
     return {
       khachMoi: {
         thucTe: tongKhachMoi,
-        chiTiet: `${tongKhachMoi} KH mới (quét từ Bàn làm việc & Lịch gặp)`,
+        chiTiet: `${tongKhachMoi} KH mới (quét từ Lịch làm việc & CRM)`,
         danhSach: dsChiTietKhachMoi
       },
       baoGia: {
@@ -733,7 +794,7 @@ export default function BangBaoCaoTuanChuanVDCD({
     setKpiDoanhThu((prev) => ({ ...prev, thucTe: soLieuThucTeTuBanLamViec.doanhThu.thucTe, daSuaTay: false }));
     setThongBao({
       loai: 'tc',
-      nd: 'Đã cập nhật lại toàn bộ số liệu thực tế tự động từ Bàn làm việc & CRM!'
+      nd: 'Đã cập nhật lại toàn bộ số liệu thực tế tự động từ Lịch làm việc & CRM!'
     });
   };
 
@@ -896,10 +957,12 @@ export default function BangBaoCaoTuanChuanVDCD({
       const lichTrongNgay = dsLichTuanToiCuaNV.filter((l) => l.ngay === d.ngay);
       const dsDongLich = lichTrongNgay.map((l) => {
         const gio = l.gio_bat_dau ? `[${l.gio_bat_dau}] ` : '';
-        const ten = l.ten_khach_hang || 'Khách hàng';
-        const diaDiem = l.dia_diem ? ` (${l.dia_diem})` : '';
-        const nd = l.noi_dung || l.tieu_de || 'Lịch công tác';
-        return `${gio}${ten}${diaDiem} - ${nd}`.trim();
+        const isVP = l.loai_lich === 'van_phong';
+        const tagLoai = isVP ? '[VP] ' : '';
+        const ten = l.ten_khach_hang || l.tieu_de || 'Khách hàng';
+        const diaDiem = (!isVP && l.dia_diem) ? ` (${l.dia_diem})` : '';
+        const nd = l.noi_dung || l.tieu_de || (isVP ? 'Công việc VP' : 'Lịch công tác');
+        return `${gio}${tagLoai}${ten}${diaDiem} - ${nd}`.trim();
       });
 
       // 2. Nhiệm vụ trên Bàn làm việc (ItemKeHoachTuan) được xếp cho ngày này
@@ -984,7 +1047,7 @@ export default function BangBaoCaoTuanChuanVDCD({
     setGhiChuLichNgay(resetMap);
     setThongBao({
       loai: 'tc',
-      nd: 'Đã tải lại toàn bộ nội dung công việc từ Bàn làm việc & Lịch công tác tuần tới.'
+      nd: 'Đã tải lại toàn bộ nội dung công việc từ Lịch làm việc tuần tới.'
     });
   };
 
@@ -1419,7 +1482,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                 Đánh giá kết quả thực hiện chỉ tiêu tuần qua
               </h3>
               <p className="text-[11px] text-muted-foreground">
-                Tự động theo dõi &amp; tổng hợp từ kết quả công việc trên Bàn làm việc, Lịch công tác &amp; Hồ sơ dự án
+                Tự động theo dõi &amp; tổng hợp từ Lịch làm việc &amp; Hồ sơ dự án
               </p>
             </div>
           </div>
@@ -1431,7 +1494,7 @@ export default function BangBaoCaoTuanChuanVDCD({
             title="Quét lại kết quả thực tế mới nhất từ Bàn làm việc và CRM"
           >
             <RefreshCw className="size-3.5" />
-            <span>Lấy tự động từ Bàn làm việc &amp; CRM</span>
+            <span>Lấy tự động từ Lịch làm việc &amp; CRM</span>
           </button>
         </div>
 
@@ -1810,8 +1873,17 @@ export default function BangBaoCaoTuanChuanVDCD({
                                     <span className="font-mono text-[11px] font-bold text-primary">
                                       [{l.gio_bat_dau || 'Lịch hẹn'}]
                                     </span>
+                                    {l.loai_lich === 'van_phong' ? (
+                                      <span className="px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 text-[9.5px] font-bold">
+                                        🏢 Việc VP
+                                      </span>
+                                    ) : (
+                                      <span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 text-[9.5px] font-bold">
+                                        🚗 Công tác
+                                      </span>
+                                    )}
                                     <span className="font-bold text-foreground text-xs">
-                                      {l.ten_khach_hang}
+                                      {l.ten_khach_hang || l.tieu_de}
                                     </span>
                                     {l.dia_diem && (
                                       <span className="text-muted-foreground text-[11px] inline-flex items-center gap-0.5">
@@ -2284,7 +2356,7 @@ export default function BangBaoCaoTuanChuanVDCD({
               title="Khôi phục toàn bộ nội dung tự động từ Bàn làm việc và Lịch công tác tuần tới"
             >
               <RefreshCw className="size-3.5" />
-              <span>Tải lại từ Lịch &amp; Bàn làm việc</span>
+              <span>Tải lại từ Lịch làm việc</span>
             </button>
             <span className="text-xs font-bold text-primary">
               {infoTuanToi.nhanTieuDe} ({infoTuanToi.khoangNgayNhan})
@@ -2298,7 +2370,7 @@ export default function BangBaoCaoTuanChuanVDCD({
               <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
                 <th className="py-2.5 px-3 text-center w-12">STT</th>
                 <th className="py-2.5 px-4 text-left w-52">Lịch tuần / Ngày</th>
-                <th className="py-2.5 px-4 text-left">Nội dung công việc chi tiết (Đã đồng bộ từ Bàn làm việc &amp; Lịch)</th>
+                <th className="py-2.5 px-4 text-left">Nội dung công việc chi tiết (Đã đồng bộ từ Lịch làm việc)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -2482,7 +2554,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                                   className={cn(
                                     'text-[10px] font-semibold px-2 py-0.5 rounded-full',
                                     item.loaiNguon === 'Bàn làm việc' && 'bg-blue-100 text-blue-800',
-                                    item.loaiNguon === 'Lịch công tác' && 'bg-amber-100 text-amber-800',
+                                    item.loaiNguon === 'Lịch làm việc' || item.loaiNguon === 'Lịch công tác' && 'bg-amber-100 text-amber-800',
                                     item.loaiNguon === 'Hồ sơ dự án' && 'bg-purple-100 text-purple-800',
                                     item.loaiNguon === 'Phát sinh ngoài' && 'bg-emerald-100 text-emerald-800',
                                     item.loaiNguon === 'Hợp đồng ký mới' && 'bg-emerald-100 text-emerald-800',

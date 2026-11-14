@@ -1,3 +1,22 @@
+export type LoaiLichLamViec = 'cong_tac_di_chuyen' | 'van_phong';
+
+export type LoaiViecVanPhong =
+  | 'goi_dien'
+  | 'gui_bao_gia'
+  | 'soan_hop_dong'
+  | 'cham_soc'
+  | 'hop_noi_bo'
+  | 'khac';
+
+export const NHAN_LOAI_VIEC_VAN_PHONG: Record<LoaiViecVanPhong, string> = {
+  goi_dien: 'Gọi điện',
+  gui_bao_gia: 'Gửi báo giá',
+  soan_hop_dong: 'Soạn HĐ / Đơn hàng',
+  cham_soc: 'Chăm sóc KH',
+  hop_noi_bo: 'Họp nội bộ',
+  khac: 'Việc VP khác'
+};
+
 export type TrangThaiLichGap =
   | 'cho_duyet'
   | 'da_duyet'
@@ -27,6 +46,8 @@ export interface LichGapKH {
   trang_thai: TrangThaiLichGap;
   la_phat_sinh?: boolean;
   la_tiep_can_moi?: boolean;
+  loai_lich?: LoaiLichLamViec; // 'cong_tac_di_chuyen' (mặc định) | 'van_phong'
+  loai_viec_vp?: LoaiViecVanPhong;
   ghi_chu_duyet?: string | null;
   nguoi_duyet_id?: string | null;
   ten_nguoi_duyet?: string | null;

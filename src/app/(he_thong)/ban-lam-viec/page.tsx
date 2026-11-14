@@ -1,14 +1,18 @@
 'use client';
 
-import React, { Suspense } from 'react';
-import { NoiDungKeHoachNVKD } from '../../../thanh_phan/ke_hoach/NoiDungKeHoachNVKD';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function TrangBanLamViec() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/lich-cong-tac');
+  }, [router]);
+
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs text-muted-foreground">Đang tải bàn làm việc...</div>}>
-      <div className="w-full min-w-0">
-        <NoiDungKeHoachNVKD tabKhoiTao="ban_lam_viec" />
-      </div>
-    </Suspense>
+    <div className="flex items-center justify-center min-h-[50vh] p-8 text-center text-xs text-muted-foreground">
+      Đang chuyển hướng sang Lịch làm việc...
+    </div>
   );
 }
