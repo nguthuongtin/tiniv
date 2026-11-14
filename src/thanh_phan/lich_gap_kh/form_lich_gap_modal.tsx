@@ -17,7 +17,8 @@ import {
   Search,
   UserPlus,
   Save,
-  Send
+  Send,
+  FolderKanban
 } from 'lucide-react';
 import { moZaloXinDuyetLich } from '../../thu_vien/utils/chia_se_zalo_lich';
 import { cn } from '../../thu_vien/utils/cn';
@@ -26,10 +27,17 @@ import type {
   LichGapKH,
   TrangThaiLichGap
 } from '../../thu_vien/types/lich_gap_kh';
-import { DANH_SACH_TRANG_THAI_LICH_GAP, NHAN_LOAI_VIEC_VAN_PHONG, type LoaiLichLamViec, type LoaiViecVanPhong } from '../../thu_vien/types/lich_gap_kh';
+import {
+  DANH_SACH_TRANG_THAI_LICH_GAP,
+  NHAN_LOAI_VIEC_VAN_PHONG,
+  type LoaiLichLamViec,
+  type LoaiViecVanPhong
+} from '../../thu_vien/types/lich_gap_kh';
 import type { KhachHang, NguoiLienHe } from '../../thu_vien/types/khach_hang';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
+import type { HoSoDuAn } from '../../thu_vien/types/du_an';
 import { danhSachNguoiLienHe } from '../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
+import { danhSachHoSoDuAn } from '../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import {
   kiemTraTrungLich,
   type TaoMoiLichGapDTO,
@@ -79,6 +87,7 @@ interface FormLichGapModalProps {
   dsKhachHang: KhachHang[];
   dsNguoiLienHe?: NguoiLienHe[];
   dsNhanSu: NhanSu[];
+  dsDuAn?: HoSoDuAn[];
   nguoiDungId?: string;
   chiNhanhMacDinhId?: string | null;
   khi_luu: (dto: TaoMoiLichGapDTO | CapNhatLichGapDTO) => Promise<void>;
@@ -98,6 +107,7 @@ export default function FormLichGapModal({
   dsKhachHang,
   dsNguoiLienHe = [],
   dsNhanSu,
+  dsDuAn = [],
   nguoiDungId,
   chiNhanhMacDinhId,
   khi_luu,
@@ -109,11 +119,25 @@ export default function FormLichGapModal({
     []
   );
 
-  const dropdownKHRef = useRef<HTMLDivElement>(null);
   const { nguoiDungHienTai } = useStoreXacThuc();
   const laQuanLy = useMemo(() => laQuanLyCapCaoHoacTruongPhong(nguoiDungHienTai), [nguoiDungHienTai]);
+
+  const dropdownKHRef = useRef<HTMLDivElement>(null);
+  const dropdownDARef = useRef<HTMLDivElement>(null);
   const dropdownNLHRef = useRef<HTMLDivElement>(null);
   const dropdownNSRef = useRef<HTMLDivElement>(null);
+
+  // States dữ liệu nền
+  const [dsDuAnNoiBo, setDsDuAnNoiBo] = useState<HoSoDuAn[]>([]);
+
+  // States form
+  const [loaiLich, setLoaiLich] = useState<LoaiLichLamViec>('cong_tac_di_chuyen');
+  const [loaiViecVP, setLoaiViecVP] = useState<LoaiViecVanPhong>('goi_dien');
+  const [tenViecVP, setTenViecVP] = useState<string>('');
+
+  const [duAnId, setDuAnId] = useState<string>('');
+  const [timDuAn, setTimDuAn] = useState<string>('');
+  const [moGoiYDA, setMoGoiYDA] = useState(false);
 
   const [khachHangId, setKhachHangId] = useState<string>('');
   const [tenKhachHang, setTenKhachHang] = useState<string>('');
@@ -136,8 +160,6 @@ export default function FormLichGapModal({
   const [nguoiPhuTrachId, setNguoiPhuTrachId] = useState<string>('');
   const [nguoiThamGiaIds, setNguoiThamGiaIds] = useState<string[]>([]);
   const [trangThai, setTrangThai] = useState<TrangThaiLichGap>('da_duyet');
-  const [loaiLich, setLoaiLich] = useState<LoaiLichLamViec>('cong_tac_di_chuyen');
-  const [loaiViecVP, setLoaiViecVP] = useState<LoaiViecVanPhong>('goi_dien');
   const [laPhatSinh, setLaPhatSinh] = useState<boolean>(false);
   const [laTiepCanMoi, setLaTiepCanMoi] = useState<boolean>(false);
   const [lyDoDoiHuy, setLyDoDoiHuy] = useState<string>('');
@@ -145,10 +167,31 @@ export default function FormLichGapModal({
   const [timKiemNS, setTimKiemNS] = useState<string>('');
   const [moGoiYNS, setMoGoiYNS] = useState(false);
 
+  // Tải dự án nội bộ nếu caller không truyền dsDuAn
+  useEffect(() => {
+    if (!mo) return;
+    if (!dsDuAn || dsDuAn.length === 0) {
+      danhSachHoSoDuAn()
+        .then((res) => {
+          const list = Array.isArray(res) ? res : (res as any)?.mang || [];
+          setDsDuAnNoiBo(list);
+        })
+        .catch(() => {});
+    }
+  }, [mo, dsDuAn]);
+
+  const dsDuAnTongHop = useMemo(() => {
+    return (dsDuAn && dsDuAn.length > 0) ? dsDuAn : dsDuAnNoiBo;
+  }, [dsDuAn, dsDuAnNoiBo]);
+
+  // Click outside listener
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownKHRef.current && !dropdownKHRef.current.contains(e.target as Node)) {
         setMoGoiYKH(false);
+      }
+      if (dropdownDARef.current && !dropdownDARef.current.contains(e.target as Node)) {
+        setMoGoiYDA(false);
       }
       if (dropdownNLHRef.current && !dropdownNLHRef.current.contains(e.target as Node)) {
         setMoGoiYNLH(false);
@@ -157,15 +200,26 @@ export default function FormLichGapModal({
         setMoGoiYNS(false);
       }
     };
-    if (moGoiYKH || moGoiYNLH || moGoiYNS) {
+    if (moGoiYKH || moGoiYDA || moGoiYNLH || moGoiYNS) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [moGoiYKH, moGoiYNLH, moGoiYNS]);
+  }, [moGoiYKH, moGoiYDA, moGoiYNLH, moGoiYNS]);
 
+  // Initialize form state
   useEffect(() => {
     if (!mo) return;
     if (dang_sua) {
+      const ll = dang_sua.loai_lich || 'cong_tac_di_chuyen';
+      setLoaiLich(ll);
+      setLoaiViecVP(dang_sua.loai_viec_vp || 'goi_dien');
+      setTenViecVP(ll === 'van_phong' ? (dang_sua.tieu_de || dang_sua.noi_dung || '') : '');
+
+      const daId = dang_sua.du_an_id || '';
+      setDuAnId(daId);
+      const daObj = dsDuAnTongHop.find((d) => d.id === daId);
+      setTimDuAn(daObj?.ten_du_an || '');
+
       setKhachHangId(dang_sua.khach_hang_id || '');
       setTenKhachHang(dang_sua.ten_khach_hang || '');
       setTimKhachHang(dang_sua.ten_khach_hang || '');
@@ -181,41 +235,52 @@ export default function FormLichGapModal({
       setNguoiPhuTrachId(dang_sua.nguoi_phu_trach_id || nguoiDungId || '');
       setNguoiThamGiaIds(dang_sua.nguoi_tham_gia_ids || []);
       setTrangThai(dang_sua.trang_thai || 'da_duyet');
-      setLoaiLich(dang_sua.loai_lich || 'cong_tac_di_chuyen');
-      setLoaiViecVP(dang_sua.loai_viec_vp || 'goi_dien');
       setLaPhatSinh(Boolean(dang_sua.la_phat_sinh));
       setLaTiepCanMoi(Boolean(dang_sua.la_tiep_can_moi));
       setLyDoDoiHuy(dang_sua.ly_do_doi_huy || '');
     } else {
-      const khId = gia_tri_mac_dinh?.khach_hang_id || '';
-      const tenKH = gia_tri_mac_dinh?.ten_khach_hang || '';
+      const ll = gia_tri_mac_dinh?.loai_lich || 'cong_tac_di_chuyen';
+      setLoaiLich(ll);
+      setLoaiViecVP(gia_tri_mac_dinh?.loai_viec_vp || 'goi_dien');
+      setTenViecVP('');
+
+      const daId = gia_tri_mac_dinh?.du_an_id || '';
+      setDuAnId(daId);
+      const daObj = dsDuAnTongHop.find((d) => d.id === daId);
+      setTimDuAn(daObj?.ten_du_an || '');
+
+      const khCuaDA = daObj?.khach_hang_id ? dsKhachHang.find((k) => k.id === daObj.khach_hang_id) : null;
+      const khId = gia_tri_mac_dinh?.khach_hang_id || daObj?.khach_hang_id || '';
+      const tenKH = gia_tri_mac_dinh?.ten_khach_hang || khCuaDA?.ten_khach_hang || '';
       const gioBD = gia_tri_mac_dinh?.gio_bat_dau || '09:00';
       setKhachHangId(khId);
       setTenKhachHang(tenKH);
       setTimKhachHang(tenKH);
-      setNguoiLienHeId(gia_tri_mac_dinh?.nguoi_lien_he_id || '');
+      setNguoiLienHeId(gia_tri_mac_dinh?.nguoi_lien_he_id || daObj?.nguoi_lien_he_id || '');
       setTenNguoiLienHe(gia_tri_mac_dinh?.ten_nguoi_lien_he || '');
       setSoDienThoai(gia_tri_mac_dinh?.so_dien_thoai || '');
       setNgay(gia_tri_mac_dinh?.ngay || homNay);
       setGioBatDau(gioBD);
       setGioKetThuc(congThemPhut(gioBD, 90));
-      setDiaDiem(gia_tri_mac_dinh?.dia_diem || '');
+      setDiaDiem(gia_tri_mac_dinh?.dia_diem || (ll === 'van_phong' ? 'Tại văn phòng' : ''));
       setNoiDung(gia_tri_mac_dinh?.noi_dung || '');
       setKetQua('');
       setNguoiPhuTrachId(gia_tri_mac_dinh?.nguoi_phu_trach_id || nguoiDungId || '');
       setNguoiThamGiaIds([]);
-      setTrangThai(laQuanLy ? 'da_duyet' : 'cho_duyet');
+      setTrangThai(ll === 'van_phong' || laQuanLy ? 'da_duyet' : 'cho_duyet');
       setLaPhatSinh(false);
+      setLaTiepCanMoi(false);
       setLyDoDoiHuy('');
     }
     setDangGoTimKH(false);
     setMoGoiYKH(false);
+    setMoGoiYDA(false);
     setMoGoiYNLH(false);
     setMoGoiYNS(false);
     setTimKiemNS('');
-  }, [mo, dang_sua, gia_tri_mac_dinh, homNay, nguoiDungId]);
+  }, [mo, dang_sua, gia_tri_mac_dinh, homNay, nguoiDungId, dsDuAnTongHop, laQuanLy, dsKhachHang]);
 
-  // Tải đầy đủ danh sách người liên hệ của khách hàng đang chọn từ Firestore
+  // Tải danh sách người liên hệ riêng của khách hàng
   useEffect(() => {
     if (!mo || !khachHangId) {
       setDsLienHeRiengKH([]);
@@ -237,35 +302,70 @@ export default function FormLichGapModal({
     };
   }, [mo, khachHangId]);
 
-  // Gộp danh sách liên hệ từ prop và từ truy vấn trực tiếp theo khach_hang_id
   const dsLienHeCuaKH = useMemo(() => {
+    if (dsLienHeRiengKH.length > 0) return dsLienHeRiengKH;
     if (!khachHangId) return [];
-    const map = new Map<string, NguoiLienHe>();
-    dsNguoiLienHe
-      .filter((x) => x.khach_hang_id === khachHangId)
-      .forEach((x) => map.set(x.id, x));
-    dsLienHeRiengKH.forEach((x) => map.set(x.id, x));
-    return Array.from(map.values());
-  }, [khachHangId, dsNguoiLienHe, dsLienHeRiengKH]);
+    return dsNguoiLienHe.filter((nlh) => nlh.khach_hang_id === khachHangId);
+  }, [khachHangId, dsLienHeRiengKH, dsNguoiLienHe]);
 
-  const mapNhanSu = useMemo(() => {
-    const m = new Map<string, NhanSu>();
-    dsNhanSu.forEach((ns) => m.set(ns.id, ns));
-    return m;
-  }, [dsNhanSu]);
+  // Lọc gợi ý dự án
+  const dsDAGoiY = useMemo(() => {
+    const kw = timDuAn.toLowerCase().trim();
+    if (!kw) return dsDuAnTongHop.slice(0, 30);
+    return dsDuAnTongHop
+      .filter((da) => {
+        const kh = da.khach_hang_id ? dsKhachHang.find((k) => k.id === da.khach_hang_id) : null;
+        return (
+          da.ten_du_an.toLowerCase().includes(kw) ||
+          (da.ma_ho_so && da.ma_ho_so.toLowerCase().includes(kw)) ||
+          (kh && kh.ten_khach_hang.toLowerCase().includes(kw))
+        );
+      })
+      .slice(0, 30);
+  }, [dsDuAnTongHop, timDuAn, dsKhachHang]);
 
-  // Danh sách khách hàng hiển thị đầy đủ (không cắt 8 dòng như trước)
+  const chonDuAn = (da: HoSoDuAn) => {
+    setDuAnId(da.id);
+    setTimDuAn(da.ten_du_an);
+    setMoGoiYDA(false);
+
+    // Tự động điền khách hàng nếu chưa chọn
+    if (da.khach_hang_id) {
+      const kh = dsKhachHang.find((k) => k.id === da.khach_hang_id);
+      if (kh) {
+        setKhachHangId(kh.id);
+        setTenKhachHang(kh.ten_khach_hang);
+        setTimKhachHang(kh.ten_khach_hang);
+        if (kh.dia_chi && !diaDiem && loaiLich === 'cong_tac_di_chuyen') {
+          setDiaDiem(kh.dia_chi);
+        }
+      }
+    }
+
+    // Tự động điền người liên hệ nếu có
+    if (da.nguoi_lien_he_id) {
+      const nlh = dsNguoiLienHe.find((n) => n.id === da.nguoi_lien_he_id);
+      if (nlh) {
+        setNguoiLienHeId(nlh.id);
+        setTenNguoiLienHe(nlh.ho_va_ten);
+        if (nlh.so_dien_thoai) setSoDienThoai(nlh.so_dien_thoai);
+      }
+    }
+  };
+
+  // Lọc gợi ý khách hàng
   const dsKHGoiY = useMemo(() => {
-    if (!dangGoTimKH) return dsKhachHang;
-    const kw = timKhachHang.trim().toLowerCase();
-    if (!kw) return dsKhachHang;
-    return dsKhachHang.filter(
-      (kh) =>
-        kh.ten_khach_hang.toLowerCase().includes(kw) ||
-        (kh.so_dien_thoai && kh.so_dien_thoai.includes(kw)) ||
-        (kh.dia_chi && kh.dia_chi.toLowerCase().includes(kw))
-    );
-  }, [dsKhachHang, timKhachHang, dangGoTimKH]);
+    const kw = timKhachHang.toLowerCase().trim();
+    if (!kw) return dsKhachHang.slice(0, 30);
+    return dsKhachHang
+      .filter(
+        (kh) =>
+          kh.ten_khach_hang.toLowerCase().includes(kw) ||
+          (kh.ma_so_thue && kh.ma_so_thue.toLowerCase().includes(kw)) ||
+          (kh.so_dien_thoai && kh.so_dien_thoai.includes(kw))
+      )
+      .slice(0, 30);
+  }, [dsKhachHang, timKhachHang]);
 
   const chonKhachHang = async (kh: KhachHang) => {
     setKhachHangId(kh.id);
@@ -274,58 +374,65 @@ export default function FormLichGapModal({
     setDangGoTimKH(false);
     setMoGoiYKH(false);
 
-    if (kh.dia_chi) {
-      setDiaDiem(kh.dia_chi);
+    try {
+      const res = await danhSachNguoiLienHe({ khach_hang_id: kh.id });
+      const mangLienHe = res.mang || [];
+      setDsLienHeRiengKH(mangLienHe);
+      const nlhChinh = mangLienHe[0];
+      if (nlhChinh) {
+        setNguoiLienHeId(nlhChinh.id);
+        setTenNguoiLienHe(nlhChinh.ho_va_ten);
+        setSoDienThoai(nlhChinh.so_dien_thoai || kh.so_dien_thoai || '');
+      } else {
+        setNguoiLienHeId('');
+        setTenNguoiLienHe('');
+        setSoDienThoai(kh.so_dien_thoai || '');
+      }
+    } catch {
+      setSoDienThoai(kh.so_dien_thoai || '');
     }
 
-    // Tìm các liên hệ hiện có của khách hàng
-    let listNLH = dsNguoiLienHe.filter((x) => x.khach_hang_id === kh.id);
-    try {
-      const kq = await danhSachNguoiLienHe({ khach_hang_id: kh.id });
-      if (kq.mang && kq.mang.length > 0) {
-        const m = new Map<string, NguoiLienHe>();
-        listNLH.forEach((x) => m.set(x.id, x));
-        kq.mang.forEach((x) => m.set(x.id, x));
-        listNLH = Array.from(m.values());
-        setDsLienHeRiengKH(kq.mang);
-      }
-    } catch {}
-
-    if (listNLH.length === 1) {
-      setNguoiLienHeId(listNLH[0].id);
-      setTenNguoiLienHe(listNLH[0].ho_va_ten || '');
-      setSoDienThoai(listNLH[0].so_dien_thoai || kh.so_dien_thoai || '');
-    } else if (listNLH.length > 1) {
-      // Nếu có nhiều người liên hệ: điền người đầu tiên và tự mở danh sách để chọn ngay
-      setNguoiLienHeId(listNLH[0].id);
-      setTenNguoiLienHe(listNLH[0].ho_va_ten || '');
-      setSoDienThoai(listNLH[0].so_dien_thoai || kh.so_dien_thoai || '');
-      setMoGoiYNLH(true);
-    } else {
-      setNguoiLienHeId('');
-      setTenNguoiLienHe('');
-      setSoDienThoai(kh.so_dien_thoai || '');
+    if (kh.dia_chi && !diaDiem && loaiLich === 'cong_tac_di_chuyen') {
+      setDiaDiem(kh.dia_chi);
     }
   };
 
   const chonNguoiLienHe = (nlh: NguoiLienHe) => {
     setNguoiLienHeId(nlh.id);
-    setTenNguoiLienHe(nlh.ho_va_ten || '');
-    if (nlh.so_dien_thoai) {
-      setSoDienThoai(nlh.so_dien_thoai);
-    }
+    setTenNguoiLienHe(nlh.ho_va_ten);
+    if (nlh.so_dien_thoai) setSoDienThoai(nlh.so_dien_thoai);
     setMoGoiYNLH(false);
   };
+
+  const mapNhanSu = useMemo(() => {
+    const m = new Map<string, NhanSu>();
+    dsNhanSu.forEach((ns) => m.set(ns.id, ns));
+    return m;
+  }, [dsNhanSu]);
 
   const thoiLuongHienTai = useMemo(
     () => tinhKhoangPhut(gioBatDau, gioKetThuc),
     [gioBatDau, gioKetThuc]
   );
 
-  // Kiểm tra trùng lịch realtime
+  const toggleNguoiThamGia = (id: string) => {
+    setNguoiThamGiaIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
   const canhBaoTrung = useMemo(() => {
+    if (!ngay || !gioBatDau || !gioKetThuc) {
+      return { trungCaNhan: [], trungChiNhanh: [] };
+    }
     const nsPhuTrach = mapNhanSu.get(nguoiPhuTrachId);
-    const cnId = nsPhuTrach?.chi_nhanh_id || chiNhanhMacDinhId || null;
+    const cnId =
+      dang_sua?.chi_nhanh_id ||
+      gia_tri_mac_dinh?.chi_nhanh_id ||
+      nsPhuTrach?.chi_nhanh_id ||
+      chiNhanhMacDinhId ||
+      null;
+
     return kiemTraTrungLich(
       dsLichHienCo,
       ngay,
@@ -333,19 +440,23 @@ export default function FormLichGapModal({
       gioKetThuc,
       nguoiPhuTrachId,
       cnId,
-      dang_sua?.id || null
+      dang_sua?.id
     );
-  }, [dsLichHienCo, ngay, gioBatDau, gioKetThuc, nguoiPhuTrachId, mapNhanSu, chiNhanhMacDinhId, dang_sua?.id]);
-
-  const toggleNguoiThamGia = (id: string) => {
-    if (id === nguoiPhuTrachId) return;
-    setNguoiThamGiaIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
+  }, [
+    dsLichHienCo,
+    dang_sua?.id,
+    dang_sua?.chi_nhanh_id,
+    gia_tri_mac_dinh?.chi_nhanh_id,
+    ngay,
+    gioBatDau,
+    gioKetThuc,
+    nguoiPhuTrachId,
+    chiNhanhMacDinhId,
+    mapNhanSu
+  ]);
 
   const dsNhanSuKhaDung = useMemo(() => {
-    const kw = timKiemNS.trim().toLowerCase();
+    const kw = timKiemNS.toLowerCase().trim();
     return dsNhanSu.filter((ns) => {
       if (ns.id === nguoiPhuTrachId) return false;
       if (!kw) return true;
@@ -356,16 +467,24 @@ export default function FormLichGapModal({
     });
   }, [dsNhanSu, nguoiPhuTrachId, timKiemNS]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const buildPayload = (): TaoMoiLichGapDTO | null => {
     const tenKHChuan = (tenKhachHang || timKhachHang).trim();
-    if (!tenKHChuan) {
-      alert('Vui lòng chọn hoặc nhập tên khách hàng!');
-      return;
+    const daObj = dsDuAnTongHop.find((d) => d.id === duAnId);
+    const khCuaDA = daObj?.khach_hang_id ? dsKhachHang.find((k) => k.id === daObj.khach_hang_id) : null;
+
+    if (loaiLich === 'cong_tac_di_chuyen' && !tenKHChuan) {
+      alert('Vui lòng chọn hoặc nhập tên khách hàng / đơn vị công tác!');
+      return null;
     }
+
+    if (loaiLich === 'van_phong' && !tenViecVP.trim() && !noiDung.trim() && !tenKHChuan) {
+      alert('Vui lòng nhập tên công việc hoặc chọn loại tác nghiệp tại văn phòng!');
+      return null;
+    }
+
     if (!ngay || !gioBatDau) {
-      alert('Vui lòng chọn ngày và giờ hẹn!');
-      return;
+      alert('Vui lòng chọn ngày và giờ!');
+      return null;
     }
 
     const nsPhuTrach = mapNhanSu.get(nguoiPhuTrachId);
@@ -376,10 +495,21 @@ export default function FormLichGapModal({
       chiNhanhMacDinhId ||
       null;
 
-    const payload: TaoMoiLichGapDTO = {
-      tieu_de: `Gặp KH ${tenKHChuan}`,
-      khach_hang_id: khachHangId || null,
-      ten_khach_hang: tenKHChuan,
+    const khCuoi = tenKHChuan || khCuaDA?.ten_khach_hang || (loaiLich === 'van_phong' ? 'Làm việc tại văn phòng' : 'Khách hàng');
+
+    let tieuDeChuan = '';
+    if (loaiLich === 'van_phong') {
+      const viecText = tenViecVP.trim() || noiDung.trim() || 'Công việc văn phòng';
+      const targetText = tenKHChuan && tenKHChuan !== 'Làm việc tại văn phòng' ? ` - ${tenKHChuan}` : '';
+      tieuDeChuan = `${viecText}${targetText}`;
+    } else {
+      tieuDeChuan = `Công tác gặp ${khCuoi}`;
+    }
+
+    return {
+      tieu_de: tieuDeChuan,
+      khach_hang_id: khachHangId || daObj?.khach_hang_id || null,
+      ten_khach_hang: khCuoi,
       nguoi_lien_he_id: nguoiLienHeId || gia_tri_mac_dinh?.nguoi_lien_he_id || dang_sua?.nguoi_lien_he_id || null,
       ten_nguoi_lien_he: tenNguoiLienHe.trim() || null,
       so_dien_thoai: soDienThoai.trim() || null,
@@ -389,64 +519,34 @@ export default function FormLichGapModal({
       ngay,
       gio_bat_dau: gioBatDau,
       gio_ket_thuc: gioKetThuc || congThemPhut(gioBatDau, 90),
-      dia_diem: diaDiem.trim() || null,
-      noi_dung: noiDung.trim() || null,
+      dia_diem: diaDiem.trim() || (loaiLich === 'van_phong' ? 'Tại văn phòng' : null),
+      noi_dung: (noiDung.trim() || tenViecVP.trim()) || null,
       ket_qua: ketQua.trim() || null,
       trang_thai: trangThai,
+      loai_lich: loaiLich,
+      loai_viec_vp: loaiViecVP || (tenViecVP.trim() || 'khac'),
+      du_an_id: duAnId || null,
       la_phat_sinh: laPhatSinh,
       la_tiep_can_moi: laTiepCanMoi,
       ly_do_doi_huy: lyDoDoiHuy.trim() || null,
       nguon_lead_id: gia_tri_mac_dinh?.nguon_lead_id || dang_sua?.nguon_lead_id || null,
-      du_an_id: dang_sua?.du_an_id || gia_tri_mac_dinh?.du_an_id || null,
       nguoi_tao_id: dang_sua?.nguoi_tao_id || nguoiDungId || ''
     };
+  };
 
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const payload = buildPayload();
+    if (!payload) return;
     await khi_luu(payload);
   };
 
   const handleLuuVaGuiZalo = async () => {
-    const tenKHChuan = (tenKhachHang || timKhachHang).trim();
-    if (!tenKHChuan) {
-      alert('Vui lòng chọn hoặc nhập tên khách hàng!');
-      return;
-    }
-    if (!ngay || !gioBatDau) {
-      alert('Vui lòng chọn ngày và giờ hẹn!');
-      return;
-    }
+    const payload = buildPayload();
+    if (!payload) return;
 
-    const nsPhuTrach = mapNhanSu.get(nguoiPhuTrachId);
-    const cnId =
-      dang_sua?.chi_nhanh_id ||
-      gia_tri_mac_dinh?.chi_nhanh_id ||
-      nsPhuTrach?.chi_nhanh_id ||
-      chiNhanhMacDinhId ||
-      null;
-
-    const payload: TaoMoiLichGapDTO = {
-      tieu_de: `Gặp KH ${tenKHChuan}`,
-      khach_hang_id: khachHangId || null,
-      ten_khach_hang: tenKHChuan,
-      nguoi_lien_he_id: nguoiLienHeId || gia_tri_mac_dinh?.nguoi_lien_he_id || dang_sua?.nguoi_lien_he_id || null,
-      ten_nguoi_lien_he: tenNguoiLienHe.trim() || null,
-      so_dien_thoai: soDienThoai.trim() || null,
-      nguoi_phu_trach_id: !laQuanLy ? (nguoiDungId || nguoiDungHienTai?.id || '') : (nguoiPhuTrachId || nguoiDungId || ''),
-      nguoi_tham_gia_ids: nguoiThamGiaIds,
-      chi_nhanh_id: cnId,
-      ngay,
-      gio_bat_dau: gioBatDau,
-      gio_ket_thuc: gioKetThuc || congThemPhut(gioBatDau, 90),
-      dia_diem: diaDiem.trim() || null,
-      noi_dung: noiDung.trim() || null,
-      ket_qua: ketQua.trim() || null,
-      trang_thai: 'cho_duyet',
-      la_phat_sinh: true,
-      la_tiep_can_moi: laTiepCanMoi,
-      ly_do_doi_huy: lyDoDoiHuy.trim() || null,
-      nguon_lead_id: gia_tri_mac_dinh?.nguon_lead_id || dang_sua?.nguon_lead_id || null,
-      du_an_id: dang_sua?.du_an_id || gia_tri_mac_dinh?.du_an_id || null,
-      nguoi_tao_id: dang_sua?.nguoi_tao_id || nguoiDungId || ''
-    };
+    payload.trang_thai = 'cho_duyet';
+    payload.la_phat_sinh = true;
 
     await khi_luu(payload);
     void moZaloXinDuyetLich({
@@ -462,25 +562,28 @@ export default function FormLichGapModal({
     <Ban_Ve
       mo={mo}
       onDong={khi_dong}
-      kich_thuoc="lg"
       tieu_de={
-        <div className="flex items-center gap-2.5">
-          <div className="size-9 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center justify-center shrink-0">
-            <Calendar className="size-4.5" />
-          </div>
-          <span className="font-bold text-slate-900 text-base sm:text-lg">
-            {dang_sua ? (loaiLich === 'van_phong' ? 'Cập nhật việc tại văn phòng' : 'Cập nhật lịch công tác') : (loaiLich === 'van_phong' ? 'Thêm việc tại văn phòng' : 'Đăng ký lịch công tác')}
-          </span>
-        </div>
+        dang_sua
+          ? 'Cập nhật lịch làm việc'
+          : loaiLich === 'van_phong'
+          ? 'Thêm việc làm tại văn phòng'
+          : 'Đăng ký lịch công tác di chuyển'
       }
+      phu_de={
+        loaiLich === 'van_phong'
+          ? 'Công việc xử lý tại văn phòng (tự động có hiệu lực, không cần xin duyệt)'
+          : 'Lịch công tác ngoài phát sinh công tác phí (gửi Trưởng phòng duyệt)'
+      }
+      kich_thuoc="lg"
       cuoi={
-        <div className="w-full flex items-center justify-between gap-2.5">
+        <div className="flex items-center justify-between w-full gap-2">
           <div>
             {dang_sua && khi_xoa && laQuanLy && (
               <button
                 type="button"
                 onClick={() => khi_xoa(dang_sua.id, dang_sua.ten_khach_hang)}
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/70 transition cursor-pointer"
+                disabled={dang_xu_ly}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
               >
                 <Trash2 className="size-4" />
                 <span>Xóa</span>
@@ -488,7 +591,7 @@ export default function FormLichGapModal({
             )}
           </div>
 
-          <div className="flex items-center gap-2.5 ml-auto">
+          <div className="flex items-center gap-2">
             {!dang_sua && loaiLich === 'cong_tac_di_chuyen' && (
               <button
                 type="button"
@@ -510,7 +613,7 @@ export default function FormLichGapModal({
               className="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
             >
               <Save className="size-4" />
-              <span>{dang_xu_ly ? 'Đang lưu...' : dang_sua ? 'Lưu thay đổi' : 'Lưu lịch hẹn'}</span>
+              <span>{dang_xu_ly ? 'Đang lưu...' : dang_sua ? 'Lưu thay đổi' : 'Lưu lịch'}</span>
             </button>
           </div>
         </div>
@@ -552,33 +655,151 @@ export default function FormLichGapModal({
           </button>
         </div>
 
+        {/* 1. Hồ sơ dự án liên quan (Cho cả công tác và văn phòng) */}
+        <div className="space-y-1.5" ref={dropdownDARef}>
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-slate-800">
+              Hồ sơ dự án <span className="text-slate-400 font-normal">(Tùy chọn)</span>
+            </label>
+            {duAnId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDuAnId('');
+                  setTimDuAn('');
+                }}
+                className="text-[11px] text-rose-600 hover:underline cursor-pointer"
+              >
+                Bỏ chọn dự án
+              </button>
+            )}
+          </div>
+
+          <div className="relative">
+            <FolderKanban className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={timDuAn}
+              onChange={(e) => {
+                setTimDuAn(e.target.value);
+                setMoGoiYDA(true);
+              }}
+              onFocus={() => setMoGoiYDA(true)}
+              placeholder="Tìm chọn hồ sơ dự án liên quan (mã hoặc tên dự án)..."
+              className={cn(inputCls, 'pl-10 pr-9 font-medium')}
+            />
+            {timDuAn ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setDuAnId('');
+                  setTimDuAn('');
+                  setMoGoiYDA(true);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            ) : (
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
+            )}
+
+            {moGoiYDA && dsDAGoiY.length > 0 && (
+              <div className="absolute z-40 left-0 right-0 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100 p-1">
+                {dsDAGoiY.map((da) => {
+                  const dangChon = da.id === duAnId;
+                  const khCuaDA = da.khach_hang_id ? dsKhachHang.find((k) => k.id === da.khach_hang_id) : null;
+                  return (
+                    <button
+                      key={da.id}
+                      type="button"
+                      onClick={() => chonDuAn(da)}
+                      className={cn(
+                        'w-full text-left px-3 py-2.5 rounded-lg transition flex items-center justify-between gap-3 cursor-pointer',
+                        dangChon ? 'bg-emerald-50 text-emerald-900' : 'hover:bg-slate-50'
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-slate-900 truncate">
+                          {da.ten_du_an}
+                        </div>
+                        <div className="text-xs text-slate-400 truncate mt-0.5">
+                          {da.ma_ho_so ? `[${da.ma_ho_so}] ` : ''}{khCuaDA?.ten_khach_hang || ''}
+                        </div>
+                      </div>
+                      {dangChon && <Check className="size-4 text-emerald-600 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 2. Loại tác nghiệp văn phòng (Có ô nhập tùy ý + Gợi ý nhanh) */}
         {loaiLich === 'van_phong' && (
-          <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-slate-800">Loại tác nghiệp văn phòng</label>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-              {(['goi_dien', 'gui_bao_gia', 'soan_hop_dong', 'cham_soc', 'hop_noi_bo', 'khac'] as LoaiViecVanPhong[]).map((lv) => (
-                <button
-                  key={lv}
-                  type="button"
-                  onClick={() => setLoaiViecVP(lv)}
-                  className={cn(
-                    'h-8 px-2 rounded-lg text-[11px] font-bold border transition text-center cursor-pointer',
-                    loaiViecVP === lv
-                      ? 'bg-blue-50 border-blue-400 text-blue-700 shadow-2xs'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  {NHAN_LOAI_VIEC_VAN_PHONG[lv]}
-                </button>
-              ))}
+          <div className="space-y-2.5 p-3 bg-sky-50/70 rounded-xl border border-sky-100">
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-sky-950">
+                Tên công việc / Tác nghiệp VP <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={tenViecVP}
+                onChange={(e) => {
+                  setTenViecVP(e.target.value);
+                  setLoaiViecVP(e.target.value);
+                }}
+                placeholder="Nhập tên việc VP (VD: Soạn báo giá gửi xã Bình Mỹ, Họp nội bộ...)"
+                className={cn(inputCls, 'bg-white font-medium border-sky-200 focus:border-sky-500')}
+              />
+            </div>
+
+            <div>
+              <div className="text-[11px] font-semibold text-sky-800 mb-1.5">Gợi ý tác nghiệp nhanh:</div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { key: 'goi_dien', nhan: '📞 Gọi điện', text: 'Gọi điện trao đổi' },
+                  { key: 'gui_bao_gia', nhan: '📄 Gửi báo giá', text: 'Soạn & gửi báo giá' },
+                  { key: 'soan_hop_dong', nhan: '📝 Soạn hợp đồng', text: 'Soạn hợp đồng / đơn hàng' },
+                  { key: 'cham_soc', nhan: '🤝 Chăm sóc KH', text: 'Chăm sóc & tư vấn khách hàng' },
+                  { key: 'hop_noi_bo', nhan: '👥 Họp nội bộ', text: 'Họp nội bộ triển khai' },
+                  { key: 'khao_sat', nhan: '🗺️ Kỹ thuật / Đo đạc', text: 'Kiểm tra bản đồ & kỹ thuật' },
+                  { key: 'in_an', nhan: '📑 In ấn hồ sơ', text: 'Soạn & in ấn hồ sơ' }
+                ].map((g) => (
+                  <button
+                    key={g.key}
+                    type="button"
+                    onClick={() => {
+                      setLoaiViecVP(g.key);
+                      if (!tenViecVP || tenViecVP.startsWith('Gọi điện') || tenViecVP.startsWith('Soạn &') || tenViecVP.startsWith('Họp') || tenViecVP.startsWith('Chăm sóc')) {
+                        setTenViecVP(g.text);
+                      }
+                    }}
+                    className={cn(
+                      'px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer',
+                      loaiViecVP === g.key
+                        ? 'bg-sky-600 border-sky-600 text-white shadow-2xs font-bold'
+                        : 'bg-white border-sky-200 text-sky-800 hover:bg-sky-100'
+                    )}
+                  >
+                    {g.nhan}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* 1. Khách hàng */}
+        {/* 3. Khách hàng / Đơn vị */}
         <div className="space-y-1.5" ref={dropdownKHRef}>
           <label className="block text-xs font-bold text-slate-800">
-            Khách hàng / Đơn vị <span className="text-rose-500">*</span>
+            Khách hàng / Đơn vị{' '}
+            {loaiLich === 'cong_tac_di_chuyen' ? (
+              <span className="text-rose-500">*</span>
+            ) : (
+              <span className="text-slate-400 font-normal">(Không bắt buộc nếu là việc nội bộ)</span>
+            )}
           </label>
 
           <div className="relative">
@@ -594,9 +815,8 @@ export default function FormLichGapModal({
                 setMoGoiYKH(true);
               }}
               onFocus={() => setMoGoiYKH(true)}
-              placeholder="Tìm chọn khách hàng hoặc nhập tên đơn vị..."
+              placeholder={loaiLich === 'van_phong' ? 'Tùy chọn: Nhập đơn vị hoặc để trống nếu việc nội bộ...' : 'Tìm chọn khách hàng hoặc nhập tên đơn vị công tác...'}
               className={cn(inputCls, 'pl-10 pr-9 font-medium')}
-              required
             />
             {timKhachHang ? (
               <button
@@ -619,7 +839,6 @@ export default function FormLichGapModal({
 
             {moGoiYKH && dsKHGoiY.length > 0 && (
               <div className="absolute z-40 left-0 right-0 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100 p-1">
-                
                 {dsKHGoiY.map((kh) => {
                   const dangChon = kh.id === khachHangId;
                   return (
@@ -653,7 +872,7 @@ export default function FormLichGapModal({
           </div>
         </div>
 
-        {/* 2. Người liên hệ & Số điện thoại */}
+        {/* 4. Người liên hệ & Số điện thoại */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="space-y-1.5" ref={dropdownNLHRef}>
             <label className="block text-xs font-bold text-slate-800">Người liên hệ</label>
@@ -732,11 +951,11 @@ export default function FormLichGapModal({
           </div>
         </div>
 
-        {/* 3. Ngày hẹn & Khung giờ */}
+        {/* 5. Ngày hẹn & Khung giờ */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-800">
-              Ngày hẹn <span className="text-rose-500">*</span>
+              Ngày thực hiện <span className="text-rose-500">*</span>
             </label>
             <input
               type="date"
@@ -796,22 +1015,24 @@ export default function FormLichGapModal({
           </div>
         )}
 
-        {/* 4. Địa điểm */}
+        {/* 6. Địa điểm */}
         <div className="space-y-1.5">
-          <label className="block text-xs font-bold text-slate-800">Địa điểm làm việc</label>
+          <label className="block text-xs font-bold text-slate-800">
+            {loaiLich === 'van_phong' ? 'Vị trí làm việc' : 'Địa điểm công tác'}
+          </label>
           <div className="relative">
             <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
             <input
               type="text"
               value={diaDiem}
               onChange={(e) => setDiaDiem(e.target.value)}
-              placeholder="Địa chỉ hoặc hình thức làm việc..."
+              placeholder={loaiLich === 'van_phong' ? 'Tại văn phòng' : 'Địa chỉ hoặc lộ trình công tác...'}
               className={cn(inputCls, 'pl-10')}
             />
           </div>
         </div>
 
-        {/* 5. Nhân sự chủ trì & Cùng tham gia */}
+        {/* 7. Nhân sự chủ trì & Cùng tham gia */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-800">Nhân sự chủ trì</label>
@@ -833,7 +1054,6 @@ export default function FormLichGapModal({
             </select>
           </div>
 
-          {/* Cùng tham gia: Avatar Pills + Popover Picker hiện đại */}
           <div className="space-y-1.5 relative" ref={dropdownNSRef}>
             <label className="block text-xs font-bold text-slate-800">Cùng tham gia</label>
 
@@ -960,21 +1180,21 @@ export default function FormLichGapModal({
           </div>
         </div>
 
-        {/* 6. Nội dung công việc */}
+        {/* 8. Nội dung chi tiết */}
         <div className="space-y-1.5">
           <label className="block text-xs font-bold text-slate-800">
-            Nội dung làm việc
+            Nội dung chi tiết / Ghi chú
           </label>
           <textarea
             rows={2}
             value={noiDung}
             onChange={(e) => setNoiDung(e.target.value)}
-            placeholder="Mục tiêu, nội dung trao đổi..."
+            placeholder="Chi tiết công việc, mục tiêu trao đổi..."
             className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs"
           />
         </div>
 
-        {/* Tùy chọn phân loại nhanh gọn */}
+        {/* Phân loại KPI */}
         <div className="flex items-center gap-5 pt-1 flex-wrap">
           <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
             <input
@@ -986,7 +1206,7 @@ export default function FormLichGapModal({
             <span>Tiếp cận khách hàng mới</span>
           </label>
 
-          {!dang_sua && (
+          {!dang_sua && loaiLich === 'cong_tac_di_chuyen' && (
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -1002,11 +1222,11 @@ export default function FormLichGapModal({
           )}
         </div>
 
-        {/* 7. Trạng thái & Kết quả (khi cập nhật lịch hẹn) */}
+        {/* 9. Trạng thái & Kết quả (khi cập nhật) */}
         {dang_sua && (
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-800">Trạng thái lịch hẹn</label>
+              <label className="block text-xs font-bold text-slate-800">Trạng thái lịch làm việc</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {DANH_SACH_TRANG_THAI_LICH_GAP.map((tt) => (
                   <button
@@ -1029,33 +1249,27 @@ export default function FormLichGapModal({
 
             {(trangThai === 'doi_lich' || trangThai === 'huy') && (
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-amber-800">
-                  Lý do dời lịch / hủy hẹn <span className="text-rose-500">*</span>
-                </label>
+                <label className="block text-xs font-bold text-rose-700">Lý do hoãn / dời / hủy lịch</label>
                 <input
                   type="text"
                   value={lyDoDoiHuy}
                   onChange={(e) => setLyDoDoiHuy(e.target.value)}
-                  placeholder="VD: Khách bận đột xuất, hẹn lại tuần sau..."
-                  className={inputCls}
+                  placeholder="Ghi rõ lý do..."
+                  className={cn(inputCls, 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20')}
                 />
               </div>
             )}
 
-            {trangThai === 'da_hoan_thanh' && (
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-emerald-700">
-                  Kết quả buổi làm việc
-                </label>
-                <textarea
-                  rows={2}
-                  value={ketQua}
-                  onChange={(e) => setKetQua(e.target.value)}
-                  placeholder="Ghi nhận phản hồi của khách hàng, bước tiếp theo..."
-                  className="w-full rounded-xl border border-emerald-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                />
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800">Kết quả làm việc đạt được</label>
+              <textarea
+                rows={2}
+                value={ketQua}
+                onChange={(e) => setKetQua(e.target.value)}
+                placeholder="Ghi nhận kết quả sau khi thực hiện..."
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition shadow-2xs"
+              />
+            </div>
           </div>
         )}
       </form>

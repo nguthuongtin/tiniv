@@ -2048,6 +2048,7 @@ export function NoiDungLichCongTac({
         dsKhachHang={dsKhachHangHieuLuc}
         dsNguoiLienHe={dsNguoiLienHe}
         dsNhanSu={dsNhanSu}
+        dsDuAn={dsHoSoDuAn}
         nguoiDungId={nguoiDungHienTai?.id}
         chiNhanhMacDinhId={nguoiDungHienTai?.chi_nhanh_id}
         khi_luu={handleLuuLich}

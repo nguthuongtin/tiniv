@@ -6,9 +6,10 @@ export type LoaiViecVanPhong =
   | 'soan_hop_dong'
   | 'cham_soc'
   | 'hop_noi_bo'
-  | 'khac';
+  | 'khac'
+  | (string & {});
 
-export const NHAN_LOAI_VIEC_VAN_PHONG: Record<LoaiViecVanPhong, string> = {
+export const NHAN_LOAI_VIEC_VAN_PHONG: Record<string, string> = {
   goi_dien: 'Gọi điện',
   gui_bao_gia: 'Gửi báo giá',
   soan_hop_dong: 'Soạn HĐ / Đơn hàng',
