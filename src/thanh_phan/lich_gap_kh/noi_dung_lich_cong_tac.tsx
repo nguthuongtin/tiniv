@@ -73,6 +73,84 @@ import { Bo_Cuc_Trang, Nut, DaiDien, ThanhSoLieu } from '../ui';
 
 type CheDoXem = 'tuan' | 'thang' | 'danh_sach';
 
+export const taoTieuDeLichHienThi = (lich: LichGapKH): {
+  tieuDeChinh: string;
+  chiTietThem?: string;
+  icon: string;
+  nhanLoai: string;
+} => {
+  const laVP = lich.loai_lich === 'van_phong';
+  const tenDoiTuong = (lich.ten_khach_hang || '').trim();
+  const nd = (lich.noi_dung || lich.tieu_de || '').trim();
+  const nlh = (lich.ten_nguoi_lien_he || '').trim();
+
+  if (!laVP) {
+    const tenKH = tenDoiTuong && tenDoiTuong !== 'Làm việc tại văn phòng' ? tenDoiTuong : '';
+    let tieuDeChinh = 'Công tác di chuyển';
+    if (tenKH) {
+      tieuDeChinh = `Công tác gặp ${tenKH}`;
+    } else if (nd) {
+      tieuDeChinh = `Công tác: ${nd}`;
+    }
+    const chiTietThem =
+      tenKH && nd && !nd.toLowerCase().includes(tenKH.toLowerCase())
+        ? nd
+        : (lich.dia_diem ? `Địa điểm: ${lich.dia_diem}` : undefined);
+    return {
+      tieuDeChinh,
+      chiTietThem: chiTietThem || undefined,
+      icon: '🚗',
+      nhanLoai: 'Công tác ngoài'
+    };
+  }
+
+  const loaiVP = lich.loai_viec_vp || 'khac';
+  let tienTo = 'Việc VP';
+  let icon = '🏢';
+
+  if (loaiVP === 'goi_dien') {
+    tienTo = 'Gọi điện';
+    icon = '📞';
+  } else if (loaiVP === 'gui_bao_gia') {
+    tienTo = 'Gửi báo giá';
+    icon = '📄';
+  } else if (loaiVP === 'soan_hop_dong') {
+    tienTo = 'Soạn hợp đồng';
+    icon = '📝';
+  } else if (loaiVP === 'cham_soc') {
+    tienTo = 'Chăm sóc KH';
+    icon = '🤝';
+  } else if (loaiVP === 'hop_noi_bo') {
+    tienTo = 'Họp nội bộ';
+    icon = '👥';
+  }
+
+  const target = nlh || (tenDoiTuong && tenDoiTuong !== 'Làm việc tại văn phòng' ? tenDoiTuong : '');
+  let tieuDeChinh = '';
+  if (loaiVP === 'hop_noi_bo') {
+    tieuDeChinh = nd ? `Họp nội bộ: ${nd}` : 'Họp nội bộ văn phòng';
+  } else if (target) {
+    tieuDeChinh = `${tienTo} ${target}`;
+  } else if (nd) {
+    tieuDeChinh = `${tienTo}: ${nd}`;
+  } else {
+    tieuDeChinh = tienTo;
+  }
+
+  const chiTietThem =
+    target && nd && !nd.toLowerCase().includes(target.toLowerCase())
+      ? nd
+      : undefined;
+
+  return {
+    tieuDeChinh,
+    chiTietThem,
+    icon,
+    nhanLoai: NHAN_LOAI_VIEC_VAN_PHONG[loaiVP] || 'Văn phòng'
+  };
+};
+
+
 // Bảng màu phân biệt theo nhân viên trên Google Calendar
 const BANG_MAU_NHAN_VIEN = [
   {
@@ -228,6 +306,10 @@ export function NoiDungLichCongTac({
     if (tabParam === 'yeu_cau_ho_tro') {
       setTabChinh('yeu_cau_ho_tro');
     }
+    const viewParam = searchParams?.get('view') as CheDoXem | null;
+    if (viewParam && ['tuan', 'thang', 'danh_sach'].includes(viewParam)) {
+      setCheDoXem(viewParam);
+    }
   }, [searchParams]);
 
   const soYeuCauCanXuLy = useMemo(() => {
@@ -253,7 +335,7 @@ export function NoiDungLichCongTac({
   }, [nguoiDungHienTai]);
 
   // Điều khiển Calendar & Bộ lọc
-  const [cheDoXem, setCheDoXem] = useState<CheDoXem>(() => cheDoXemMacDinh || 'thang');
+  const [cheDoXem, setCheDoXem] = useState<CheDoXem>(() => cheDoXemMacDinh || 'tuan');
   const [ngayDangXem, setNgayDangXem] = useState<string>(homNayISO);
   const [ngayChonTrongThang, setNgayChonTrongThang] = useState<string>(homNayISO);
   const [ngayChonTuan, setNgayChonTuan] = useState<string>(homNayISO);
@@ -1148,12 +1230,12 @@ export function NoiDungLichCongTac({
                             <div className="p-2 space-y-2 flex-1">
                               {lichTrongNgay.map((lich) => {
                                 const ns = mapNhanSu.get(lich.nguoi_phu_trach_id);
-                                const mau = layMauTheoNhanVien(lich.nguoi_phu_trach_id);
                                 const ttObj = DANH_SACH_TRANG_THAI_LICH_GAP.find(
                                   (t) => t.key === lich.trang_thai
                                 );
                                 const laViecVP = lich.loai_lich === 'van_phong';
                                 const daHoanThanh = lich.trang_thai === 'da_hoan_thanh';
+                                const infoHienThi = taoTieuDeLichHienThi(lich);
 
                                 if (laViecVP) {
                                   return (
@@ -1164,15 +1246,16 @@ export function NoiDungLichCongTac({
                                         setMoModal(true);
                                       }}
                                       className={cn(
-                                        'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs space-y-1',
+                                        'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs space-y-1 border-l-4',
                                         daHoanThanh
-                                          ? 'bg-slate-50/80 border-slate-200 opacity-70'
-                                          : 'bg-blue-50/70 border-blue-200/90 hover:bg-blue-100/70 border-l-4 border-l-blue-500'
+                                          ? 'bg-slate-50/80 border-slate-200 opacity-70 border-l-slate-400'
+                                          : 'bg-sky-50/90 border-sky-200/90 hover:bg-sky-100/90 border-l-sky-500 text-sky-950'
                                       )}
                                     >
                                       <div className="flex items-center justify-between gap-1">
-                                        <span className="text-[9.5px] font-bold text-blue-700 bg-white/90 px-1.5 py-0.5 rounded-md border border-blue-200/50">
-                                          🏢 {NHAN_LOAI_VIEC_VAN_PHONG[lich.loai_viec_vp || 'khac']}
+                                        <span className="text-[9.5px] font-bold text-sky-700 bg-white/95 px-1.5 py-0.5 rounded-md border border-sky-200/70 inline-flex items-center gap-1">
+                                          <span>{infoHienThi.icon}</span>
+                                          <span>{infoHienThi.nhanLoai}</span>
                                         </span>
                                         <button
                                           type="button"
@@ -1190,14 +1273,19 @@ export function NoiDungLichCongTac({
                                       </div>
 
                                       <div className={cn('text-xs font-bold leading-snug line-clamp-2 text-slate-900', daHoanThanh && 'line-through text-slate-500')}>
-                                        {lich.noi_dung || lich.tieu_de || lich.ten_khach_hang}
+                                        {infoHienThi.tieuDeChinh}
                                       </div>
 
-                                      {lich.ten_khach_hang && lich.ten_khach_hang !== 'Làm việc tại văn phòng' && (
-                                        <div className="text-[10.5px] text-slate-500 truncate">
-                                          {lich.ten_khach_hang}
+                                      {infoHienThi.chiTietThem && (
+                                        <div className="text-[11px] text-slate-500 truncate">
+                                          {infoHienThi.chiTietThem}
                                         </div>
                                       )}
+
+                                      <div className="flex items-center justify-between pt-1 border-t border-sky-100/80 text-[10.5px] text-slate-500">
+                                        <span>{lich.gio_bat_dau || 'VP'}</span>
+                                        <span className="truncate max-w-[100px]">{ns?.ho_va_ten || ''}</span>
+                                      </div>
                                     </div>
                                   );
                                 }
@@ -1210,37 +1298,43 @@ export function NoiDungLichCongTac({
                                       setMoModal(true);
                                     }}
                                     className={cn(
-                                      'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs space-y-1.5',
+                                      'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs space-y-1.5 border-l-4',
                                       lich.trang_thai === 'huy'
-                                        ? 'bg-slate-100 border-slate-200 opacity-60 line-through'
-                                        : cn(mau.bg, mau.border)
+                                        ? 'bg-slate-100 border-slate-200 opacity-60 line-through border-l-slate-400'
+                                        : 'bg-amber-50/90 border-amber-200/90 hover:bg-amber-100/90 border-l-amber-500 text-amber-950'
                                     )}
                                   >
                                     <div className="flex items-center justify-between gap-1">
-                                      <span className={cn('text-[11px] font-extrabold tabular-nums', mau.sub)}>
-                                        {lich.gio_bat_dau} - {lich.gio_ket_thuc}
-                                      </span>
+                                      <div className="flex items-center gap-1 min-w-0">
+                                        <span className="text-[9.5px] font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded-md border border-amber-200/80 inline-flex items-center gap-1 shrink-0">
+                                          <span>🚗</span>
+                                          <span>Công tác</span>
+                                        </span>
+                                        <span className="text-[10.5px] font-extrabold text-amber-900 tabular-nums truncate">
+                                          {lich.gio_bat_dau}–{lich.gio_ket_thuc}
+                                        </span>
+                                      </div>
                                       <span
                                         className={cn(
                                           'size-2 rounded-full shrink-0',
-                                          ttObj?.mauDot || 'bg-blue-500'
+                                          ttObj?.mauDot || 'bg-amber-500'
                                         )}
                                         title={ttObj?.tieu_de}
                                       />
                                     </div>
 
-                                    <div className={cn('text-xs font-bold leading-snug line-clamp-2', mau.text)}>
-                                      {lich.ten_khach_hang}
+                                    <div className="text-xs font-bold leading-snug line-clamp-2 text-slate-900">
+                                      {infoHienThi.tieuDeChinh}
                                     </div>
 
-                                    {lich.dia_diem && (
+                                    {infoHienThi.chiTietThem && (
                                       <div className="flex items-center gap-1 text-[11px] text-slate-600 truncate">
-                                        <MapPin className="size-3 shrink-0 text-slate-400" />
-                                        <span className="truncate">{lich.dia_diem}</span>
+                                        {lich.dia_diem && <MapPin className="size-3 shrink-0 text-slate-400" />}
+                                        <span className="truncate">{infoHienThi.chiTietThem}</span>
                                       </div>
                                     )}
 
-                                    <div className="flex items-center justify-between pt-1 border-t border-black/5">
+                                    <div className="flex items-center justify-between pt-1 border-t border-amber-200/60">
                                       <div className="flex items-center gap-1.5 min-w-0">
                                         <DaiDien
                                           ten={ns?.ho_va_ten || 'NV'}
@@ -1426,9 +1520,27 @@ export function NoiDungLichCongTac({
                               width: `calc(${100 / muc.tongLane}% - 6px)`
                             }}
                           >
-                            <div className="text-[13px] font-bold text-slate-900 leading-snug line-clamp-2">
-                              {lich.ten_khach_hang}
-                            </div>
+                            {(() => {
+                              const infoH = taoTieuDeLichHienThi(lich);
+                              const isVP = lich.loai_lich === 'van_phong';
+                              return (
+                                <>
+                                  <div className="flex items-center gap-1.5 mb-0.5">
+                                    <span className={cn('text-[9.5px] font-bold px-1.5 py-0.2 rounded', isVP ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800')}>
+                                      {infoH.icon} {isVP ? infoH.nhanLoai : 'Công tác'}
+                                    </span>
+                                  </div>
+                                  <div className="text-[13px] font-bold text-slate-900 leading-snug line-clamp-2">
+                                    {infoH.tieuDeChinh}
+                                  </div>
+                                  {infoH.chiTietThem && (
+                                    <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                                      {infoH.chiTietThem}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                             <div className="text-[11px] text-slate-500 tabular-nums mt-0.5">
                               {lich.gio_bat_dau} - {lich.gio_ket_thuc}
                             </div>
@@ -1531,7 +1643,9 @@ export function NoiDungLichCongTac({
 
                             <div className="space-y-1 mt-0.5">
                               {lichNgay.slice(0, 3).map((lich) => {
-                                const mau = layMauTheoNhanVien(lich.nguoi_phu_trach_id);
+                                const infoH = taoTieuDeLichHienThi(lich);
+                                const isVP = lich.loai_lich === 'van_phong';
+                                const daXong = lich.trang_thai === 'da_hoan_thanh';
                                 return (
                                   <div
                                     key={lich.id}
@@ -1540,14 +1654,17 @@ export function NoiDungLichCongTac({
                                       setMoModal(true);
                                     }}
                                     className={cn(
-                                      'px-1.5 py-1 rounded text-[11px] font-semibold truncate cursor-pointer border',
-                                      mau.bg,
-                                      mau.border,
-                                      mau.text
+                                      'px-1.5 py-1 rounded text-[11px] font-semibold truncate cursor-pointer border border-l-2',
+                                      daXong
+                                        ? 'bg-slate-100 border-slate-200 text-slate-500 line-through border-l-slate-400'
+                                        : isVP
+                                        ? 'bg-sky-50 border-sky-200 border-l-sky-500 text-sky-950 hover:bg-sky-100'
+                                        : 'bg-amber-50 border-amber-200 border-l-amber-500 text-amber-950 hover:bg-amber-100'
                                     )}
+                                    title={infoH.tieuDeChinh}
                                   >
-                                    <span className="font-extrabold mr-1">{lich.gio_bat_dau}</span>
-                                    {lich.ten_khach_hang}
+                                    <span className="font-extrabold mr-1">{infoH.icon} {lich.gio_bat_dau}</span>
+                                    <span>{infoH.tieuDeChinh}</span>
                                   </div>
                                 );
                               })}
@@ -1699,9 +1816,27 @@ export function NoiDungLichCongTac({
                                   </span>
                                   <div className="flex-1 min-w-0">
                                     <div className="text-[14px] leading-snug">
-                                      <span className="font-bold text-slate-900">
-                                        {lich.ten_khach_hang}
-                                      </span>
+                                      {(() => {
+                                        const infoH = taoTieuDeLichHienThi(lich);
+                                        const isVP = lich.loai_lich === 'van_phong';
+                                        return (
+                                          <div className="space-y-0.5">
+                                            <div className="flex items-center gap-1.5">
+                                              <span className={cn('text-[9.5px] font-bold px-1.5 py-0.2 rounded', isVP ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800')}>
+                                                {infoH.icon} {isVP ? infoH.nhanLoai : 'Công tác'}
+                                              </span>
+                                              <span className="font-bold text-slate-900 text-[13.5px]">
+                                                {infoH.tieuDeChinh}
+                                              </span>
+                                            </div>
+                                            {infoH.chiTietThem && (
+                                              <div className="text-[11.5px] text-slate-500">
+                                                {infoH.chiTietThem}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
                                       {ttObj && (
                                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
                                           {ttObj.tieu_de}
@@ -1794,6 +1929,9 @@ export function NoiDungLichCongTac({
                             (t) => t.key === lich.trang_thai
                           );
 
+                          const infoH = taoTieuDeLichHienThi(lich);
+                          const isVP = lich.loai_lich === 'van_phong';
+
                           return (
                             <div
                               key={lich.id}
@@ -1801,7 +1939,10 @@ export function NoiDungLichCongTac({
                                 setLichDangSua(lich);
                                 setMoModal(true);
                               }}
-                              className="p-4 hover:bg-slate-50/80 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"
+                              className={cn(
+                                'p-4 hover:bg-slate-50/80 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer border-l-4',
+                                isVP ? 'border-l-sky-500' : 'border-l-amber-500'
+                              )}
                             >
                               <div className="flex items-start gap-3.5 min-w-0">
                                 <div className="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-center shrink-0 min-w-[72px]">
@@ -1813,8 +1954,12 @@ export function NoiDungLichCongTac({
 
                                 <div className="min-w-0 space-y-1">
                                   <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-md inline-flex items-center gap-1', isVP ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800')}>
+                                      <span>{infoH.icon}</span>
+                                      <span>{isVP ? infoH.nhanLoai : 'Công tác ngoài'}</span>
+                                    </span>
                                     <span className="font-bold text-slate-900 text-sm sm:text-base">
-                                      {lich.ten_khach_hang}
+                                      {infoH.tieuDeChinh}
                                     </span>
                                     {ttObj && (
                                       <span
