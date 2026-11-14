@@ -606,10 +606,13 @@ export const dongBoXoaLichGapSangKeHoachTuan = async (params: {
   lichId: string;
   nhanVienId?: string;
   ngayISO?: string;
+  tenKhachHang?: string | null;
+  duAnId?: string | null;
+  khachHangId?: string | null;
   nguoiThucHien?: NguoiDungDangNhap | null;
 }): Promise<boolean> => {
   try {
-    const { lichId, nhanVienId, ngayISO, nguoiThucHien } = params;
+    const { lichId, nhanVienId, ngayISO, tenKhachHang, duAnId, khachHangId, nguoiThucHien } = params;
     const userId = nhanVienId || nguoiThucHien?.id;
     if (!lichId || !userId) return false;
 
@@ -620,9 +623,23 @@ export const dongBoXoaLichGapSangKeHoachTuan = async (params: {
     }
 
     const idMucTieuLich = `tuan_lich_${lichId}`;
-    const danhSachMoi = keHoachHienTai.danh_sach_tac_chien.filter(
-      (item) => item.id !== idMucTieuLich && (item as any).lich_gap_kh_id !== lichId
-    );
+    const tenKHLower = (tenKhachHang || '').trim().toLowerCase();
+
+    const danhSachMoi = keHoachHienTai.danh_sach_tac_chien.filter((item) => {
+      // 1. Trung id muc tieu lich hoac id lich
+      if (item.id === idMucTieuLich) return false;
+      if ((item as any).lich_gap_kh_id === lichId) return false;
+
+      // 2. Khop cung ngay du kien va cung Khach hang / Du an
+      if (ngayISO && item.ngay_du_kien === ngayISO) {
+        if (khachHangId && item.khach_hang_id === khachHangId) return false;
+        if (duAnId && item.du_an_id === duAnId) return false;
+        const tenItem = (item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an || '').trim().toLowerCase();
+        if (tenKHLower && tenItem === tenKHLower) return false;
+      }
+
+      return true;
+    });
 
     if (danhSachMoi.length === keHoachHienTai.danh_sach_tac_chien.length) {
       return false;
@@ -639,7 +656,7 @@ export const dongBoXoaLichGapSangKeHoachTuan = async (params: {
     await dongBoTuDongBaoCaoTuan(keHoachDaLuu, nguoiThucHien);
     return true;
   } catch (err) {
-    console.warn('[dongBoXoaLichGapSangKeHoachTuan] Lỗi:', err);
+    console.warn('[dongBoXoaLichGapSangKeHoachTuan] Loi:', err);
     return false;
   }
 };

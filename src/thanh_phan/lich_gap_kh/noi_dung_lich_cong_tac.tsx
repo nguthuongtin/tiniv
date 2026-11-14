@@ -686,21 +686,36 @@ export function NoiDungLichCongTac({
     }
     if (!confirm(`Bạn có chắc muốn xóa lịch gặp "${tenKH}"?`)) return;
     try {
+      setDangLuu(true);
       const lichCanXoa = dsLich.find((l) => l.id === id);
+
+      // 1. Cập nhật ngay UI để người dùng thấy mất lịch tức thì 0ms
+      setDsLich((prev) => prev.filter((l) => l.id !== id));
+      setMoModal(false);
+      setLichDangSua(null);
+
+      // 2. Xóa trên Cloud Firestore (cả 2 collection) và LocalStorage
       await xoaLichGapKH(id, nguoiDungHienTai?.id);
+
+      // 3. Đồng bộ xóa mục tiêu tương ứng trong Kế hoạch Tuần
       if (lichCanXoa) {
         await dongBoXoaLichGapSangKeHoachTuan({
           lichId: id,
           nhanVienId: lichCanXoa.nguoi_phu_trach_id,
           ngayISO: lichCanXoa.ngay,
+          tenKhachHang: lichCanXoa.ten_khach_hang || tenKH,
+          duAnId: lichCanXoa.du_an_id,
+          khachHangId: lichCanXoa.khach_hang_id,
           nguoiThucHien: nguoiDungHienTai
         });
       }
-      setMoModal(false);
-      setLichDangSua(null);
+
       await taiDanhSachLich();
-    } catch {
+    } catch (err) {
+      console.error('Lỗi khi xóa lịch:', err);
       alert('Không thể xóa lịch gặp.');
+    } finally {
+      setDangLuu(false);
     }
   };
 

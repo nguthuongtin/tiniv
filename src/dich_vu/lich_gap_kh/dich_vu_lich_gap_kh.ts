@@ -2,6 +2,7 @@
 
 import {
   addDoc,
+  deleteDoc,
   getDocs,
   setDoc,
   query,
@@ -132,7 +133,11 @@ export const danhSachLichGapKH = async (
     const snap = await getDocs(q);
     snap.docs.forEach((d) => {
       const lich = chuyenDoiDocThanhLichGap(d.id, d.data());
-      if (!lich.da_xoa) map.set(lich.id, lich);
+      if (lich.da_xoa || (lich as any).trang_thai === 'huy') {
+        map.delete(lich.id);
+      } else {
+        map.set(lich.id, lich);
+      }
     });
   } catch (err) {
     console.warn('[danhSachLichGapKH] Đọc lich_gap_kh:', err);
@@ -148,7 +153,11 @@ export const danhSachLichGapKH = async (
     const snapFallback = await getDocs(qFallback);
     snapFallback.docs.forEach((d) => {
       const lich = chuyenDoiDocThanhLichGap(d.id, d.data());
-      if (!lich.da_xoa) map.set(lich.id, lich);
+      if (lich.da_xoa || (lich as any).trang_thai === 'huy') {
+        map.delete(lich.id);
+      } else if (!map.has(lich.id)) {
+        map.set(lich.id, lich);
+      }
     });
   } catch (err) {
     console.warn('[danhSachLichGapKH] Đọc cong_viec fallback:', err);
@@ -221,14 +230,24 @@ export const langNgheLichGapKH = (
       q,
       (snap) => {
         const tuRemote: LichGapKH[] = [];
+        const dsDaXoaIds = new Set<string>();
         snap.forEach((d) => {
           const l = chuyenDoiDocThanhLichGap(d.id, d.data());
-          if (!l.da_xoa) tuRemote.push(l);
+          if (l.da_xoa || (l as any).trang_thai === 'huy') {
+            dsDaXoaIds.add(l.id);
+          } else {
+            tuRemote.push(l);
+          }
         });
-        const currentLocal = docCacheLocal().filter((x) => !x.da_xoa);
+        const currentLocal = docCacheLocal().filter((x) => !x.da_xoa && !dsDaXoaIds.has(x.id));
         const map = new Map<string, LichGapKH>();
-        currentLocal.forEach((x) => map.set(x.id, x));
-        tuRemote.forEach((x) => map.set(x.id, x));
+        currentLocal.forEach((x) => {
+          if (!dsDaXoaIds.has(x.id)) map.set(x.id, x);
+        });
+        tuRemote.forEach((x) => {
+          if (!dsDaXoaIds.has(x.id)) map.set(x.id, x);
+        });
+        dsDaXoaIds.forEach((id) => map.delete(id));
         const merged = Array.from(map.values()).sort((a, b) => {
           if (a.ngay !== b.ngay) return a.ngay.localeCompare(b.ngay);
           return a.gio_bat_dau.localeCompare(b.gio_bat_dau);
@@ -252,13 +271,17 @@ export const langNgheLichGapKH = (
     const current = docCacheLocal();
     let next: LichGapKH[];
     if (updated && updated.id) {
-      next = current.some((x) => x.id === updated.id)
-        ? current.map((x) => (x.id === updated.id ? updated : x))
-        : [updated, ...current];
+      if (updated.da_xoa || (updated as any).trang_thai === 'huy') {
+        next = current.filter((x) => x.id !== updated.id);
+      } else {
+        next = current.some((x) => x.id === updated.id)
+          ? current.map((x) => (x.id === updated.id ? updated : x))
+          : [updated, ...current];
+      }
     } else {
       next = current;
     }
-    const valid = next.filter((x) => !x.da_xoa).sort((a, b) => {
+    const valid = next.filter((x) => !x.da_xoa && (x as any).trang_thai !== 'huy').sort((a, b) => {
       if (a.ngay !== b.ngay) return a.ngay.localeCompare(b.ngay);
       return a.gio_bat_dau.localeCompare(b.gio_bat_dau);
     });
@@ -419,31 +442,25 @@ export const doiTrangThaiLichGapKH = async (
 export const xoaLichGapKH = async (id: string, nguoiXoaId?: string): Promise<void> => {
   const patch = {
     da_xoa: true,
+    trang_thai: 'huy',
     ngay_cap_nhat: new Date().toISOString()
   };
 
-  let daXoaCloud = false;
-  if (!_suDungFallbackCongViec) {
-    try {
-      await setDoc(thamChieuBanGhi(TEN_COLLECTION, id), patch, { merge: true });
-      daXoaCloud = true;
-    } catch {
-      _suDungFallbackCongViec = true;
-    }
-  }
+  // 1. Xoa vinh vien va danh dau da_xoa tren CA HAI collection (lich_gap_kh va fallback cong_viec)
+  await Promise.allSettled([
+    deleteDoc(thamChieuBanGhi(TEN_COLLECTION, id)),
+    deleteDoc(thamChieuBanGhi(COLLECTION_FALLBACK, id)),
+    setDoc(thamChieuBanGhi(TEN_COLLECTION, id), patch, { merge: true }),
+    setDoc(thamChieuBanGhi(COLLECTION_FALLBACK, id), patch, { merge: true })
+  ]);
 
-  if (!daXoaCloud) {
-    try {
-      await setDoc(thamChieuBanGhi(COLLECTION_FALLBACK, id), patch, { merge: true });
-    } catch {
-      // Fallback local cache
-    }
-  }
-
-  const dsLocal = docCacheLocal().filter((x) => x.id !== id);
+  // 2. Don sach khoi toan bo localStorage cache
+  const dsLocal = docCacheLocal().filter((x) => x.id !== id && !x.da_xoa);
   ghiCacheLocal(dsLocal);
   xoaCacheLichGapKH();
-  phatSuKienCapNhat({ id, da_xoa: true } as any);
+
+  // 3. Phat event cap nhat tuc thoi 0ms cho cac component dang mo
+  phatSuKienCapNhat({ id, da_xoa: true, trang_thai: 'huy' } as any);
 
   if (nguoiXoaId) {
     await ghiNhatKyHoatDong(nguoiXoaId, 'lich_gap_kh', 'xoa', id, 'Xóa lịch gặp khách hàng');
