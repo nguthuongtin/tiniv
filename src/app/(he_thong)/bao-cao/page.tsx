@@ -159,6 +159,8 @@ export default function TrangBaoCaoThongKe() {
       const laQuanLy = laQuanLyCapCaoHoacTruongPhong(nguoiDungHienTai);
       let mangDa = kqDa.mang;
       let mangKh = kqKh.mang;
+      let mangCv = kqCv.mang;
+      let mangBccv = kqBccv.mang;
       if (!laQuanLy && nguoiDungHienTai) {
         mangDa = mangDa.filter((da) => duocXemHoSoDuAn(nguoiDungHienTai, da));
         const dsKhachHangIdsCoDuAn = new Set(
@@ -167,11 +169,17 @@ export default function TrangBaoCaoThongKe() {
         mangKh = mangKh.filter((kh) =>
           duocXemKhachHang(nguoiDungHienTai, kh, undefined, dsKhachHangIdsCoDuAn)
         );
+        mangCv = mangCv.filter(
+          (cv) => cv.nguoi_thuc_hien_id === nguoiDungHienTai.id || cv.nguoi_tao_id === nguoiDungHienTai.id
+        );
+        mangBccv = mangBccv.filter(
+          (bc) => bc.nhan_vien_id === nguoiDungHienTai.id || (bc as any).nguoi_tao_id === nguoiDungHienTai.id
+        );
       }
       setDsKh(mangKh);
       setDsDa(mangDa);
-      setDsCv(kqCv.mang);
-      setDsBccv(kqBccv.mang);
+      setDsCv(mangCv);
+      setDsBccv(mangBccv);
       setDsNs(kqNs.mang);
       setDsChiNhanhLoc(kqCn.mang as any);
       setDsPhongBanLoc(kqPb.mang as any);

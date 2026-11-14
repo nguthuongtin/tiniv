@@ -256,9 +256,18 @@ export const duocXemKhachHang = (
   // - Nếu có người phụ trách: CHỈ người phụ trách (nguoi_phu_trach_id) thấy.
   // - Nếu chưa phân bổ người phụ trách: Người tạo (nguoi_tao_id) thấy.
   if (khachHang.nguoi_phu_trach_id) {
-    return khachHang.nguoi_phu_trach_id === uid;
+    if (khachHang.nguoi_phu_trach_id === uid) return true;
+  } else if (khachHang.nguoi_tao_id === uid) {
+    return true;
   }
-  return khachHang.nguoi_tao_id === uid;
+
+  if (dsKhachHangIdsCoDuAnLienQuan && khachHang.id) {
+    if (dsKhachHangIdsCoDuAnLienQuan instanceof Set) {
+      return dsKhachHangIdsCoDuAnLienQuan.has(khachHang.id);
+    }
+    return Array.isArray(dsKhachHangIdsCoDuAnLienQuan) && dsKhachHangIdsCoDuAnLienQuan.includes(khachHang.id);
+  }
+  return false;
 };
 
 /**

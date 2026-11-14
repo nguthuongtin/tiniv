@@ -44,7 +44,7 @@ import {
   type CapNhatLichGapDTO
 } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
 import { useStoreXacThuc } from '../../thu_vien/zustand/store_xac_thuc';
-import { laQuanLyCapCaoHoacTruongPhong } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { laQuanLyCapCaoHoacTruongPhong, duocXemHoSoDuAn, duocXemKhachHang } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
 
 const congThemPhut = (hhmm: string, soPhut: number): string => {
   const [h, m] = (hhmm || '09:00').split(':').map((x) => parseInt(x, 10) || 0);
@@ -180,9 +180,31 @@ export default function FormLichGapModal({
     }
   }, [mo, dsDuAn]);
 
-  const dsDuAnTongHop = useMemo(() => {
-    return (dsDuAn && dsDuAn.length > 0) ? dsDuAn : dsDuAnNoiBo;
-  }, [dsDuAn, dsDuAnNoiBo]);
+  const dsDuAnHieuLuc = useMemo(() => {
+    const raw = (dsDuAn && dsDuAn.length > 0) ? dsDuAn : dsDuAnNoiBo;
+    if (laQuanLy) return raw;
+    if (!nguoiDungHienTai) return [];
+    return raw.filter((da) =>
+      da.id === dang_sua?.du_an_id ||
+      da.id === gia_tri_mac_dinh?.du_an_id ||
+      duocXemHoSoDuAn(nguoiDungHienTai, da)
+    );
+  }, [dsDuAn, dsDuAnNoiBo, laQuanLy, nguoiDungHienTai, dang_sua?.du_an_id, gia_tri_mac_dinh?.du_an_id]);
+
+  const dsDuAnTongHop = dsDuAnHieuLuc;
+
+  const dsKhachHangHieuLuc = useMemo(() => {
+    if (laQuanLy) return dsKhachHang;
+    if (!nguoiDungHienTai) return [];
+    const dsDuAnIdsCuaUser = new Set(
+      dsDuAnHieuLuc.map((da) => da.khach_hang_id).filter(Boolean) as string[]
+    );
+    return dsKhachHang.filter((kh) =>
+      kh.id === dang_sua?.khach_hang_id ||
+      kh.id === gia_tri_mac_dinh?.khach_hang_id ||
+      duocXemKhachHang(nguoiDungHienTai, kh, undefined, dsDuAnIdsCuaUser)
+    );
+  }, [dsKhachHang, laQuanLy, nguoiDungHienTai, dsDuAnHieuLuc, dang_sua?.khach_hang_id, gia_tri_mac_dinh?.khach_hang_id]);
 
   // Click outside listener
   useEffect(() => {
@@ -356,8 +378,8 @@ export default function FormLichGapModal({
   // Lọc gợi ý khách hàng
   const dsKHGoiY = useMemo(() => {
     const kw = timKhachHang.toLowerCase().trim();
-    if (!kw) return dsKhachHang.slice(0, 30);
-    return dsKhachHang
+    if (!kw) return dsKhachHangHieuLuc.slice(0, 30);
+    return dsKhachHangHieuLuc
       .filter(
         (kh) =>
           kh.ten_khach_hang.toLowerCase().includes(kw) ||
@@ -365,7 +387,7 @@ export default function FormLichGapModal({
           (kh.so_dien_thoai && kh.so_dien_thoai.includes(kw))
       )
       .slice(0, 30);
-  }, [dsKhachHang, timKhachHang]);
+  }, [dsKhachHangHieuLuc, timKhachHang]);
 
   const chonKhachHang = async (kh: KhachHang) => {
     setKhachHangId(kh.id);

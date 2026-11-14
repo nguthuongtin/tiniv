@@ -64,7 +64,7 @@ import { danhSachKhachHang } from '../../dich_vu/khach_hang/dich_vu_khach_hang';
 import { danhSachNguoiLienHe } from '../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachChiNhanh } from '../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
-import { duocXemKhachHang, laQuanLyCapCaoHoacTruongPhong } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { duocXemHoSoDuAn, duocXemKhachHang, laQuanLyCapCaoHoacTruongPhong } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
 import FormLichGapModal, {
   type GiaTriMacDinhLichGap
 } from './form_lich_gap_modal';
@@ -312,10 +312,6 @@ export function NoiDungLichCongTac({
     }
   }, [searchParams]);
 
-  const soYeuCauCanXuLy = useMemo(() => {
-    return danhSachYeuCau.filter((yc) => yc.trang_thai !== 'da_hoan_thanh').length;
-  }, [danhSachYeuCau]);
-
   const homNayISO = useMemo(
     () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date()),
     []
@@ -333,6 +329,45 @@ export function NoiDungLichCongTac({
   const laQuanLy = useMemo(() => {
     return laQuanLyCapCaoHoacTruongPhong(nguoiDungHienTai);
   }, [nguoiDungHienTai]);
+
+  const soYeuCauCanXuLy = useMemo(() => {
+    const ds = laQuanLy
+      ? danhSachYeuCau
+      : danhSachYeuCau.filter(
+          (yc) =>
+            yc.nguoi_tao_id === nguoiDungHienTai?.id ||
+            yc.nguoi_nhan_id === nguoiDungHienTai?.id ||
+            (yc.ten_nguoi_tao &&
+              nguoiDungHienTai?.ho_va_ten &&
+              yc.ten_nguoi_tao.trim().toLowerCase() === nguoiDungHienTai.ho_va_ten.trim().toLowerCase())
+        );
+    return ds.filter((yc) => yc.trang_thai !== 'da_hoan_thanh').length;
+  }, [danhSachYeuCau, laQuanLy, nguoiDungHienTai]);
+
+  // Modal tạo/sửa lịch
+  const [moModal, setMoModal] = useState(false);
+  const [lichDangSua, setLichDangSua] = useState<LichGapKH | null>(null);
+  const [giaTriMacDinhModal, setGiaTriMacDinhModal] = useState<GiaTriMacDinhLichGap | null>(null);
+
+  // Phân quyền dữ liệu Dự án: Sale nào thì sale đó thấy dự án của mình
+  const dsDuAnHieuLuc = useMemo(() => {
+    if (!nguoiDungHienTai) return [];
+    if (laQuanLy) return dsHoSoDuAn;
+    return dsHoSoDuAn.filter((da) => duocXemHoSoDuAn(nguoiDungHienTai, da));
+  }, [dsHoSoDuAn, laQuanLy, nguoiDungHienTai]);
+
+  // Phân quyền dữ liệu Khách hàng: Sale nào thì sale đó thấy KH của mình
+  const dsKhachHangHieuLuc = useMemo(() => {
+    if (!nguoiDungHienTai) return [];
+    if (laQuanLy) return dsKhachHang;
+    const dsDuAnIdsCuaUser = new Set(
+      dsDuAnHieuLuc.map((da) => da.khach_hang_id).filter(Boolean) as string[]
+    );
+    return dsKhachHang.filter((kh) => {
+      if (lichDangSua?.khach_hang_id === kh.id) return true;
+      return duocXemKhachHang(nguoiDungHienTai, kh, undefined, dsDuAnIdsCuaUser);
+    });
+  }, [dsKhachHang, dsDuAnHieuLuc, laQuanLy, lichDangSua, nguoiDungHienTai]);
 
   // Điều khiển Calendar & Bộ lọc
   const [cheDoXem, setCheDoXem] = useState<CheDoXem>(() => cheDoXemMacDinh || 'tuan');
@@ -356,19 +391,8 @@ export function NoiDungLichCongTac({
     setNgayChonTrongThang(ngayDangXem);
   }, [ngayDangXem]);
 
-  // Modal tạo/sửa lịch
-  const [moModal, setMoModal] = useState(false);
-  const [lichDangSua, setLichDangSua] = useState<LichGapKH | null>(null);
-  const [giaTriMacDinhModal, setGiaTriMacDinhModal] = useState<GiaTriMacDinhLichGap | null>(null);
 
-  const dsKhachHangHieuLuc = useMemo(() => {
-    if (!nguoiDungHienTai) return [];
-    if (laQuanLy) return dsKhachHang;
-    return dsKhachHang.filter((kh) => {
-      if (lichDangSua?.khach_hang_id === kh.id) return true;
-      return duocXemKhachHang(nguoiDungHienTai, kh);
-    });
-  }, [dsKhachHang, laQuanLy, lichDangSua, nguoiDungHienTai]);
+
 
   const taiDanhMuc = useCallback(async () => {
     try {
@@ -2048,7 +2072,7 @@ export function NoiDungLichCongTac({
         dsKhachHang={dsKhachHangHieuLuc}
         dsNguoiLienHe={dsNguoiLienHe}
         dsNhanSu={dsNhanSu}
-        dsDuAn={dsHoSoDuAn}
+        dsDuAn={dsDuAnHieuLuc}
         nguoiDungId={nguoiDungHienTai?.id}
         chiNhanhMacDinhId={nguoiDungHienTai?.chi_nhanh_id}
         khi_luu={handleLuuLich}
@@ -2060,7 +2084,7 @@ export function NoiDungLichCongTac({
         mo={moModalTaoYeuCau}
         onDong={() => setMoModalTaoYeuCau(false)}
         duAnMacDinh={duAnChoYeuCau}
-        danhSachDuAn={dsHoSoDuAn}
+        danhSachDuAn={dsDuAnHieuLuc}
         nguoiDungHienTai={nguoiDungHienTai}
         onTaoThanhCong={(ycMoi) => {
           setDanhSachYeuCau((prev) => [ycMoi, ...prev.filter((x) => x.id !== ycMoi.id)]);

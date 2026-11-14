@@ -274,7 +274,7 @@ export default function NoiDungBaoCaoTuan() {
   }, [dsNhanSu, chiNhanhLocId]);
 
   const nhanSuMucTieu = useMemo(() => {
-    const targetId = nhanVienDangXemId || uid;
+    const targetId = (laQuanLy && nhanVienDangXemId) ? nhanVienDangXemId : uid;
     return (
       dsNhanSu.find((n) => n.id === targetId) ||
       (nguoiDungHienTai

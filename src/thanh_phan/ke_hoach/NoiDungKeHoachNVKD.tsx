@@ -1713,6 +1713,7 @@ export function NoiDungKeHoachNVKD({
         dsKhachHang={dsKhachHangHieuLuc}
         dsNguoiLienHe={dsNguoiLienHe}
         dsNhanSu={dsNhanSu}
+        dsDuAn={dsHoSoDuAnHieuLuc}
         nguoiDungId={nguoiDungHienTai?.id}
         chiNhanhMacDinhId={nhanVienDangXem?.chi_nhanh_id ?? nguoiDungHienTai?.chi_nhanh_id ?? null}
         khi_luu={xuLyLuuLichCongTacChuan as any}
