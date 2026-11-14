@@ -26,6 +26,7 @@ import {
 import type { NguoiDungDangNhap, NhanSu } from '../../thu_vien/types/nhan_su';
 import { themTaiLieuDuAn } from '../tai_lieu_du_an/dich_vu_tai_lieu_du_an';
 import { taoTaiLieuMoi } from '../kho_tai_lieu/dich_vu_kho_tai_lieu';
+import { dongBoYeuCauPhoiHopSangLichVaBaoCaoNgay } from '../ke_hoach/dich_vu_dong_bo_tac_nghiep';
 
 export type { YeuCauPhoiHop };
 
@@ -585,6 +586,12 @@ export const taoYeuCauPhoiHopMoi = async (
     console.warn('[taoYeuCauPhoiHopMoi] Lỗi ghi tiến độ dự án:', eTD);
   }
 
+  // Tự động đồng bộ sang Lịch làm việc và Báo cáo công việc ngày
+  void dongBoYeuCauPhoiHopSangLichVaBaoCaoNgay({
+    yeuCau: yeuCauMoi,
+    nguoiThucHien
+  });
+
   return yeuCauMoi;
 };
 
@@ -799,6 +806,12 @@ export const chuyenBuocYeuCauPhoiHop = async (
       dsLinksKetQuaThucTe
     );
   }
+
+  // Tự động đồng bộ cập nhật sang Lịch làm việc và Báo cáo công việc ngày
+  void dongBoYeuCauPhoiHopSangLichVaBaoCaoNgay({
+    yeuCau: yeuCauCapNhat,
+    nguoiThucHien
+  });
 
   return yeuCauCapNhat;
 };

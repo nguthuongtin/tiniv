@@ -40,6 +40,7 @@ import { duocXemHoSoDuAn, duocXemKhachHang, coQuyen } from '../../../thu_vien/ph
 import type {
   GiaiDoanDuAn,
   HoSoDuAn,
+  MucDoTiemNangKyHopDong,
   TienDoDuAn
 } from '../../../thu_vien/types/du_an';
 import type { NhanSu } from '../../../thu_vien/types/nhan_su';
@@ -145,11 +146,11 @@ const DINH_DANG_TIEN_NGAN_GON = (v: number | null | undefined): string => {
 };
 
 const MAP_TIEM_NANG: Record<string, { nhan: string; lop: string }> = {
-  rat_cao: { nhan: 'Rất cao', lop: 'bg-rose-50 text-rose-700 border-rose-200/80' },
-  cao: { nhan: 'Cao', lop: 'bg-amber-50 text-amber-700 border-amber-200/80' },
-  trung_binh: { nhan: 'Trung bình', lop: 'bg-sky-50 text-sky-700 border-sky-200/80' },
-  thap: { nhan: 'Thấp', lop: 'bg-slate-100 text-slate-600 border-slate-200/80' },
-  rat_thap: { nhan: 'Rất thấp', lop: 'bg-slate-50 text-slate-500 border-slate-200/60' }
+  rat_cao: { nhan: 'Rất cao', lop: 'bg-rose-50 text-rose-700 border-rose-200/80 hover:bg-rose-100/80' },
+  cao: { nhan: 'Cao', lop: 'bg-amber-50 text-amber-700 border-amber-200/80 hover:bg-amber-100/80' },
+  trung_binh: { nhan: 'Trung bình', lop: 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100/80' },
+  thap: { nhan: 'Thấp', lop: 'bg-slate-100 text-slate-600 border-slate-200/80 hover:bg-slate-200/80' },
+  rat_thap: { nhan: 'Rất thấp', lop: 'bg-slate-50 text-slate-500 border-slate-200/60 hover:bg-slate-100/80' }
 };
 
 const tinhSoNgayCapNhat = (ngayStr: string | null | undefined): string => {
@@ -406,6 +407,43 @@ function TrangHoSoDuAn() {
     setLoiForm(null);
     setMoDrawer(true);
   }, []);
+
+  const [dangDoiTiemNangId, setDangDoiTiemNangId] = useState<string | null>(null);
+
+  const xuLyDoiTiemNangNhanh = useCallback(
+    async (duAnId: string, mucMoi: MucDoTiemNangKyHopDong) => {
+      setDangDoiTiemNangId(duAnId);
+      // Optimistic update
+      setDanhSach((prev) =>
+        prev.map((da) => (da.id === duAnId ? { ...da, muc_do_tiem_nang: mucMoi } : da))
+      );
+
+      const credential =
+        (useStoreXacThuc.getState() as any)?._layCredentialTam?.() ?? null;
+      const nguoiTH =
+        nguoiDungHienTai?.id
+          ? {
+              id: nguoiDungHienTai.id,
+              chi_nhanh_id: nguoiDungHienTai.chi_nhanh_id ?? null,
+              phong_ban_id: nguoiDungHienTai.phong_ban_id ?? null,
+              vai_tro: nguoiDungHienTai.vai_tro ?? null,
+              email: credential?.email ?? null,
+              matKhau: credential?.matKhau ?? null
+            }
+          : null;
+
+      try {
+        await capNhat({ id: duAnId, muc_do_tiem_nang: mucMoi }, nguoiTH);
+        themToast('thanh_cong', `Đã đổi mức độ tiềm năng: ${MAP_TIEM_NANG[mucMoi]?.nhan ?? mucMoi}`);
+      } catch (e) {
+        themToast('loi', 'Không thể cập nhật mức độ tiềm năng');
+        void taiLaiDuLieu();
+      } finally {
+        setDangDoiTiemNangId(null);
+      }
+    },
+    [nguoiDungHienTai, themToast, taiLaiDuLieu]
+  );
 
   const xuLyLuuForm = useCallback(
     async (dto: TaoMoiHoSoDuAnDTO | CapNhatHoSoDuAnDTO) => {
@@ -765,15 +803,34 @@ function TrangHoSoDuAn() {
                         </span>
                       </OBang>
 
-                      {/* Tiềm năng */}
+                      {/* Tiềm năng (1-click đổi nhanh) */}
                       <OBang className="px-3 py-2.5 text-center whitespace-nowrap">
-                        {tiemNang ? (
-                          <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium border", tiemNang.lop)}>
-                            {tiemNang.nhan}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic text-[13px]">—</span>
-                        )}
+                        <div
+                          className="relative inline-flex items-center group/select"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <select
+                            value={hda.muc_do_tiem_nang || 'trung_binh'}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              void xuLyDoiTiemNangNhanh(hda.id, e.target.value as MucDoTiemNangKyHopDong);
+                            }}
+                            disabled={dangDoiTiemNangId === hda.id}
+                            className={cn(
+                              "appearance-none pl-2.5 pr-6 py-0.5 rounded-full text-[12px] font-semibold border cursor-pointer transition-all outline-none",
+                              "hover:brightness-95 hover:shadow-2xs focus:ring-2 focus:ring-emerald-500/20",
+                              MAP_TIEM_NANG[hda.muc_do_tiem_nang]?.lop || "bg-slate-100 text-slate-600 border-slate-200"
+                            )}
+                            title="Nhấp để đổi nhanh mức độ tiềm năng"
+                          >
+                            <option value="rat_cao">🔴 Rất cao</option>
+                            <option value="cao">🟠 Cao</option>
+                            <option value="trung_binh">🔵 Trung bình</option>
+                            <option value="thap">⚪ Thấp</option>
+                            <option value="rat_thap">⚪ Rất thấp</option>
+                          </select>
+                          <ChevronDown className="size-3 absolute right-2 pointer-events-none opacity-60 group-hover/select:opacity-100 transition-opacity" />
+                        </div>
                       </OBang>
 
                       {/* Phụ trách (ngay trước Thao tác) */}
@@ -828,6 +885,7 @@ function TrangHoSoDuAn() {
               const idLead = hda.nguoi_phu_trach_id || hda.nguoi_quan_ly_id;
               const nguoiLead = idLead ? dsNhanSu.find((n) => n.id === idLead) ?? null : null;
               const giaTri = laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong);
+              const tiemNang = MAP_TIEM_NANG[hda.muc_do_tiem_nang];
 
               return (
                 <TheMobile
@@ -837,11 +895,38 @@ function TrangHoSoDuAn() {
                   className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-emerald-300/80 transition-all cursor-pointer active:scale-[0.99] flex flex-col justify-between"
                 >
                   <div>
-                    {/* Hàng 1: Tên dự án & Ngày tạo */}
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 flex-1">
-                        {hda.ten_du_an}
-                      </h3>
+                    {/* Hàng 1: Tên dự án & Đổi nhanh tiềm năng & Ngày tạo */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2">
+                          {hda.ten_du_an}
+                        </h3>
+                        <div
+                          className="mt-1.5 flex items-center gap-1.5"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="relative inline-flex items-center group/select">
+                            <select
+                              value={hda.muc_do_tiem_nang || 'trung_binh'}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                void xuLyDoiTiemNangNhanh(hda.id, e.target.value as MucDoTiemNangKyHopDong);
+                              }}
+                              className={cn(
+                                "appearance-none pl-2 pr-5 py-0.5 rounded-full text-[11px] font-bold border cursor-pointer outline-none",
+                                tiemNang?.lop || "bg-slate-100 text-slate-600 border-slate-200"
+                              )}
+                            >
+                              <option value="rat_cao">🔴 Rất cao</option>
+                              <option value="cao">🟠 Cao</option>
+                              <option value="trung_binh">🔵 Trung bình</option>
+                              <option value="thap">⚪ Thấp</option>
+                              <option value="rat_thap">⚪ Rất thấp</option>
+                            </select>
+                            <ChevronDown className="size-2.5 absolute right-1.5 pointer-events-none opacity-60" />
+                          </div>
+                        </div>
+                      </div>
                       <span className="text-xs text-slate-400 font-medium shrink-0 pt-0.5 tabular-nums">
                         {hda.ngay_tao ? formatNgay(hda.ngay_tao.slice(0, 10)) : '—'}
                       </span>

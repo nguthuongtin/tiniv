@@ -450,9 +450,60 @@ export function NoiDungLichCongTac({
     return m;
   }, [dsChiNhanh]);
 
-  // Lọc danh sách lịch theo Chi nhánh & Nhân viên
+  // Tự động chuyển đổi các yêu cầu phối hợp chưa có trong dsLich thành việc văn phòng
+  const dsLichTongHop = useMemo(() => {
+    const dsIdLichDaCo = new Set(dsLich.map((l) => l.id));
+    const lichTuYeuCau: LichGapKH[] = danhSachYeuCau
+      .filter((yc) => {
+        if (yc.trang_thai_du_lieu === 'da_xoa') return false;
+        const idTuongUng = `lich_yc_${yc.id}`;
+        if (dsIdLichDaCo.has(idTuongUng) || dsIdLichDaCo.has(yc.id)) return false;
+        return true;
+      })
+      .map((yc) => {
+        const ngayYC =
+          yc.han_hoan_thanh ||
+          (yc.ngay_tao ? yc.ngay_tao.slice(0, 10) : homNayISO);
+        const daXong = yc.trang_thai === 'da_hoan_thanh';
+        const nguoiThamGia = Array.from(
+          new Set([
+            yc.nguoi_tao_id,
+            ...(yc.nguoi_nhan_id ? [yc.nguoi_nhan_id] : []),
+            ...(yc.danh_sach_nhan_su_thuc_hien_ids || [])
+          ])
+        ).filter(Boolean);
+
+        return {
+          id: `lich_yc_${yc.id}`,
+          tieu_de: `⚡ [Hỗ trợ] ${yc.ten_du_an || 'Dự án'}: ${yc.noi_dung_yeu_cau}`,
+          ngay: ngayYC,
+          gio_bat_dau: '09:00',
+          gio_ket_thuc: '11:00',
+          dia_diem: 'Văn phòng / Phối hợp nội bộ',
+          loai_lich: 'van_phong' as const,
+          loai_viec_van_phong: 'khac' as const,
+          du_an_id: yc.du_an_id || null,
+          ten_du_an: yc.ten_du_an || null,
+          khach_hang_id: yc.khach_hang_id || null,
+          ten_khach_hang: yc.ten_khach_hang || yc.ten_du_an || 'Phối hợp nội bộ',
+          nguoi_phu_trach_id: yc.nguoi_nhan_id || yc.nguoi_tao_id,
+          nguoi_thuc_hien_id: yc.nguoi_nhan_id || yc.nguoi_tao_id,
+          nguoi_tao_id: yc.nguoi_tao_id,
+          nguoi_tham_gia_ids: nguoiThamGia,
+          trang_thai: daXong ? ('da_hoan_thanh' as const) : ('sap_toi' as const),
+          noi_dung: yc.noi_dung_yeu_cau,
+          ket_qua: yc.ghi_chu_phan_hoi || (daXong ? 'Đã hoàn thành phối hợp' : null),
+          ngay_tao: yc.ngay_tao,
+          ngay_cap_nhat: yc.ngay_cap_nhat || yc.ngay_tao
+        };
+      });
+
+    return [...dsLich, ...lichTuYeuCau];
+  }, [dsLich, danhSachYeuCau, homNayISO]);
+
+  // Lọc danh sách lịch theo Chi nhánh & Nhân viên & Loại lịch
   const dsLichLoc = useMemo(() => {
-    return dsLich.filter((l) => {
+    return dsLichTongHop.filter((l) => {
       // 1. Phân quyền: Lịch của sale nào thì sale đó thấy, chỉ có quản lý mới thấy hết
       if (!laQuanLy && nguoiDungHienTai?.id) {
         const laChuTri = l.nguoi_phu_trach_id === nguoiDungHienTai.id;
@@ -470,9 +521,14 @@ export function NoiDungLichCongTac({
         const laThamGia = l.nguoi_tham_gia_ids?.includes(nhanSuLoc);
         if (!laChuTri && !laThamGia) return false;
       }
+      if (locLoaiLich === 'van_phong') {
+        if (l.loai_lich !== 'van_phong') return false;
+      } else if (locLoaiLich === 'cong_tac_di_chuyen') {
+        if (l.loai_lich === 'van_phong') return false;
+      }
       return true;
     });
-  }, [dsLich, laQuanLy, nguoiDungHienTai?.id, chiNhanhLoc, nhanSuLoc, mapNhanSu]);
+  }, [dsLichTongHop, laQuanLy, nguoiDungHienTai?.id, chiNhanhLoc, nhanSuLoc, locLoaiLich, mapNhanSu]);
 
   // 7 ngày của tuần đang xem
   const ds7NgayTuan = useMemo(() => layDanhSach7NgayTrongTuan(ngayDangXem), [ngayDangXem]);

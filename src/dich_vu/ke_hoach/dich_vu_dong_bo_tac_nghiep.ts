@@ -37,7 +37,9 @@ import { taoTienDoDuAnMoi } from '../ho_so_du_an/dich_vu_tien_do_du_an';
 import { doiGiaiDoanHoSoDuAn, layChiTietHoSoDuAn } from '../ho_so_du_an/dich_vu_ho_so_du_an';
 import { layChiTietKhachHang, capNhatKhachHang } from '../khach_hang/dich_vu_khach_hang';
 import type { GiaiDoanDuAn } from '../../thu_vien/types/du_an';
-import { ghiNhatKyHoatDong } from '../../thu_vien/firebase/client_firebase';
+import { ghiNhatKyHoatDong, thamChieuBanGhi } from '../../thu_vien/firebase/client_firebase';
+import { setDoc } from 'firebase/firestore';
+import type { YeuCauPhoiHop } from '../../thu_vien/types/yeu_cau_phoi_hop';
 
 /**
  * Tính khoảng ngày (Thứ 2 -> Chủ nhật) của một tuần ISO (VD: "2026-W40")
@@ -283,24 +285,42 @@ export const ghiNhanCheckInVaoBaoCaoNgay = async (params: {
     const baoCaoHomDo = mang.find((bc) => bc.ngay_bao_cao === params.ngayBaoCao);
 
     if (baoCaoHomDo) {
-      const dsCu = baoCaoHomDo.danh_sach_chi_tiet ?? [];
-      const daTonTai = dsCu.some(
-        (ct) =>
-          ct.noi_dung.trim().toLowerCase() === dongBaoCao.toLowerCase() ||
-          ct.noi_dung.trim().toLowerCase() === noiDungSach.toLowerCase()
-      );
-      if (daTonTai) return true;
+      const dsCu = [...(baoCaoHomDo.danh_sach_chi_tiet ?? [])];
+      const sachLow = noiDungSach.toLowerCase();
+      const dongLow = dongBaoCao.toLowerCase();
+
+      // Tìm xem đã có dòng nào về lịch/dự án/yêu cầu này chưa
+      const idxKhop = dsCu.findIndex((ct) => {
+        const ctLow = ct.noi_dung.trim().toLowerCase();
+        if (ctLow === sachLow || ctLow === dongLow) return true;
+        // Nếu cùng dự án/đối tượng và dòng mới là hoàn thành (✅) còn dòng cũ là dự kiến (🚗, 🏢, ⚡)
+        if (tieuDeNgan && ctLow.includes(tieuDeNgan.toLowerCase())) {
+          if (noiDungSach.startsWith('✅') && (ctLow.startsWith('🚗') || ctLow.startsWith('🏢') || ctLow.startsWith('⚡') || !ctLow.startsWith('✅'))) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      if (idxKhop >= 0) {
+        if (dsCu[idxKhop].noi_dung.trim().toLowerCase() === dongBaoCao.toLowerCase()) {
+          return true;
+        }
+        dsCu[idxKhop] = {
+          du_an_id: params.duAnId || dsCu[idxKhop].du_an_id || null,
+          noi_dung: dongBaoCao
+        };
+      } else {
+        dsCu.push({
+          du_an_id: params.duAnId || null,
+          noi_dung: dongBaoCao
+        });
+      }
 
       await capNhatBaoCaoCongViec(
         baoCaoHomDo.id,
         {
-          danh_sach_chi_tiet: [
-            ...dsCu,
-            {
-              du_an_id: params.duAnId || null,
-              noi_dung: dongBaoCao
-            }
-          ],
+          danh_sach_chi_tiet: dsCu,
           trang_thai: 'da_gui'
         },
         params.nguoiThucHien ?? { id: params.nhanVienId }
@@ -577,19 +597,26 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
     // Đồng bộ sang Báo cáo Tuần
     await dongBoTuDongBaoCaoTuan(keHoachDaLuu, nguoiThucHien);
 
-    // Nếu lịch gặp đã hoàn thành hoặc có kết quả -> Tự động ghi vào Báo cáo công việc ngày!
+    // Tự động ghi nhận vào Báo cáo công việc ngày (kể cả lịch dự kiến và lịch hoàn thành)
+    const loaiPrefix = lich.loai_lich === 'van_phong' ? '🏢 [Văn phòng]' : '🚗 [Công tác]';
+    const gioStr = lich.gio_bat_dau ? `[${lich.gio_bat_dau}${lich.gio_ket_thuc ? ` - ${lich.gio_ket_thuc}` : ''}] ` : '';
+    let dongBaoCaoNgay = '';
     if (daXongLich || ketQuaLich) {
-      await ghiNhanCheckInVaoBaoCaoNgay({
-        nhanVienId,
-        chiNhanhId: lich.chi_nhanh_id ?? nguoiThucHien?.chi_nhanh_id ?? null,
-        phongBanId: nguoiThucHien?.phong_ban_id ?? null,
-        ngayBaoCao: lich.ngay,
-        duAnId: lich.du_an_id || null,
-        tenKhachHangDuAn: tenKH,
-        noiDungKetQua: ketQuaLich || `Hoàn thành lịch hẹn: ${lich.tieu_de}`,
-        nguoiThucHien: nguoiThucHien ? { id: nguoiThucHien.id } : { id: nhanVienId }
-      });
+      dongBaoCaoNgay = `✅ [Hoàn thành] ${lich.loai_lich === 'van_phong' ? 'Việc VP: ' : ''}${tenKH ? `${tenKH}: ` : ''}${ketQuaLich || lich.tieu_de}`;
+    } else {
+      dongBaoCaoNgay = `${loaiPrefix} ${gioStr}${tenKH ? `${tenKH} - ` : ''}${lich.tieu_de}`;
     }
+
+    await ghiNhanCheckInVaoBaoCaoNgay({
+      nhanVienId,
+      chiNhanhId: lich.chi_nhanh_id ?? nguoiThucHien?.chi_nhanh_id ?? null,
+      phongBanId: nguoiThucHien?.phong_ban_id ?? null,
+      ngayBaoCao: lich.ngay,
+      duAnId: lich.du_an_id || null,
+      tenKhachHangDuAn: tenKH,
+      noiDungKetQua: dongBaoCaoNgay,
+      nguoiThucHien: nguoiThucHien ? { id: nguoiThucHien.id } : { id: nhanVienId }
+    });
 
     return keHoachDaLuu;
   } catch (err) {
@@ -1063,3 +1090,126 @@ export const dongBoSuaCheckInBaoCaoNgayVaDuAn = async (params: {
   }
 };
 
+
+
+/**
+ * 5c. ĐỒNG BỘ YÊU CẦU PHỐI HỢP -> LỊCH LÀM VIỆC & BÁO CÁO NGÀY
+ * Tự động tạo/cập nhật sự kiện trong Lịch làm việc và ghi nhận vào Báo cáo công việc ngày
+ * cho cả người yêu cầu và nhân sự tiếp nhận/thực hiện.
+ */
+export const dongBoYeuCauPhoiHopSangLichVaBaoCaoNgay = async (params: {
+  yeuCau: YeuCauPhoiHop;
+  nguoiThucHien?: { id: string; ho_va_ten?: string | null; [key: string]: any } | null;
+}): Promise<void> => {
+  try {
+    const { yeuCau, nguoiThucHien } = params;
+    if (!yeuCau) return;
+
+    const ngayLich =
+      yeuCau.han_hoan_thanh ||
+      (yeuCau.ngay_tao ? yeuCau.ngay_tao.slice(0, 10) : new Date().toISOString().slice(0, 10));
+    const tieuDeLich = `⚡ [Hỗ trợ] ${yeuCau.ten_du_an || 'Dự án'}: ${yeuCau.noi_dung_yeu_cau}`;
+    const docId = `lich_yc_${yeuCau.id}`;
+    const daXong = yeuCau.trang_thai === 'da_hoan_thanh';
+    const now = new Date().toISOString();
+
+    const nguoiThamGia = Array.from(
+      new Set([
+        yeuCau.nguoi_tao_id,
+        ...(yeuCau.nguoi_nhan_id ? [yeuCau.nguoi_nhan_id] : []),
+        ...(yeuCau.danh_sach_nhan_su_thuc_hien_ids || [])
+      ])
+    ).filter(Boolean);
+
+    const lichPayload: any = {
+      id: docId,
+      tieu_de: tieuDeLich,
+      ngay: ngayLich,
+      gio_bat_dau: '09:00',
+      gio_ket_thuc: '11:00',
+      dia_diem: 'Văn phòng / Phối hợp nội bộ',
+      loai_lich: 'van_phong',
+      loai_viec_van_phong: 'khac',
+      du_an_id: yeuCau.du_an_id || null,
+      khach_hang_id: yeuCau.khach_hang_id || null,
+      ten_khach_hang: yeuCau.ten_khach_hang || yeuCau.ten_du_an || null,
+      nguoi_phu_trach_id: yeuCau.nguoi_nhan_id || yeuCau.nguoi_tao_id,
+      nguoi_thuc_hien_id: yeuCau.nguoi_nhan_id || yeuCau.nguoi_tao_id,
+      nguoi_tao_id: yeuCau.nguoi_tao_id,
+      nguoi_tham_gia_ids: nguoiThamGia,
+      trang_thai: daXong ? 'da_hoan_thanh' : 'sap_toi',
+      noi_dung: yeuCau.noi_dung_yeu_cau,
+      ket_qua: yeuCau.ghi_chu_phan_hoi || (daXong ? 'Đã hoàn thành phối hợp' : null),
+      ngay_tao: yeuCau.ngay_tao || now,
+      ngay_cap_nhat: now,
+      da_xoa: false
+    };
+
+    // 1. Lưu vào lich_gap_kh (Firestore)
+    try {
+      await setDoc(thamChieuBanGhi('lich_gap_kh', docId), lichPayload, { merge: true });
+    } catch {
+      try {
+        await setDoc(thamChieuBanGhi('cong_viec', docId), lichPayload, { merge: true });
+      } catch {}
+    }
+
+    // 2. Đồng bộ vào Kế hoạch tuần & Báo cáo tuần
+    await dongBoLichGapSangKeHoachTuanVaBaoCaoNgay({
+      lich: lichPayload as LichGapKH,
+      nguoiThucHien: nguoiThucHien as any
+    });
+
+    // 3. Ghi nhận vào Báo cáo công việc ngày cho người tạo yêu cầu
+    const dongBaoCaoTao = daXong
+      ? `✅ [Hoàn tất hỗ trợ] ${yeuCau.ten_du_an}: ${yeuCau.noi_dung_yeu_cau}`
+      : `⚡ [Yêu cầu hỗ trợ] ${yeuCau.ten_du_an}: ${yeuCau.noi_dung_yeu_cau}`;
+
+    await ghiNhanCheckInVaoBaoCaoNgay({
+      nhanVienId: yeuCau.nguoi_tao_id,
+      chiNhanhId: yeuCau.chi_nhanh_id ?? null,
+      phongBanId: yeuCau.phong_ban_id ?? null,
+      ngayBaoCao: ngayLich,
+      duAnId: yeuCau.du_an_id || null,
+      tenKhachHangDuAn: yeuCau.ten_du_an,
+      noiDungKetQua: dongBaoCaoTao,
+      nguoiThucHien
+    });
+
+    // 4. Ghi nhận vào Báo cáo công việc ngày cho người nhận/xử lý
+    if (yeuCau.nguoi_nhan_id && yeuCau.nguoi_nhan_id !== yeuCau.nguoi_tao_id) {
+      const dongBaoCaoNhan = daXong
+        ? `✅ [Hoàn thành hỗ trợ] ${yeuCau.ten_du_an}: ${yeuCau.noi_dung_yeu_cau}`
+        : `🛠️ [Xử lý hỗ trợ] ${yeuCau.ten_du_an}: ${yeuCau.noi_dung_yeu_cau}`;
+
+      await ghiNhanCheckInVaoBaoCaoNgay({
+        nhanVienId: yeuCau.nguoi_nhan_id,
+        ngayBaoCao: ngayLich,
+        duAnId: yeuCau.du_an_id || null,
+        tenKhachHangDuAn: yeuCau.ten_du_an,
+        noiDungKetQua: dongBaoCaoNhan,
+        nguoiThucHien
+      });
+    }
+
+    // 5. Ghi nhận cho các nhân sự phối hợp bổ sung
+    for (const nsId of yeuCau.danh_sach_nhan_su_thuc_hien_ids || []) {
+      if (nsId && nsId !== yeuCau.nguoi_tao_id && nsId !== yeuCau.nguoi_nhan_id) {
+        const dongBaoCaoPhu = daXong
+          ? `✅ [Hoàn thành hỗ trợ] ${yeuCau.ten_du_an}: ${yeuCau.noi_dung_yeu_cau}`
+          : `🛠️ [Xử lý hỗ trợ] ${yeuCau.ten_du_an}: ${yeuCau.noi_dung_yeu_cau}`;
+
+        await ghiNhanCheckInVaoBaoCaoNgay({
+          nhanVienId: nsId,
+          ngayBaoCao: ngayLich,
+          duAnId: yeuCau.du_an_id || null,
+          tenKhachHangDuAn: yeuCau.ten_du_an,
+          noiDungKetQua: dongBaoCaoPhu,
+          nguoiThucHien
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[dongBoYeuCauPhoiHopSangLichVaBaoCaoNgay] Lỗi:', err);
+  }
+};

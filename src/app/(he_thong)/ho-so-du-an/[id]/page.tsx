@@ -601,6 +601,27 @@ export default function TrangChiTietHoSoDuAn() {
   };
 
   const [dangXuLyKhac, setDangXuLyKhac] = useState<Record<string, boolean>>({});
+  const [dangDoiTiemNangNhanh, setDangDoiTiemNangNhanh] = useState(false);
+
+  const xuLyDoiTiemNangNhanh = async (mucMoi: string) => {
+    if (!hda || dangDoiTiemNangNhanh || hda.muc_do_tiem_nang === mucMoi) return;
+    setDangDoiTiemNangNhanh(true);
+    // Optimistic update
+    setHda((prev) => (prev ? { ...prev, muc_do_tiem_nang: mucMoi as any } : prev));
+    setFormSuaDA((prev: any) => ({ ...prev, muc_do_tiem_nang: mucMoi }));
+    try {
+      await capNhatHoSoDuAn(
+        { id: hda.id, muc_do_tiem_nang: mucMoi as any },
+        nguoiDungHienTai ?? null
+      );
+      themToast('thanh_cong', `Đã cập nhật mức độ tiềm năng: ${TEN_TIEM_NANG[mucMoi] ?? mucMoi}`);
+    } catch {
+      themToast('loi', 'Lỗi khi cập nhật mức độ tiềm năng');
+      void taiLai();
+    } finally {
+      setDangDoiTiemNangNhanh(false);
+    }
+  };
 
   const giaiDoanTiepTheo = useMemo(() => {
     if (!hda?.giai_doan) return null;
@@ -1046,13 +1067,23 @@ export default function TrangChiTietHoSoDuAn() {
                         </Hieu>
                       </Link>
                     )}
-                    {hda.muc_do_tiem_nang && (
-                      <span className="hidden sm:inline-flex">
-                        <Hieu kieu="warning" kich_thuoc="sm">
-                          TN: {TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? hda.muc_do_tiem_nang}
-                        </Hieu>
-                      </span>
-                    )}
+                    {/* Đổi nhanh tiềm năng ở header */}
+                    <div className="hidden sm:inline-flex items-center relative group/select">
+                      <select
+                        value={hda.muc_do_tiem_nang || 'trung_binh'}
+                        onChange={(e) => void xuLyDoiTiemNangNhanh(e.target.value)}
+                        disabled={dangDoiTiemNangNhanh}
+                        className="appearance-none pl-2.5 pr-6 py-0.5 rounded-full text-xs font-bold border border-amber-300 bg-amber-50 text-amber-800 cursor-pointer hover:bg-amber-100 outline-none"
+                        title="Nhấp để đổi nhanh mức độ tiềm năng"
+                      >
+                        <option value="rat_cao">🔴 TN: Rất cao</option>
+                        <option value="cao">🟠 TN: Cao</option>
+                        <option value="trung_binh">🔵 TN: Trung bình</option>
+                        <option value="thap">⚪ TN: Thấp</option>
+                        <option value="rat_thap">⚪ TN: Rất thấp</option>
+                      </select>
+                      <ChevronDown className="size-3 absolute right-2 pointer-events-none opacity-60" />
+                    </div>
                     {hda.trang_thai === 'da_xoa' && (
                       <Hieu kieu="danger" kich_thuoc="sm">
                         Đã xóa (tạm)
@@ -1597,14 +1628,41 @@ export default function TrangChiTietHoSoDuAn() {
                   </div>
                 </div>
 
-                {hda?.muc_do_tiem_nang && (
-                  <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80 text-xs">
-                    <span className="text-muted-foreground font-medium">Mức độ tiềm năng:</span>
-                    <Hieu kieu="warning" kich_thuoc="sm">
-                      {TEN_TIEM_NANG[hda.muc_do_tiem_nang] ?? hda.muc_do_tiem_nang}
-                    </Hieu>
+                <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground font-semibold">Mức độ tiềm năng:</span>
+                    <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
+                      1-click chọn nhanh
+                    </span>
                   </div>
-                )}
+                  <div className="grid grid-cols-5 gap-1.5 pt-1">
+                    {[
+                      { key: 'rat_cao', label: 'Rất cao', activeCls: 'bg-rose-600 text-white border-rose-600 shadow-2xs', hoverCls: 'hover:border-rose-300 text-rose-700' },
+                      { key: 'cao', label: 'Cao', activeCls: 'bg-amber-500 text-white border-amber-500 shadow-2xs', hoverCls: 'hover:border-amber-300 text-amber-700' },
+                      { key: 'trung_binh', label: 'T.Bình', activeCls: 'bg-sky-600 text-white border-sky-600 shadow-2xs', hoverCls: 'hover:border-sky-300 text-sky-700' },
+                      { key: 'thap', label: 'Thấp', activeCls: 'bg-slate-700 text-white border-slate-700 shadow-2xs', hoverCls: 'hover:border-slate-300 text-slate-700' },
+                      { key: 'rat_thap', label: 'R.Thấp', activeCls: 'bg-slate-500 text-white border-slate-500 shadow-2xs', hoverCls: 'hover:border-slate-300 text-slate-500' }
+                    ].map((opt) => {
+                      const active = (hda?.muc_do_tiem_nang || 'trung_binh') === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => void xuLyDoiTiemNangNhanh(opt.key)}
+                          disabled={dangDoiTiemNangNhanh}
+                          className={cn(
+                            'py-1.5 px-1 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer',
+                            active
+                              ? opt.activeCls
+                              : cn('bg-white border-slate-200 shadow-2xs', opt.hoverCls)
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </div>
