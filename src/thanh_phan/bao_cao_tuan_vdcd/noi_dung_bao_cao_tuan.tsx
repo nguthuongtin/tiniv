@@ -2377,6 +2377,7 @@ export default function NoiDungBaoCaoTuan() {
           dsKhachHang={dsKhachHang}
           dsNhanSu={dsNhanSu}
           dsSanPham={dsSanPham}
+          danhSachBaoCaoTeam={danhSachBaoCaoTeam}
         />
       )}
     </div>

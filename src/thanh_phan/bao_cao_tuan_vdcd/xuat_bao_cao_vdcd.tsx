@@ -55,6 +55,13 @@ interface Props {
   dsKhachHang?: KhachHang[];
   dsNhanSu?: NhanSu[];
   dsSanPham?: SanPhamDichVu[];
+  danhSachBaoCaoTeam?: {
+    nv: NhanSu;
+    baoCao: BaoCaoTuanVDCD;
+    daGui?: boolean;
+    lichToi?: any[];
+    dsDATiemNang?: any[];
+  }[];
   tieuDePhu?: string;
 }
 
@@ -415,6 +422,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   dsKhachHang = [],
   dsNhanSu = [],
   dsSanPham = [],
+  danhSachBaoCaoTeam = [],
   tieuDePhu
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -462,59 +470,135 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
     [baoCao.ke_hoach_dong_tien]
   );
 
+  // Phân trang cho 2 slide mới: 6 Sale mỗi slide
+  const trangTeamThucHien = useMemo(
+    () => chiaTrang(danhSachBaoCaoTeam, 6),
+    [danhSachBaoCaoTeam]
+  );
+  const trangTeamKeHoach = useMemo(
+    () => chiaTrang(danhSachBaoCaoTeam, 6),
+    [danhSachBaoCaoTeam]
+  );
+
+  // Tổng cộng chỉ số thực hiện tuần qua của toàn bộ đội ngũ KD
+  const tongTeamThucHien = useMemo(() => {
+    if (!danhSachBaoCaoTeam || danhSachBaoCaoTeam.length === 0) return null;
+    return danhSachBaoCaoTeam.reduce(
+      (acc, x) => {
+        const k = x.baoCao.kpi_tuan_qua;
+        const thTiepCan =
+          Number(x.baoCao.thuc_hien_tiep_can_tuan_nay) ||
+          Number(x.baoCao.tinh_trang_tuan_nay?.tong_tiep_can) ||
+          Number(k?.khach_moi_thuc_te) ||
+          0;
+        const mtTiepCan =
+          Number(x.baoCao.ke_hoach_tiep_can_tuan_nay) ||
+          Number(k?.khach_moi_muc_tieu) ||
+          0;
+        const thBaoGia = Number(x.baoCao.tinh_trang_tuan_nay?.bao_gia ?? k?.bao_gia_thuc_te ?? 0);
+        const mtBaoGia = Number(k?.bao_gia_muc_tieu || 0);
+        const thDuAn = Number(k?.du_an_lam_viec_thuc_te || 0);
+        const mtDuAn = Number(k?.du_an_lam_viec_muc_tieu || 0);
+        const thHopDong = Number(x.baoCao.tinh_trang_tuan_nay?.hop_dong ?? k?.hop_dong_thuc_te ?? 0);
+        const mtHopDong = Number(k?.hop_dong_muc_tieu || 0);
+        const dtKyKet = Number(x.baoCao.dt_tuan_ky_ket || k?.doanh_so_thuc_te || 0);
+        const dtTienVe = Number(x.baoCao.dt_tuan_tien_ve || 0);
+
+        acc.tiepCanTT += thTiepCan;
+        acc.tiepCanMT += mtTiepCan;
+        acc.baoGiaTT += thBaoGia;
+        acc.baoGiaMT += mtBaoGia;
+        acc.duAnTT += thDuAn;
+        acc.duAnMT += mtDuAn;
+        acc.hopDongTT += thHopDong;
+        acc.hopDongMT += mtHopDong;
+        acc.dtKyKet += dtKyKet;
+        acc.dtTienVe += dtTienVe;
+        return acc;
+      },
+      {
+        tiepCanTT: 0,
+        tiepCanMT: 0,
+        baoGiaTT: 0,
+        baoGiaMT: 0,
+        duAnTT: 0,
+        duAnMT: 0,
+        hopDongTT: 0,
+        hopDongMT: 0,
+        dtKyKet: 0,
+        dtTienVe: 0
+      }
+    );
+  }, [danhSachBaoCaoTeam]);
+
+  // Tổng cộng chỉ tiêu kế hoạch cam kết tuần tới của toàn bộ đội ngũ KD
+  const tongTeamKeHoach = useMemo(() => {
+    if (!danhSachBaoCaoTeam || danhSachBaoCaoTeam.length === 0) return null;
+    return danhSachBaoCaoTeam.reduce(
+      (acc, x) => {
+        const ck = x.baoCao.cam_ket_tuan_toi;
+        acc.khachMoi += Number(ck?.khach_moi?.target || 0);
+        acc.baoGia += Number(ck?.bao_gia?.target || 0);
+        acc.duAn += Number(ck?.du_an_lam_viec?.target || 0);
+        acc.hopDong += Number(ck?.hop_dong?.target || 0);
+        acc.doanhSo += Number(ck?.doanh_so?.target || 0);
+        return acc;
+      },
+      {
+        khachMoi: 0,
+        baoGia: 0,
+        duAn: 0,
+        hopDong: 0,
+        doanhSo: 0
+      }
+    );
+  }, [danhSachBaoCaoTeam]);
+
   if (!mo) return null;
 
   const ttNay = baoCao.tinh_trang_tuan_nay;
   const ttTruoc = baoCao.tinh_trang_tuan_truoc;
   const kpi = baoCao.kpi_tuan_qua;
+  const laBaoCaoTong = baoCao.nhan_vien_id === 'tong_chi_nhanh' || danhSachBaoCaoTeam.length > 0;
 
-  // 1. Chỉ số Kế hoạch & Thực hiện Tổng tiếp cận
+  // 1. Chỉ số Kế hoạch & Thực hiện Tổng tiếp cận (cộng từ tất cả sale nếu là báo cáo tổng)
   const khTiepCan =
-    Number(baoCao.ke_hoach_tiep_can_tuan_nay) > 0
+    laBaoCaoTong && tongTeamThucHien && tongTeamThucHien.tiepCanMT > 0
+      ? tongTeamThucHien.tiepCanMT
+      : Number(baoCao.ke_hoach_tiep_can_tuan_nay) > 0
       ? Number(baoCao.ke_hoach_tiep_can_tuan_nay)
       : Number(kpi?.khach_moi_muc_tieu || kpi?.du_an_lam_viec_muc_tieu || 16);
 
-  const khBaoGia = Number(kpi?.bao_gia_muc_tieu || Math.round(khTiepCan * 0.25) || 4);
-  const khHopDong = Number(kpi?.hop_dong_muc_tieu || Math.round(khTiepCan * 0.15) || 2);
-
   const thTiepCan =
-    Number(baoCao.thuc_hien_tiep_can_tuan_nay) > 0
+    laBaoCaoTong && tongTeamThucHien && tongTeamThucHien.tiepCanTT > 0
+      ? tongTeamThucHien.tiepCanTT
+      : Number(baoCao.thuc_hien_tiep_can_tuan_nay) > 0
       ? Number(baoCao.thuc_hien_tiep_can_tuan_nay)
       : Number(ttNay.tong_tiep_can || kpi?.khach_moi_thuc_te || 0);
 
-  const thBaoGia = Number(ttNay.bao_gia ?? kpi?.bao_gia_thuc_te ?? 0);
-  const thHopDong = Number(ttNay.hop_dong ?? kpi?.hop_dong_thuc_te ?? 0);
+  const thBaoGia =
+    laBaoCaoTong && tongTeamThucHien
+      ? tongTeamThucHien.baoGiaTT
+      : Number(ttNay.bao_gia ?? kpi?.bao_gia_thuc_te ?? 0);
 
-  // 2. Tỉ lệ Tiếp cận -> Báo giá và Hợp đồng
-  const valTiLeTiepCanKH = khTiepCan > 0 ? (khBaoGia + khHopDong) / khTiepCan : 0.35;
-  const strTiLeTiepCanKH = `${(valTiLeTiepCanKH * 100).toFixed(1).replace('.', ',')}%`;
+  const thHopDong =
+    laBaoCaoTong && tongTeamThucHien
+      ? tongTeamThucHien.hopDongTT
+      : Number(ttNay.hop_dong ?? kpi?.hop_dong_thuc_te ?? 0);
 
+  // 2. Tỉ lệ Tiếp cận -> Báo giá và Hợp đồng (Thực hiện)
+  // Công thức: (Báo giá + Hợp đồng) / Tổng tiếp cận
   const valTiLeTiepCanTH = thTiepCan > 0 ? (thBaoGia + thHopDong) / thTiepCan : 0;
   const strTiLeTiepCanTH = thTiepCan > 0 ? `${(valTiLeTiepCanTH * 100).toFixed(1).replace('.', ',')}%` : '0,0%';
 
-  const strPctTiepCan =
-    valTiLeTiepCanKH > 0 ? `${Math.round((valTiLeTiepCanTH / valTiLeTiepCanKH) * 100)}%` : '—';
-
-  // 3. Tỉ lệ Báo giá -> Hợp đồng
-  const tongKHChuyenDoi = khBaoGia + khHopDong;
-  const valTiLeBaoGiaKH = tongKHChuyenDoi > 0 ? khHopDong / tongKHChuyenDoi : 0.25;
-  const strTiLeBaoGiaKH = `${(valTiLeBaoGiaKH * 100).toFixed(1).replace('.', ',')}%`;
-
-  const tongTHChuyenDoi = thBaoGia + thHopDong;
-  const valTiLeBaoGiaTH =
-    tongTHChuyenDoi > 0
-      ? thHopDong / tongTHChuyenDoi
-      : thBaoGia > 0
-      ? thHopDong / thBaoGia
-      : 0;
-  const strTiLeBaoGiaTH = `${(valTiLeBaoGiaTH * 100).toFixed(1).replace('.', ',')}%`;
-
-  const strPctBaoGia =
-    valTiLeBaoGiaKH > 0 ? `${Math.round((valTiLeBaoGiaTH / valTiLeBaoGiaKH) * 100)}%` : '—';
+  // 3. Tỉ lệ Báo giá -> Hợp đồng (Thực hiện)
+  // Công thức: Hợp đồng / Báo giá
+  const valTiLeBaoGiaTH = thBaoGia > 0 ? thHopDong / thBaoGia : 0;
+  const strTiLeBaoGiaTH = thBaoGia > 0 ? `${(valTiLeBaoGiaTH * 100).toFixed(1).replace('.', ',')}%` : '0,0%';
 
   // 4. Tỉ lệ Thực hiện / Kế hoạch Tổng tiếp cận
   const strPctTongTiepCan =
-    khTiepCan > 0 ? `${Math.round((thTiepCan / khTiepCan) * 100)}%` : '—';
+    khTiepCan > 0 ? `${Math.round((thTiepCan / khTiepCan) * 100)}%` : '100%';
 
   const inSlidePDF = () => {
     if (!containerRef.current) return;
@@ -1072,57 +1156,49 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
               <thead>
                 <tr className="bg-[#D11317] text-white">
                   <th className="border border-slate-700 py-2 px-3 w-[22%]"></th>
-                  <th className="border border-slate-700 py-2 px-3 text-center font-bold w-[22%]">
+                  <th className="border border-slate-700 py-2 px-3 text-center font-bold w-[26%]">
                     Tổng tiếp cận
                   </th>
-                  <th className="border border-slate-700 py-2 px-3 text-center font-bold w-[28%]">
+                  <th className="border border-slate-700 py-2 px-3 text-center font-bold w-[26%]">
                     Tỉ lệ chuyển đổi
                     <div className="text-[11px] font-normal">Tiếp cận → Báo giá và Hợp đồng</div>
                   </th>
-                  <th className="border border-slate-700 py-2 px-3 text-center font-bold w-[28%]">
+                  <th className="border border-slate-700 py-2 px-3 text-center font-bold w-[26%]">
                     Tỉ lệ chuyển đổi
                     <div className="text-[11px] font-normal">Báo giá → Hợp đồng</div>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="h-[36px]">
+                <tr className="h-[38px]">
                   <td className="border border-slate-700 px-3 font-bold text-center">Kế hoạch</td>
                   <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums">
                     {khTiepCan}
                   </td>
-                  <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums">
-                    {strTiLeTiepCanKH}
-                  </td>
-                  <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums">
-                    {strTiLeBaoGiaKH}
-                  </td>
+                  <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums"></td>
+                  <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums"></td>
                 </tr>
-                <tr className="h-[36px]">
+                <tr className="h-[38px]">
                   <td className="border border-slate-700 px-3 font-bold text-center">Thực hiện</td>
                   <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums">
                     {thTiepCan}
                   </td>
-                  <td className="border border-slate-700 px-3 text-center font-bold text-blue-800 tabular-nums">
+                  <td className="border border-slate-700 px-3 text-center font-bold text-slate-900 tabular-nums">
                     {strTiLeTiepCanTH}
                   </td>
-                  <td className="border border-slate-700 px-3 text-center font-bold text-emerald-800 tabular-nums">
+                  <td className="border border-slate-700 px-3 text-center font-bold text-slate-900 tabular-nums">
                     {strTiLeBaoGiaTH}
                   </td>
                 </tr>
-                <tr className="h-[36px]">
+                <tr className="h-[38px]">
                   <td className="border border-slate-700 px-3 font-bold text-center">
                     Thực hiện/kế hoạch
                   </td>
                   <td className="border border-slate-700 px-3 text-center font-bold text-slate-900 tabular-nums">
                     {strPctTongTiepCan}
                   </td>
-                  <td className="border border-slate-700 px-3 text-center font-bold text-blue-900 tabular-nums">
-                    {strPctTiepCan}
-                  </td>
-                  <td className="border border-slate-700 px-3 text-center font-bold text-emerald-900 tabular-nums">
-                    {strPctBaoGia}
-                  </td>
+                  <td className="border border-slate-700 px-3 text-center font-bold tabular-nums"></td>
+                  <td className="border border-slate-700 px-3 text-center font-bold tabular-nums"></td>
                 </tr>
               </tbody>
             </table>
@@ -1131,6 +1207,158 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
               Áp dụng với các dự án đang triển khai bám sát trong tuần, không tính các dự án đã nghiệm thu hoặc dừng từ kỳ trước
             </div>
           </SlideFrame>
+
+          {/* SLIDE 3B: TỔNG HỢP CHỈ SỐ THỰC HIỆN TUẦN CỦA ĐỘI NGŨ KINH DOANH */}
+          {danhSachBaoCaoTeam.length > 0 &&
+            trangTeamThucHien.map((items, trangIdx) => {
+              const laTrangCuoi = trangIdx === trangTeamThucHien.length - 1;
+              return (
+                <SlideFrame key={`team_th_${trangIdx}`}>
+                  <div className="text-center mb-3">
+                    <h2 className="text-[22px] font-black text-slate-900 uppercase">
+                      BÁO CÁO THỰC HIỆN KINH DOANH TUẦN {infoTuan.tuanTrongThang} THÁNG {infoTuan.thang}
+                    </h2>
+                    <div className="text-[14px] font-bold text-[#D11317] uppercase">
+                      - KẾT QUẢ THEO TỪNG CHUYÊN VIÊN KINH DOANH {trangTeamThucHien.length > 1 ? `(Trang ${trangIdx + 1}/${trangTeamThucHien.length})` : ''} -
+                    </div>
+                  </div>
+
+                  <table className="w-full border-collapse text-[11.5px] bg-white">
+                    <thead>
+                      <tr className="bg-[#D11317] text-white">
+                        <th className="border border-slate-700 py-2 px-1.5 text-center font-bold w-[5%]">
+                          STT
+                        </th>
+                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[18%]">
+                          CHUYÊN VIÊN KD
+                        </th>
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[12%]">
+                          TIẾP CẬN
+                          <div className="text-[9.5px] font-normal">(TT / MT)</div>
+                        </th>
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                          BÁO GIÁ
+                          <div className="text-[9.5px] font-normal">(TT / MT)</div>
+                        </th>
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                          DỰ ÁN
+                          <div className="text-[9.5px] font-normal">(TT / MT)</div>
+                        </th>
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                          HỢP ĐỒNG
+                          <div className="text-[9.5px] font-normal">(TT / MT)</div>
+                        </th>
+                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[16%]">
+                          DOANH THU KÝ KẾT
+                        </th>
+                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[16%]">
+                          DOANH THU TIỀN VỀ
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item, rIdx) => {
+                        const k = item.baoCao.kpi_tuan_qua;
+                        const thTC =
+                          Number(item.baoCao.thuc_hien_tiep_can_tuan_nay) ||
+                          Number(item.baoCao.tinh_trang_tuan_nay?.tong_tiep_can) ||
+                          Number(k?.khach_moi_thuc_te) ||
+                          0;
+                        const mtTC =
+                          Number(item.baoCao.ke_hoach_tiep_can_tuan_nay) ||
+                          Number(k?.khach_moi_muc_tieu) ||
+                          0;
+                        const thBG = Number(item.baoCao.tinh_trang_tuan_nay?.bao_gia ?? k?.bao_gia_thuc_te ?? 0);
+                        const mtBG = Number(k?.bao_gia_muc_tieu || 0);
+                        const thDA = Number(k?.du_an_lam_viec_thuc_te || 0);
+                        const mtDA = Number(k?.du_an_lam_viec_muc_tieu || 0);
+                        const thHD = Number(item.baoCao.tinh_trang_tuan_nay?.hop_dong ?? k?.hop_dong_thuc_te ?? 0);
+                        const mtHD = Number(k?.hop_dong_muc_tieu || 0);
+                        const dtKy = Number(item.baoCao.dt_tuan_ky_ket || k?.doanh_so_thuc_te || 0);
+                        const dtVe = Number(item.baoCao.dt_tuan_tien_ve || 0);
+
+                        return (
+                          <tr key={item.nv.id} className="h-[46px] hover:bg-slate-50/70">
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-semibold text-slate-600">
+                              {trangIdx * 6 + rIdx + 1}
+                            </td>
+                            <td className="border border-slate-700 px-2.5 py-1.5 font-bold text-slate-900">
+                              {item.nv.ho_va_ten}
+                            </td>
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-semibold tabular-nums">
+                              <span className="text-blue-700">{thTC}</span>
+                              {mtTC > 0 && <span className="text-slate-400 font-normal"> / {mtTC}</span>}
+                            </td>
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-semibold tabular-nums">
+                              <span className="text-amber-700">{thBG}</span>
+                              {mtBG > 0 && <span className="text-slate-400 font-normal"> / {mtBG}</span>}
+                            </td>
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-semibold tabular-nums">
+                              <span className="text-purple-700">{thDA}</span>
+                              {mtDA > 0 && <span className="text-slate-400 font-normal"> / {mtDA}</span>}
+                            </td>
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-semibold tabular-nums">
+                              <span className="text-emerald-700">{thHD}</span>
+                              {mtHD > 0 && <span className="text-slate-400 font-normal"> / {mtHD}</span>}
+                            </td>
+                            <td className="border border-slate-700 px-2 py-1.5 text-right font-medium tabular-nums">
+                              {dtKy > 0 ? fmtTien(dtKy) : '—'}
+                            </td>
+                            <td className="border border-slate-700 px-2 py-1.5 text-right font-medium tabular-nums">
+                              {dtVe > 0 ? fmtTien(dtVe) : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {/* HÀNG TỔNG CỘNG TOÀN CHI NHÁNH Ở TRANG CUỐI */}
+                      {laTrangCuoi && tongTeamThucHien && (
+                        <tr className="h-[46px] bg-slate-100 font-black text-slate-900">
+                          <td className="border border-slate-700 px-1 py-1.5 text-center" colSpan={2}>
+                            TỔNG CỘNG TOÀN CHI NHÁNH
+                          </td>
+                          <td className="border border-slate-700 px-1 py-1.5 text-center tabular-nums text-blue-800">
+                            {tongTeamThucHien.tiepCanTT}
+                            {tongTeamThucHien.tiepCanMT > 0 && (
+                              <span className="text-slate-500 font-bold"> / {tongTeamThucHien.tiepCanMT}</span>
+                            )}
+                          </td>
+                          <td className="border border-slate-700 px-1 py-1.5 text-center tabular-nums text-amber-800">
+                            {tongTeamThucHien.baoGiaTT}
+                            {tongTeamThucHien.baoGiaMT > 0 && (
+                              <span className="text-slate-500 font-bold"> / {tongTeamThucHien.baoGiaMT}</span>
+                            )}
+                          </td>
+                          <td className="border border-slate-700 px-1 py-1.5 text-center tabular-nums text-purple-800">
+                            {tongTeamThucHien.duAnTT}
+                            {tongTeamThucHien.duAnMT > 0 && (
+                              <span className="text-slate-500 font-bold"> / {tongTeamThucHien.duAnMT}</span>
+                            )}
+                          </td>
+                          <td className="border border-slate-700 px-1 py-1.5 text-center tabular-nums text-emerald-800">
+                            {tongTeamThucHien.hopDongTT}
+                            {tongTeamThucHien.hopDongMT > 0 && (
+                              <span className="text-slate-500 font-bold"> / {tongTeamThucHien.hopDongMT}</span>
+                            )}
+                          </td>
+                          <td className="border border-slate-700 px-2 py-1.5 text-right tabular-nums text-[#D11317]">
+                            {fmtTien(tongTeamThucHien.dtKyKet)}
+                          </td>
+                          <td className="border border-slate-700 px-2 py-1.5 text-right tabular-nums text-[#D11317]">
+                            {fmtTien(tongTeamThucHien.dtTienVe)}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  <div className="mt-auto pt-2 flex items-center justify-between text-[11px] italic font-semibold text-slate-600">
+                    <span>* Dữ liệu tổng hợp từ báo cáo tuần và hoạt động tác nghiệp thực tế của từng Chuyên viên KD</span>
+                    <span>VDCD Group</span>
+                  </div>
+                </SlideFrame>
+              );
+            })}
 
           {/* SLIDE 4: CƠ CẤU NGUỒN TIẾP CẬN */}
           <SlideFrame>
@@ -1170,6 +1398,131 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
               </tbody>
             </table>
           </SlideFrame>
+
+          {/* SLIDE 4B: KẾ HOẠCH CHỈ TIÊU TUẦN TIẾP THEO THEO TỪNG NHÂN SỰ */}
+          {danhSachBaoCaoTeam.length > 0 &&
+            trangTeamKeHoach.map((items, trangIdx) => {
+              const laTrangCuoi = trangIdx === trangTeamKeHoach.length - 1;
+              return (
+                <SlideFrame key={`team_kh_${trangIdx}`}>
+                  <div className="text-center mb-3">
+                    <h2 className="text-[22px] font-black text-slate-900 uppercase">
+                      KẾ HOẠCH CHỈ TIÊU {infoTuanToi.nhanTieuDe}
+                    </h2>
+                    <div className="text-[14px] font-bold text-[#D11317] uppercase">
+                      - MỤC TIÊU CAM KẾT THEO TỪNG CHUYÊN VIÊN KINH DOANH {trangTeamKeHoach.length > 1 ? `(Trang ${trangIdx + 1}/${trangTeamKeHoach.length})` : ''} -
+                    </div>
+                  </div>
+
+                  <table className="w-full border-collapse text-[11.5px] bg-white">
+                    <thead>
+                      <tr className="bg-[#D11317] text-white">
+                        <th className="border border-slate-700 py-2 px-1.5 text-center font-bold w-[5%]">
+                          STT
+                        </th>
+                        <th className="border border-slate-700 py-2 px-2.5 text-center font-bold w-[18%]">
+                          CHUYÊN VIÊN KD
+                        </th>
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[12%]">
+                          KH TIẾP CẬN
+                          <div className="text-[9.5px] font-normal">(Mục tiêu)</div>
+                        </th>
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                          BÁO GIÁ
+                          <div className="text-[9.5px] font-normal">(Mục tiêu)</div>
+                        </th>
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                          DỰ ÁN
+                          <div className="text-[9.5px] font-normal">(Mục tiêu)</div>
+                        </th>
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                          HỢP ĐỒNG
+                          <div className="text-[9.5px] font-normal">(Mục tiêu)</div>
+                        </th>
+                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[16%]">
+                          DOANH SỐ CAM KẾT
+                        </th>
+                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[16%]">
+                          TRỌNG TÂM HÀNH ĐỘNG
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item, rIdx) => {
+                        const ck = item.baoCao.cam_ket_tuan_toi;
+                        const kmTarget = Number(ck?.khach_moi?.target || 0);
+                        const bgTarget = Number(ck?.bao_gia?.target || 0);
+                        const daTarget = Number(ck?.du_an_lam_viec?.target || 0);
+                        const hdTarget = Number(ck?.hop_dong?.target || 0);
+                        const dsTarget = Number(ck?.doanh_so?.target || 0);
+                        const trongTam = ck?.muc_tieu_trong_tam || 'Tập trung chốt hợp đồng và mở rộng KH mới';
+
+                        return (
+                          <tr key={item.nv.id} className="h-[46px] hover:bg-slate-50/70">
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-semibold text-slate-600">
+                              {trangIdx * 6 + rIdx + 1}
+                            </td>
+                            <td className="border border-slate-700 px-2.5 py-1.5 font-bold text-slate-900">
+                              {item.nv.ho_va_ten}
+                            </td>
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-bold text-blue-700 tabular-nums">
+                              {kmTarget > 0 ? kmTarget : '—'}
+                            </td>
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-bold text-amber-700 tabular-nums">
+                              {bgTarget > 0 ? bgTarget : '—'}
+                            </td>
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-bold text-purple-700 tabular-nums">
+                              {daTarget > 0 ? daTarget : '—'}
+                            </td>
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-bold text-emerald-700 tabular-nums">
+                              {hdTarget > 0 ? hdTarget : '—'}
+                            </td>
+                            <td className="border border-slate-700 px-2 py-1.5 text-right font-bold text-[#D11317] tabular-nums">
+                              {dsTarget > 0 ? fmtTien(dsTarget) : '—'}
+                            </td>
+                            <td className="border border-slate-700 px-2 py-1.5 text-left text-[11px] text-slate-700 line-clamp-2">
+                              {trongTam}
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {/* HÀNG TỔNG CỘNG CAM KẾT TOÀN CHI NHÁNH Ở TRANG CUỐI */}
+                      {laTrangCuoi && tongTeamKeHoach && (
+                        <tr className="h-[46px] bg-slate-100 font-black text-slate-900">
+                          <td className="border border-slate-700 px-1 py-1.5 text-center" colSpan={2}>
+                            TỔNG CHỈ TIÊU TOÀN CHI NHÁNH
+                          </td>
+                          <td className="border border-slate-700 px-1 py-1.5 text-center tabular-nums text-blue-800">
+                            {tongTeamKeHoach.khachMoi}
+                          </td>
+                          <td className="border border-slate-700 px-1 py-1.5 text-center tabular-nums text-amber-800">
+                            {tongTeamKeHoach.baoGia}
+                          </td>
+                          <td className="border border-slate-700 px-1 py-1.5 text-center tabular-nums text-purple-800">
+                            {tongTeamKeHoach.duAn}
+                          </td>
+                          <td className="border border-slate-700 px-1 py-1.5 text-center tabular-nums text-emerald-800">
+                            {tongTeamKeHoach.hopDong}
+                          </td>
+                          <td className="border border-slate-700 px-2 py-1.5 text-right tabular-nums text-[#D11317]">
+                            {fmtTien(tongTeamKeHoach.doanhSo)}
+                          </td>
+                          <td className="border border-slate-700 px-2 py-1.5 text-left text-[10.5px] italic text-slate-600 font-medium">
+                            Toàn đội ngũ tập trung mục tiêu tăng trưởng
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  <div className="mt-auto pt-2 flex items-center justify-between text-[11px] italic font-semibold text-slate-600">
+                    <span>* Cam kết chỉ tiêu hành động trực tiếp phục vụ mục tiêu doanh số tuần tiếp theo</span>
+                    <span>VDCD Group</span>
+                  </div>
+                </SlideFrame>
+              );
+            })}
 
           {/* SLIDE 5+: KẾ HOẠCH DÒNG TIỀN */}
           {trangDongTien.map((items, idx) => (

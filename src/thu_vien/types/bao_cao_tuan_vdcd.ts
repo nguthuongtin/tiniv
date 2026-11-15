@@ -151,6 +151,7 @@ export interface BaoCaoTuanVDCD {
     bao_gia: { target: number; min: number; max: number };
     du_an_lam_viec?: { target: number; min: number; max: number };
     hop_dong: { target: number; min: number; max: number };
+    muc_tieu_trong_tam?: string;
   };
   ghi_chu_lich_ngay?: Record<string, string>;
 
@@ -725,13 +726,35 @@ export function tongHopBaoCaoChiNhanh(params: {
       ? Number(kpiTong.du_an_lam_viec_muc_tieu)
       : (danhSachBaoCao.reduce((s, b) => s + Number(b.ke_hoach_tiep_can_tuan_nay || 0), 0) || 16);
 
+  const kmThucTe = Number(kpiTong.khach_moi_thuc_te || 0);
+  const daThucTe = Number(kpiTong.du_an_lam_viec_thuc_te || 0);
+  const bgThucTe = Number(kpiTong.bao_gia_thuc_te || 0);
+  const hdThucTe = Number(kpiTong.hop_dong_thuc_te || 0);
+
   // Thực hiện tiếp cận tuần này: Ưu tiên thực tế tiếp cận của đội ngũ (hoặc tổng dự án triển khai trong tuần)
-  const thucHienTiepCan =
-    kpiTong.khach_moi_thuc_te > 0
-      ? kpiTong.khach_moi_thuc_te
+  const thucHienTiepCan: number =
+    kmThucTe > 0
+      ? kmThucTe
+      : daThucTe > 0
+      ? daThucTe
       : ttNay.tong_tiep_can > 0
       ? ttNay.tong_tiep_can
-      : danhSachBaoCao.reduce((s, b) => s + Number(b.thuc_hien_tiep_can_tuan_nay || 0), 0);
+      : (danhSachBaoCao.reduce((s, b) => s + Number(b.thuc_hien_tiep_can_tuan_nay || 0), 0) || 0);
+
+  // Đồng bộ tình trạng tuần này đúng bằng tổng các chỉ số của các sale cộng lại
+  const ttNayDongBo: SoLieuTinhTrangDuAnTuan = {
+    ...ttNay,
+    tong_tiep_can: thucHienTiepCan,
+    bao_gia: bgThucTe > 0 ? bgThucTe : ttNay.bao_gia,
+    hop_dong: hdThucTe > 0 ? hdThucTe : ttNay.hop_dong,
+    dang_tiep_can: Math.max(
+      0,
+      thucHienTiepCan -
+        (bgThucTe || ttNay.bao_gia) -
+        (hdThucTe || ttNay.hop_dong) -
+        (ttNay.khong_phu_hop || 0)
+    )
+  };
 
   return {
     id: `vdcd_tong_${tuan}`,
@@ -753,7 +776,7 @@ export function tongHopBaoCaoChiNhanh(params: {
     chi_tiet_doanh_thu: danhSachBaoCao.flatMap((b) => b.chi_tiet_doanh_thu || []),
 
     tinh_trang_tuan_truoc: congTinhTrang((b) => b.tinh_trang_tuan_truoc),
-    tinh_trang_tuan_nay: ttNay,
+    tinh_trang_tuan_nay: ttNayDongBo,
     ke_hoach_tiep_can_tuan_nay: keHoachTiepCan,
     thuc_hien_tiep_can_tuan_nay: thucHienTiepCan,
     ke_hoach_tiep_can_tuan_toi:
