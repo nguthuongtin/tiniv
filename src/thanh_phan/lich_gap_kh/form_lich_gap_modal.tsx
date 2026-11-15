@@ -44,7 +44,12 @@ import {
   type CapNhatLichGapDTO
 } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
 import { useStoreXacThuc } from '../../thu_vien/zustand/store_xac_thuc';
-import { laQuanLyCapCaoHoacTruongPhong, duocXemHoSoDuAn, duocXemKhachHang } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
+import {
+  laQuanLyCapCaoHoacTruongPhong,
+  duocXemHoSoDuAn,
+  duocXemKhachHang,
+  duocXoaLichCongTac
+} from '../../thu_vien/phan_quyen/kiem_tra_quyen';
 
 const congThemPhut = (hhmm: string, soPhut: number): string => {
   const [h, m] = (hhmm || '09:00').split(':').map((x) => parseInt(x, 10) || 0);
@@ -121,6 +126,17 @@ export default function FormLichGapModal({
 
   const { nguoiDungHienTai } = useStoreXacThuc();
   const laQuanLy = useMemo(() => laQuanLyCapCaoHoacTruongPhong(nguoiDungHienTai), [nguoiDungHienTai]);
+
+  const mapNhanSu = useMemo(() => {
+    const m = new Map<string, NhanSu>();
+    dsNhanSu.forEach((ns) => m.set(ns.id, ns));
+    return m;
+  }, [dsNhanSu]);
+
+  const coQuyenXoaLich = useMemo(() => {
+    if (!dang_sua || !nguoiDungHienTai) return false;
+    return duocXoaLichCongTac(nguoiDungHienTai, dang_sua, mapNhanSu);
+  }, [dang_sua, nguoiDungHienTai, mapNhanSu]);
 
   const dropdownKHRef = useRef<HTMLDivElement>(null);
   const dropdownDARef = useRef<HTMLDivElement>(null);
@@ -426,12 +442,6 @@ export default function FormLichGapModal({
     setMoGoiYNLH(false);
   };
 
-  const mapNhanSu = useMemo(() => {
-    const m = new Map<string, NhanSu>();
-    dsNhanSu.forEach((ns) => m.set(ns.id, ns));
-    return m;
-  }, [dsNhanSu]);
-
   const thoiLuongHienTai = useMemo(
     () => tinhKhoangPhut(gioBatDau, gioKetThuc),
     [gioBatDau, gioKetThuc]
@@ -600,7 +610,7 @@ export default function FormLichGapModal({
       cuoi={
         <div className="flex items-center justify-between w-full gap-2">
           <div>
-            {dang_sua && khi_xoa && laQuanLy && (
+            {dang_sua && khi_xoa && coQuyenXoaLich && (
               <button
                 type="button"
                 onClick={() => khi_xoa(dang_sua.id, dang_sua.ten_khach_hang)}

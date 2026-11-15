@@ -365,3 +365,66 @@ export const laTruongPhongCuaNhanSu = (
   }
   return false;
 };
+
+/**
+ * Kiểm tra xem người dùng hiện tại có được phép xóa một lịch công tác/làm việc hay không:
+ * - Ban Giám đốc / Quản trị hệ thống: Xóa được tất cả lịch.
+ * - Trưởng phòng trở lên: CHỈ ĐƯỢC XÓA lịch của nhân sự thuộc phòng ban mình điều hành (hoặc lịch của chính mình).
+ * - Nhân viên thông thường: TUYỆT ĐỐI KHÔNG được xóa (chỉ được đổi trạng thái như 'Đã hủy', 'Dời lịch').
+ */
+export const duocXoaLichCongTac = (
+  nguoiDung: NguoiDungXacThuc,
+  lich: {
+    nguoi_phu_trach_id?: string | null;
+    nguoi_tao_id?: string | null;
+    chi_nhanh_id?: string | null;
+    phong_ban_id?: string | null;
+  } | null | undefined,
+  mapNhanSu?: Map<string, NhanSu>,
+  dsVaiTro?: VaiTro[]
+): boolean => {
+  if (!nguoiDung || !lich) return false;
+
+  const vaiTroKey = String(nguoiDung.vai_tro || '').toLowerCase();
+  const chucVuLower = String(nguoiDung.chuc_vu || '').toLowerCase();
+
+  // 1. Ban Giám đốc, Ban Tổng Giám đốc hoặc Quản trị hệ thống -> Toàn quyền xóa lịch
+  const laLanhDaoCapCao =
+    vaiTroKey === 'quan_tri_he_thong' ||
+    vaiTroKey === 'giam_doc' ||
+    chucVuLower.includes('giám đốc') ||
+    chucVuLower.includes('tổng giám đốc') ||
+    coQuyen(nguoiDung, 'he_thong.quan_tri', dsVaiTro);
+
+  if (laLanhDaoCapCao) return true;
+
+  // 2. Kiểm tra có phải là Trưởng phòng trở lên không
+  const laTruongPhong =
+    vaiTroKey === 'truong_phong' ||
+    vaiTroKey.startsWith('truong_phong_') ||
+    chucVuLower.includes('trưởng phòng') ||
+    chucVuLower.includes('phó phòng') ||
+    coQuyen(nguoiDung, 'lanh_dao.xem', dsVaiTro) ||
+    coQuyen(nguoiDung, 'ke_hoach.duyet', dsVaiTro);
+
+  // Nhân viên thông thường -> Không có quyền xóa
+  if (!laTruongPhong) return false;
+
+  // 3. Với Trưởng phòng: CHỈ xóa được lịch của nhân viên thuộc phòng mình
+  const phamVi = layPhamViPhongBan(nguoiDung, dsVaiTro);
+  if (phamVi.toanCongTy) return true;
+
+  const targetUid = lich.nguoi_phu_trach_id || lich.nguoi_tao_id;
+  // Nếu là lịch của chính Trưởng phòng
+  if (targetUid && targetUid === nguoiDung.id) return true;
+
+  // Xác định phòng ban của nhân viên chủ trì lịch
+  const nsMucTieu = targetUid ? mapNhanSu?.get(targetUid) : undefined;
+  const phongBanNV = nsMucTieu?.phong_ban_id || (lich as any)?.phong_ban_id;
+
+  const phongBanTP = nguoiDung.phong_ban_id;
+  if (phongBanTP && phongBanNV && phongBanTP === phongBanNV) return true;
+  if (phongBanNV && phamVi.danhSachPhongBanIds.includes(phongBanNV)) return true;
+
+  return false;
+};

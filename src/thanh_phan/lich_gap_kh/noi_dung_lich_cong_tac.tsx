@@ -66,11 +66,15 @@ import { danhSachKhachHang } from '../../dich_vu/khach_hang/dich_vu_khach_hang';
 import { danhSachNguoiLienHe } from '../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachChiNhanh } from '../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
-import { duocXemHoSoDuAn, duocXemKhachHang, laQuanLyCapCaoHoacTruongPhong } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
+import { duocXemHoSoDuAn, duocXemKhachHang, laQuanLyCapCaoHoacTruongPhong, duocXoaLichCongTac } from '../../thu_vien/phan_quyen/kiem_tra_quyen';
 import FormLichGapModal, {
   type GiaTriMacDinhLichGap
 } from './form_lich_gap_modal';
-import { dongBoLichGapSangKeHoachTuanVaBaoCaoNgay, dongBoXoaLichGapSangKeHoachTuan } from '../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
+import {
+  dongBoLichGapSangKeHoachTuanVaBaoCaoNgay,
+  dongBoXoaLichGapSangKeHoachTuan,
+  dongBoXoaLichGapSangBaoCaoNgay
+} from '../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import { Bo_Cuc_Trang, Nut, DaiDien, ThanhSoLieu } from '../ui';
 
 type CheDoXem = 'tuan' | 'thang' | 'danh_sach';
@@ -738,8 +742,13 @@ export function NoiDungLichCongTac({
   };
 
     const handleXoaLich = async (id: string, tenKH: string) => {
-    if (!laQuanLy) {
-      alert('Chỉ Cấp Quản lý mới có quyền xóa lịch làm việc/công tác đã tạo. Bạn có thể cập nhật nội dung hoặc dời lịch.');
+    // Tìm thông tin lịch cần xóa từ dsLichTongHop (chứa cả lich_gap_kh và yeu_cau_phoi_hop)
+    const lichCanXoa = dsLichTongHop.find((l) => l.id === id) || dsLich.find((l) => l.id === id);
+
+    // Kiểm tra quyền: Chỉ Ban Giám đốc hoặc Trưởng phòng trực tiếp của nhân sự phòng mình mới được xóa
+    const coQuyenXoa = duocXoaLichCongTac(nguoiDungHienTai, lichCanXoa, mapNhanSu);
+    if (!coQuyenXoa) {
+      alert('Chỉ Ban Giám đốc hoặc Trưởng phòng phụ trách nhân sự của phòng mình mới có quyền xóa lịch làm việc/công tác.');
       return;
     }
     if (!confirm(`Bạn có chắc muốn xóa lịch gặp "${tenKH}"?`)) return;
@@ -747,9 +756,6 @@ export function NoiDungLichCongTac({
       setDangLuu(true);
       const isYeuCau = id.startsWith('lich_yc_');
       const ycId = isYeuCau ? id.replace('lich_yc_', '') : null;
-
-      // Tìm thông tin lịch cần xóa từ dsLichTongHop (chứa cả lich_gap_kh và yeu_cau_phoi_hop)
-      const lichCanXoa = dsLichTongHop.find((l) => l.id === id) || dsLich.find((l) => l.id === id);
 
       // 1. Cập nhật ngay UI để người dùng thấy mất lịch tức thì 0ms
       setDsLich((prev) => prev.filter((l) => l.id !== id && (!ycId || l.id !== ycId)));
@@ -770,7 +776,7 @@ export function NoiDungLichCongTac({
         await xoaLichGapKH(ycId, nguoiDungHienTai?.id);
       }
 
-      // 4. Đồng bộ xóa mục tiêu tương ứng trong Kế hoạch Tuần
+      // 4. Đồng bộ xóa mục tiêu tương ứng trong Kế hoạch Tuần & Báo cáo Tuần
       await dongBoXoaLichGapSangKeHoachTuan({
         lichId: id,
         nhanVienId: lichCanXoa?.nguoi_phu_trach_id,
@@ -780,6 +786,29 @@ export function NoiDungLichCongTac({
         khachHangId: lichCanXoa?.khach_hang_id,
         nguoiThucHien: nguoiDungHienTai
       });
+
+      // 5. Đồng bộ xóa dòng tương ứng trong Báo cáo công việc ngày
+      const targetUserId = lichCanXoa?.nguoi_phu_trach_id || lichCanXoa?.nguoi_tao_id || nguoiDungHienTai?.id;
+      if (targetUserId && (lichCanXoa?.ngay || homNayISO)) {
+        await dongBoXoaLichGapSangBaoCaoNgay({
+          nhanVienId: targetUserId,
+          ngayISO: lichCanXoa?.ngay || homNayISO,
+          tieuDeLich: lichCanXoa?.tieu_de || tenKH,
+          tenKhachHang: lichCanXoa?.ten_khach_hang || tenKH,
+          duAnId: lichCanXoa?.du_an_id,
+          nguoiThucHien: nguoiDungHienTai
+        });
+      }
+      if (lichCanXoa?.nguoi_tao_id && lichCanXoa.nguoi_tao_id !== targetUserId && lichCanXoa.ngay) {
+        await dongBoXoaLichGapSangBaoCaoNgay({
+          nhanVienId: lichCanXoa.nguoi_tao_id,
+          ngayISO: lichCanXoa.ngay,
+          tieuDeLich: lichCanXoa.tieu_de || tenKH,
+          tenKhachHang: lichCanXoa.ten_khach_hang || tenKH,
+          duAnId: lichCanXoa.du_an_id,
+          nguoiThucHien: nguoiDungHienTai
+        });
+      }
 
       await taiDanhSachLich();
     } catch (err) {
@@ -1371,15 +1400,15 @@ export function NoiDungLichCongTac({
                                           <span>{infoHienThi.nhanLoai}</span>
                                         </span>
                                         <div className="flex items-center gap-1">
-                                          {laQuanLy && (
+                                          {duocXoaLichCongTac(nguoiDungHienTai, lich, mapNhanSu) && (
                                             <button
                                               type="button"
                                               onClick={(e) => {
                                                 e.stopPropagation();
                                                 void handleXoaLich(lich.id, infoHienThi.tieuDeChinh);
                                               }}
-                                              className="size-5 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition"
-                                              title="Xóa lịch (Chỉ Quản lý)"
+                                              className="size-5 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition cursor-pointer"
+                                              title="Xóa lịch (Chỉ Trưởng phòng/BGD)"
                                             >
                                               <Trash2 className="size-3" />
                                             </button>
@@ -1451,15 +1480,15 @@ export function NoiDungLichCongTac({
                                         </span>
                                       </div>
                                       <div className="flex items-center gap-1">
-                                        {laQuanLy && (
+                                        {duocXoaLichCongTac(nguoiDungHienTai, lich, mapNhanSu) && (
                                           <button
                                             type="button"
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               void handleXoaLich(lich.id, infoHienThi.tieuDeChinh);
                                             }}
-                                            className="size-5 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition"
-                                            title="Xóa lịch (Chỉ Quản lý)"
+                                            className="size-5 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition cursor-pointer"
+                                            title="Xóa lịch (Chỉ Trưởng phòng/BGD)"
                                           >
                                             <Trash2 className="size-3" />
                                           </button>
@@ -2016,7 +2045,7 @@ export function NoiDungLichCongTac({
                                           <UserRound className="size-3 text-slate-400" />
                                           <span>{tenNsNgan}</span>
                                         </div>
-                                        {laQuanLy && (
+                                        {duocXoaLichCongTac(nguoiDungHienTai, lich, mapNhanSu) && (
                                           <button
                                             type="button"
                                             onClick={(e) => {
@@ -2024,8 +2053,8 @@ export function NoiDungLichCongTac({
                                               const infoH = taoTieuDeLichHienThi(lich);
                                               void handleXoaLich(lich.id, infoH.tieuDeChinh);
                                             }}
-                                            className="size-6 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition shrink-0"
-                                            title="Xóa lịch (Chỉ Quản lý)"
+                                            className="size-6 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition shrink-0 cursor-pointer"
+                                            title="Xóa lịch (Chỉ Trưởng phòng/BGD)"
                                           >
                                             <Trash2 className="size-3" />
                                           </button>
@@ -2196,15 +2225,15 @@ export function NoiDungLichCongTac({
                                     )}
                                   </div>
                                 </div>
-                                {laQuanLy && (
+                                {duocXoaLichCongTac(nguoiDungHienTai, lich, mapNhanSu) && (
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       void handleXoaLich(lich.id, infoH.tieuDeChinh);
                                     }}
-                                    className="size-8 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition shrink-0"
-                                    title="Xóa lịch (Chỉ Quản lý)"
+                                    className="size-8 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition shrink-0 cursor-pointer"
+                                    title="Xóa lịch (Chỉ Trưởng phòng/BGD)"
                                   >
                                     <Trash2 className="size-4" />
                                   </button>

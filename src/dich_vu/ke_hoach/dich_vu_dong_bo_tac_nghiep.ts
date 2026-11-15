@@ -732,6 +732,87 @@ export const dongBoXoaLichGapSangKeHoachTuan = async (params: {
 };
 
 /**
+ * 5c. ĐỒNG BỘ XÓA LỊCH CÔNG TÁC -> BÁO CÁO CÔNG VIỆC NGÀY
+ * Khi xóa một lịch công tác/làm việc: tự động xóa dòng công việc tương ứng trong Báo cáo ngày của nhân viên.
+ */
+export const dongBoXoaLichGapSangBaoCaoNgay = async (params: {
+  nhanVienId: string;
+  ngayISO: string; // YYYY-MM-DD
+  tieuDeLich?: string | null;
+  tenKhachHang?: string | null;
+  duAnId?: string | null;
+  nguoiThucHien?: NguoiDungDangNhap | null;
+}): Promise<boolean> => {
+  try {
+    const { nhanVienId, ngayISO, tieuDeLich, tenKhachHang, duAnId, nguoiThucHien } = params;
+    if (!nhanVienId || !ngayISO) return false;
+
+    const { mang } = await danhSachBaoCaoCongViec({
+      nhan_vien_id: nhanVienId,
+      ngay_bao_cao_tu_ngay: ngayISO,
+      ngay_bao_cao_den_ngay: ngayISO,
+      trang_thai_du_lieu: 'hoat_dong'
+    });
+
+    const baoCaoHomDo = mang.find((bc) => bc.ngay_bao_cao === ngayISO);
+    if (!baoCaoHomDo || !baoCaoHomDo.danh_sach_chi_tiet?.length) return false;
+
+    const tieuDeClean = (tieuDeLich || '').trim().toLowerCase();
+    const tenKHClean = (tenKhachHang || '').trim().toLowerCase();
+
+    const dsMoi = baoCaoHomDo.danh_sach_chi_tiet.filter((ct) => {
+      const ctNoiDung = ct.noi_dung.trim().toLowerCase();
+
+      // 1. Trùng khớp tiêu đề lịch
+      if (tieuDeClean && ctNoiDung.includes(tieuDeClean)) return false;
+
+      // 2. Trùng khách hàng và có dấu hiệu của lịch công tác/làm việc
+      if (tenKHClean && ctNoiDung.includes(tenKHClean)) {
+        if (
+          ctNoiDung.includes('🚗') ||
+          ctNoiDung.includes('🏢') ||
+          ctNoiDung.includes('⚡') ||
+          ctNoiDung.includes('làm việc với') ||
+          ctNoiDung.includes('gặp gỡ') ||
+          ctNoiDung.includes('công tác') ||
+          ctNoiDung.includes('việc vp')
+        ) {
+          return false;
+        }
+      }
+
+      // 3. Khớp ID dự án và có chứa dấu hiệu lịch công tác
+      if (duAnId && ct.du_an_id === duAnId) {
+        if (
+          (tieuDeClean && ctNoiDung.includes(tieuDeClean)) ||
+          (tenKHClean && ctNoiDung.includes(tenKHClean)) ||
+          ctNoiDung.includes('🚗') ||
+          ctNoiDung.includes('⚡')
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    if (dsMoi.length !== baoCaoHomDo.danh_sach_chi_tiet.length) {
+      await capNhatBaoCaoCongViec(
+        baoCaoHomDo.id,
+        { danh_sach_chi_tiet: dsMoi },
+        nguoiThucHien ? { id: nguoiThucHien.id } : { id: nhanVienId }
+      );
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.warn('[dongBoXoaLichGapSangBaoCaoNgay] Lỗi:', err);
+    return false;
+  }
+};
+
+/**
  * 6. ĐỒNG BỘ TỪ BÁO CÁO CÔNG VIỆC NGÀY -> KẾ HOẠCH TUẦN & BÁO CÁO TUẦN
  * Khi NVKD lưu Báo cáo công việc ngày có gắn Dự án hoặc nội dung trùng với mục tiêu tuần:
  * -> Tự động đẩy kết quả về Kế hoạch tuần để NVKD không phải cập nhật lại.
