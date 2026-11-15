@@ -24,6 +24,7 @@ import {
   Users,
   Building2,
   ExternalLink,
+  Target,
   X
 } from 'lucide-react';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
@@ -176,6 +177,12 @@ export default function NoiDungBaoCaoTuan() {
     nhanSu: NhanSu | null;
     lich: LichGapKH[];
   }>({ mo: false, nhanSu: null, lich: [] });
+
+  const [modalXemDANhanVien, setModalXemDANhanVien] = useState<{
+    mo: boolean;
+    nhanSu: NhanSu | null;
+    dsDuAn: HoSoDuAn[];
+  }>({ mo: false, nhanSu: null, dsDuAn: [] });
 
   const [modalYeuCauSua, setModalYeuCauSua] = useState<{
     mo: boolean;
@@ -416,9 +423,6 @@ export default function NoiDungBaoCaoTuan() {
           l.ngay <= infoTuanToi.ngayKetThuc &&
           (l.nguoi_phu_trach_id === nv.id || l.nguoi_tao_id === nv.id)
       );
-      if (daLuu) {
-        return { nv, baoCao: daLuu, daGui: true, lichToi };
-      }
       const dsDaNV = dsDuAn.filter(
         (d) =>
           d.trang_thai !== 'da_xoa' &&
@@ -436,18 +440,37 @@ export default function NoiDungBaoCaoTuan() {
       });
       const truoc = dsBaoCaoTuanTruoc.find((b) => b.nhan_vien_id === nv.id) || null;
       const tenCN = nv.chi_nhanh_id ? mapChiNhanh.get(nv.chi_nhanh_id) : 'An Giang';
-      return {
-        nv,
-        baoCao: taoBaoCaoTuanMacDinh({
+      const baoCao =
+        daLuu ||
+        taoBaoCaoTuanMacDinh({
           tuan: tuanChon,
           nhanSu: nv,
           tenChiNhanh: tenCN,
           goiY,
           baoCaoTuanTruoc: truoc,
           kpiMacDinh: kpiCauHinh
-        }),
-        daGui: false,
-        lichToi
+        });
+
+      const dsDATiemNang = dsDuAn.filter(
+        (d) =>
+          d.trang_thai !== 'da_xoa' &&
+          (d.nguoi_phu_trach_id === nv.id ||
+            d.nguoi_quan_ly_id === nv.id ||
+            (!d.nguoi_phu_trach_id && d.nguoi_tao_id === nv.id)) &&
+          (d.muc_do_tiem_nang === 'rat_cao' || d.muc_do_tiem_nang === 'cao') &&
+          d.giai_doan !== 'hoan_thanh_tt_dot_2' &&
+          d.giai_doan !== 'tam_dung_huy' &&
+          (baoCao.du_an_trong_diem_ids && baoCao.du_an_trong_diem_ids.length > 0
+            ? baoCao.du_an_trong_diem_ids.includes(d.id)
+            : true)
+      );
+
+      return {
+        nv,
+        baoCao,
+        daGui: Boolean(daLuu),
+        lichToi,
+        dsDATiemNang
       };
     });
   }, [
@@ -1344,14 +1367,16 @@ export default function NoiDungBaoCaoTuan() {
                     <th className="py-3 px-4 min-w-[180px]">Nhân sự</th>
                     <th className="py-3 px-3 w-[125px]">Trạng thái</th>
                     <th className="py-3 px-3 w-[150px] text-right">DT Tuần (Ký / Về)</th>
-                    <th className="py-3 px-3 w-[120px] text-center">Tiếp cận</th>
-                    <th className="py-3 px-3 w-[140px] text-center">Lịch tuần tới</th>
+                    <th className="py-3 px-3 w-[110px] text-center">Tiếp cận</th>
+                    <th className="py-3 px-3 w-[150px] text-center">DA Tiềm năng</th>
+                    <th className="py-3 px-3 w-[130px] text-center">Lịch tuần tới</th>
                     <th className="py-3 px-4 w-[1%] whitespace-nowrap text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {danhSachBaoCaoTeam.map(({ nv, baoCao, daGui, lichToi }) => {
+                  {danhSachBaoCaoTeam.map(({ nv, baoCao, daGui, lichToi, dsDATiemNang }) => {
                     const st = NHAN_TRANG_THAI[baoCao.trang_thai];
+                    const tongGiaTriDA = dsDATiemNang.reduce((s, d) => s + (d.gia_tri_hop_dong || d.gia_tri_du_kien || 0), 0);
                     return (
                       <tr key={nv.id} className="hover:bg-slate-50/60">
                         <td className="py-3 px-4">
@@ -1380,6 +1405,28 @@ export default function NoiDungBaoCaoTuan() {
                         </td>
                         <td className="py-3 px-3 text-center font-semibold">
                           {baoCao.tinh_trang_tuan_nay.tong_tiep_can} DA
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {dsDATiemNang.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setModalXemDANhanVien({
+                                  mo: true,
+                                  nhanSu: nv,
+                                  dsDuAn: dsDATiemNang
+                                })
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 text-[11px] font-bold cursor-pointer inline-flex items-center gap-1 border border-rose-200"
+                            >
+                              <Target className="size-3 text-rose-600" />
+                              <span>
+                                {dsDATiemNang.length} DA {tongGiaTriDA > 0 ? `(${fmtSo(tongGiaTriDA)})` : ''}
+                              </span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">—</span>
+                          )}
                         </td>
                         <td className="py-3 px-3 text-center">
                           <button
@@ -1780,6 +1827,106 @@ export default function NoiDungBaoCaoTuan() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XEM CHI TIẾT DỰ ÁN TIỀM NĂNG CỦA 1 NHÂN VIÊN */}
+      {modalXemDANhanVien.mo && modalXemDANhanVien.nhanSu && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Target className="size-4 text-rose-600" />
+                <h3 className="text-sm font-bold text-slate-900">
+                  Dự án tiềm năng bám sát tuần — {modalXemDANhanVien.nhanSu.ho_va_ten}
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                  {modalXemDANhanVien.dsDuAn.length} dự án
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalXemDANhanVien({ mo: false, nhanSu: null, dsDuAn: [] })}
+                className="p-1 rounded-lg hover:bg-slate-100 cursor-pointer text-slate-500 hover:text-slate-700"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between text-xs px-1 text-slate-600">
+              <span>Tổng giá trị deal bám sát:</span>
+              <span className="font-bold text-rose-600 text-sm">
+                {fmtSo(modalXemDANhanVien.dsDuAn.reduce((s, d) => s + (d.gia_tri_hop_dong || d.gia_tri_du_kien || 0), 0))}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto flex-1 border border-slate-100 rounded-xl">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
+                    <th className="py-2.5 px-3 text-center w-10">STT</th>
+                    <th className="py-2.5 px-3">Tên dự án &amp; Khách hàng</th>
+                    <th className="py-2.5 px-3 w-32 text-right">Giá trị Deal</th>
+                    <th className="py-2.5 px-3 w-32">Giai đoạn</th>
+                    <th className="py-2.5 px-3 w-28 text-center">Tiềm năng</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {modalXemDANhanVien.dsDuAn.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
+                        Nhân sự chưa có dự án tiềm năng cao nào trong kế hoạch tuần này.
+                      </td>
+                    </tr>
+                  ) : (
+                    modalXemDANhanVien.dsDuAn.map((da, idx) => {
+                      const kh = dsKhachHang.find((k) => k.id === da.khach_hang_id);
+                      const gd = dsGiaiDoan.find((g) => g.key === da.giai_doan);
+                      return (
+                        <tr key={da.id} className="hover:bg-slate-50/60">
+                          <td className="py-2.5 px-3 text-center font-bold text-slate-400">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-bold text-slate-900">{da.ten_du_an}</div>
+                            <div className="text-[11px] text-slate-500">{kh?.ten_khach_hang || '—'}</div>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                            {fmtSo(da.gia_tri_hop_dong || da.gia_tri_du_kien || 0)}
+                          </td>
+                          <td className="py-2.5 px-3 text-[11px] text-slate-700">
+                            {gd?.nhan_ngan || gd?.nhan_day_du || da.giai_doan}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span
+                              className={cn(
+                                'px-2 py-0.5 rounded-full text-[10px] font-bold border',
+                                da.muc_do_tiem_nang === 'rat_cao'
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                              )}
+                            >
+                              {da.muc_do_tiem_nang === 'rat_cao' ? 'Rất cao' : 'Cao'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => setModalXemDANhanVien({ mo: false, nhanSu: null, dsDuAn: [] })}
+                className="h-8.5 px-4 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}

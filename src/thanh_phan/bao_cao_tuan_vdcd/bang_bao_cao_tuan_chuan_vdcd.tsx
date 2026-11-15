@@ -2120,9 +2120,6 @@ export default function BangBaoCaoTuanChuanVDCD({
               Chỉ tiêu cam kết tuần tới
             </h3>
           </div>
-          <span className="text-[11px] text-muted-foreground font-medium">
-            3 mức độ cam kết: Mục tiêu (Target) • Tối thiểu (Min) • Thách thức (Max)
-          </span>
         </div>
 
         <div className="overflow-x-auto">
@@ -2132,10 +2129,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                 <th className="py-2.5 px-3 text-center w-12">STT</th>
                 <th className="py-2.5 px-4 text-left">Chỉ tiêu cam kết tuần tới</th>
                 <th className="py-2.5 px-3 text-center w-28">ĐVT</th>
-                <th className="py-2.5 px-4 text-right w-40">Mục tiêu (Target)</th>
-                <th className="py-2.5 px-4 text-right w-40">Mức tối thiểu (Min)</th>
-                <th className="py-2.5 px-4 text-right w-40">Mức thách thức (Max)</th>
-                <th className="py-2.5 px-4 text-left">Ghi chú</th>
+                <th className="py-2.5 px-4 text-right w-48">Mục tiêu cam kết (Target)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -2151,30 +2145,9 @@ export default function BangBaoCaoTuanChuanVDCD({
                     onChange={(e) =>
                       setCamKet({ ...camKet, khachMoi: { ...camKet.khachMoi, target: Number(e.target.value) } })
                     }
-                    className="w-24 text-right font-mono text-xs font-bold text-blue-700 bg-transparent border border-border/80 rounded px-1.5 py-0.5"
+                    className="w-32 text-right font-mono text-xs font-bold text-blue-700 bg-transparent border border-border/80 rounded px-2 py-1"
                   />
                 </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.khachMoi.min}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, khachMoi: { ...camKet.khachMoi, min: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.khachMoi.max}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, khachMoi: { ...camKet.khachMoi, max: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-muted-foreground text-[11px]">Khai thác mới từ thị trường</td>
               </tr>
 
               {/* 2. Báo giá */}
@@ -2189,30 +2162,9 @@ export default function BangBaoCaoTuanChuanVDCD({
                     onChange={(e) =>
                       setCamKet({ ...camKet, baoGia: { ...camKet.baoGia, target: Number(e.target.value) } })
                     }
-                    className="w-24 text-right font-mono text-xs font-bold text-amber-700 bg-transparent border border-border/80 rounded px-1.5 py-0.5"
+                    className="w-32 text-right font-mono text-xs font-bold text-amber-700 bg-transparent border border-border/80 rounded px-2 py-1"
                   />
                 </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.baoGia.min}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, baoGia: { ...camKet.baoGia, min: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.baoGia.max}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, baoGia: { ...camKet.baoGia, max: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-muted-foreground text-[11px]">Báo giá dự toán khảo sát / đo đạc</td>
               </tr>
 
               {/* 3. Dự án làm việc */}
@@ -2227,30 +2179,9 @@ export default function BangBaoCaoTuanChuanVDCD({
                     onChange={(e) =>
                       setCamKet({ ...camKet, duAnLamViec: { ...camKet.duAnLamViec, target: Number(e.target.value) } })
                     }
-                    className="w-24 text-right font-mono text-xs font-bold text-indigo-700 bg-transparent border border-border/80 rounded px-1.5 py-0.5"
+                    className="w-32 text-right font-mono text-xs font-bold text-indigo-700 bg-transparent border border-border/80 rounded px-2 py-1"
                   />
                 </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.duAnLamViec.min}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, duAnLamViec: { ...camKet.duAnLamViec, min: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.duAnLamViec.max}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, duAnLamViec: { ...camKet.duAnLamViec, max: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-muted-foreground text-[11px]">Bám sát tiến độ & tác nghiệp dự án</td>
               </tr>
 
               {/* 4. Hợp đồng ký mới */}
@@ -2265,30 +2196,9 @@ export default function BangBaoCaoTuanChuanVDCD({
                     onChange={(e) =>
                       setCamKet({ ...camKet, hopDong: { ...camKet.hopDong, target: Number(e.target.value) } })
                     }
-                    className="w-24 text-right font-mono text-xs font-bold text-purple-700 bg-transparent border border-border/80 rounded px-1.5 py-0.5"
+                    className="w-32 text-right font-mono text-xs font-bold text-purple-700 bg-transparent border border-border/80 rounded px-2 py-1"
                   />
                 </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.hopDong.min}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, hopDong: { ...camKet.hopDong, min: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.hopDong.max}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, hopDong: { ...camKet.hopDong, max: Number(e.target.value) } })
-                    }
-                    className="w-24 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-1.5 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-muted-foreground text-[11px]">Chốt HĐ các dự án tiềm năng cao</td>
               </tr>
 
               {/* 5. Tổng doanh thu dự kiến thu về */}
@@ -2302,28 +2212,9 @@ export default function BangBaoCaoTuanChuanVDCD({
                     onChange={(val) =>
                       setCamKet({ ...camKet, doanhThu: { ...camKet.doanhThu, target: val } })
                     }
-                    className="w-32 text-right font-mono text-xs font-bold text-emerald-700 bg-transparent border border-border/80 rounded px-2 py-0.5"
+                    className="w-40 text-right font-mono text-xs font-bold text-emerald-700 bg-transparent border border-border/80 rounded px-2 py-1"
                   />
                 </td>
-                <td className="py-2.5 px-4 text-right">
-                  <ONhapSoTien
-                    giaTri={camKet.doanhThu.min}
-                    onChange={(val) =>
-                      setCamKet({ ...camKet, doanhThu: { ...camKet.doanhThu, min: val } })
-                    }
-                    className="w-32 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-2 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <ONhapSoTien
-                    giaTri={camKet.doanhThu.max}
-                    onChange={(val) =>
-                      setCamKet({ ...camKet, doanhThu: { ...camKet.doanhThu, max: val } })
-                    }
-                    className="w-32 text-right font-mono text-xs font-bold text-primary bg-transparent border border-border/80 rounded px-2 py-0.5"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-muted-foreground text-[11px]">Dòng tiền thực tế & ký kết mới</td>
               </tr>
             </tbody>
           </table>

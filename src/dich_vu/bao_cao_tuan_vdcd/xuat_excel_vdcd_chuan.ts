@@ -338,8 +338,9 @@ export async function taoFileExcelBaoCaoTuanVDCD(
   const rSec3 = ws.addRow([]);
   styleSectionHeader(rSec3, 'III. CHỈ TIÊU CAM KẾT TUẦN TỚI');
 
-  const rHead3 = ws.addRow(['', 'STT', 'Chỉ tiêu cam kết tuần tới', 'ĐVT', 'Mục tiêu (Target)', 'Mức tối thiểu (Min)', 'Mức thách thức (Max)', 'Ghi chú']);
+  const rHead3 = ws.addRow(['', 'STT', 'Chỉ tiêu cam kết tuần tới', 'ĐVT', 'Mục tiêu cam kết (Target)', '', '', '']);
   styleTableHeader(rHead3);
+  ws.mergeCells(`E${rHead3.number}:H${rHead3.number}`);
 
   const dsCamKet = [
     {
@@ -347,45 +348,35 @@ export async function taoFileExcelBaoCaoTuanVDCD(
       ten: 'Số lượng khách hàng mới tiếp cận',
       dvt: 'Khách hàng',
       laTien: false,
-      target: duLieu.camKetTuanToi.khachHangMoi.target,
-      min: duLieu.camKetTuanToi.khachHangMoi.min,
-      max: duLieu.camKetTuanToi.khachHangMoi.max
+      target: duLieu.camKetTuanToi.khachHangMoi.target
     },
     {
       stt: 2,
       ten: 'Tổng số báo giá dự kiến gửi',
       dvt: 'Báo giá',
       laTien: false,
-      target: duLieu.camKetTuanToi.baoGia.target,
-      min: duLieu.camKetTuanToi.baoGia.min,
-      max: duLieu.camKetTuanToi.baoGia.max
+      target: duLieu.camKetTuanToi.baoGia.target
     },
     {
       stt: 3,
       ten: 'Tổng số dự án dự kiến làm việc',
       dvt: 'Dự án',
       laTien: false,
-      target: duLieu.camKetTuanToi.duAnLamViec.target,
-      min: duLieu.camKetTuanToi.duAnLamViec.min,
-      max: duLieu.camKetTuanToi.duAnLamViec.max
+      target: duLieu.camKetTuanToi.duAnLamViec.target
     },
     {
       stt: 4,
       ten: 'Số hợp đồng / đơn hàng ký mới',
       dvt: 'Hợp đồng',
       laTien: false,
-      target: duLieu.camKetTuanToi.hopDongMoi.target,
-      min: duLieu.camKetTuanToi.hopDongMoi.min,
-      max: duLieu.camKetTuanToi.hopDongMoi.max
+      target: duLieu.camKetTuanToi.hopDongMoi.target
     },
     {
       stt: 5,
       ten: 'Tổng doanh thu dự kiến thu về',
       dvt: 'VNĐ',
       laTien: true,
-      target: duLieu.camKetTuanToi.doanhThu.target,
-      min: duLieu.camKetTuanToi.doanhThu.min,
-      max: duLieu.camKetTuanToi.doanhThu.max
+      target: duLieu.camKetTuanToi.doanhThu.target
     }
   ];
 
@@ -396,17 +387,18 @@ export async function taoFileExcelBaoCaoTuanVDCD(
       item.ten,
       item.dvt,
       item.laTien ? formatTienTe(item.target) : item.target,
-      item.laTien ? formatTienTe(item.min) : item.min,
-      item.laTien ? formatTienTe(item.max) : item.max,
+      '',
+      '',
       ''
     ]);
+    ws.mergeCells(`E${row.number}:H${row.number}`);
     row.height = 24;
     for (let c = 2; c <= 8; c++) {
       const cell = row.getCell(c);
       cell.font = { name: 'Calibri', size: 10 };
       cell.border = borderThin;
       if (c === 2 || c === 4) cell.alignment = { vertical: 'middle', horizontal: 'center' };
-      else if (c === 5 || c === 6 || c === 7) cell.alignment = { vertical: 'middle', horizontal: 'right' };
+      else if (c === 5) cell.alignment = { vertical: 'middle', horizontal: 'right' };
       else cell.alignment = { vertical: 'middle', horizontal: 'left' };
     }
   });

@@ -550,14 +550,14 @@ export const xuatExcelDieuHanhTeamTuan = async (
 
   // Section 1: Tổng hợp thành viên
   let curRow = 3;
-  sheet.mergeCells(`A${curRow}:H${curRow}`);
+  sheet.mergeCells(`A${curRow}:I${curRow}`);
   const sec1 = sheet.getCell(`A${curRow}`);
   sec1.value = 'I. BẢNG TỔNG HỢP TIẾN ĐỘ THÀNH VIÊN';
   sec1.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF107555' } };
   sheet.getRow(curRow).height = 24;
   curRow++;
 
-  const memberHeaders = ['STT', 'Họ và tên', 'Mã NV', 'Chức vụ', 'Tổng việc', 'Đã hoàn thành', 'Tỷ lệ (%)', 'Báo cáo tuần'];
+  const memberHeaders = ['STT', 'Họ và tên', 'Mã NV', 'Chức vụ', 'Tổng việc', 'Đã hoàn thành', 'Tỷ lệ (%)', 'DA Tiềm năng', 'Báo cáo tuần'];
   sheet.getRow(curRow).values = memberHeaders;
   sheet.getRow(curRow).height = 26;
   sheet.getRow(curRow).eachCell((cell) => {
@@ -582,6 +582,20 @@ export const xuatExcelDieuHanhTeamTuan = async (
     const tyLe = tongViec > 0 ? Math.round((daXong / tongViec) * 100) : 0;
     const trangThaiBC = bc?.trang_thai === 'da_gui' ? 'Đã nộp' : bc?.trang_thai === 'nhap' ? 'Đang nháp' : 'Chưa nộp';
 
+    const dsDuAnTiemNang = danhSachDuAn.filter(
+      (d) =>
+        d.trang_thai !== 'da_xoa' &&
+        (d.nguoi_phu_trach_id === ns.id ||
+          d.nguoi_quan_ly_id === ns.id ||
+          (!d.nguoi_phu_trach_id && d.nguoi_tao_id === ns.id)) &&
+        (d.muc_do_tiem_nang === 'rat_cao' || d.muc_do_tiem_nang === 'cao') &&
+        d.giai_doan !== 'hoan_thanh_tt_dot_2' &&
+        d.giai_doan !== 'tam_dung_huy' &&
+        (kh?.du_an_trong_diem_ids && kh.du_an_trong_diem_ids.length > 0
+          ? kh.du_an_trong_diem_ids.includes(d.id)
+          : true)
+    );
+
     const row = sheet.getRow(curRow);
     row.values = [
       idx + 1,
@@ -591,12 +605,13 @@ export const xuatExcelDieuHanhTeamTuan = async (
       tongViec,
       daXong,
       `${tyLe}%`,
+      dsDuAnTiemNang.length > 0 ? `${dsDuAnTiemNang.length} DA` : '—',
       trangThaiBC
     ];
     row.height = 22;
     row.eachCell((cell, col) => {
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-      if ([1, 3, 5, 6, 7, 8].includes(col)) {
+      if ([1, 3, 5, 6, 7, 8, 9].includes(col)) {
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
       } else {
         cell.alignment = { vertical: 'middle', horizontal: 'left' };
