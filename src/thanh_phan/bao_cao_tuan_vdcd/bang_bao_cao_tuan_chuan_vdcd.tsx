@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
 import {
@@ -144,6 +144,7 @@ interface Props {
   dsNguoiLienHe: NguoiLienHe[];
   dsSanPham: SanPhamDichVu[];
   dsLichGap: LichGapKH[];
+  dsNhanSu?: NhanSu[];
   baoCaoHienTai: BaoCaoTuanVDCD | null;
   baoCaoTuanTruoc?: BaoCaoTuanVDCD | null;
   keHoachTuanNay?: KeHoachTuan | null;
@@ -164,6 +165,7 @@ export default function BangBaoCaoTuanChuanVDCD({
   dsNguoiLienHe,
   dsSanPham,
   dsLichGap,
+  dsNhanSu = [],
   baoCaoHienTai,
   baoCaoTuanTruoc,
   keHoachTuanNay,
@@ -182,9 +184,35 @@ export default function BangBaoCaoTuanChuanVDCD({
   const mapKH = useMemo(() => new Map(dsKhachHang.map((k) => [k.id, k])), [dsKhachHang]);
   const mapNLH = useMemo(() => new Map(dsNguoiLienHe.map((n) => [n.id, n])), [dsNguoiLienHe]);
   const mapSP = useMemo(() => new Map(dsSanPham.map((s) => [s.id, s.ten_san_pham])), [dsSanPham]);
+  const mapNS = useMemo(() => new Map(dsNhanSu.map((n) => [n.id, n])), [dsNhanSu]);
 
-  // Dự án thuộc sở hữu của nhân sự
+  // Phân định vai trò Trưởng phòng Kinh doanh (Điều hành chung, không nhận KPI cá nhân vi mô)
+  const laTruongPhongKD = useMemo(() => {
+    const vt = String(nhanSu?.vai_tro || '');
+    const cv = String(nhanSu?.chuc_vu || '').toLowerCase();
+    return (
+      vt === 'truong_phong_kd' ||
+      vt === 'truong_phong' ||
+      vt === 'giam_doc' ||
+      vt === 'quan_tri_he_thong' ||
+      cv.includes('trưởng phòng') ||
+      cv.includes('tp kd') ||
+      cv.includes('tp.kd') ||
+      cv.includes('giám đốc')
+    );
+  }, [nhanSu]);
+
+  // Dự án thuộc sở hữu của nhân sự (với TP KD: quản lý toàn bộ dự án thuộc chi nhánh/toàn phòng)
   const dsDuAnCuaNV = useMemo(() => {
+    if (laTruongPhongKD) {
+      return dsDuAn.filter((d) => {
+        if (d.trang_thai === 'da_xoa') return false;
+        if (nhanSu.chi_nhanh_id && d.chi_nhanh_id) {
+          return d.chi_nhanh_id === nhanSu.chi_nhanh_id;
+        }
+        return true;
+      });
+    }
     return dsDuAn.filter(
       (d) =>
         d.trang_thai !== 'da_xoa' &&
@@ -192,7 +220,7 @@ export default function BangBaoCaoTuanChuanVDCD({
           d.nguoi_quan_ly_id === nhanSu.id ||
           (!d.nguoi_phu_trach_id && d.nguoi_tao_id === nhanSu.id))
     );
-  }, [dsDuAn, nhanSu.id]);
+  }, [dsDuAn, nhanSu, laTruongPhongKD]);
 
   // --------------------------------------------------------------------------
   // CƠ CHẾ THEO DÕI TỰ ĐỘNG THÔNG MINH TỪ BÀN LÀM VIỆC & CRM (KHỐI I)
@@ -821,8 +849,9 @@ export default function BangBaoCaoTuanChuanVDCD({
   }, [dsDuAnCuaNV]);
 
   useEffect(() => {
-    if (baoCaoHienTai?.du_an_trong_diem_ids && baoCaoHienTai.du_an_trong_diem_ids.length > 0) {
-      const idHopLe = baoCaoHienTai.du_an_trong_diem_ids.filter((id) =>
+    const idsCoSan = baoCaoHienTai?.du_an_trong_diem_ids || keHoachTuanToi?.du_an_trong_diem_ids;
+    if (idsCoSan && idsCoSan.length > 0) {
+      const idHopLe = idsCoSan.filter((id) =>
         dsDuAnTiemNangCaoNV.some((d) => d.id === id)
       );
       setIdsDuAnChon(idHopLe.length > 0 ? idHopLe : dsDuAnTiemNangCaoNV.slice(0, 6).map((d) => d.id));
@@ -830,7 +859,7 @@ export default function BangBaoCaoTuanChuanVDCD({
     }
 
     setIdsDuAnChon(dsDuAnTiemNangCaoNV.slice(0, 6).map((d) => d.id));
-  }, [baoCaoHienTai, dsDuAnTiemNangCaoNV]);
+  }, [baoCaoHienTai, keHoachTuanToi, dsDuAnTiemNangCaoNV]);
 
   const dsDuAnTrongDiem = useMemo(() => {
     return idsDuAnChon
@@ -846,7 +875,39 @@ export default function BangBaoCaoTuanChuanVDCD({
   }, [dsDuAnTrongDiem]);
 
   // --------------------------------------------------------------------------
-  // STATE KHỐI III: CHỈ TIÊU CAM KẾT TUẦN TỚI (5 CHỈ SỐ TƯƠNG ỨNG)
+  // STATE DÀNH CHO TRƯỞNG PHÒNG KINH DOANH (ĐIỀU HÀNH CHUNG & ĐỊNH HƯỚNG PHÒNG)
+  // --------------------------------------------------------------------------
+  const [danhGiaTuanQuaTP, setDanhGiaTuanQuaTP] = useState<string>('');
+  const [deXuatBanGiamDocTP, setDeXuatBanGiamDocTP] = useState<string>('');
+  const [dieuHanhTP, setDieuHanhTP] = useState({
+    mucTieuDoanhThuPhong: 500000000,
+    soHopDongDuKien: 5,
+    trongTamDieuHanh: '',
+    keHoachHoTroNhanSu: ''
+  });
+
+  useEffect(() => {
+    if (baoCaoHienTai) {
+      if (baoCaoHienTai.danh_gia_tuan_qua !== undefined && baoCaoHienTai.danh_gia_tuan_qua !== null) {
+        setDanhGiaTuanQuaTP(baoCaoHienTai.danh_gia_tuan_qua || '');
+      }
+      if (baoCaoHienTai.de_xuat_ban_giam_doc !== undefined && baoCaoHienTai.de_xuat_ban_giam_doc !== null) {
+        setDeXuatBanGiamDocTP(baoCaoHienTai.de_xuat_ban_giam_doc || '');
+      }
+      if (baoCaoHienTai.dinh_huong_dieu_hanh_tuan_toi) {
+        const dh = baoCaoHienTai.dinh_huong_dieu_hanh_tuan_toi as any;
+        setDieuHanhTP({
+          mucTieuDoanhThuPhong: Number(dh.mucTieuDoanhThuPhong || dh.muc_tieu_doanh_thu_phong || 500000000),
+          soHopDongDuKien: Number(dh.soHopDongDuKien || dh.so_hop_dong_du_kien || 5),
+          trongTamDieuHanh: String(dh.trongTamDieuHanh || dh.trong_tam_dieu_hanh || ''),
+          keHoachHoTroNhanSu: String(dh.keHoachHoTroNhanSu || dh.ke_hoach_ho_tro_nhan_su || '')
+        });
+      }
+    }
+  }, [baoCaoHienTai]);
+
+  // --------------------------------------------------------------------------
+  // STATE KHỐI III: CHỈ TIÊU CAM KẾT TUẦN TỚI (DÀNH CHO NVKD)
   // --------------------------------------------------------------------------
   const [camKet, setCamKet] = useState({
     khachMoi: { target: 20, min: 15, max: 25 },
@@ -1082,6 +1143,7 @@ export default function BangBaoCaoTuanChuanVDCD({
         const cfgGD = layCauHinhGiaiDoanTheoKey(d.giai_doan);
         const cfgTN = BANG_TIEM_NANG_DU_AN[d.muc_do_tiem_nang] || BANG_TIEM_NANG_DU_AN.cao;
         const sp = d.san_pham_dich_vu_id ? mapSP.get(d.san_pham_dich_vu_id) : d.san_pham_khac_mo_ta;
+        const nsPhuTrach = d.nguoi_phu_trach_id ? mapNS.get(d.nguoi_phu_trach_id) : null;
 
         return {
           stt: idx + 1,
@@ -1095,7 +1157,8 @@ export default function BangBaoCaoTuanChuanVDCD({
           giaiDoanKey: d.giai_doan,
           tenGiaiDoan: cfgGD.nhan_day_du,
           mucDoTiemNang: d.muc_do_tiem_nang,
-          xacSuatPct: cfgTN.xacSuat
+          xacSuatPct: cfgTN.xacSuat,
+          nguoiPhuTrach: nsPhuTrach?.ho_va_ten || 'Đang cập nhật'
         };
       }),
       camKetTuanToi: {
@@ -1109,7 +1172,18 @@ export default function BangBaoCaoTuanChuanVDCD({
         thu: d.thuIndex,
         tenThuNgay: d.tenThuNgay,
         noiDungChiTiet: d.noiDung
-      }))
+      })),
+      laTruongPhong: laTruongPhongKD,
+      dinhHuongDieuHanh: laTruongPhongKD
+        ? {
+            mucTieuDoanhThuPhong: dieuHanhTP.mucTieuDoanhThuPhong,
+            soHopDongDuKien: dieuHanhTP.soHopDongDuKien,
+            trongTamDieuHanh: dieuHanhTP.trongTamDieuHanh,
+            keHoachHoTroNhanSu: dieuHanhTP.keHoachHoTroNhanSu
+          }
+        : undefined,
+      danhGiaTuanQuaTP: laTruongPhongKD ? danhGiaTuanQuaTP : undefined,
+      deXuatBanGiamDocTP: laTruongPhongKD ? deXuatBanGiamDocTP : undefined
     };
   };
 
@@ -1134,6 +1208,16 @@ export default function BangBaoCaoTuanChuanVDCD({
     try {
       await onLuuBaoCao(
         {
+          danh_gia_tuan_qua: laTruongPhongKD ? danhGiaTuanQuaTP : undefined,
+          de_xuat_ban_giam_doc: laTruongPhongKD ? deXuatBanGiamDocTP : undefined,
+          dinh_huong_dieu_hanh_tuan_toi: laTruongPhongKD
+            ? {
+                muc_tieu_doanh_thu_phong: dieuHanhTP.mucTieuDoanhThuPhong,
+                so_hop_dong_du_kien: dieuHanhTP.soHopDongDuKien,
+                trong_tam_dieu_hanh: dieuHanhTP.trongTamDieuHanh,
+                ke_hoach_ho_tro_nhan_su: dieuHanhTP.keHoachHoTroNhanSu
+              }
+            : undefined,
           kpi_tuan_qua: {
             khach_moi_muc_tieu: kpiKhachMoi.keHoachTuanTruoc,
             khach_moi_thuc_te: kpiKhachMoi.thucTe,
@@ -1175,7 +1259,7 @@ export default function BangBaoCaoTuanChuanVDCD({
       setThongBao({
         loai: 'tc',
         nd: nopBaoCao
-          ? 'Đã nộp báo cáo tuần cho Trưởng phòng phê duyệt thành công!'
+          ? (laTruongPhongKD ? 'Đã nộp kế hoạch điều hành tuần thành công!' : 'Đã nộp báo cáo tuần cho Trưởng phòng phê duyệt thành công!')
           : 'Đã lưu bản nháp báo cáo tuần.'
       });
     } catch (err) {
@@ -1468,320 +1552,402 @@ export default function BangBaoCaoTuanChuanVDCD({
       {/* TAB 1: BÁO CÁO TUẦN QUA */}
       {tabChinh === 'bao_cao' && (
         <div className="space-y-4 animate-in fade-in">
-      {/* =================================================================== */}
-      {/* KHỐI I: ĐÁNH GIÁ KẾT QUẢ THỰC HIỆN CHỈ TIÊU TUẦN QUA */}
-      {/* =================================================================== */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-        <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
-              I
-            </span>
-            <div>
-              <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
-                Đánh giá kết quả thực hiện chỉ tiêu tuần qua
-              </h3>
-              <p className="text-[11px] text-muted-foreground">
-                Tự động theo dõi &amp; tổng hợp từ Lịch làm việc &amp; Hồ sơ dự án
-              </p>
+          {/* =================================================================== */}
+          {/* KHỐI I: TỔNG KẾT ĐIỀU HÀNH (TRƯỞNG PHÒNG) HOẶC ĐÁNH GIÁ KPI (SALE)  */}
+          {/* =================================================================== */}
+          {laTruongPhongKD ? (
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs space-y-4 p-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-border">
+                <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                  I
+                </span>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
+                    Tổng kết điều hành &amp; Kết quả toàn phòng tuần qua
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Tổng hợp tình hình kinh doanh, doanh thu thực tế và tiến độ của cả phòng trong tuần ({infoTuan.khoangNgayNhan}/{infoTuan.nam})
+                  </p>
+                </div>
+              </div>
+
+              {/* Cards 4 chỉ số tổng hợp toàn phòng */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl border border-emerald-200/80 bg-emerald-50/50">
+                  <span className="text-[11px] text-emerald-800 font-bold block">Tổng doanh thu thực tế</span>
+                  <span className="text-base sm:text-lg font-black text-emerald-700 font-mono">
+                    {fmtTien(soLieuThucTeTuBanLamViec.doanhThu.thucTe)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">Tiền về &amp; HĐ mới ký</span>
+                </div>
+
+                <div className="p-3 rounded-xl border border-purple-200/80 bg-purple-50/50">
+                  <span className="text-[11px] text-purple-800 font-bold block">Hợp đồng ký kết</span>
+                  <span className="text-base sm:text-lg font-black text-purple-700 font-mono">
+                    {soLieuThucTeTuBanLamViec.hopDong.thucTe}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">Hợp đồng toàn phòng</span>
+                </div>
+
+                <div className="p-3 rounded-xl border border-indigo-200/80 bg-indigo-50/50">
+                  <span className="text-[11px] text-indigo-800 font-bold block">Dự án đang làm việc</span>
+                  <span className="text-base sm:text-lg font-black text-indigo-700 font-mono">
+                    {soLieuThucTeTuBanLamViec.duAnLamViec.thucTe}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">Dự án có tác nghiệp</span>
+                </div>
+
+                <div className="p-3 rounded-xl border border-amber-200/80 bg-amber-50/50">
+                  <span className="text-[11px] text-amber-800 font-bold block">Báo giá đã phát hành</span>
+                  <span className="text-base sm:text-lg font-black text-amber-700 font-mono">
+                    {soLieuThucTeTuBanLamViec.baoGia.thucTe}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">Báo giá gửi khách</span>
+                </div>
+              </div>
+
+              {/* 2 Ô Textarea nhận xét & Đề xuất */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <span>Đánh giá tổng quan tình hình kinh doanh của Phòng:</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={danhGiaTuanQuaTP}
+                    onChange={(e) => setDanhGiaTuanQuaTP(e.target.value)}
+                    placeholder="VD: Đội ngũ bám sát kế hoạch tuần, nhịp độ tiếp cận khách hàng mới duy trì tốt. Khâu hoàn thiện hồ sơ thầu cần đẩy nhanh hơn..."
+                    className="w-full bg-transparent border border-border/80 rounded-xl p-3 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary shadow-2xs resize-y"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <span>Khó khăn, vướng mắc &amp; Đề xuất gửi lên Ban Giám đốc:</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={deXuatBanGiamDocTP}
+                    onChange={(e) => setDeXuatBanGiamDocTP(e.target.value)}
+                    placeholder="VD: Đề xuất Ban Giám đốc phê duyệt cơ chế phối hợp liên chi nhánh; Bổ sung thêm trang thiết bị đo đạc phục vụ dự án lớn..."
+                    className="w-full bg-transparent border border-border/80 rounded-xl p-3 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary shadow-2xs resize-y"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
+              <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                    I
+                  </span>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
+                      Đánh giá kết quả thực hiện chỉ tiêu tuần qua
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Tự động theo dõi &amp; tổng hợp từ Lịch làm việc &amp; Hồ sơ dự án
+                    </p>
+                  </div>
+                </div>
 
-          <button
-            type="button"
-            onClick={dongBoLaiKPITuBanLamViec}
-            className="h-8 px-3 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-            title="Quét lại kết quả thực tế mới nhất từ Bàn làm việc và CRM"
-          >
-            <RefreshCw className="size-3.5" />
-            <span>Lấy tự động từ Lịch làm việc &amp; CRM</span>
-          </button>
-        </div>
+                <button
+                  type="button"
+                  onClick={dongBoLaiKPITuBanLamViec}
+                  className="h-8 px-3 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                  title="Quét lại kết quả thực tế mới nhất từ Bàn làm việc và CRM"
+                >
+                  <RefreshCw className="size-3.5" />
+                  <span>Lấy tự động từ Lịch làm việc &amp; CRM</span>
+                </button>
+              </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
-                <th className="py-2.5 px-3 text-center w-12">STT</th>
-                <th className="py-2.5 px-4 text-left">Chỉ tiêu đánh giá tuần qua</th>
-                <th className="py-2.5 px-3 text-center w-28">ĐVT</th>
-                <th className="py-2.5 px-4 text-right w-44">Kế hoạch tuần trước</th>
-                <th className="py-2.5 px-4 text-right w-44">Thực tế đạt</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {/* Dòng 1: Khách hàng mới tiếp cận */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">1</td>
-                <td className="py-2.5 px-4">
-                  <div className="font-bold text-foreground">Số lượng khách hàng mới tiếp cận</div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      moModalDrillDown('khachMoi', 'Chi tiết Khách hàng mới tiếp cận tuần qua', soLieuThucTeTuBanLamViec.khachMoi.chiTiet)
-                    }
-                    className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
-                  >
-                    <Sparkles className="size-3 text-amber-500 shrink-0" />
-                    <span>{soLieuThucTeTuBanLamViec.khachMoi.chiTiet} (Xem chi tiết)</span>
-                  </button>
-                </td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Khách hàng</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={kpiKhachMoi.keHoachTuanTruoc}
-                    onChange={(e) => setKpiKhachMoi({ ...kpiKhachMoi, keHoachTuanTruoc: Number(e.target.value) })}
-                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={kpiKhachMoi.thucTe}
-                    onChange={(e) =>
-                      setKpiKhachMoi({ ...kpiKhachMoi, thucTe: Number(e.target.value), daSuaTay: true })
-                    }
-                    className="w-24 text-right font-mono text-xs font-bold text-blue-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
-                  />
-                  {kpiKhachMoi.daSuaTay && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setKpiKhachMoi((p) => ({
-                          ...p,
-                          thucTe: soLieuThucTeTuBanLamViec.khachMoi.thucTe,
-                          daSuaTay: false
-                        }))
-                      }
-                      className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
-                    >
-                      (Lấy lại số CRM)
-                    </button>
-                  )}
-                </td>
-              </tr>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
+                      <th className="py-2.5 px-3 text-center w-12">STT</th>
+                      <th className="py-2.5 px-4 text-left">Chỉ tiêu đánh giá tuần qua</th>
+                      <th className="py-2.5 px-3 text-center w-28">ĐVT</th>
+                      <th className="py-2.5 px-4 text-right w-44">Kế hoạch tuần trước</th>
+                      <th className="py-2.5 px-4 text-right w-44">Thực tế đạt</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {/* Dòng 1: Khách hàng mới tiếp cận */}
+                    <tr className="hover:bg-muted/20">
+                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">1</td>
+                      <td className="py-2.5 px-4">
+                        <div className="font-bold text-foreground">Số lượng khách hàng mới tiếp cận</div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            moModalDrillDown('khachMoi', 'Chi tiết Khách hàng mới tiếp cận tuần qua', soLieuThucTeTuBanLamViec.khachMoi.chiTiet)
+                          }
+                          className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
+                        >
+                          <Sparkles className="size-3 text-amber-500 shrink-0" />
+                          <span>{soLieuThucTeTuBanLamViec.khachMoi.chiTiet} (Xem chi tiết)</span>
+                        </button>
+                      </td>
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Khách hàng</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={kpiKhachMoi.keHoachTuanTruoc}
+                          onChange={(e) => setKpiKhachMoi({ ...kpiKhachMoi, keHoachTuanTruoc: Number(e.target.value) })}
+                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                        />
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={kpiKhachMoi.thucTe}
+                          onChange={(e) =>
+                            setKpiKhachMoi({ ...kpiKhachMoi, thucTe: Number(e.target.value), daSuaTay: true })
+                          }
+                          className="w-24 text-right font-mono text-xs font-bold text-blue-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                        />
+                        {kpiKhachMoi.daSuaTay && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setKpiKhachMoi((p) => ({
+                                ...p,
+                                thucTe: soLieuThucTeTuBanLamViec.khachMoi.thucTe,
+                                daSuaTay: false
+                              }))
+                            }
+                            className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
+                          >
+                            (Lấy lại số CRM)
+                          </button>
+                        )}
+                      </td>
+                    </tr>
 
-              {/* Dòng 2: Tổng số báo giá đã gửi */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">2</td>
-                <td className="py-2.5 px-4">
-                  <div className="font-bold text-foreground">Tổng số báo giá đã gửi trong tuần</div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      moModalDrillDown('baoGia', 'Chi tiết Báo giá đã gửi trong tuần qua', soLieuThucTeTuBanLamViec.baoGia.chiTiet)
-                    }
-                    className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
-                  >
-                    <Sparkles className="size-3 text-amber-500 shrink-0" />
-                    <span>{soLieuThucTeTuBanLamViec.baoGia.chiTiet} (Xem chi tiết)</span>
-                  </button>
-                </td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Báo giá</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={kpiBaoGia.keHoachTuanTruoc}
-                    onChange={(e) => setKpiBaoGia({ ...kpiBaoGia, keHoachTuanTruoc: Number(e.target.value) })}
-                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={kpiBaoGia.thucTe}
-                    onChange={(e) =>
-                      setKpiBaoGia({ ...kpiBaoGia, thucTe: Number(e.target.value), daSuaTay: true })
-                    }
-                    className="w-24 text-right font-mono text-xs font-bold text-amber-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
-                  />
-                  {kpiBaoGia.daSuaTay && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setKpiBaoGia((p) => ({
-                          ...p,
-                          thucTe: soLieuThucTeTuBanLamViec.baoGia.thucTe,
-                          daSuaTay: false
-                        }))
-                      }
-                      className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
-                    >
-                      (Lấy lại số CRM)
-                    </button>
-                  )}
-                </td>
-              </tr>
+                    {/* Dòng 2: Tổng số báo giá đã gửi */}
+                    <tr className="hover:bg-muted/20">
+                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">2</td>
+                      <td className="py-2.5 px-4">
+                        <div className="font-bold text-foreground">Tổng số báo giá đã gửi trong tuần</div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            moModalDrillDown('baoGia', 'Chi tiết Báo giá đã gửi trong tuần qua', soLieuThucTeTuBanLamViec.baoGia.chiTiet)
+                          }
+                          className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
+                        >
+                          <Sparkles className="size-3 text-amber-500 shrink-0" />
+                          <span>{soLieuThucTeTuBanLamViec.baoGia.chiTiet} (Xem chi tiết)</span>
+                        </button>
+                      </td>
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Báo giá</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={kpiBaoGia.keHoachTuanTruoc}
+                          onChange={(e) => setKpiBaoGia({ ...kpiBaoGia, keHoachTuanTruoc: Number(e.target.value) })}
+                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                        />
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={kpiBaoGia.thucTe}
+                          onChange={(e) =>
+                            setKpiBaoGia({ ...kpiBaoGia, thucTe: Number(e.target.value), daSuaTay: true })
+                          }
+                          className="w-24 text-right font-mono text-xs font-bold text-amber-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                        />
+                        {kpiBaoGia.daSuaTay && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setKpiBaoGia((p) => ({
+                                ...p,
+                                thucTe: soLieuThucTeTuBanLamViec.baoGia.thucTe,
+                                daSuaTay: false
+                              }))
+                            }
+                            className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
+                          >
+                            (Lấy lại số CRM)
+                          </button>
+                        )}
+                      </td>
+                    </tr>
 
-              {/* Dòng 3: Tổng số dự án đã làm việc trong tuần */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">3</td>
-                <td className="py-2.5 px-4">
-                  <div className="font-bold text-foreground">Tổng số dự án đã làm việc trong tuần</div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      moModalDrillDown('duAnLamViec', 'Chi tiết Dự án đã làm việc trong tuần qua', soLieuThucTeTuBanLamViec.duAnLamViec.chiTiet)
-                    }
-                    className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
-                  >
-                    <Sparkles className="size-3 text-amber-500 shrink-0" />
-                    <span>{soLieuThucTeTuBanLamViec.duAnLamViec.chiTiet} (Xem chi tiết)</span>
-                  </button>
-                </td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Dự án</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={kpiDuAnLamViec.keHoachTuanTruoc}
-                    onChange={(e) => setKpiDuAnLamViec({ ...kpiDuAnLamViec, keHoachTuanTruoc: Number(e.target.value) })}
-                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={kpiDuAnLamViec.thucTe}
-                    onChange={(e) =>
-                      setKpiDuAnLamViec({ ...kpiDuAnLamViec, thucTe: Number(e.target.value), daSuaTay: true })
-                    }
-                    className="w-24 text-right font-mono text-xs font-bold text-indigo-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
-                  />
-                  {kpiDuAnLamViec.daSuaTay && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setKpiDuAnLamViec((p) => ({
-                          ...p,
-                          thucTe: soLieuThucTeTuBanLamViec.duAnLamViec.thucTe,
-                          daSuaTay: false
-                        }))
-                      }
-                      className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
-                    >
-                      (Lấy lại số CRM)
-                    </button>
-                  )}
-                </td>
-              </tr>
+                    {/* Dòng 3: Tổng số dự án đã làm việc trong tuần */}
+                    <tr className="hover:bg-muted/20">
+                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">3</td>
+                      <td className="py-2.5 px-4">
+                        <div className="font-bold text-foreground">Tổng số dự án đã làm việc trong tuần</div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            moModalDrillDown('duAnLamViec', 'Chi tiết Dự án đã làm việc trong tuần qua', soLieuThucTeTuBanLamViec.duAnLamViec.chiTiet)
+                          }
+                          className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
+                        >
+                          <Sparkles className="size-3 text-amber-500 shrink-0" />
+                          <span>{soLieuThucTeTuBanLamViec.duAnLamViec.chiTiet} (Xem chi tiết)</span>
+                        </button>
+                      </td>
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Dự án</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={kpiDuAnLamViec.keHoachTuanTruoc}
+                          onChange={(e) => setKpiDuAnLamViec({ ...kpiDuAnLamViec, keHoachTuanTruoc: Number(e.target.value) })}
+                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                        />
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={kpiDuAnLamViec.thucTe}
+                          onChange={(e) =>
+                            setKpiDuAnLamViec({ ...kpiDuAnLamViec, thucTe: Number(e.target.value), daSuaTay: true })
+                          }
+                          className="w-24 text-right font-mono text-xs font-bold text-indigo-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                        />
+                        {kpiDuAnLamViec.daSuaTay && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setKpiDuAnLamViec((p) => ({
+                                ...p,
+                                thucTe: soLieuThucTeTuBanLamViec.duAnLamViec.thucTe,
+                                daSuaTay: false
+                              }))
+                            }
+                            className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
+                          >
+                            (Lấy lại số CRM)
+                          </button>
+                        )}
+                      </td>
+                    </tr>
 
-              {/* Dòng 4: Số hợp đồng ký kết */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">4</td>
-                <td className="py-2.5 px-4">
-                  <div className="font-bold text-foreground">Số hợp đồng ký kết</div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      moModalDrillDown('hopDong', 'Chi tiết Hợp đồng / Đơn hàng ký kết tuần qua', soLieuThucTeTuBanLamViec.hopDong.chiTiet)
-                    }
-                    className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
-                  >
-                    <Sparkles className="size-3 text-amber-500 shrink-0" />
-                    <span>{soLieuThucTeTuBanLamViec.hopDong.chiTiet} (Xem chi tiết)</span>
-                  </button>
-                </td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Hợp đồng</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={kpiHopDong.keHoachTuanTruoc}
-                    onChange={(e) => setKpiHopDong({ ...kpiHopDong, keHoachTuanTruoc: Number(e.target.value) })}
-                    className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={kpiHopDong.thucTe}
-                    onChange={(e) =>
-                      setKpiHopDong({ ...kpiHopDong, thucTe: Number(e.target.value), daSuaTay: true })
-                    }
-                    className="w-24 text-right font-mono text-xs font-bold text-purple-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
-                  />
-                  {kpiHopDong.daSuaTay && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setKpiHopDong((p) => ({
-                          ...p,
-                          thucTe: soLieuThucTeTuBanLamViec.hopDong.thucTe,
-                          daSuaTay: false
-                        }))
-                      }
-                      className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
-                    >
-                      (Lấy lại số CRM)
-                    </button>
-                  )}
-                </td>
-              </tr>
+                    {/* Dòng 4: Số hợp đồng ký kết */}
+                    <tr className="hover:bg-muted/20">
+                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">4</td>
+                      <td className="py-2.5 px-4">
+                        <div className="font-bold text-foreground">Số hợp đồng ký kết</div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            moModalDrillDown('hopDong', 'Chi tiết Hợp đồng / Đơn hàng ký kết tuần qua', soLieuThucTeTuBanLamViec.hopDong.chiTiet)
+                          }
+                          className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
+                        >
+                          <Sparkles className="size-3 text-amber-500 shrink-0" />
+                          <span>{soLieuThucTeTuBanLamViec.hopDong.chiTiet} (Xem chi tiết)</span>
+                        </button>
+                      </td>
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Hợp đồng</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={kpiHopDong.keHoachTuanTruoc}
+                          onChange={(e) => setKpiHopDong({ ...kpiHopDong, keHoachTuanTruoc: Number(e.target.value) })}
+                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                        />
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={kpiHopDong.thucTe}
+                          onChange={(e) =>
+                            setKpiHopDong({ ...kpiHopDong, thucTe: Number(e.target.value), daSuaTay: true })
+                          }
+                          className="w-24 text-right font-mono text-xs font-bold text-purple-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                        />
+                        {kpiHopDong.daSuaTay && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setKpiHopDong((p) => ({
+                                ...p,
+                                thucTe: soLieuThucTeTuBanLamViec.hopDong.thucTe,
+                                daSuaTay: false
+                              }))
+                            }
+                            className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
+                          >
+                            (Lấy lại số CRM)
+                          </button>
+                        )}
+                      </td>
+                    </tr>
 
-              {/* Dòng 5: Tổng doanh thu đã thu về trong tuần */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">5</td>
-                <td className="py-2.5 px-4">
-                  <div className="font-bold text-foreground">Tổng doanh thu đã thu về trong tuần</div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      moModalDrillDown('doanhThu', 'Chi tiết Doanh thu thực tế tuần qua', soLieuThucTeTuBanLamViec.doanhThu.chiTiet, true)
-                    }
-                    className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
-                  >
-                    <Sparkles className="size-3 text-amber-500 shrink-0" />
-                    <span>{soLieuThucTeTuBanLamViec.doanhThu.chiTiet} (Xem chi tiết)</span>
-                  </button>
-                </td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">VNĐ</td>
-                <td className="py-2.5 px-4 text-right">
-                  <ONhapSoTien
-                    giaTri={kpiDoanhThu.keHoachTuanTruoc}
-                    onChange={(val) => setKpiDoanhThu({ ...kpiDoanhThu, keHoachTuanTruoc: val })}
-                    className="w-32 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary"
-                  />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <ONhapSoTien
-                    giaTri={kpiDoanhThu.thucTe}
-                    onChange={(val) => setKpiDoanhThu({ ...kpiDoanhThu, thucTe: val, daSuaTay: true })}
-                    className="w-32 text-right font-mono text-xs font-bold text-emerald-600 bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary"
-                  />
-                  {kpiDoanhThu.daSuaTay && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setKpiDoanhThu((p) => ({
-                          ...p,
-                          thucTe: soLieuThucTeTuBanLamViec.doanhThu.thucTe,
-                          daSuaTay: false
-                        }))
-                      }
-                      className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
-                    >
-                      (Lấy lại số CRM)
-                    </button>
-                  )}
-                </td>
-              </tr>
+                    {/* Dòng 5: Tổng doanh thu đã thu về trong tuần */}
+                    <tr className="hover:bg-muted/20">
+                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">5</td>
+                      <td className="py-2.5 px-4">
+                        <div className="font-bold text-foreground">Tổng doanh thu đã thu về trong tuần</div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            moModalDrillDown('doanhThu', 'Chi tiết Doanh thu thực tế tuần qua', soLieuThucTeTuBanLamViec.doanhThu.chiTiet, true)
+                          }
+                          className="text-[10.5px] text-muted-foreground hover:text-blue-600 inline-flex items-center gap-1 mt-0.5 cursor-pointer"
+                        >
+                          <Sparkles className="size-3 text-amber-500 shrink-0" />
+                          <span>{soLieuThucTeTuBanLamViec.doanhThu.chiTiet} (Xem chi tiết)</span>
+                        </button>
+                      </td>
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">VNĐ</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <ONhapSoTien
+                          giaTri={kpiDoanhThu.keHoachTuanTruoc}
+                          onChange={(val) => setKpiDoanhThu({ ...kpiDoanhThu, keHoachTuanTruoc: val })}
+                          className="w-32 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary"
+                        />
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <ONhapSoTien
+                          giaTri={kpiDoanhThu.thucTe}
+                          onChange={(val) => setKpiDoanhThu({ ...kpiDoanhThu, thucTe: val, daSuaTay: true })}
+                          className="w-32 text-right font-mono text-xs font-bold text-emerald-600 bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary"
+                        />
+                        {kpiDoanhThu.daSuaTay && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setKpiDoanhThu((p) => ({
+                                ...p,
+                                thucTe: soLieuThucTeTuBanLamViec.doanhThu.thucTe,
+                                daSuaTay: false
+                              }))
+                            }
+                            className="text-[10px] text-blue-600 hover:underline block text-right mt-0.5 cursor-pointer"
+                          >
+                            (Lấy lại số CRM)
+                          </button>
+                        )}
+                      </td>
+                    </tr>
 
-              {/* Dòng Tổng kết Khối I */}
-              <tr className="bg-red-500/[0.04] font-bold text-xs border-t border-red-500/20">
-                <td colSpan={3} className="py-3 px-4 text-left text-red-950 font-black">
-                  TỔNG DOANH THU THỰC TẾ TUẦN (VNĐ)
-                </td>
-                <td className="py-3 px-4 text-right font-mono text-foreground font-extrabold">
-                  {fmtTien(kpiDoanhThu.keHoachTuanTruoc)}
-                </td>
-                <td className="py-3 px-4 text-right font-mono text-emerald-700 font-black text-sm">
-                  {fmtTien(kpiDoanhThu.thucTe)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+                    {/* Dòng Tổng kết Khối I */}
+                    <tr className="bg-red-500/[0.04] font-bold text-xs border-t border-red-500/20">
+                      <td colSpan={3} className="py-3 px-4 text-left text-red-950 font-black">
+                        TỔNG DOANH THU THỰC TẾ TUẦN (VNĐ)
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-foreground font-extrabold">
+                        {fmtTien(kpiDoanhThu.keHoachTuanTruoc)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-emerald-700 font-black text-sm">
+                        {fmtTien(kpiDoanhThu.thucTe)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
       {/* =================================================================== */}
       {/* BÁO CÁO KẾT QUẢ THỰC HIỆN LỊCH CÔNG TÁC TUẦN QUA */}
@@ -1969,343 +2135,439 @@ export default function BangBaoCaoTuanChuanVDCD({
           </div>
         )}
       </div>
-
-      {/* =================================================================== */}
-      {/* KHỐI II: DANH SÁCH DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT (TIỀM NĂNG CAO) */}
-      {/* =================================================================== */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-        <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
-              II
-            </span>
-            <div>
-              <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
-                Danh sách dự án trọng điểm đang bám sát (Tiềm năng cao)
-              </h3>
-              <p className="text-[11px] text-muted-foreground">
-                Tự động chọn lọc từ Hồ sơ dự án dựa trên mức độ tiềm năng (Rất cao &gt; Cao &gt; Trung bình)
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setMoModalChonDA(true)}
-              className="h-8 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-            >
-              <Plus className="size-3.5" />
-              <span>Chọn / Thay đổi dự án</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
-                <th className="py-2.5 px-3 text-center w-12">STT</th>
-                <th className="py-2.5 px-4 text-left">Tên dự án &amp; Khách hàng / CĐT</th>
-                <th className="py-2.5 px-4 text-left">Người liên hệ &amp; SĐT</th>
-                <th className="py-2.5 px-4 text-right w-40">Giá trị dự toán / HĐ</th>
-                <th className="py-2.5 px-4 text-left w-36">Giai đoạn dự án</th>
-                <th className="py-2.5 px-3 text-center w-36">Mức độ tiềm năng</th>
-                <th className="py-2.5 px-4 text-left w-44">Sản phẩm / Dịch vụ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {dsDuAnTrongDiem.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-muted-foreground text-xs">
-                    Chưa có dự án trọng điểm nào được chọn. Bấm nút &quot;Chọn / Thay đổi dự án&quot; phía trên.
-                  </td>
-                </tr>
-              ) : (
-                dsDuAnTrongDiem.map((d, idx) => {
-                  const kh = d.khach_hang_id ? mapKH.get(d.khach_hang_id) : null;
-                  const nlh = d.nguoi_lien_he_id ? mapNLH.get(d.nguoi_lien_he_id) : null;
-                  const cfgGD = layCauHinhGiaiDoanTheoKey(d.giai_doan);
-                  const cfgTN = BANG_TIEM_NANG_DU_AN[d.muc_do_tiem_nang] || BANG_TIEM_NANG_DU_AN.trung_binh;
-                  const sp = d.san_pham_dich_vu_id ? mapSP.get(d.san_pham_dich_vu_id) : d.san_pham_khac_mo_ta;
-
-                  return (
-                    <tr key={d.id} className="hover:bg-muted/20">
-                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">
-                        {idx + 1}
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <div className="font-extrabold text-foreground">{d.ten_du_an}</div>
-                        {kh && (
-                          <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-                            <Building2 className="size-3 text-muted-foreground shrink-0" />
-                            <span>CĐT: {kh.ten_khach_hang}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <div className="font-medium text-foreground">
-                          {nlh?.ho_va_ten || kh?.so_dien_thoai || '—'}
-                        </div>
-                        {(nlh?.so_dien_thoai || kh?.so_dien_thoai) && (
-                          <div className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
-                            <Phone className="size-3 text-muted-foreground shrink-0" />
-                            <span>{nlh?.so_dien_thoai || kh?.so_dien_thoai}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-4 text-right font-mono font-bold text-foreground">
-                        {fmtTien(d.gia_tri_hop_dong || d.gia_tri_du_kien)}
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-muted text-foreground border border-border/80">
-                          {cfgGD.nhan_ngan}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        <span
-                          className={cn(
-                            'px-2 py-0.5 rounded-full text-[10.5px] font-bold border inline-flex items-center gap-1',
-                            cfgTN.badgeCls
-                          )}
-                        >
-                          <span>{cfgTN.nhan}</span>
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-muted-foreground font-medium">
-                        {sp || 'Khảo sát / Đo đạc'}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-
-              {/* Dòng Tổng giá trị dự án trọng điểm */}
-              <tr className="bg-blue-500/[0.04] font-bold text-xs border-t border-blue-500/20">
-                <td colSpan={3} className="py-3 px-4 text-left text-blue-950 font-black">
-                  TỔNG GIÁ TRỊ DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT
-                </td>
-                <td className="py-3 px-4 text-right font-mono text-primary font-black text-sm">
-                  {fmtTien(tongGiaTriDealTrongDiem)}
-                </td>
-                <td className="py-3 px-4 text-center font-bold text-muted-foreground">
-                  Số dự án bám sát:
-                </td>
-                <td className="py-3 px-3 text-center font-bold text-primary font-mono">
-                  {dsDuAnTrongDiem.length} dự án
-                </td>
-                <td className="py-3 px-4"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
         </div>
       )}
 
       {/* TAB 2: KẾ HOẠCH TUẦN TỚI */}
       {tabChinh === 'ke_hoach' && (
         <div className="space-y-4 animate-in fade-in">
-      {/* =================================================================== */}
-      {/* KHỐI III: CHỈ TIÊU CAM KẾT TUẦN TỚI */}
-      {/* =================================================================== */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-        <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
-              III
-            </span>
-            <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
-              Chỉ tiêu cam kết tuần tới
-            </h3>
-          </div>
-        </div>
+          {/* =================================================================== */}
+          {/* KHỐI III: ĐỊNH HƯỚNG ĐIỀU HÀNH (TRƯỞNG PHÒNG) HOẶC CAM KẾT (SALE)  */}
+          {/* =================================================================== */}
+          {laTruongPhongKD ? (
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs space-y-4 p-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-border">
+                <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                  III
+                </span>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
+                    Định hướng &amp; Trọng tâm điều hành tuần tới (Trưởng phòng Kinh doanh)
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Mục tiêu doanh thu toàn phòng, trọng tâm chỉ đạo và kế hoạch đồng hành hỗ trợ nhân viên ({infoTuanToi.khoangNgayNhan}/{infoTuanToi.nam})
+                  </p>
+                </div>
+              </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
-                <th className="py-2.5 px-3 text-center w-12">STT</th>
-                <th className="py-2.5 px-4 text-left">Chỉ tiêu cam kết tuần tới</th>
-                <th className="py-2.5 px-3 text-center w-28">ĐVT</th>
-                <th className="py-2.5 px-4 text-right w-48">Mục tiêu cam kết (Target)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {/* 1. Khách hàng mới */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">1</td>
-                <td className="py-2.5 px-4 font-bold text-foreground">Số lượng khách hàng mới tiếp cận</td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Khách hàng</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.khachMoi.target}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, khachMoi: { ...camKet.khachMoi, target: Number(e.target.value) } })
-                    }
-                    className="w-32 text-right font-mono text-xs font-bold text-blue-700 bg-transparent border border-border/80 rounded px-2 py-1"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5 p-3.5 rounded-xl border border-blue-200/80 bg-blue-50/40">
+                  <label className="text-xs font-bold text-foreground block">
+                    Mục tiêu Doanh thu toàn phòng tuần tới (Target):
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <ONhapSoTien
+                      giaTri={dieuHanhTP.mucTieuDoanhThuPhong}
+                      onChange={(val) => setDieuHanhTP({ ...dieuHanhTP, mucTieuDoanhThuPhong: val })}
+                      className="w-full text-left sm:text-right font-mono text-sm font-black text-blue-700 bg-background border border-border/80 rounded-lg px-3 py-1.5 focus:border-primary"
+                    />
+                  </div>
+                  <span className="text-[10.5px] text-muted-foreground block">Kế hoạch doanh thu ký mới &amp; dòng tiền về của cả phòng</span>
+                </div>
+
+                <div className="space-y-1.5 p-3.5 rounded-xl border border-purple-200/80 bg-purple-50/40">
+                  <label className="text-xs font-bold text-foreground block">
+                    Số Hợp đồng toàn phòng dự kiến chốt:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={dieuHanhTP.soHopDongDuKien}
+                      onChange={(e) => setDieuHanhTP({ ...dieuHanhTP, soHopDongDuKien: Number(e.target.value) })}
+                      className="w-full text-left sm:text-right font-mono text-sm font-black text-purple-700 bg-background border border-border/80 rounded-lg px-3 py-1.5 focus:border-primary"
+                    />
+                    <span className="text-xs font-bold text-muted-foreground shrink-0">Hợp đồng</span>
+                  </div>
+                  <span className="text-[10.5px] text-muted-foreground block">Tổng số deal dự kiến chuyển sang giai đoạn ký kết</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground block">
+                    Trọng tâm điều hành &amp; Chỉ đạo tuần tới:
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={dieuHanhTP.trongTamDieuHanh}
+                    onChange={(e) => setDieuHanhTP({ ...dieuHanhTP, trongTamDieuHanh: e.target.value })}
+                    placeholder="VD: Tập trung đôn đốc các dự án thuộc nhóm tiềm năng cao; Họp rà soát tiến độ gửi báo giá vào sáng Thứ 4..."
+                    className="w-full bg-transparent border border-border/80 rounded-xl p-3 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary shadow-2xs resize-y"
                   />
-                </td>
-              </tr>
+                </div>
 
-              {/* 2. Báo giá */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">2</td>
-                <td className="py-2.5 px-4 font-bold text-foreground">Tổng số báo giá dự kiến gửi</td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Báo giá</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.baoGia.target}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, baoGia: { ...camKet.baoGia, target: Number(e.target.value) } })
-                    }
-                    className="w-32 text-right font-mono text-xs font-bold text-amber-700 bg-transparent border border-border/80 rounded px-2 py-1"
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground block">
+                    Kế hoạch đồng hành &amp; Hỗ trợ đội ngũ nhân sự:
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={dieuHanhTP.keHoachHoTroNhanSu}
+                    onChange={(e) => setDieuHanhTP({ ...dieuHanhTP, keHoachHoTroNhanSu: e.target.value })}
+                    placeholder="VD: Đi cùng bạn Nam gặp đại diện CĐT Viglacera đàm phán hợp đồng; Đào tạo kỹ năng phân tích hồ sơ thầu cho nhân sự mới..."
+                    className="w-full bg-transparent border border-border/80 rounded-xl p-3 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary shadow-2xs resize-y"
                   />
-                </td>
-              </tr>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
+              <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                    III
+                  </span>
+                  <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
+                    Chỉ tiêu cam kết tuần tới
+                  </h3>
+                </div>
+              </div>
 
-              {/* 3. Dự án làm việc */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">3</td>
-                <td className="py-2.5 px-4 font-bold text-foreground">Tổng số dự án dự kiến làm việc</td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Dự án</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.duAnLamViec.target}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, duAnLamViec: { ...camKet.duAnLamViec, target: Number(e.target.value) } })
-                    }
-                    className="w-32 text-right font-mono text-xs font-bold text-indigo-700 bg-transparent border border-border/80 rounded px-2 py-1"
-                  />
-                </td>
-              </tr>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
+                      <th className="py-2.5 px-3 text-center w-12">STT</th>
+                      <th className="py-2.5 px-4 text-left">Chỉ tiêu cam kết tuần tới</th>
+                      <th className="py-2.5 px-3 text-center w-28">ĐVT</th>
+                      <th className="py-2.5 px-4 text-right w-48">Mục tiêu cam kết (Target)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {/* 1. Khách hàng mới */}
+                    <tr className="hover:bg-muted/20">
+                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">1</td>
+                      <td className="py-2.5 px-4 font-bold text-foreground">Số lượng khách hàng mới tiếp cận</td>
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Khách hàng</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={camKet.khachMoi.target}
+                          onChange={(e) =>
+                            setCamKet({ ...camKet, khachMoi: { ...camKet.khachMoi, target: Number(e.target.value) } })
+                          }
+                          className="w-32 text-right font-mono text-xs font-bold text-blue-700 bg-transparent border border-border/80 rounded px-2 py-1"
+                        />
+                      </td>
+                    </tr>
 
-              {/* 4. Hợp đồng ký mới */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">4</td>
-                <td className="py-2.5 px-4 font-bold text-foreground">Số hợp đồng / đơn hàng ký mới</td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Hợp đồng</td>
-                <td className="py-2.5 px-4 text-right">
-                  <input
-                    type="number"
-                    value={camKet.hopDong.target}
-                    onChange={(e) =>
-                      setCamKet({ ...camKet, hopDong: { ...camKet.hopDong, target: Number(e.target.value) } })
-                    }
-                    className="w-32 text-right font-mono text-xs font-bold text-purple-700 bg-transparent border border-border/80 rounded px-2 py-1"
-                  />
-                </td>
-              </tr>
+                    {/* 2. Báo giá */}
+                    <tr className="hover:bg-muted/20">
+                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">2</td>
+                      <td className="py-2.5 px-4 font-bold text-foreground">Tổng số báo giá dự kiến gửi</td>
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Báo giá</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={camKet.baoGia.target}
+                          onChange={(e) =>
+                            setCamKet({ ...camKet, baoGia: { ...camKet.baoGia, target: Number(e.target.value) } })
+                          }
+                          className="w-32 text-right font-mono text-xs font-bold text-amber-700 bg-transparent border border-border/80 rounded px-2 py-1"
+                        />
+                      </td>
+                    </tr>
 
-              {/* 5. Tổng doanh thu dự kiến thu về */}
-              <tr className="hover:bg-muted/20">
-                <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">5</td>
-                <td className="py-2.5 px-4 font-bold text-foreground">Tổng doanh thu dự kiến thu về</td>
-                <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">VNĐ</td>
-                <td className="py-2.5 px-4 text-right">
-                  <ONhapSoTien
-                    giaTri={camKet.doanhThu.target}
-                    onChange={(val) =>
-                      setCamKet({ ...camKet, doanhThu: { ...camKet.doanhThu, target: val } })
-                    }
-                    className="w-40 text-right font-mono text-xs font-bold text-emerald-700 bg-transparent border border-border/80 rounded px-2 py-1"
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+                    {/* 3. Dự án làm việc */}
+                    <tr className="hover:bg-muted/20">
+                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">3</td>
+                      <td className="py-2.5 px-4 font-bold text-foreground">Tổng số dự án dự kiến làm việc</td>
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Dự án</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={camKet.duAnLamViec.target}
+                          onChange={(e) =>
+                            setCamKet({ ...camKet, duAnLamViec: { ...camKet.duAnLamViec, target: Number(e.target.value) } })
+                          }
+                          className="w-32 text-right font-mono text-xs font-bold text-indigo-700 bg-transparent border border-border/80 rounded px-2 py-1"
+                        />
+                      </td>
+                    </tr>
 
-      {/* =================================================================== */}
-      {/* KHỐI IV: KẾ HOẠCH LỊCH LÀM VIỆC TUẦN TỚI (Lấy từ Lịch & Bàn làm việc) */}
-      {/* =================================================================== */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-        <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
-              IV
-            </span>
-            <div>
-              <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
-                Kế hoạch lịch làm việc tuần tới
-              </h3>
-              <p className="text-[11px] text-muted-foreground">
-                Tự động tổng hợp 100% từ Lịch làm việc &amp; Bàn làm việc có sẵn trên hệ thống
-              </p>
+                    {/* 4. Hợp đồng ký mới */}
+                    <tr className="hover:bg-muted/20">
+                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">4</td>
+                      <td className="py-2.5 px-4 font-bold text-foreground">Số hợp đồng / đơn hàng ký mới</td>
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Hợp đồng</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <input
+                          type="number"
+                          value={camKet.hopDong.target}
+                          onChange={(e) =>
+                            setCamKet({ ...camKet, hopDong: { ...camKet.hopDong, target: Number(e.target.value) } })
+                          }
+                          className="w-32 text-right font-mono text-xs font-bold text-purple-700 bg-transparent border border-border/80 rounded px-2 py-1"
+                        />
+                      </td>
+                    </tr>
+
+                    {/* 5. Tổng doanh thu dự kiến thu về */}
+                    <tr className="hover:bg-muted/20">
+                      <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">5</td>
+                      <td className="py-2.5 px-4 font-bold text-foreground">Tổng doanh thu dự kiến thu về</td>
+                      <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">VNĐ</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <ONhapSoTien
+                          giaTri={camKet.doanhThu.target}
+                          onChange={(val) =>
+                            setCamKet({ ...camKet, doanhThu: { ...camKet.doanhThu, target: val } })
+                          }
+                          className="w-40 text-right font-mono text-xs font-bold text-emerald-700 bg-transparent border border-border/80 rounded px-2 py-1"
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================================== */}
+          {/* KHỐI IV: KẾ HOẠCH LỊCH LÀM VIỆC TUẦN TỚI (Lấy từ Lịch & Bàn làm việc) */}
+          {/* =================================================================== */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
+            <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                  IV
+                </span>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
+                    {laTruongPhongKD ? 'Kế hoạch lịch làm việc & Điều hành tuần tới' : 'Kế hoạch lịch làm việc tuần tới'}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Tự động tổng hợp 100% từ Lịch làm việc &amp; Bàn làm việc có sẵn trên hệ thống
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={taiLaiLichTuBanLamViec}
+                  className="h-8 px-3 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs text-muted-foreground hover:text-foreground"
+                  title="Khôi phục toàn bộ nội dung tự động từ Bàn làm việc và Lịch công tác tuần tới"
+                >
+                  <RefreshCw className="size-3.5" />
+                  <span>Tải lại từ Lịch làm việc</span>
+                </button>
+                <span className="text-xs font-bold text-primary">
+                  {infoTuanToi.nhanTieuDe} ({infoTuanToi.khoangNgayNhan})
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
+                    <th className="py-2.5 px-3 text-center w-12">STT</th>
+                    <th className="py-2.5 px-4 text-left w-52">Lịch tuần / Ngày</th>
+                    <th className="py-2.5 px-4 text-left">Nội dung công việc chi tiết (Đã đồng bộ từ Lịch làm việc)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {danhSach7NgayTuanToi.map((d) => (
+                    <tr key={d.ngayISO} className="hover:bg-muted/20">
+                      <td className="py-3 px-3 text-center font-bold text-muted-foreground">
+                        {d.thuIndex}
+                      </td>
+                      <td className="py-3 px-4 font-bold text-foreground">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span>{d.tenThuNgay}</span>
+                            {d.soLich > 0 && (
+                              <span className="px-1.5 py-0.2 rounded-full bg-blue-500/15 text-blue-700 text-[10px] font-bold">
+                                {d.soLich} việc / lịch
+                              </span>
+                            )}
+                          </div>
+                          {d.soLich > 0 && (
+                            <div className="text-[10px] text-muted-foreground font-normal">
+                              {d.soLichCongTac > 0 && `${d.soLichCongTac} lịch gặp `}
+                              {d.soViecBanLamViec > 0 && `• ${d.soViecBanLamViec} việc Bàn làm việc`}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <textarea
+                          rows={2}
+                          value={d.noiDung}
+                          onChange={(e) =>
+                            setGhiChuLichNgay({ ...ghiChuLichNgay, [d.ngayISO]: e.target.value })
+                          }
+                          placeholder="Chưa có lịch. Nhập nội dung hoặc lên lịch trên Bàn làm việc để tự động đồng bộ..."
+                          className="w-full bg-transparent border border-border/70 rounded-lg p-2 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary shadow-2xs resize-y"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={taiLaiLichTuBanLamViec}
-              className="h-8 px-3 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs text-muted-foreground hover:text-foreground"
-              title="Khôi phục toàn bộ nội dung tự động từ Bàn làm việc và Lịch công tác tuần tới"
-            >
-              <RefreshCw className="size-3.5" />
-              <span>Tải lại từ Lịch làm việc</span>
-            </button>
-            <span className="text-xs font-bold text-primary">
-              {infoTuanToi.nhanTieuDe} ({infoTuanToi.khoangNgayNhan})
-            </span>
+
+          {/* =================================================================== */}
+          {/* KHỐI V: DANH SÁCH DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT (TIỀM NĂNG CAO)     */}
+          {/* NẰM TRỰC TIẾP BÊN DƯỚI LỊCH LÀM VIỆC TUẦN TỚI THEO YÊU CẦU          */}
+          {/* =================================================================== */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
+            <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                  V
+                </span>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
+                    {laTruongPhongKD
+                      ? 'Dự án trọng điểm toàn phòng đang bám sát & chỉ đạo (Tiềm năng cao)'
+                      : 'Danh sách dự án trọng điểm đang bám sát (Tiềm năng cao)'}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Tự động chọn lọc từ Hồ sơ dự án dựa trên mức độ tiềm năng (Rất cao &gt; Cao) để bám sát trong kế hoạch tuần
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMoModalChonDA(true)}
+                  className="h-8 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                >
+                  <Plus className="size-3.5" />
+                  <span>Chọn / Thay đổi dự án</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
+                    <th className="py-2.5 px-3 text-center w-12">STT</th>
+                    <th className="py-2.5 px-4 text-left">Tên dự án &amp; Khách hàng / CĐT</th>
+                    <th className="py-2.5 px-4 text-left">{laTruongPhongKD ? 'Nhân sự phụ trách' : 'Người liên hệ & SĐT'}</th>
+                    <th className="py-2.5 px-4 text-right w-40">Giá trị dự toán / HĐ</th>
+                    <th className="py-2.5 px-4 text-left w-36">Giai đoạn dự án</th>
+                    <th className="py-2.5 px-3 text-center w-36">Mức độ tiềm năng</th>
+                    <th className="py-2.5 px-4 text-left w-44">Sản phẩm / Dịch vụ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {dsDuAnTrongDiem.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-muted-foreground text-xs">
+                        Chưa có dự án trọng điểm nào được chọn. Bấm nút &quot;Chọn / Thay đổi dự án&quot; phía trên.
+                      </td>
+                    </tr>
+                  ) : (
+                    dsDuAnTrongDiem.map((d, idx) => {
+                      const kh = d.khach_hang_id ? mapKH.get(d.khach_hang_id) : null;
+                      const nlh = d.nguoi_lien_he_id ? mapNLH.get(d.nguoi_lien_he_id) : null;
+                      const nsPhuTrach = d.nguoi_phu_trach_id ? mapNS.get(d.nguoi_phu_trach_id) : null;
+                      const cfgGD = layCauHinhGiaiDoanTheoKey(d.giai_doan);
+                      const cfgTN = BANG_TIEM_NANG_DU_AN[d.muc_do_tiem_nang] || BANG_TIEM_NANG_DU_AN.trung_binh;
+                      const sp = d.san_pham_dich_vu_id ? mapSP.get(d.san_pham_dich_vu_id) : d.san_pham_khac_mo_ta;
+
+                      return (
+                        <tr key={d.id} className="hover:bg-muted/20">
+                          <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5 px-4">
+                            <div className="font-extrabold text-foreground">{d.ten_du_an}</div>
+                            {kh && (
+                              <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                <Building2 className="size-3 text-muted-foreground shrink-0" />
+                                <span>CĐT: {kh.ten_khach_hang}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-4">
+                            {laTruongPhongKD ? (
+                              <div>
+                                <div className="font-bold text-foreground">
+                                  {nsPhuTrach?.ho_va_ten || 'Chưa phân công'}
+                                </div>
+                                {nsPhuTrach?.so_dien_thoai && (
+                                  <div className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
+                                    <Phone className="size-3 text-muted-foreground shrink-0" />
+                                    <span>{nsPhuTrach.so_dien_thoai}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div>
+                                <div className="font-medium text-foreground">
+                                  {nlh?.ho_va_ten || kh?.so_dien_thoai || '—'}
+                                </div>
+                                {(nlh?.so_dien_thoai || kh?.so_dien_thoai) && (
+                                  <div className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
+                                    <Phone className="size-3 text-muted-foreground shrink-0" />
+                                    <span>{nlh?.so_dien_thoai || kh?.so_dien_thoai}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-4 text-right font-mono font-bold text-foreground">
+                            {fmtTien(d.gia_tri_hop_dong || d.gia_tri_du_kien)}
+                          </td>
+                          <td className="py-2.5 px-4">
+                            <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-muted text-foreground border border-border/80">
+                              {cfgGD.nhan_ngan}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span
+                              className={cn(
+                                'px-2 py-0.5 rounded-full text-[10.5px] font-bold border inline-flex items-center gap-1',
+                                cfgTN.badgeCls
+                              )}
+                            >
+                              <span>{cfgTN.nhan}</span>
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-muted-foreground font-medium">
+                            {sp || 'Khảo sát / Đo đạc'}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+
+                  {/* Dòng Tổng giá trị dự án trọng điểm */}
+                  <tr className="bg-blue-500/[0.04] font-bold text-xs border-t border-blue-500/20">
+                    <td colSpan={3} className="py-3 px-4 text-left text-blue-950 font-black">
+                      TỔNG GIÁ TRỊ DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-primary font-black text-sm">
+                      {fmtTien(tongGiaTriDealTrongDiem)}
+                    </td>
+                    <td className="py-3 px-4 text-center font-bold text-muted-foreground">
+                      Số dự án bám sát:
+                    </td>
+                    <td className="py-3 px-3 text-center font-bold text-primary font-mono">
+                      {dsDuAnTrongDiem.length} dự án
+                    </td>
+                    <td className="py-3 px-4"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
-                <th className="py-2.5 px-3 text-center w-12">STT</th>
-                <th className="py-2.5 px-4 text-left w-52">Lịch tuần / Ngày</th>
-                <th className="py-2.5 px-4 text-left">Nội dung công việc chi tiết (Đã đồng bộ từ Lịch làm việc)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {danhSach7NgayTuanToi.map((d) => (
-                <tr key={d.ngayISO} className="hover:bg-muted/20">
-                  <td className="py-3 px-3 text-center font-bold text-muted-foreground">
-                    {d.thuIndex}
-                  </td>
-                  <td className="py-3 px-4 font-bold text-foreground">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span>{d.tenThuNgay}</span>
-                        {d.soLich > 0 && (
-                          <span className="px-1.5 py-0.2 rounded-full bg-blue-500/15 text-blue-700 text-[10px] font-bold">
-                            {d.soLich} việc / lịch
-                          </span>
-                        )}
-                      </div>
-                      {d.soLich > 0 && (
-                        <div className="text-[10px] text-muted-foreground font-normal">
-                          {d.soLichCongTac > 0 && `${d.soLichCongTac} lịch gặp `}
-                          {d.soViecBanLamViec > 0 && `• ${d.soViecBanLamViec} việc Bàn làm việc`}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <textarea
-                      rows={2}
-                      value={d.noiDung}
-                      onChange={(e) =>
-                        setGhiChuLichNgay({ ...ghiChuLichNgay, [d.ngayISO]: e.target.value })
-                      }
-                      placeholder="Chưa có lịch. Nhập nội dung hoặc lên lịch trên Bàn làm việc để tự động đồng bộ..."
-                      className="w-full bg-transparent border border-border/70 rounded-lg p-2 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary shadow-2xs resize-y"
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
         </div>
       )}
 
@@ -2593,6 +2855,11 @@ export default function BangBaoCaoTuanChuanVDCD({
                           <div className="text-[11px] text-muted-foreground truncate">
                             {kh ? `CĐT: ${kh.ten_khach_hang}` : 'Chưa gắn KH'} · Giai đoạn:{' '}
                             <span className="font-semibold text-foreground">{cfgGD.nhan_ngan}</span>
+                            {laTruongPhongKD && (
+                              <span className="ml-2 font-medium text-blue-700">
+                                · Phụ trách: {mapNS.get(d.nguoi_phu_trach_id || '')?.ho_va_ten || 'Chưa gán'}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

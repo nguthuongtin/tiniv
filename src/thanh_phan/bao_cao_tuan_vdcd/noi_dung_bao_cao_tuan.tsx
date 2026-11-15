@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -1503,6 +1503,7 @@ export default function NoiDungBaoCaoTuan() {
             dsNguoiLienHe={dsNguoiLienHe}
             dsSanPham={dsSanPham}
             dsLichGap={dsLichGap}
+            dsNhanSu={dsNhanSu}
             baoCaoHienTai={formBaoCao}
             baoCaoTuanTruoc={baoCaoTuanTruocCuaNV}
             keHoachTuanNay={keHoachTuanNay}

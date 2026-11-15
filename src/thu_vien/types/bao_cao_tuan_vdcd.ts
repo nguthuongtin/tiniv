@@ -144,6 +144,16 @@ export interface BaoCaoTuanVDCD {
   };
   ghi_chu_lich_ngay?: Record<string, string>;
 
+  // Dành riêng cho Trưởng phòng Kinh doanh (Điều hành & Báo cáo cấp quản lý)
+  danh_gia_tuan_qua?: string | null;
+  de_xuat_ban_giam_doc?: string | null;
+  dinh_huong_dieu_hanh_tuan_toi?: {
+    muc_tieu_doanh_thu_phong?: number;
+    so_hop_dong_du_kien?: number;
+    trong_tam_dieu_hanh?: string;
+    ke_hoach_ho_tro_nhan_su?: string;
+  };
+
   ngay_tao: string;
   ngay_cap_nhat: string;
 }
