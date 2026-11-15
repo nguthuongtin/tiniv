@@ -385,23 +385,57 @@ export async function xuatExcelBaoCaoTuanVDCD(
     { width: 26 }
   ];
 
-  // Sheet Lịch công tác tuần tới
+  // Sheet Lịch công tác tuần tới (nhóm theo từng nhân sự)
   if (lichTuanToi.length > 0) {
     const sLich = wb.addWorksheet('Lich_Cong_Tac_Tuan');
-    sLich.addRow([`LỊCH CÔNG TÁC ${infoTuanToi.nhanTieuDe} (${infoTuanToi.khoangNgayNhan})`]);
-    styleHeader(sLich.addRow(['NGÀY', 'GIỜ', 'NHÂN SỰ', 'KHÁCH HÀNG / ĐỊA BÀN', 'NỘI DUNG CÔNG TÁC', 'TRẠNG THÁI']));
-    for (const l of lichTuanToi) {
-      const r = sLich.addRow([
-        l.ngay,
-        `${l.gio_bat_dau || ''} - ${l.gio_ket_thuc || ''}`,
-        l.ten_nhan_vien || baoCao.ten_nhan_vien,
-        `${l.ten_khach_hang}${l.dia_diem ? ` (${l.dia_diem})` : ''}`,
-        l.noi_dung || l.tieu_de,
-        l.trang_thai === 'da_hoan_thanh' ? 'Đã gặp' : 'Kế hoạch'
-      ]);
-      styleBody(r, ['center', 'center', 'left', 'left', 'left', 'center']);
-    }
-    sLich.columns = [{ width: 14 }, { width: 16 }, { width: 24 }, { width: 32 }, { width: 40 }, { width: 15 }];
+    sLich.addRow([`LỊCH CÔNG TÁC ${infoTuanToi.nhanTieuDe} (${infoTuanToi.khoangNgayNhan}) - THEO TỪNG NHÂN SỰ`]);
+    styleHeader(sLich.addRow(['STT', 'NGÀY', 'GIỜ', 'NHÂN SỰ', 'KHÁCH HÀNG / ĐỊA BÀN', 'NỘI DUNG CÔNG TÁC', 'TRẠNG THÁI']));
+
+    const mapLichEx = new Map<string, typeof lichTuanToi>();
+    lichTuanToi.forEach((l) => {
+      const ten = l.ten_nhan_vien || baoCao.ten_nhan_vien || 'Kinh doanh';
+      if (!mapLichEx.has(ten)) mapLichEx.set(ten, []);
+      mapLichEx.get(ten)!.push(l);
+    });
+
+    const keysEx = Array.from(mapLichEx.keys()).sort((a, b) => {
+      const aTP = a.includes('TPKD') || a.includes('Trưởng phòng');
+      const bTP = b.includes('TPKD') || b.includes('Trưởng phòng');
+      if (aTP && !bTP) return -1;
+      if (!aTP && bTP) return 1;
+      return a.localeCompare(b, 'vi');
+    });
+
+    let sttEx = 0;
+    keysEx.forEach((ten) => {
+      const ds = mapLichEx.get(ten)!;
+      const rNhom = sLich.addRow(['', `👤 ${ten.toUpperCase()} (${ds.length} buổi)`, '', '', '', '', '']);
+      sLich.mergeCells(`B${rNhom.number}:G${rNhom.number}`);
+      rNhom.height = 24;
+      for (let c = 1; c <= 7; c++) {
+        const cell = rNhom.getCell(c);
+        cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF991B1B' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+        cell.border = borderThin;
+        if (c === 2) cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+      }
+
+      ds.forEach((l) => {
+        sttEx += 1;
+        const r = sLich.addRow([
+          sttEx,
+          l.ngay,
+          `${l.gio_bat_dau || ''} - ${l.gio_ket_thuc || ''}`,
+          ten,
+          `${l.ten_khach_hang}${l.dia_diem ? ` (${l.dia_diem})` : ''}`,
+          l.noi_dung || l.tieu_de,
+          l.trang_thai === 'da_hoan_thanh' ? 'Đã gặp' : 'Kế hoạch'
+        ]);
+        styleBody(r, ['center', 'center', 'center', 'left', 'left', 'left', 'center']);
+      });
+    });
+
+    sLich.columns = [{ width: 7 }, { width: 14 }, { width: 16 }, { width: 24 }, { width: 32 }, { width: 40 }, { width: 15 }];
   }
 
   const buf = await wb.xlsx.writeBuffer();
@@ -582,6 +616,58 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
       }
     );
   }, [danhSachBaoCaoTeam]);
+
+  // Nhóm lịch công tác tuần tới theo từng người (TPKD và từng bạn Sale)
+  const danhSachLichTheoNguoi = useMemo(() => {
+    if (!lichTuanToi || lichTuanToi.length === 0) return [];
+
+    // Nếu là báo cáo cá nhân của 1 nhân sự
+    if (baoCao.nhan_vien_id !== 'tong_chi_nhanh' && danhSachBaoCaoTeam.length === 0) {
+      return [
+        {
+          tenNhanVien: baoCao.ten_nhan_vien,
+          danhSachLich: [...lichTuanToi].sort(
+            (a, b) => `${a.ngay}_${a.gio_bat_dau}`.localeCompare(`${b.ngay}_${b.gio_bat_dau}`)
+          )
+        }
+      ];
+    }
+
+    // Nếu là báo cáo tổng hợp chi nhánh: nhóm theo từng người
+    const mapLich = new Map<string, (LichGapKH & { ten_nhan_vien?: string })[]>();
+
+    lichTuanToi.forEach((l) => {
+      const ten = l.ten_nhan_vien || baoCao.ten_nhan_vien || 'Chuyên viên KD';
+      if (!mapLich.has(ten)) {
+        mapLich.set(ten, []);
+      }
+      mapLich.get(ten)!.push(l);
+    });
+
+    const ketQua: {
+      tenNhanVien: string;
+      danhSachLich: (LichGapKH & { ten_nhan_vien?: string })[];
+    }[] = [];
+
+    // Sắp xếp: TPKD đứng đầu tiên, sau đó đến các Sale theo thứ tự chữ cái
+    const keys = Array.from(mapLich.keys()).sort((a, b) => {
+      const aTP = a.includes('TPKD') || a.includes('Trưởng phòng');
+      const bTP = b.includes('TPKD') || b.includes('Trưởng phòng');
+      if (aTP && !bTP) return -1;
+      if (!aTP && bTP) return 1;
+      return a.localeCompare(b, 'vi');
+    });
+
+    keys.forEach((ten) => {
+      const ds = mapLich.get(ten)!;
+      ketQua.push({
+        tenNhanVien: ten,
+        danhSachLich: ds.sort((a, b) => `${a.ngay}_${a.gio_bat_dau}`.localeCompare(`${b.ngay}_${b.gio_bat_dau}`))
+      });
+    });
+
+    return ketQua;
+  }, [lichTuanToi, baoCao.nhan_vien_id, baoCao.ten_nhan_vien, danhSachBaoCaoTeam.length]);
 
   if (!mo) return null;
 
@@ -1661,53 +1747,73 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
             </SlideFrame>
           ))}
 
-          {/* SLIDE LỊCH CÔNG TÁC TUẦN TIẾP THEO */}
-          {lichTuanToi.length > 0 &&
-            chiaTrang(lichTuanToi, 7).map((items, idx) => (
-              <SlideFrame key={`lich_${idx}`}>
+          {/* SLIDE LỊCH CÔNG TÁC TUẦN TIẾP THEO - THEO TỪNG NHÂN SỰ */}
+          {danhSachLichTheoNguoi.map((nguoi) => {
+            const trangCuaNguoi = chiaTrang(nguoi.danhSachLich, 6);
+            return trangCuaNguoi.map((items, trangIdx) => (
+              <SlideFrame key={`lich_${nguoi.tenNhanVien}_${trangIdx}`}>
                 <div className="text-center mb-4">
-                  <h2 className="text-[24px] font-black text-slate-900 uppercase">
+                  <h2 className="text-[23px] font-black text-slate-900 uppercase">
                     LỊCH CÔNG TÁC {nhanTuanToi.toUpperCase()}
                   </h2>
-                  <div className="text-[14px] font-semibold text-[#D11317]">
-                    Kỳ công tác: {infoTuanToi.khoangNgayNhan}/{infoTuanToi.nam} • Mục tiêu tiếp cận: {baoCao.ke_hoach_tiep_can_tuan_toi} dự án
+                  <div className="text-[17px] font-black text-[#D11317] uppercase tracking-wide mt-1">
+                    - {nguoi.tenNhanVien} {trangCuaNguoi.length > 1 ? `(Trang ${trangIdx + 1}/${trangCuaNguoi.length})` : ''} -
+                  </div>
+                  <div className="text-[12px] text-slate-600 mt-1">
+                    Kỳ công tác: {infoTuanToi.khoangNgayNhan}/{infoTuanToi.nam} • Kế hoạch: {nguoi.danhSachLich.length} buổi
                   </div>
                 </div>
+
                 <table className="w-full border-collapse text-[12px] bg-white">
                   <thead>
                     <tr className="bg-[#D11317] text-white">
-                      <th className="border border-slate-700 py-2 px-2.5 text-center w-[12%]">NGÀY</th>
-                      <th className="border border-slate-700 py-2 px-2.5 text-center w-[13%]">GIỜ</th>
-                      <th className="border border-slate-700 py-2 px-2.5 text-center w-[17%]">NHÂN SỰ</th>
-                      <th className="border border-slate-700 py-2 px-2.5 text-center w-[25%]">KHÁCH HÀNG / ĐỊA BÀN</th>
-                      <th className="border border-slate-700 py-2 px-2.5 text-center w-[33%]">NỘI DUNG CÔNG TÁC</th>
+                      <th className="border border-slate-700 py-2.5 px-2 text-center w-[6%] font-bold">STT</th>
+                      <th className="border border-slate-700 py-2.5 px-3 text-center w-[16%] font-bold">NGÀY & THỨ</th>
+                      <th className="border border-slate-700 py-2.5 px-3 text-center w-[16%] font-bold">THỜI GIAN</th>
+                      <th className="border border-slate-700 py-2.5 px-3 text-center w-[28%] font-bold">KHÁCH HÀNG / ĐỊA BÀN</th>
+                      <th className="border border-slate-700 py-2.5 px-3 text-center w-[34%] font-bold">NỘI DUNG CÔNG TÁC CHI TIẾT</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((l) => (
-                      <tr key={l.id} className="h-[48px]">
-                        <td className="border border-slate-700 px-2.5 text-center font-semibold">
-                          {l.ngay}
-                        </td>
-                        <td className="border border-slate-700 px-2.5 text-center">
-                          {l.gio_bat_dau} - {l.gio_ket_thuc}
-                        </td>
-                        <td className="border border-slate-700 px-2.5 font-medium">
-                          {l.ten_nhan_vien || baoCao.ten_nhan_vien}
-                        </td>
-                        <td className="border border-slate-700 px-2.5">
-                          <div className="font-semibold">{l.ten_khach_hang}</div>
-                          {l.dia_diem && <div className="text-[10px] text-slate-500">{l.dia_diem}</div>}
-                        </td>
-                        <td className="border border-slate-700 px-2.5">
-                          {l.noi_dung || l.tieu_de}
-                        </td>
-                      </tr>
-                    ))}
+                    {items.map((l, rIdx) => {
+                      const dNgay = infoTuanToi.danhSachNgay.find((x) => x.ngay === l.ngay);
+                      const thuText = dNgay ? (dNgay.thuNhan === 'CN' ? 'Chủ Nhật' : `Thứ ${dNgay.thuNhan.replace('T', '')}`) : '';
+                      return (
+                        <tr key={l.id} className="h-[48px] hover:bg-slate-50/70">
+                          <td className="border border-slate-700 px-2 py-2 text-center font-semibold text-slate-600">
+                            {trangIdx * 6 + rIdx + 1}
+                          </td>
+                          <td className="border border-slate-700 px-3 py-2 text-center font-bold text-slate-900">
+                            <div>{l.ngay}</div>
+                            {thuText && <div className="text-[10.5px] font-normal text-slate-500">{thuText}</div>}
+                          </td>
+                          <td className="border border-slate-700 px-3 py-2 text-center font-semibold text-blue-700">
+                            {l.gio_bat_dau ? `${l.gio_bat_dau}${l.gio_ket_thuc ? ` - ${l.gio_ket_thuc}` : ''}` : 'Trong ngày'}
+                          </td>
+                          <td className="border border-slate-700 px-3 py-2">
+                            <div className="font-bold text-slate-900">{l.ten_khach_hang}</div>
+                            {l.dia_diem && (
+                              <div className="text-[10.5px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                <span>📍 {l.dia_diem}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="border border-slate-700 px-3 py-2 text-slate-800">
+                            {l.noi_dung || l.tieu_de || 'Lịch làm việc / bám sát dự án'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
+
+                <div className="mt-auto pt-2 flex items-center justify-between text-[11px] italic font-semibold text-slate-600">
+                  <span>* Lịch công tác được cập nhật trực tiếp theo kế hoạch tuần của {nguoi.tenNhanVien}</span>
+                  <span>VDCD Group</span>
+                </div>
               </SlideFrame>
-            ))}
+            ));
+          })}
 
           {/* SLIDE CUỐI: CẢM ƠN */}
           <SlideFrame>

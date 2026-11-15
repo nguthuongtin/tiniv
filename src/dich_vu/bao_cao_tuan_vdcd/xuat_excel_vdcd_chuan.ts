@@ -1104,10 +1104,10 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
 
   sTong.addRow([]);
 
-  // V. LỊCH CÔNG TÁC TỔNG HỢP TOÀN PHÒNG TUẦN TỚI
+  // V. LỊCH CÔNG TÁC TỔNG HỢP TOÀN PHÒNG TUẦN TỚI (NHÓM THEO TỪNG NHÂN SỰ)
   if (lichTuanToiToanChiNhanh.length > 0) {
     const rSecT5 = sTong.addRow([]);
-    styleSectionHeaderTong(rSecT5, 'V. LỊCH CÔNG TÁC TỔNG HỢP TOÀN PHÒNG TUẦN TỚI');
+    styleSectionHeaderTong(rSecT5, 'V. LỊCH CÔNG TÁC TỔNG HỢP TOÀN PHÒNG TUẦN TỚI (THEO TỪNG NHÂN SỰ)');
 
     const rHeadT5 = sTong.addRow([
       '',
@@ -1123,41 +1123,74 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     sTong.mergeCells(`E${rHeadT5.number}:F${rHeadT5.number}`);
     sTong.mergeCells(`G${rHeadT5.number}:H${rHeadT5.number}`);
 
-    lichTuanToiToanChiNhanh.forEach((l, idx) => {
-      const thoiGian = `${l.ngay} (${l.gio_bat_dau || ''} - ${l.gio_ket_thuc || ''})`;
-      const khachHang = `${l.ten_khach_hang}${l.dia_diem ? ` (${l.dia_diem})` : ''}`;
-      const noiDung = l.noi_dung || l.tieu_de || 'Lịch gặp khách hàng theo kế hoạch';
+    // Nhóm theo từng nhân sự
+    const mapNhomLich = new Map<string, typeof lichTuanToiToanChiNhanh>();
+    lichTuanToiToanChiNhanh.forEach((l) => {
+      const ten = l.ten_nhan_vien || 'Chuyên viên Kinh doanh';
+      if (!mapNhomLich.has(ten)) mapNhomLich.set(ten, []);
+      mapNhomLich.get(ten)!.push(l);
+    });
 
-      const row = sTong.addRow([
-        '',
-        idx + 1,
-        thoiGian,
-        l.ten_nhan_vien || 'Kinh doanh',
-        khachHang,
-        '',
-        noiDung,
-        ''
-      ]);
-      const rIdx = row.number;
-      sTong.mergeCells(`E${rIdx}:F${rIdx}`);
-      sTong.mergeCells(`G${rIdx}:H${rIdx}`);
-      row.height = tinhChieuCaoHang(noiDung, 44, 26);
+    const dsNhanSuSorted = Array.from(mapNhomLich.keys()).sort((a, b) => {
+      const aTP = a.includes('TPKD') || a.includes('Trưởng phòng');
+      const bTP = b.includes('TPKD') || b.includes('Trưởng phòng');
+      if (aTP && !bTP) return -1;
+      if (!aTP && bTP) return 1;
+      return a.localeCompare(b, 'vi');
+    });
 
+    let sttTong = 0;
+    dsNhanSuSorted.forEach((tenNV) => {
+      const ds = mapNhomLich.get(tenNV)!;
+      // Dòng tiêu đề nhân sự
+      const rNhom = sTong.addRow(['', '', `👤 ${tenNV.toUpperCase()} (${ds.length} buổi công tác)`, '', '', '', '', '']);
+      sTong.mergeCells(`C${rNhom.number}:H${rNhom.number}`);
+      rNhom.height = 24;
       for (let c = 2; c <= 8; c++) {
-        const cell = row.getCell(c);
-        cell.font = { name: 'Calibri', size: 10 };
+        const cell = rNhom.getCell(c);
+        cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF991B1B' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
         cell.border = borderThin;
-        if (c === 2) cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        else if (c === 3) cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        else if (c === 4) {
-          cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-          cell.font = { name: 'Calibri', size: 10, bold: true };
-        } else if (c === 5) {
-          cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
-        } else if (c === 7) {
-          cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
-        }
+        if (c === 3) cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
       }
+
+      ds.forEach((l) => {
+        sttTong += 1;
+        const thoiGian = `${l.ngay} (${l.gio_bat_dau || ''} - ${l.gio_ket_thuc || ''})`;
+        const khachHang = `${l.ten_khach_hang}${l.dia_diem ? ` (${l.dia_diem})` : ''}`;
+        const noiDung = l.noi_dung || l.tieu_de || 'Lịch gặp khách hàng theo kế hoạch';
+
+        const row = sTong.addRow([
+          '',
+          sttTong,
+          thoiGian,
+          tenNV,
+          khachHang,
+          '',
+          noiDung,
+          ''
+        ]);
+        const rIdx = row.number;
+        sTong.mergeCells(`E${rIdx}:F${rIdx}`);
+        sTong.mergeCells(`G${rIdx}:H${rIdx}`);
+        row.height = tinhChieuCaoHang(noiDung, 44, 26);
+
+        for (let c = 2; c <= 8; c++) {
+          const cell = row.getCell(c);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.border = borderThin;
+          if (c === 2) cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          else if (c === 3) cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          else if (c === 4) {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+            cell.font = { name: 'Calibri', size: 10, bold: true };
+          } else if (c === 5) {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
+          } else if (c === 7) {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
+          }
+        }
+      });
     });
   }
 
