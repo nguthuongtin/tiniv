@@ -11,6 +11,7 @@ import {
   Sparkles,
   Clock,
   MapPin,
+  Target,
   Search,
   Pencil,
   UserPlus,
@@ -71,6 +72,7 @@ import { taoTienDoDuAnMoi } from '../../dich_vu/ho_so_du_an/dich_vu_tien_do_du_a
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
 import { cn } from '../../thu_vien/utils/cn';
 import DrawerHoSoThuGon, { type GoiYTaoLichHenNhanh } from './drawer_ho_so_thu_gon';
+import BangDuAnTiemNangTuan from './bang_du_an_tiem_nang_tuan';
 import { ModalNguoiLienHe } from '../khach_hang/modal_nguoi_lien_he';
 import HopYeuCauPhoiHop from './hop_yeu_cau_phoi_hop';
 import ModalTaoYeuCauPhoiHop from './modal_tao_yeu_cau_phoi_hop';
@@ -113,6 +115,8 @@ interface Props {
   keHoachTuan: KeHoachTuan | null;
   keHoachThang?: KeHoachThang | null;
   nhanVienId?: string;
+  duAnTrongDiemIds?: string[];
+  onCapNhatDuAnTrongDiem?: (ids: string[]) => Promise<void>;
   tuanChon: string;
   ngayChon: string;
   onDoiNgayChon: (ngay: string) => void;
@@ -288,6 +292,8 @@ export default function BanLamViecHangNgay({
   keHoachTuan,
   keHoachThang,
   nhanVienId,
+  duAnTrongDiemIds = [],
+  onCapNhatDuAnTrongDiem,
   tuanChon,
   ngayChon,
   onDoiNgayChon,
@@ -560,7 +566,7 @@ export default function BanLamViecHangNgay({
   }, []);
 
   // Tab con: Lịch tác nghiệp 7 ngày HOẶC Yêu cầu hỗ trợ
-  const [tabHienThi, setTabHienThi] = useState<'lich_tuan' | 'yeu_cau_ho_tro'>('lich_tuan');
+  const [tabHienThi, setTabHienThi] = useState<'lich_tuan' | 'du_an_tiem_nang' | 'yeu_cau_ho_tro'>('lich_tuan');
   const [dangChiaSeZaloId, setDangChiaSeZaloId] = useState<string | null>(null);
 
   const soYeuCauCanXuLy = useMemo(() => {
@@ -1795,6 +1801,25 @@ export default function BanLamViecHangNgay({
 
           <button
             type="button"
+            onClick={() => setTabHienThi('du_an_tiem_nang')}
+            className={cn(
+              'h-9 px-4 rounded-lg inline-flex items-center gap-2 transition cursor-pointer',
+              tabHienThi === 'du_an_tiem_nang'
+                ? 'bg-card text-rose-800 shadow-2xs font-bold border border-rose-500/40'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Target className="size-4 text-rose-500" />
+            <span>Dự án tiềm năng</span>
+            {duAnTrongDiemIds.length > 0 && (
+              <span className="px-2 py-0.2 rounded-full bg-rose-600 text-white text-[11px] font-black">
+                {duAnTrongDiemIds.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setTabHienThi('yeu_cau_ho_tro')}
             className={cn(
               'h-9 px-4 rounded-lg inline-flex items-center gap-2 transition cursor-pointer',
@@ -1824,6 +1849,16 @@ export default function BanLamViecHangNgay({
             >
               <Plus className="size-3.5 stroke-[2.5]" />
               <span>+ Thêm việc</span>
+            </button>
+          ) : tabHienThi === 'du_an_tiem_nang' ? (
+            <button
+              type="button"
+              onClick={() => onMoFormDuAn?.()}
+              className="h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs hover:bg-primary/90 transition"
+              title="Thêm hồ sơ dự án mới"
+            >
+              <Plus className="size-3.5 stroke-[2.5]" />
+              <span>+ Thêm dự án</span>
             </button>
           ) : (
             <button
@@ -1951,6 +1986,43 @@ export default function BanLamViecHangNgay({
               setHoSoThuGonState({ mo: true, cheDo: 'du_an', duAn: da, khachHang: null });
             }
           }}
+        />
+      ) : tabHienThi === 'du_an_tiem_nang' ? (
+        <BangDuAnTiemNangTuan
+          danhSachDuAn={danhSachDuAn}
+          danhSachKhachHang={danhSachKhachHang}
+          danhSachNguoiLienHe={danhSachNguoiLienHe}
+          nhanVienId={nhanVienId}
+          duAnTrongDiemIds={duAnTrongDiemIds}
+          onCapNhatDuAnTrongDiem={onCapNhatDuAnTrongDiem}
+          onMoChiTietDuAn={(da) => {
+            setHoSoThuGonState({ mo: true, cheDo: 'du_an', duAn: da, khachHang: null });
+          }}
+          onTaoLichHen={(da) => {
+            const kh = da.khach_hang_id ? danhSachKhachHang.find(k => k.id === da.khach_hang_id) : null;
+            const nlh = da.nguoi_lien_he_id ? danhSachNguoiLienHe.find(n => n.id === da.nguoi_lien_he_id) : null;
+            onMoTaoLichHenGoiY?.({
+              khach_hang_id: kh?.id || null,
+              ten_khach_hang: kh?.ten_khach_hang || '',
+              du_an_id: da.id,
+              nguoi_lien_he_id: nlh?.id || null,
+              ten_nguoi_lien_he: nlh?.ho_va_ten || null,
+              so_dien_thoai: nlh?.so_dien_thoai || kh?.so_dien_thoai || null,
+              dia_diem: kh?.dia_chi || null,
+              noi_dung: `Gặp làm việc DA ${da.ten_du_an}`
+            });
+          }}
+          onThemTaskTuan={(da) => {
+            const kh = da.khach_hang_id ? danhSachKhachHang.find(k => k.id === da.khach_hang_id) : null;
+            const nlh = da.nguoi_lien_he_id ? danhSachNguoiLienHe.find(n => n.id === da.nguoi_lien_he_id) : null;
+            setKhachHangThemNhanh(kh || null);
+            setDuAnThemNhanh(da);
+            setNguoiLienHeThemNhanh(nlh || null);
+            setTabHienThi('lich_tuan');
+            moFormThemCongViec(ngayChon, 'du_an');
+          }}
+          onThemDuAnMoi={() => onMoFormDuAn?.()}
+          laSuaDuoc={laSuaDuoc}
         />
       ) : (
         <>

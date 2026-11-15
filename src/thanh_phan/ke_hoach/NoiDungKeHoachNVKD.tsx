@@ -54,6 +54,7 @@ import {
 } from '../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachChiNhanh } from '../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
+import { layMotBaoCaoTuanVDCD, luuBaoCaoTuanVDCD } from '../../dich_vu/bao_cao_tuan_vdcd/dich_vu_bao_cao_tuan_vdcd';
 import {
   danhSachHoSoDuAn,
   taoHoSoDuAnMoi,
@@ -1402,6 +1403,33 @@ export function NoiDungKeHoachNVKD({
     })();
   };
 
+  const xuLyCapNhatDuAnTrongDiem = async (ids: string[]) => {
+    const targetId = nhanVienChonId || nguoiDungHienTai?.id;
+    if (!targetId) return;
+
+    if (keHoachTuan) {
+      const capNhatKH: KeHoachTuan = {
+        ...keHoachTuan,
+        du_an_trong_diem_ids: ids
+      };
+      setKeHoachTuan(capNhatKH);
+      await luuKeHoachTuan(capNhatKH);
+    }
+
+    // Đồng bộ sang Báo cáo tuần nếu đã có bản ghi
+    try {
+      const bc = await layMotBaoCaoTuanVDCD(tuanChon, targetId);
+      if (bc) {
+        await luuBaoCaoTuanVDCD({
+          ...bc,
+          du_an_trong_diem_ids: ids
+        });
+      }
+    } catch (e) {
+      console.warn('Lỗi đồng bộ sang Báo cáo tuần VDCD:', e);
+    }
+  };
+
   const xuLyLuuGhiChuBaoCaoTuan = async (khoKhan: string, deXuat: string) => {
     if (!keHoachTuan) return;
     const targetId = nhanVienChonId || nguoiDungHienTai?.id;
@@ -1547,6 +1575,8 @@ export function NoiDungKeHoachNVKD({
           keHoachTuan={keHoachTuan}
           keHoachThang={keHoachThang}
           nhanVienId={nhanVienChonId || nguoiDungHienTai?.id}
+          duAnTrongDiemIds={keHoachTuan?.du_an_trong_diem_ids || []}
+          onCapNhatDuAnTrongDiem={xuLyCapNhatDuAnTrongDiem}
           tuanChon={tuanChon}
           ngayChon={ngayTacChien}
           onDoiNgayChon={xuLyDoiNgayTacChien}

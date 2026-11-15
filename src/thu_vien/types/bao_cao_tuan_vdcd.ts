@@ -412,7 +412,9 @@ export function tinhSoLieuTuCRM(params: {
       gd !== 'hoan_thanh_tt_dot_2' &&
       gd !== 'nghiem_thu' &&
       gd !== 'trien_khai' &&
-      gd !== 'tt_dot_1'
+      gd !== 'tt_dot_1' &&
+      gd !== 'tam_dung_huy' &&
+      (da.muc_do_tiem_nang === 'rat_cao' || da.muc_do_tiem_nang === 'cao')
     ) {
       goiYTiemNang.push({ ...dongMau, id: `tn_${da.id}` });
     }
@@ -492,6 +494,7 @@ export function taoBaoCaoTuanMacDinh(params: {
 
     ke_hoach_dong_tien: goiY.goi_y_dong_tien.slice(0, 8),
     ke_hoach_tiem_nang: goiY.goi_y_tiem_nang.slice(0, 12),
+    du_an_trong_diem_ids: (baoCaoTuanTruoc?.du_an_trong_diem_ids && baoCaoTuanTruoc.du_an_trong_diem_ids.length > 0) ? baoCaoTuanTruoc.du_an_trong_diem_ids : (goiY.goi_y_tiem_nang.slice(0, 6).map((x) => x.du_an_id).filter(Boolean) as string[]),
     ke_hoach_san_xuat: goiY.goi_y_san_xuat.slice(0, 8),
     marketing_content: [],
     marketing_performance: [],
@@ -624,6 +627,7 @@ export function tongHopBaoCaoChiNhanh(params: {
 
     ke_hoach_dong_tien: gomDong((b) => b.ke_hoach_dong_tien),
     ke_hoach_tiem_nang: gomDong((b) => b.ke_hoach_tiem_nang),
+    du_an_trong_diem_ids: Array.from(new Set(danhSachBaoCao.flatMap((b) => b.du_an_trong_diem_ids || []))),
     ke_hoach_san_xuat: gomDong((b) => b.ke_hoach_san_xuat),
     marketing_content: danhSachBaoCao.flatMap((b) => b.marketing_content || []),
     marketing_performance: danhSachBaoCao.flatMap((b) => b.marketing_performance || []),

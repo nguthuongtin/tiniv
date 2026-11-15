@@ -156,6 +156,7 @@ export interface KeHoachTuan {
   chi_nhanh_id?: string | null;
   phong_ban_id?: string | null;
   danh_sach_tac_chien: ItemKeHoachTuan[];
+  du_an_trong_diem_ids?: string[]; // Danh sách dự án trọng điểm tiềm năng cao bám sát tuần này
   ngay_tao: string;
   ngay_cap_nhat: string;
   trang_thai_du_lieu: 'hoat_dong' | 'da_xoa';

@@ -22,6 +22,8 @@ import {
   Trash2,
   UserCheck,
   Users,
+  Building2,
+  ExternalLink,
   X
 } from 'lucide-react';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
@@ -38,7 +40,8 @@ import { danhSachNguoiLienHe } from '../../dich_vu/nguoi_lien_he/dich_vu_nguoi_l
 import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachChiNhanh } from '../../dich_vu/co_cau_to_chuc/dich_vu_chi_nhanh';
 import { danhSachSanPhamDichVu } from '../../dich_vu/san_pham_dich_vu/dich_vu_san_pham_dich_vu';
-import BangBaoCaoTuanChuanVDCD from './bang_bao_cao_tuan_chuan_vdcd';
+import BangBaoCaoTuanChuanVDCD, { BANG_TIEM_NANG_DU_AN } from './bang_bao_cao_tuan_chuan_vdcd';
+import { layCauHinhGiaiDoanTheoKey } from '../../thu_vien/cau_hinh/giai_doan_du_an';
 import {
   capNhatLichGapKH,
   danhSachLichGapKH,
@@ -493,6 +496,66 @@ export default function NoiDungBaoCaoTuan() {
         ten_nhan_vien: mapTenNV.get(l.nguoi_phu_trach_id) || ''
       }));
   }, [dsLichGap, dsNhanSu, dsSaleTeam, infoTuanToi]);
+
+  const dsDuAnTiemNangChiNhanh = useMemo(() => {
+    const setIdsDuAnChon = new Set(
+      danhSachBaoCaoTeam.flatMap((x) => x.baoCao.du_an_trong_diem_ids || [])
+    );
+
+    const mapTenNV = new Map(dsNhanSu.map((n) => [n.id, n.ho_va_ten]));
+    const mapKH = new Map(dsKhachHang.map((k) => [k.id, k]));
+    const mapNLH = new Map(dsNguoiLienHe.map((n) => [n.id, n]));
+    const mapSP = new Map(dsSanPham.map((s) => [s.id, s.ten_san_pham]));
+
+    const dsDuAnDonVi = dsDuAn.filter((d) => {
+      if (d.trang_thai === 'da_xoa') return false;
+      if (chiNhanhLocId !== 'tat_ca' && d.chi_nhanh_id && d.chi_nhanh_id !== chiNhanhLocId) return false;
+      const thuocSaleTeam = dsSaleTeam.some(
+        (nv) => nv.id === d.nguoi_phu_trach_id || nv.id === d.nguoi_quan_ly_id || nv.id === d.nguoi_tao_id
+      );
+      return thuocSaleTeam;
+    });
+
+    const dsTiemNang = dsDuAnDonVi.filter(
+      (d) =>
+        (d.muc_do_tiem_nang === 'rat_cao' || d.muc_do_tiem_nang === 'cao') &&
+        d.giai_doan !== 'hoan_thanh_tt_dot_2' &&
+        d.giai_doan !== 'tam_dung_huy'
+    );
+
+    const ketQua = dsTiemNang
+      .filter((d) => (setIdsDuAnChon.size > 0 ? setIdsDuAnChon.has(d.id) : true))
+      .sort((a, b) => {
+        const score = (tn?: string) => (tn === 'rat_cao' ? 5 : 4);
+        return score(b.muc_do_tiem_nang) - score(a.muc_do_tiem_nang);
+      });
+
+    return ketQua.map((d, idx) => {
+      const kh = d.khach_hang_id ? mapKH.get(d.khach_hang_id) : null;
+      const nlh = d.nguoi_lien_he_id ? mapNLH.get(d.nguoi_lien_he_id) : null;
+      const cfgGD = layCauHinhGiaiDoanTheoKey(d.giai_doan);
+      const cfgTN = BANG_TIEM_NANG_DU_AN[d.muc_do_tiem_nang] || BANG_TIEM_NANG_DU_AN.cao;
+      const sp = d.san_pham_dich_vu_id ? mapSP.get(d.san_pham_dich_vu_id) : d.san_pham_khac_mo_ta;
+      const tenNV = mapTenNV.get(d.nguoi_phu_trach_id || '') || mapTenNV.get(d.nguoi_tao_id || '') || '—';
+
+      return {
+        stt: idx + 1,
+        id: d.id,
+        tenDuAn: d.ten_du_an,
+        tenKhachHang: kh?.ten_khach_hang || '',
+        tenNhanVienPhuTrach: tenNV,
+        nguoiLienHe: nlh?.ho_va_ten || kh?.so_dien_thoai || '—',
+        soDienThoai: nlh?.so_dien_thoai || kh?.so_dien_thoai || '',
+        sanPhamDichVu: sp || 'Khảo sát / Đo đạc',
+        giaTriDeal: d.gia_tri_hop_dong || d.gia_tri_du_kien || 0,
+        giaiDoanKey: d.giai_doan,
+        tenGiaiDoan: cfgGD.nhan_day_du,
+        mucDoTiemNang: d.muc_do_tiem_nang,
+        xacSuatPct: cfgTN.xacSuat,
+        duAnGoc: d
+      };
+    });
+  }, [danhSachBaoCaoTeam, dsNhanSu, dsKhachHang, dsNguoiLienHe, dsSanPham, dsDuAn, chiNhanhLocId, dsSaleTeam]);
 
   const hienThongBao = (msg: string) => {
     setThongBao(msg);
@@ -1043,7 +1106,7 @@ export default function NoiDungBaoCaoTuan() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => xuatExcelBaoCaoTuanVDCD(baoCaoTongChiNhanh, lichTuanToiToanTeam)}
+                  onClick={() => xuatExcelBaoCaoTuanVDCD(baoCaoTongChiNhanh, lichTuanToiToanTeam, dsDuAnTiemNangChiNhanh)}
                   className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <FileSpreadsheet className="size-4" />
@@ -1164,6 +1227,104 @@ export default function NoiDungBaoCaoTuan() {
                   </>
                 );
               })()}
+            </div>
+          </div>
+
+          {/* KHỐI DỰ ÁN TRỌNG ĐIỂM TIỀM NĂNG CAO TOÀN CHI NHÁNH */}
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center shrink-0">
+                  II
+                </span>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                      Dự án trọng điểm đang bám sát toàn Chi nhánh (Tiềm năng cao)
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                      {dsDuAnTiemNangChiNhanh.length} dự án
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Căn cứ vào danh sách dự án tiềm năng (Rất cao &gt; Cao) nhân viên đưa vào kế hoạch tuần
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <span className="text-slate-500 font-medium">Tổng giá trị deal bám sát:</span>
+                <span className="text-primary font-black tabular-nums">
+                  {fmtSo(dsDuAnTiemNangChiNhanh.reduce((s, d) => s + (d.giaTriDeal || 0), 0))}
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
+                    <th className="py-2.5 px-3 text-center w-12">STT</th>
+                    <th className="py-2.5 px-4">Tên dự án &amp; Khách hàng / CĐT</th>
+                    <th className="py-2.5 px-3 w-40">Nhân sự phụ trách</th>
+                    <th className="py-2.5 px-3 w-40">Người liên hệ &amp; SĐT</th>
+                    <th className="py-2.5 px-3 w-36 text-right">Giá trị Deal / HĐ</th>
+                    <th className="py-2.5 px-3 w-36">Giai đoạn</th>
+                    <th className="py-2.5 px-3 w-32 text-center">Tiềm năng</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {dsDuAnTiemNangChiNhanh.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-6 text-center text-slate-500 text-xs">
+                        Chưa có dự án tiềm năng cao nào được đưa vào kế hoạch tuần này.
+                      </td>
+                    </tr>
+                  ) : (
+                    dsDuAnTiemNangChiNhanh.map((d, idx) => {
+                      const cfgTN = BANG_TIEM_NANG_DU_AN[d.mucDoTiemNang || ''] || BANG_TIEM_NANG_DU_AN.cao;
+                      return (
+                        <tr key={d.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-2.5 px-3 text-center font-bold text-slate-500">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5 px-4">
+                            <div className="font-extrabold text-slate-900">{d.tenDuAn}</div>
+                            {d.tenKhachHang && (
+                              <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                <Building2 className="size-3 text-slate-400 shrink-0" />
+                                <span>CĐT: {d.tenKhachHang}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-bold text-blue-700">{d.tenNhanVienPhuTrach}</span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-medium text-slate-800">{d.nguoiLienHe}</div>
+                            {d.soDienThoai && (
+                              <div className="text-[11px] text-slate-500">{d.soDienThoai}</div>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 tabular-nums">
+                            {fmtSo(d.giaTriDeal)}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                              {d.tenGiaiDoan}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={cn('px-2.5 py-0.5 rounded-full text-[10.5px] font-bold border', cfgTN.badgeCls)}>
+                              {cfgTN.nhan}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 

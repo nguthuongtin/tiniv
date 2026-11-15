@@ -78,9 +78,26 @@ const SlideFrame: React.FC<{ children: React.ReactNode; nenTrang?: boolean }> = 
   </section>
 );
 
+export interface DuAnTiemNangTongHopExport {
+  stt?: number;
+  id: string;
+  tenDuAn: string;
+  tenKhachHang: string;
+  tenNhanVienPhuTrach?: string;
+  nguoiLienHe?: string;
+  soDienThoai?: string;
+  sanPhamDichVu?: string;
+  giaTriDeal?: number;
+  giaiDoanKey?: string;
+  tenGiaiDoan?: string;
+  mucDoTiemNang?: string;
+  xacSuatPct?: number;
+}
+
 export async function xuatExcelBaoCaoTuanVDCD(
   baoCao: BaoCaoTuanVDCD,
-  lichTuanToi: (LichGapKH & { ten_nhan_vien?: string })[] = []
+  lichTuanToi: (LichGapKH & { ten_nhan_vien?: string })[] = [],
+  dsDuAnTiemNangChon: DuAnTiemNangTongHopExport[] = []
 ): Promise<void> {
   const wb = new ExcelJS.Workbook();
   const infoTuan = phanTichTuanISO(baoCao.tuan);
@@ -197,7 +214,76 @@ export async function xuatExcelBaoCaoTuanVDCD(
   };
 
   addPlanSheet('KH_Dong_Tien', baoCao.ke_hoach_dong_tien, false);
-  addPlanSheet('KH_DA_Tiem_Nang', baoCao.ke_hoach_tiem_nang, false);
+
+  // Sheet Kế hoạch Dự án Tiềm năng cao (Căn cứ theo danh sách đã chọn)
+  if (dsDuAnTiemNangChon && dsDuAnTiemNangChon.length > 0) {
+    const sTN = wb.addWorksheet('KH_DA_Tiem_Nang');
+    sTN.addRow([`DANH SÁCH DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT (TIỀM NĂNG CAO) — ${baoCao.ten_chi_nhanh || baoCao.ten_nhan_vien}`]);
+    styleHeader(sTN.addRow([
+      'STT',
+      'TÊN DỰ ÁN',
+      'KHÁCH HÀNG / CĐT',
+      'PHỤ TRÁCH / KINH DOANH',
+      'NGƯỜI LIÊN HỆ & SĐT',
+      'GIÁ TRỊ DEAL / HĐ (VNĐ)',
+      'GIAI ĐOẠN',
+      'MỨC TIỀM NĂNG',
+      'DỊCH VỤ'
+    ]));
+
+    let tongGiaTriTN = 0;
+    dsDuAnTiemNangChon.forEach((d, idx) => {
+      const gt = Number(d.giaTriDeal || 0);
+      tongGiaTriTN += gt;
+      const r = sTN.addRow([
+        idx + 1,
+        d.tenDuAn,
+        d.tenKhachHang,
+        d.tenNhanVienPhuTrach || '—',
+        `${d.nguoiLienHe || ''}${d.soDienThoai ? ` (${d.soDienThoai})` : ''}`.trim() || '—',
+        gt > 0 ? fmtTien(gt) : '—',
+        d.tenGiaiDoan || d.giaiDoanKey || 'Đang bám sát',
+        d.mucDoTiemNang === 'rat_cao' ? 'Rất cao (70-90%)' : 'Cao (50-70%)',
+        d.sanPhamDichVu || 'Khảo sát / Đo đạc'
+      ]);
+      styleBody(r);
+      r.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+      r.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+      r.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    const rTongTN = sTN.addRow([
+      '',
+      '',
+      '',
+      'TỔNG GIÁ TRỊ DEAL BÁM SÁT',
+      `${dsDuAnTiemNangChon.length} dự án`,
+      fmtTien(tongGiaTriTN),
+      '',
+      '',
+      ''
+    ]);
+    rTongTN.height = 26;
+    rTongTN.eachCell((cell) => {
+      cell.font = { bold: true, size: 11, color: { argb: 'FFB91C1C' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+    });
+    rTongTN.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+
+    sTN.columns = [
+      { width: 8 },
+      { width: 34 },
+      { width: 28 },
+      { width: 24 },
+      { width: 26 },
+      { width: 24 },
+      { width: 20 },
+      { width: 22 },
+      { width: 24 }
+    ];
+  } else {
+    addPlanSheet('KH_DA_Tiem_Nang', baoCao.ke_hoach_tiem_nang, false);
+  }
 
   // Sheet Lịch công tác tuần tới
   const sLich = wb.addWorksheet('Lich_Cong_Tac_Tuan');
