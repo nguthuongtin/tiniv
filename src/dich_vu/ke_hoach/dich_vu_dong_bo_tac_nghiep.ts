@@ -427,7 +427,17 @@ export const dongBoCongViecTuanSangLichGap = async (params: {
     }
 
     // Chỉ tạo lịch hẹn mới trên Lịch công tác khi công việc đã chốt lịch hẹn (gap_mat)
-    if (!choPhepTaoMoiLich || !tenKH || item.hinh_thuc !== 'gap_mat') return;
+    // Nếu công việc tuần đã bị đánh dấu xóa lịch hoặc item vốn sinh ra từ lịch (tuan_lich_) nhưng lịch đã bị xóa -> không tạo lại
+    if (
+      !choPhepTaoMoiLich ||
+      !tenKH ||
+      item.hinh_thuc !== 'gap_mat' ||
+      (item as any).da_xoa_lich ||
+      (item as any).da_huy_lich ||
+      item.id.startsWith('tuan_lich_')
+    ) {
+      return;
+    }
 
     const nlhRaw = item.nguoi_lien_he || '';
     const tenLienHe = nlhRaw.includes('_') ? nlhRaw.split('_')[0] : nlhRaw;
@@ -649,26 +659,59 @@ export const dongBoXoaLichGapSangKeHoachTuan = async (params: {
       return false;
     }
 
-    const idMucTieuLich = `tuan_lich_${lichId}`;
+    const idMucTieuLich1 = `tuan_lich_${lichId}`;
+    const idMucTieuLich2 = `tuan_lich_lich_yc_${lichId.replace(/^lich_yc_/, '')}`;
+    const idMucTieuLich3 = `tuan_lich_${lichId.replace(/^lich_yc_/, '')}`;
     const tenKHLower = (tenKhachHang || '').trim().toLowerCase();
 
-    const danhSachMoi = keHoachHienTai.danh_sach_tac_chien.filter((item) => {
-      // 1. Trung id muc tieu lich hoac id lich
-      if (item.id === idMucTieuLich) return false;
-      if ((item as any).lich_gap_kh_id === lichId) return false;
+    const danhSachMoi: ItemKeHoachTuan[] = [];
+    let coThayDoi = false;
 
-      // 2. Khop cung ngay du kien va cung Khach hang / Du an
-      if (ngayISO && item.ngay_du_kien === ngayISO) {
-        if (khachHangId && item.khach_hang_id === khachHangId) return false;
-        if (duAnId && item.du_an_id === duAnId) return false;
-        const tenItem = (item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an || '').trim().toLowerCase();
-        if (tenKHLower && tenItem === tenKHLower) return false;
+    for (const item of keHoachHienTai.danh_sach_tac_chien) {
+      // 1. Trùng id mục tiêu lịch hoặc id lịch
+      const trungIdLich =
+        item.id === idMucTieuLich1 ||
+        item.id === idMucTieuLich2 ||
+        item.id === idMucTieuLich3 ||
+        (item as any).lich_gap_kh_id === lichId ||
+        (item as any).lich_gap_kh_id === lichId.replace(/^lich_yc_/, '');
+
+      if (trungIdLich) {
+        coThayDoi = true;
+        continue;
       }
 
-      return true;
-    });
+      // 2. Khớp cùng ngày dự kiến và cùng Khách hàng / Dự án
+      let khopThongTin = false;
+      if (ngayISO && item.ngay_du_kien === ngayISO) {
+        if (khachHangId && item.khach_hang_id === khachHangId) khopThongTin = true;
+        else if (duAnId && item.du_an_id === duAnId) khopThongTin = true;
+        else if (tenKHLower) {
+          const tenItem = (item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an || '').trim().toLowerCase();
+          if (tenItem && tenItem === tenKHLower) khopThongTin = true;
+        }
+      }
 
-    if (danhSachMoi.length === keHoachHienTai.danh_sach_tac_chien.length) {
+      if (khopThongTin) {
+        coThayDoi = true;
+        // Nếu là mục tiêu phát sinh từ lịch hoặc có tiền tố tuan_lich_ thì xóa bỏ hoàn toàn
+        if (item.loai_hanh_dong === 'phat_sinh' || item.id.startsWith('tuan_lich_')) {
+          continue;
+        }
+        // Nếu là mục tiêu gốc của NVKD lập ban đầu, giữ lại mục tiêu nhưng gỡ bỏ lịch hẹn để không tự tạo lại lịch
+        danhSachMoi.push({
+          ...item,
+          hinh_thuc: 'goi_dien',
+          dia_diem_hen: null,
+          da_xoa_lich: true
+        } as any);
+        continue;
+      }
+
+      danhSachMoi.push(item);
+    }
+
+    if (!coThayDoi) {
       return false;
     }
 

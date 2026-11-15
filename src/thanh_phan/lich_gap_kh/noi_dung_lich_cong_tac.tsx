@@ -33,6 +33,7 @@ import ModalTaoYeuCauPhoiHop from '../ke_hoach/modal_tao_yeu_cau_phoi_hop';
 import {
   danhSachYeuCauPhoiHop,
   langNgheYeuCauPhoiHop,
+  xoaYeuCauPhoiHop,
   type YeuCauPhoiHop
 } from '../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
 import { danhSachHoSoDuAn } from '../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
@@ -744,28 +745,41 @@ export function NoiDungLichCongTac({
     if (!confirm(`Bạn có chắc muốn xóa lịch gặp "${tenKH}"?`)) return;
     try {
       setDangLuu(true);
-      const lichCanXoa = dsLich.find((l) => l.id === id);
+      const isYeuCau = id.startsWith('lich_yc_');
+      const ycId = isYeuCau ? id.replace('lich_yc_', '') : null;
+
+      // Tìm thông tin lịch cần xóa từ dsLichTongHop (chứa cả lich_gap_kh và yeu_cau_phoi_hop)
+      const lichCanXoa = dsLichTongHop.find((l) => l.id === id) || dsLich.find((l) => l.id === id);
 
       // 1. Cập nhật ngay UI để người dùng thấy mất lịch tức thì 0ms
-      setDsLich((prev) => prev.filter((l) => l.id !== id));
+      setDsLich((prev) => prev.filter((l) => l.id !== id && (!ycId || l.id !== ycId)));
+      if (ycId) {
+        setDanhSachYeuCau((prev) => prev.filter((y) => y.id !== ycId));
+      }
       setMoModal(false);
       setLichDangSua(null);
 
-      // 2. Xóa trên Cloud Firestore (cả 2 collection) và LocalStorage
-      await xoaLichGapKH(id, nguoiDungHienTai?.id);
-
-      // 3. Đồng bộ xóa mục tiêu tương ứng trong Kế hoạch Tuần
-      if (lichCanXoa) {
-        await dongBoXoaLichGapSangKeHoachTuan({
-          lichId: id,
-          nhanVienId: lichCanXoa.nguoi_phu_trach_id,
-          ngayISO: lichCanXoa.ngay,
-          tenKhachHang: lichCanXoa.ten_khach_hang || tenKH,
-          duAnId: lichCanXoa.du_an_id,
-          khachHangId: lichCanXoa.khach_hang_id,
-          nguoiThucHien: nguoiDungHienTai
-        });
+      // 2. Nếu là lịch sinh ra từ yêu cầu phối hợp: xóa cả bản ghi yêu cầu phối hợp gốc
+      if (ycId) {
+        await xoaYeuCauPhoiHop(ycId, nguoiDungHienTai);
       }
+
+      // 3. Xóa trên Cloud Firestore (cả 2 collection lich_gap_kh & cong_viec) và LocalStorage
+      await xoaLichGapKH(id, nguoiDungHienTai?.id);
+      if (ycId) {
+        await xoaLichGapKH(ycId, nguoiDungHienTai?.id);
+      }
+
+      // 4. Đồng bộ xóa mục tiêu tương ứng trong Kế hoạch Tuần
+      await dongBoXoaLichGapSangKeHoachTuan({
+        lichId: id,
+        nhanVienId: lichCanXoa?.nguoi_phu_trach_id,
+        ngayISO: lichCanXoa?.ngay,
+        tenKhachHang: lichCanXoa?.ten_khach_hang || tenKH,
+        duAnId: lichCanXoa?.du_an_id,
+        khachHangId: lichCanXoa?.khach_hang_id,
+        nguoiThucHien: nguoiDungHienTai
+      });
 
       await taiDanhSachLich();
     } catch (err) {

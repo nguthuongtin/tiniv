@@ -22,10 +22,33 @@ const TEN_COLLECTION = 'lich_gap_kh' as const;
 const COLLECTION_FALLBACK = 'cong_viec' as const;
 const LOAI_BAN_GHI_LICH = 'lich_gap_kh' as const;
 const CACHE_KEYS = [
+  'ebms_lich_gap_kh_cache_v3',
   'ebms_lich_gap_kh_cache_v2',
   'ebms_lich_gap_kh_cache_v1',
   'ebms_lich_gap_kh_cache'
 ];
+const DA_XOA_KEYS = 'ebms_lich_gap_kh_da_xoa_ids';
+
+const layDanhSachIdDaXoa = (): Set<string> => {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(DA_XOA_KEYS);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+};
+
+const ghiNhanIdDaXoa = (id: string) => {
+  if (typeof window === 'undefined' || !id) return;
+  try {
+    const set = layDanhSachIdDaXoa();
+    set.add(id);
+    localStorage.setItem(DA_XOA_KEYS, JSON.stringify(Array.from(set).slice(-500)));
+  } catch {}
+};
 const GIOI_HAN_MAC_DINH = 500;
 
 export interface DieuKienLocLichGap {
@@ -121,10 +144,11 @@ const chuyenDoiDocThanhLichGap = (id: string, raw: DocumentData | undefined | nu
 export const danhSachLichGapKH = async (
   dieuKien?: DieuKienLocLichGap
 ): Promise<LichGapKH[]> => {
-  const local = docCacheLocal().filter((x) => !x.da_xoa);
+  const dsIdDaXoa = layDanhSachIdDaXoa();
+  const local = docCacheLocal().filter((x) => !x.da_xoa && !dsIdDaXoa.has(x.id));
   const map = new Map<string, LichGapKH>();
   local.forEach((x) => {
-    if (x && x.id) map.set(x.id, x);
+    if (x && x.id && !dsIdDaXoa.has(x.id)) map.set(x.id, x);
   });
 
   // 1. Luôn đọc từ collection chính 'lich_gap_kh'
@@ -133,7 +157,7 @@ export const danhSachLichGapKH = async (
     const snap = await getDocs(q);
     snap.docs.forEach((d) => {
       const lich = chuyenDoiDocThanhLichGap(d.id, d.data());
-      if (lich.da_xoa) {
+      if (lich.da_xoa || dsIdDaXoa.has(lich.id)) {
         map.delete(lich.id);
       } else {
         map.set(lich.id, lich);
@@ -153,7 +177,7 @@ export const danhSachLichGapKH = async (
     const snapFallback = await getDocs(qFallback);
     snapFallback.docs.forEach((d) => {
       const lich = chuyenDoiDocThanhLichGap(d.id, d.data());
-      if (lich.da_xoa) {
+      if (lich.da_xoa || dsIdDaXoa.has(lich.id)) {
         map.delete(lich.id);
       } else if (!map.has(lich.id)) {
         map.set(lich.id, lich);
@@ -162,6 +186,9 @@ export const danhSachLichGapKH = async (
   } catch (err) {
     console.warn('[danhSachLichGapKH] Đọc cong_viec fallback:', err);
   }
+
+  // Loại trừ dứt điểm các ID đã bị xóa
+  dsIdDaXoa.forEach((id) => map.delete(id));
 
   let dsGoc = Array.from(map.values()).sort((a, b) => {
     if (a.ngay !== b.ngay) return a.ngay.localeCompare(b.ngay);
@@ -229,11 +256,12 @@ export const langNgheLichGapKH = (
     unsubFirestore = onSnapshot(
       q,
       (snap) => {
+        const dsIdDaXoa = layDanhSachIdDaXoa();
         const tuRemote: LichGapKH[] = [];
-        const dsDaXoaIds = new Set<string>();
+        const dsDaXoaIds = new Set<string>(dsIdDaXoa);
         snap.forEach((d) => {
           const l = chuyenDoiDocThanhLichGap(d.id, d.data());
-          if (l.da_xoa) {
+          if (l.da_xoa || dsIdDaXoa.has(l.id)) {
             dsDaXoaIds.add(l.id);
           } else {
             tuRemote.push(l);
@@ -268,10 +296,11 @@ export const langNgheLichGapKH = (
   const handleCustomEvent = (ev: Event) => {
     const custom = ev as CustomEvent<LichGapKH | undefined>;
     const updated = custom.detail;
+    const dsIdDaXoa = layDanhSachIdDaXoa();
     const current = docCacheLocal();
     let next: LichGapKH[];
     if (updated && updated.id) {
-      if (updated.da_xoa) {
+      if (updated.da_xoa || dsIdDaXoa.has(updated.id)) {
         next = current.filter((x) => x.id !== updated.id);
       } else {
         next = current.some((x) => x.id === updated.id)
@@ -281,7 +310,7 @@ export const langNgheLichGapKH = (
     } else {
       next = current;
     }
-    const valid = next.filter((x) => !x.da_xoa && (x as any).trang_thai !== 'huy').sort((a, b) => {
+    const valid = next.filter((x) => !x.da_xoa && !dsIdDaXoa.has(x.id)).sort((a, b) => {
       if (a.ngay !== b.ngay) return a.ngay.localeCompare(b.ngay);
       return a.gio_bat_dau.localeCompare(b.gio_bat_dau);
     });
@@ -440,35 +469,45 @@ export const doiTrangThaiLichGapKH = async (
 };
 
 export const xoaLichGapKH = async (id: string, nguoiXoaId?: string): Promise<void> => {
+  if (!id) return;
+  ghiNhanIdDaXoa(id);
+
   const patch = {
     da_xoa: true,
+    trang_thai: 'huy',
     ngay_cap_nhat: new Date().toISOString()
   };
 
-  // 1. Xoa thuc su tren Cloud Firestore, neu loi phan quyen hoac mang thi soft delete
+  // 1. Cập nhật và xóa trên collection chính
+  try {
+    await setDoc(thamChieuBanGhi(TEN_COLLECTION, id), patch, { merge: true });
+  } catch (e) {
+    console.warn('[xoaLichGapKH] setDoc da_xoa tren lich_gap_kh:', e);
+  }
   try {
     await deleteDoc(thamChieuBanGhi(TEN_COLLECTION, id));
   } catch (errDelete) {
-    console.warn('[xoaLichGapKH] deleteDoc chinh that bai, thu setDoc da_xoa:', errDelete);
-    try {
-      await setDoc(thamChieuBanGhi(TEN_COLLECTION, id), patch, { merge: true });
-    } catch (errSet) {
-      console.warn('[xoaLichGapKH] setDoc da_xoa cung that bai:', errSet);
-    }
+    console.warn('[xoaLichGapKH] deleteDoc tren lich_gap_kh:', errDelete);
   }
 
+  // 2. Cập nhật và xóa trên collection fallback (cong_viec)
+  try {
+    await setDoc(thamChieuBanGhi(COLLECTION_FALLBACK, id), patch, { merge: true });
+  } catch (e) {
+    console.warn('[xoaLichGapKH] setDoc da_xoa tren cong_viec fallback:', e);
+  }
   try {
     await deleteDoc(thamChieuBanGhi(COLLECTION_FALLBACK, id));
   } catch {
     // fallback collection
   }
 
-  // 2. Don sach khoi toan bo localStorage cache
+  // 3. Dọn sạch khỏi toàn bộ localStorage cache
   const dsLocal = docCacheLocal().filter((x) => x.id !== id);
   ghiCacheLocal(dsLocal);
   xoaCacheLichGapKH();
 
-  // 3. Phat event cap nhat tuc thoi 0ms cho cac component dang mo
+  // 4. Phát event cập nhật tức thời 0ms cho các component đang mở
   phatSuKienCapNhat({ id, da_xoa: true } as any);
 
   if (nguoiXoaId) {
