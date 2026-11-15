@@ -545,108 +545,103 @@ function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanV
 
   // =========================================================================
   // KHỐI IV: DANH SÁCH DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT (TIỀM NĂNG CAO)
-  // (ĐƯỢC ĐẶT BÊN DƯỚI LỊCH LÀM VIỆC TUẦN TỚI)
+  // (CHỈ DÀNH CHO SALE - TPKD KHÔNG CÓ DỰ ÁN TRỌNG ĐIỂM CÁ NHÂN)
   // =========================================================================
-  const rSec4 = ws.addRow([]);
-  styleSectionHeader(
-    rSec4,
-    duLieu.laTruongPhong
-      ? 'IV. DANH SÁCH DỰ ÁN TRỌNG ĐIỂM TOÀN PHÒNG ĐANG BÁM SÁT & CHỈ ĐẠO (TIỀM NĂNG CAO)'
-      : 'IV. DANH SÁCH DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT (TIỀM NĂNG CAO)'
-  );
+  if (!duLieu.laTruongPhong) {
+    const rSec4 = ws.addRow([]);
+    styleSectionHeader(rSec4, 'IV. DANH SÁCH DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT (TIỀM NĂNG CAO)');
 
-  const rHead4 = ws.addRow([
-    '',
-    'STT',
-    'Tên dự án & Khách hàng / CĐT',
-    duLieu.laTruongPhong ? 'Phụ trách & SĐT' : 'Người liên hệ & SĐT',
-    'Giá trị dự toán / HĐ',
-    'Giai đoạn dự án',
-    'Mức độ tiềm năng (%)',
-    'Dịch vụ cung cấp'
-  ]);
-  styleTableHeader(rHead4);
+    const rHead4 = ws.addRow([
+      '',
+      'STT',
+      'Tên dự án & Khách hàng / CĐT',
+      'Người liên hệ & SĐT',
+      'Giá trị dự toán / HĐ',
+      'Giai đoạn dự án',
+      'Mức độ tiềm năng (%)',
+      'Dịch vụ cung cấp'
+    ]);
+    styleTableHeader(rHead4);
 
-  const dsDeals = duLieu.danhSachDuAnTrongDiem || [];
-  let tongGiaTriDeal = 0;
+    const dsDeals = duLieu.danhSachDuAnTrongDiem || [];
+    let tongGiaTriDeal = 0;
 
-  if (dsDeals.length === 0) {
-    const rEmpty = ws.addRow(['', 1, 'Chưa có dự án trọng điểm nào được chọn', '—', '0 ₫', 'Đang cập nhật', '—', '—']);
-    rEmpty.height = 25;
-    for (let c = 2; c <= 8; c++) {
-      rEmpty.getCell(c).border = borderThin;
-      rEmpty.getCell(c).font = { name: 'Calibri', size: 10, italic: true };
-      rEmpty.getCell(c).alignment = { vertical: 'middle', horizontal: c === 2 ? 'center' : 'left', indent: c === 2 ? 0 : 1 };
-    }
-  } else {
-    dsDeals.forEach((d, idx) => {
-      tongGiaTriDeal += Number(d.giaTriDeal || 0);
-      const thongTinLienHe = duLieu.laTruongPhong && d.nguoiPhuTrach
-        ? `${d.nguoiPhuTrach}${d.soDienThoai ? ` (${d.soDienThoai})` : ''}`
-        : d.nguoiLienHe ? `${d.nguoiLienHe}${d.soDienThoai ? ` (${d.soDienThoai})` : ''}` : (d.soDienThoai || '—');
-
-      const tenDuAnFull = `${d.tenDuAn}${d.tenKhachHang ? ` - CĐT: ${d.tenKhachHang}` : ''}`;
-
-      const rDeal = ws.addRow([
-        '',
-        d.stt || idx + 1,
-        tenDuAnFull,
-        thongTinLienHe,
-        formatTienTe(d.giaTriDeal),
-        d.tenGiaiDoan || d.giaiDoanKey,
-        `${d.xacSuatPct || 50}%`,
-        d.sanPhamDichVu || 'Khảo sát / Đo đạc'
-      ]);
-
-      const h1 = tinhChieuCaoHang(tenDuAnFull, 38, 26);
-      const h2 = tinhChieuCaoHang(thongTinLienHe, 26, 26);
-      rDeal.height = Math.max(h1, h2);
-
+    if (dsDeals.length === 0) {
+      const rEmpty = ws.addRow(['', 1, 'Chưa có dự án trọng điểm nào được chọn', '—', '0 ₫', 'Đang cập nhật', '—', '—']);
+      rEmpty.height = 25;
       for (let c = 2; c <= 8; c++) {
-        const cell = rDeal.getCell(c);
-        cell.font = { name: 'Calibri', size: 10 };
-        cell.border = borderThin;
-        if (c === 2) cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        else if (c === 3) {
-          cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
-          cell.font = { name: 'Calibri', size: 10, bold: true };
-        } else if (c === 4) {
-          cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
-        } else if (c === 5) {
-          cell.alignment = { vertical: 'middle', horizontal: 'right' };
-          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF1E40AF' } };
-        } else if (c === 6) {
-          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-        } else if (c === 7) {
-          cell.alignment = { vertical: 'middle', horizontal: 'center' };
-          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF047857' } };
-        } else {
-          cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
-        }
+        rEmpty.getCell(c).border = borderThin;
+        rEmpty.getCell(c).font = { name: 'Calibri', size: 10, italic: true };
+        rEmpty.getCell(c).alignment = { vertical: 'middle', horizontal: c === 2 ? 'center' : 'left', indent: c === 2 ? 0 : 1 };
       }
-    });
-  }
+    } else {
+      dsDeals.forEach((d, idx) => {
+        tongGiaTriDeal += Number(d.giaTriDeal || 0);
+        const thongTinLienHe = d.nguoiLienHe ? `${d.nguoiLienHe}${d.soDienThoai ? ` (${d.soDienThoai})` : ''}` : (d.soDienThoai || '—');
 
-  // Dòng tổng giá trị dự án trọng điểm
-  const rTot4 = ws.addRow([
-    '',
-    '',
-    'TỔNG GIÁ TRỊ DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT',
-    '',
-    formatTienTe(tongGiaTriDeal),
-    'Số dự án bám sát:',
-    `${dsDeals.length} dự án`,
-    ''
-  ]);
-  rTot4.height = 28;
-  for (let c = 2; c <= 8; c++) {
-    const cell = rTot4.getCell(c);
-    cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF1E40AF' } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
-    cell.border = borderThin;
-    if (c === 5) cell.alignment = { vertical: 'middle', horizontal: 'right' };
-    else if (c === 6 || c === 7) cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    else cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+        const tenDuAnFull = `${d.tenDuAn}${d.tenKhachHang ? ` - CĐT: ${d.tenKhachHang}` : ''}`;
+
+        const rDeal = ws.addRow([
+          '',
+          d.stt || idx + 1,
+          tenDuAnFull,
+          thongTinLienHe,
+          formatTienTe(d.giaTriDeal),
+          d.tenGiaiDoan || d.giaiDoanKey,
+          `${d.xacSuatPct || 50}%`,
+          d.sanPhamDichVu || 'Khảo sát / Đo đạc'
+        ]);
+
+        const h1 = tinhChieuCaoHang(tenDuAnFull, 38, 26);
+        const h2 = tinhChieuCaoHang(thongTinLienHe, 26, 26);
+        rDeal.height = Math.max(h1, h2);
+
+        for (let c = 2; c <= 8; c++) {
+          const cell = rDeal.getCell(c);
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.border = borderThin;
+          if (c === 2) cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          else if (c === 3) {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
+            cell.font = { name: 'Calibri', size: 10, bold: true };
+          } else if (c === 4) {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
+          } else if (c === 5) {
+            cell.alignment = { vertical: 'middle', horizontal: 'right' };
+            cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF1E40AF' } };
+          } else if (c === 6) {
+            cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          } else if (c === 7) {
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF047857' } };
+          } else {
+            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
+          }
+        }
+      });
+    }
+
+    // Dòng tổng giá trị dự án trọng điểm
+    const rTot4 = ws.addRow([
+      '',
+      '',
+      'TỔNG GIÁ TRỊ DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT',
+      '',
+      formatTienTe(tongGiaTriDeal),
+      'Số dự án bám sát:',
+      `${dsDeals.length} dự án`,
+      ''
+    ]);
+    rTot4.height = 28;
+    for (let c = 2; c <= 8; c++) {
+      const cell = rTot4.getCell(c);
+      cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF1E40AF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+      cell.border = borderThin;
+      if (c === 5) cell.alignment = { vertical: 'middle', horizontal: 'right' };
+      else if (c === 6 || c === 7) cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      else cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    }
   }
 }
 

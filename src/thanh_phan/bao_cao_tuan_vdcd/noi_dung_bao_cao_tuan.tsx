@@ -981,21 +981,7 @@ export default function NoiDungBaoCaoTuan() {
               thucTe: (baoCaoTongChiNhanh.dt_tuan_ky_ket || 0) + (baoCaoTongChiNhanh.dt_tuan_tien_ve || 0)
             }
           },
-          danhSachDuAnTrongDiem: dsDuAnTiemNangChiNhanh.map((d, idx) => ({
-            stt: idx + 1,
-            id: d.id,
-            tenDuAn: d.tenDuAn,
-            tenKhachHang: d.tenKhachHang,
-            nguoiLienHe: d.nguoiLienHe,
-            soDienThoai: d.soDienThoai,
-            sanPhamDichVu: d.sanPhamDichVu,
-            giaTriDeal: d.giaTriDeal,
-            giaiDoanKey: d.giaiDoanKey,
-            tenGiaiDoan: d.tenGiaiDoan,
-            mucDoTiemNang: d.mucDoTiemNang,
-            xacSuatPct: d.xacSuatPct,
-            nguoiPhuTrach: d.tenNhanVienPhuTrach
-          })),
+          danhSachDuAnTrongDiem: [],
           camKetTuanToi: {
             khachHangMoi: { target: 0, min: 0, max: 0 },
             baoGia: { target: 0, min: 0, max: 0 },

@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   FileSpreadsheet,
   Download,
@@ -108,21 +108,36 @@ function ONhapSoTien({
   placeholder?: string;
   disabled?: boolean;
 }) {
-  const [chuoi, setChuoi] = useState(() => (giaTri ? Number(giaTri).toLocaleString('vi-VN') : ''));
+  const [chuoi, setChuoi] = useState(() => (giaTri != null && giaTri !== 0 ? Number(giaTri).toLocaleString('vi-VN') : giaTri === 0 ? '0' : ''));
+  const [dangFocus, setDangFocus] = useState(false);
 
   useEffect(() => {
-    setChuoi(giaTri ? Number(giaTri).toLocaleString('vi-VN') : '');
-  }, [giaTri]);
+    if (!dangFocus) {
+      setChuoi(giaTri != null && giaTri !== 0 ? Number(giaTri).toLocaleString('vi-VN') : giaTri === 0 ? '0' : '');
+    }
+  }, [giaTri, dangFocus]);
 
   return (
     <input
       type="text"
       inputMode="numeric"
       value={chuoi}
-      onChange={(e) => {
-        const raw = e.target.value.replace(/\D/g, '');
+      onFocus={() => {
+        setDangFocus(true);
+        setChuoi(giaTri ? String(giaTri) : '');
+      }}
+      onBlur={() => {
+        setDangFocus(false);
+        const raw = chuoi.replace(/\D/g, '');
         const num = raw ? parseInt(raw, 10) : 0;
-        setChuoi(raw ? Number(raw).toLocaleString('vi-VN') : '');
+        setChuoi(num ? num.toLocaleString('vi-VN') : '0');
+        onChange(num);
+      }}
+      onChange={(e) => {
+        const val = e.target.value;
+        const raw = val.replace(/\D/g, '');
+        setChuoi(raw);
+        const num = raw ? parseInt(raw, 10) : 0;
         onChange(num);
       }}
       placeholder={placeholder}
@@ -891,25 +906,25 @@ export default function BangBaoCaoTuanChuanVDCD({
     keHoachHoTroNhanSu: ''
   });
 
+  const daKhoiTaoTPRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (baoCaoHienTai) {
-      if (baoCaoHienTai.danh_gia_tuan_qua !== undefined && baoCaoHienTai.danh_gia_tuan_qua !== null) {
-        setDanhGiaTuanQuaTP(baoCaoHienTai.danh_gia_tuan_qua || '');
-      }
-      if (baoCaoHienTai.de_xuat_ban_giam_doc !== undefined && baoCaoHienTai.de_xuat_ban_giam_doc !== null) {
-        setDeXuatBanGiamDocTP(baoCaoHienTai.de_xuat_ban_giam_doc || '');
-      }
-      if (baoCaoHienTai.dinh_huong_dieu_hanh_tuan_toi) {
-        const dh = baoCaoHienTai.dinh_huong_dieu_hanh_tuan_toi as any;
-        setDieuHanhTP({
-          mucTieuDoanhThuPhong: Number(dh.mucTieuDoanhThuPhong || dh.muc_tieu_doanh_thu_phong || 500000000),
-          soHopDongDuKien: Number(dh.soHopDongDuKien || dh.so_hop_dong_du_kien || 5),
-          trongTamDieuHanh: String(dh.trongTamDieuHanh || dh.trong_tam_dieu_hanh || ''),
-          keHoachHoTroNhanSu: String(dh.keHoachHoTroNhanSu || dh.ke_hoach_ho_tro_nhan_su || '')
-        });
-      }
-    }
-  }, [baoCaoHienTai]);
+    if (!baoCaoHienTai) return;
+    const key = `${baoCaoHienTai.id || 'new'}_${baoCaoHienTai.tuan}`;
+    if (daKhoiTaoTPRef.current === key) return;
+    daKhoiTaoTPRef.current = key;
+
+    setDanhGiaTuanQuaTP(baoCaoHienTai.danh_gia_tuan_qua || '');
+    setDeXuatBanGiamDocTP(baoCaoHienTai.de_xuat_ban_giam_doc || '');
+
+    const dh = baoCaoHienTai.dinh_huong_dieu_hanh_tuan_toi as any;
+    setDieuHanhTP({
+      mucTieuDoanhThuPhong: Number(dh?.mucTieuDoanhThuPhong ?? dh?.muc_tieu_doanh_thu_phong ?? 500000000),
+      soHopDongDuKien: Number(dh?.soHopDongDuKien ?? dh?.so_hop_dong_du_kien ?? 5),
+      trongTamDieuHanh: String(dh?.trongTamDieuHanh || dh?.trong_tam_dieu_hanh || ''),
+      keHoachHoTroNhanSu: String(dh?.keHoachHoTroNhanSu || dh?.ke_hoach_ho_tro_nhan_su || '')
+    });
+  }, [baoCaoHienTai?.id, baoCaoHienTai?.tuan]);
 
   // --------------------------------------------------------------------------
   // STATE KHỐI III: CHỈ TIÊU CAM KẾT TUẦN TỚI (DÀNH CHO NVKD)
@@ -922,7 +937,14 @@ export default function BangBaoCaoTuanChuanVDCD({
     doanhThu: { target: 180000000, min: 150000000, max: 220000000 }
   });
 
+  const daKhoiTaoCamKetRef = useRef<string | null>(null);
+
   useEffect(() => {
+    if (!baoCaoHienTai) return;
+    const key = `${baoCaoHienTai.id || 'new'}_${baoCaoHienTai.tuan}`;
+    if (daKhoiTaoCamKetRef.current === key) return;
+    daKhoiTaoCamKetRef.current = key;
+
     if (baoCaoHienTai?.cam_ket_tuan_toi) {
       const c = baoCaoHienTai.cam_ket_tuan_toi as any;
       setCamKet({
@@ -933,7 +955,7 @@ export default function BangBaoCaoTuanChuanVDCD({
         doanhThu: c.doanh_so || c.doanh_thu || { target: 180000000, min: 150000000, max: 220000000 }
       });
     }
-  }, [baoCaoHienTai]);
+  }, [baoCaoHienTai?.id, baoCaoHienTai?.tuan]);
 
   // --------------------------------------------------------------------------
   // STATE KHỐI IV: KẾ HOẠCH LỊCH LÀM VIỆC TUẦN TỚI (KHỬ TRÙNG LẶP TUYỆT ĐỐI)
@@ -954,8 +976,9 @@ export default function BangBaoCaoTuanChuanVDCD({
   const [dangLuuBaoCaoLich, setDangLuuBaoCaoLich] = useState(false);
   const [moLichTuanQua, setMoLichTuanQua] = useState(true);
 
-  // Lịch công tác tuần qua của nhân sự
+  // Lịch công tác tuần qua của nhân sự (Khử trùng tuyệt đối theo ID & nội dung)
   const dsLichTuanQuaCuaNV = useMemo(() => {
+    const seen = new Set<string>();
     return dsLichGap
       .filter(
         (l) =>
@@ -966,6 +989,14 @@ export default function BangBaoCaoTuanChuanVDCD({
             l.nguoi_tao_id === nhanSu.id ||
             (Array.isArray(l.nguoi_tham_gia_ids) && l.nguoi_tham_gia_ids.includes(nhanSu.id)))
       )
+      .filter((l) => {
+        const key = `${l.id}`;
+        const keyND = `${l.ngay}_${l.gio_bat_dau || ''}_${(l.ten_khach_hang || '').trim().toLowerCase()}_${(l.noi_dung || l.tieu_de || '').trim().toLowerCase()}`;
+        if (seen.has(key) || seen.has(keyND)) return false;
+        seen.add(key);
+        seen.add(keyND);
+        return true;
+      })
       .sort((a, b) => `${a.ngay}_${a.gio_bat_dau}`.localeCompare(`${b.ngay}_${b.gio_bat_dau}`));
   }, [dsLichGap, nhanSu.id, infoTuan]);
 
@@ -999,8 +1030,9 @@ export default function BangBaoCaoTuanChuanVDCD({
     }
   }, [baoCaoHienTai]);
 
-  // Quét các lịch hẹn tuần tới của nhân viên từ Lịch công tác
+  // Quét các lịch hẹn tuần tới của nhân viên từ Lịch công tác (Khử trùng tuyệt đối theo ID & nội dung)
   const dsLichTuanToiCuaNV = useMemo(() => {
+    const seen = new Set<string>();
     return dsLichGap
       .filter(
         (l) =>
@@ -1011,6 +1043,14 @@ export default function BangBaoCaoTuanChuanVDCD({
             l.nguoi_tao_id === nhanSu.id ||
             (Array.isArray(l.nguoi_tham_gia_ids) && l.nguoi_tham_gia_ids.includes(nhanSu.id)))
       )
+      .filter((l) => {
+        const key = `${l.id}`;
+        const keyND = `${l.ngay}_${l.gio_bat_dau || ''}_${(l.ten_khach_hang || '').trim().toLowerCase()}_${(l.noi_dung || l.tieu_de || '').trim().toLowerCase()}`;
+        if (seen.has(key) || seen.has(keyND)) return false;
+        seen.add(key);
+        seen.add(keyND);
+        return true;
+      })
       .sort((a, b) => `${a.ngay}_${a.gio_bat_dau}`.localeCompare(`${b.ngay}_${b.gio_bat_dau}`));
   }, [dsLichGap, nhanSu.id, infoTuanToi]);
 
@@ -1084,13 +1124,19 @@ export default function BangBaoCaoTuanChuanVDCD({
         }
       });
 
-      const tongHopTuHeThong = tongHopArray.length > 1
-        ? tongHopArray.map((line) => `• ${line}`).join('\n')
-        : (tongHopArray[0] ? `• ${tongHopArray[0]}` : '');
-
-      const noiDungCustom = ghiChuLichNgay[d.ngay];
-      const noiDungCuoi =
-        (noiDungCustom && noiDungCustom.trim()) ? noiDungCustom : (tongHopTuHeThong || '');
+      // Ghép nội dung cuối dùng để xuất Excel hoặc lưu
+      const dsTextLich = tongHopArray.join('; ');
+      const ghiChuPhatSinh = (ghiChuLichNgay[d.ngay] || '').trim();
+      let noiDungCuoi = '';
+      if (dsTextLich && ghiChuPhatSinh) {
+        noiDungCuoi = `${dsTextLich}; [Phát sinh] ${ghiChuPhatSinh}`;
+      } else if (dsTextLich) {
+        noiDungCuoi = dsTextLich;
+      } else if (ghiChuPhatSinh) {
+        noiDungCuoi = ghiChuPhatSinh;
+      } else {
+        noiDungCuoi = 'Tác nghiệp văn phòng / Bám sát dự án';
+      }
 
       return {
         thuIndex: idx + 1,
@@ -1100,7 +1146,7 @@ export default function BangBaoCaoTuanChuanVDCD({
         soLichCongTac: lichTrongNgay.length,
         soViecBanLamViec: viecKhongTrung.length,
         noiDung: noiDungCuoi,
-        noiDungGocHeThong: tongHopTuHeThong,
+        ghiChuPhatSinh,
         lichTrongNgay,
         viecKhongTrung,
         tongHopArray
@@ -1109,11 +1155,7 @@ export default function BangBaoCaoTuanChuanVDCD({
   }, [infoTuanToi, dsLichTuanToiCuaNV, keHoachTuanToi, ghiChuLichNgay]);
 
   const taiLaiLichTuBanLamViec = () => {
-    const resetMap: Record<string, string> = {};
-    danhSach7NgayTuanToi.forEach((d) => {
-      resetMap[d.ngayISO] = d.noiDungGocHeThong;
-    });
-    setGhiChuLichNgay(resetMap);
+    setGhiChuLichNgay({});
     setThongBao({
       loai: 'tc',
       nd: 'Đã tải lại toàn bộ nội dung công việc từ Lịch làm việc tuần tới.'
@@ -2345,7 +2387,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                   <div className="flex items-center gap-2">
                     <ONhapSoTien
                       giaTri={dieuHanhTP.mucTieuDoanhThuPhong}
-                      onChange={(val) => setDieuHanhTP({ ...dieuHanhTP, mucTieuDoanhThuPhong: val })}
+                      onChange={(val) => setDieuHanhTP((prev) => ({ ...prev, mucTieuDoanhThuPhong: val }))}
                       className="w-full text-left sm:text-right font-mono text-sm font-black text-blue-700 bg-background border border-border/80 rounded-lg px-3 py-1.5 focus:border-primary"
                     />
                   </div>
@@ -2359,8 +2401,12 @@ export default function BangBaoCaoTuanChuanVDCD({
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
-                      value={dieuHanhTP.soHopDongDuKien}
-                      onChange={(e) => setDieuHanhTP({ ...dieuHanhTP, soHopDongDuKien: Number(e.target.value) })}
+                      min={0}
+                      value={dieuHanhTP.soHopDongDuKien !== undefined && dieuHanhTP.soHopDongDuKien !== null ? dieuHanhTP.soHopDongDuKien : ''}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? 0 : Number(e.target.value);
+                        setDieuHanhTP((prev) => ({ ...prev, soHopDongDuKien: val }));
+                      }}
                       className="w-full text-left sm:text-right font-mono text-sm font-black text-purple-700 bg-background border border-border/80 rounded-lg px-3 py-1.5 focus:border-primary"
                     />
                     <span className="text-xs font-bold text-muted-foreground shrink-0">Hợp đồng</span>
@@ -2692,15 +2738,15 @@ export default function BangBaoCaoTuanChuanVDCD({
                       </div>
                     )}
 
-                    {/* Ô nhập kế hoạch / ghi chú ngày */}
+                    {/* Ô nhập kế hoạch / ghi chú ngày bổ sung */}
                     <div className="space-y-1">
                       <textarea
                         rows={2}
-                        value={d.noiDung}
+                        value={d.ghiChuPhatSinh}
                         onChange={(e) =>
                           setGhiChuLichNgay({ ...ghiChuLichNgay, [d.ngayISO]: e.target.value })
                         }
-                        placeholder="Nội dung công việc chi tiết trong ngày (Đã tự động lấy từ Lịch làm việc, có thể gõ thêm)..."
+                        placeholder="Ghi chú & công việc phát sinh thêm trong ngày (nếu có)..."
                         className="w-full bg-card border border-border/80 rounded-xl p-2.5 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary shadow-2xs resize-y"
                       />
                     </div>
@@ -2712,25 +2758,24 @@ export default function BangBaoCaoTuanChuanVDCD({
 
           {/* =================================================================== */}
           {/* KHỐI V: DANH SÁCH DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT (TIỀM NĂNG CAO)     */}
-          {/* NẰM TRỰC TIẾP BÊN DƯỚI LỊCH LÀM VIỆC TUẦN TỚI THEO YÊU CẦU          */}
+          {/* NẰM TRỰC TIẾP BÊN DƯỚI LỊCH LÀM VIỆC TUẦN TỚI (CHỈ DÀNH CHO SALE)  */}
           {/* =================================================================== */}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-            <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
-                  V
-                </span>
-                <div>
-                  <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
-                    {laTruongPhongKD
-                      ? 'Dự án trọng điểm toàn phòng đang bám sát & chỉ đạo (Tiềm năng cao)'
-                      : 'Danh sách dự án trọng điểm đang bám sát (Tiềm năng cao)'}
-                  </h3>
-                  <p className="text-[11px] text-muted-foreground">
-                    Tự động chọn lọc từ Hồ sơ dự án dựa trên mức độ tiềm năng (Rất cao &gt; Cao) để bám sát trong kế hoạch tuần
-                  </p>
+          {!laTruongPhongKD && (
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
+              <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                    V
+                  </span>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
+                      Danh sách dự án trọng điểm đang bám sát (Tiềm năng cao)
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Tự động chọn lọc từ Hồ sơ dự án dựa trên mức độ tiềm năng (Rất cao &gt; Cao) để bám sát trong kế hoạch tuần
+                    </p>
+                  </div>
                 </div>
-              </div>
 
               <div className="flex items-center gap-2">
                 <button
@@ -2860,6 +2905,7 @@ export default function BangBaoCaoTuanChuanVDCD({
               </table>
             </div>
           </div>
+          )}
         </div>
       )}
 
