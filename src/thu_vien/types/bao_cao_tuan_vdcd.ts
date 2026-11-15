@@ -350,26 +350,26 @@ export function tinhSoLieuTuCRM(params: {
       trongTuanNay || (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc);
 
     // Slide 3: Tình trạng dự án Triển khai trong tuần
-    // - Bỏ các dự án đã hoàn thành / nghiệm thu hoặc dừng từ kỳ trước
+    // - Chỉ tính các dự án có triển khai / tác nghiệp / cập nhật hoặc tạo mới trong tuần
+    const coHoatDongTrongTuan =
+      coTacNghiepTrongTuan ||
+      (ngayCapNhat >= infoTuan.ngayBatDau && ngayCapNhat <= infoTuan.ngayKetThuc) ||
+      (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc);
+
     const daKetThucKyTruoc =
       (gd === 'hoan_thanh' || gd === 'hoan_thanh_tt_dot_2' || gd === 'nghiem_thu' || GIAI_DOAN_KHONG_PHU_HOP.has(gd)) &&
       ngayCapNhat < infoTuan.ngayBatDau;
 
-    if (!daKetThucKyTruoc) {
+    if (coHoatDongTrongTuan && !daKetThucKyTruoc) {
       if (GIAI_DOAN_KHONG_PHU_HOP.has(gd)) {
-        if (coTacNghiepTrongTuan) {
-          tinhTrang.khong_phu_hop += 1;
-        }
+        tinhTrang.khong_phu_hop += 1;
       } else if (GIAI_DOAN_HOP_DONG.has(gd)) {
-        // Hợp đồng triển khai trong tuần: có ký kết / thanh toán / tác nghiệp trong tuần
-        if (coTacNghiepTrongTuan) {
-          tinhTrang.hop_dong += 1;
-        }
+        tinhTrang.hop_dong += 1;
       } else if (GIAI_DOAN_BAO_GIA.has(gd)) {
         tinhTrang.bao_gia += 1;
       } else if (GIAI_DOAN_DANG_TIEP_CAN.has(gd)) {
         tinhTrang.dang_tiep_can += 1;
-      } else if (coTacNghiepTrongTuan) {
+      } else {
         tinhTrang.dang_tiep_can += 1;
       }
 
@@ -492,7 +492,11 @@ export function taoBaoCaoTuanMacDinh(params: {
   const now = new Date().toISOString();
   const prevTT = baoCaoTuanTruoc?.tinh_trang_tuan_nay || SO_LIEU_TINH_TRANG_TRONG();
   const prevNguon = baoCaoTuanTruoc?.nguon_tuan_nay || SO_LIEU_NGUON_TRONG();
-  const keHoachTuanNay = baoCaoTuanTruoc?.ke_hoach_tiep_can_tuan_toi || goiY.tinh_trang_tuan_nay.tong_tiep_can;
+  const keHoachTuanNay =
+    baoCaoTuanTruoc?.ke_hoach_tiep_can_tuan_toi ||
+    baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi?.target ||
+    baoCaoTuanTruoc?.cam_ket_tuan_toi?.du_an_lam_viec?.target ||
+    16;
 
   return {
     id: `vdcd_${tuan}_${nhanSu.id}`,
@@ -521,7 +525,9 @@ export function taoBaoCaoTuanMacDinh(params: {
     tinh_trang_tuan_nay: goiY.tinh_trang_tuan_nay,
     ke_hoach_tiep_can_tuan_nay: keHoachTuanNay,
     thuc_hien_tiep_can_tuan_nay: goiY.tinh_trang_tuan_nay.tong_tiep_can,
-    ke_hoach_tiep_can_tuan_toi: goiY.tinh_trang_tuan_nay.tong_tiep_can,
+    ke_hoach_tiep_can_tuan_toi:
+      baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi?.target ||
+      16,
 
     nguon_tuan_truoc: prevNguon,
     nguon_tuan_nay: goiY.nguon_tuan_nay,
@@ -647,6 +653,86 @@ export function tongHopBaoCaoChiNhanh(params: {
   const kpiNamVe = Number(kpiDonVi?.kpi_nam_tien_ve || 0) ||
     danhSachBaoCao.reduce((s, b) => s + Number(b.kpi_nam_tien_ve || 0), 0);
 
+  const congKPITeam = (): NonNullable<BaoCaoTuanVDCD['kpi_tuan_qua']> => {
+    return danhSachBaoCao.reduce(
+      (acc, b) => {
+        const k = b.kpi_tuan_qua;
+        if (!k) return acc;
+        return {
+          khach_moi_muc_tieu: acc.khach_moi_muc_tieu + Number(k.khach_moi_muc_tieu || 0),
+          khach_moi_thuc_te: acc.khach_moi_thuc_te + Number(k.khach_moi_thuc_te || 0),
+          bao_gia_muc_tieu: acc.bao_gia_muc_tieu + Number(k.bao_gia_muc_tieu || 0),
+          bao_gia_thuc_te: acc.bao_gia_thuc_te + Number(k.bao_gia_thuc_te || 0),
+          du_an_lam_viec_muc_tieu: acc.du_an_lam_viec_muc_tieu + Number(k.du_an_lam_viec_muc_tieu || 0),
+          du_an_lam_viec_thuc_te: acc.du_an_lam_viec_thuc_te + Number(k.du_an_lam_viec_thuc_te || 0),
+          hop_dong_muc_tieu: acc.hop_dong_muc_tieu + Number(k.hop_dong_muc_tieu || 0),
+          hop_dong_thuc_te: acc.hop_dong_thuc_te + Number(k.hop_dong_thuc_te || 0),
+          doanh_so_muc_tieu: acc.doanh_so_muc_tieu + Number(k.doanh_so_muc_tieu || 0),
+          doanh_so_thuc_te: acc.doanh_so_thuc_te + Number(k.doanh_so_thuc_te || 0),
+          cuoc_gap_muc_tieu: acc.cuoc_gap_muc_tieu + Number(k.cuoc_gap_muc_tieu || 0),
+          cuoc_gap_thuc_te: acc.cuoc_gap_thuc_te + Number(k.cuoc_gap_thuc_te || 0)
+        };
+      },
+      {
+        khach_moi_muc_tieu: 0,
+        khach_moi_thuc_te: 0,
+        bao_gia_muc_tieu: 0,
+        bao_gia_thuc_te: 0,
+        du_an_lam_viec_muc_tieu: 0,
+        du_an_lam_viec_thuc_te: 0,
+        hop_dong_muc_tieu: 0,
+        hop_dong_thuc_te: 0,
+        doanh_so_muc_tieu: 0,
+        doanh_so_thuc_te: 0,
+        cuoc_gap_muc_tieu: 0,
+        cuoc_gap_thuc_te: 0
+      }
+    );
+  };
+
+  const congCamKetTeam = (): NonNullable<BaoCaoTuanVDCD['cam_ket_tuan_toi']> => {
+    return danhSachBaoCao.reduce(
+      (acc, b) => {
+        const c = b.cam_ket_tuan_toi;
+        if (!c) return acc;
+        return {
+          khach_moi: { target: acc.khach_moi.target + Number(c.khach_moi?.target || 0), min: 0, max: 0 },
+          bao_gia: { target: acc.bao_gia.target + Number(c.bao_gia?.target || 0), min: 0, max: 0 },
+          du_an_lam_viec: { target: acc.du_an_lam_viec.target + Number(c.du_an_lam_viec?.target || 0), min: 0, max: 0 },
+          hop_dong: { target: acc.hop_dong.target + Number(c.hop_dong?.target || 0), min: 0, max: 0 },
+          doanh_so: { target: acc.doanh_so.target + Number(c.doanh_so?.target || 0), min: 0, max: 0 }
+        };
+      },
+      {
+        khach_moi: { target: 0, min: 0, max: 0 },
+        bao_gia: { target: 0, min: 0, max: 0 },
+        du_an_lam_viec: { target: 0, min: 0, max: 0 },
+        hop_dong: { target: 0, min: 0, max: 0 },
+        doanh_so: { target: 0, min: 0, max: 0 }
+      }
+    );
+  };
+
+  const kpiTong = congKPITeam();
+  const camKetTong = congCamKetTeam();
+  const ttNay = congTinhTrang((b) => b.tinh_trang_tuan_nay);
+
+  // Kế hoạch tiếp cận tuần này: Ưu tiên tổng mục tiêu tiếp cận của đội ngũ
+  const keHoachTiepCan: number =
+    Number(kpiTong.khach_moi_muc_tieu || 0) > 0
+      ? Number(kpiTong.khach_moi_muc_tieu)
+      : Number(kpiTong.du_an_lam_viec_muc_tieu || 0) > 0
+      ? Number(kpiTong.du_an_lam_viec_muc_tieu)
+      : (danhSachBaoCao.reduce((s, b) => s + Number(b.ke_hoach_tiep_can_tuan_nay || 0), 0) || 16);
+
+  // Thực hiện tiếp cận tuần này: Ưu tiên thực tế tiếp cận của đội ngũ (hoặc tổng dự án triển khai trong tuần)
+  const thucHienTiepCan =
+    kpiTong.khach_moi_thuc_te > 0
+      ? kpiTong.khach_moi_thuc_te
+      : ttNay.tong_tiep_can > 0
+      ? ttNay.tong_tiep_can
+      : danhSachBaoCao.reduce((s, b) => s + Number(b.thuc_hien_tiep_can_tuan_nay || 0), 0);
+
   return {
     id: `vdcd_tong_${tuan}`,
     tuan,
@@ -667,19 +753,16 @@ export function tongHopBaoCaoChiNhanh(params: {
     chi_tiet_doanh_thu: danhSachBaoCao.flatMap((b) => b.chi_tiet_doanh_thu || []),
 
     tinh_trang_tuan_truoc: congTinhTrang((b) => b.tinh_trang_tuan_truoc),
-    tinh_trang_tuan_nay: congTinhTrang((b) => b.tinh_trang_tuan_nay),
-    ke_hoach_tiep_can_tuan_nay: danhSachBaoCao.reduce(
-      (s, b) => s + Number(b.ke_hoach_tiep_can_tuan_nay || 0),
-      0
-    ),
-    thuc_hien_tiep_can_tuan_nay: danhSachBaoCao.reduce(
-      (s, b) => s + Number(b.thuc_hien_tiep_can_tuan_nay || 0),
-      0
-    ),
-    ke_hoach_tiep_can_tuan_toi: danhSachBaoCao.reduce(
-      (s, b) => s + Number(b.ke_hoach_tiep_can_tuan_toi || 0),
-      0
-    ),
+    tinh_trang_tuan_nay: ttNay,
+    ke_hoach_tiep_can_tuan_nay: keHoachTiepCan,
+    thuc_hien_tiep_can_tuan_nay: thucHienTiepCan,
+    ke_hoach_tiep_can_tuan_toi:
+      camKetTong.khach_moi.target > 0
+        ? camKetTong.khach_moi.target
+        : danhSachBaoCao.reduce((s, b) => s + Number(b.ke_hoach_tiep_can_tuan_toi || 0), 0) || 16,
+
+    kpi_tuan_qua: kpiTong,
+    cam_ket_tuan_toi: camKetTong,
 
     nguon_tuan_truoc: trungBinhNguon((b) => b.nguon_tuan_truoc),
     nguon_tuan_nay: trungBinhNguon((b) => b.nguon_tuan_nay),

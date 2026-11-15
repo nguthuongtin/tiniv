@@ -237,7 +237,59 @@ export async function xuatExcelBaoCaoTuanVDCD(
     const row = s2.addRow(r);
     styleBody(row, ['left', 'center', 'center']);
   });
-  s2.columns = [{ width: 34 }, { width: 20 }, { width: 20 }];
+
+  // Bảng Hiệu quả Tiếp cận & Tỉ lệ chuyển đổi
+  const kpiEx = baoCao.kpi_tuan_qua;
+  const ttNayEx = baoCao.tinh_trang_tuan_nay;
+  const khTiepCanEx =
+    Number(baoCao.ke_hoach_tiep_can_tuan_nay) > 0
+      ? Number(baoCao.ke_hoach_tiep_can_tuan_nay)
+      : Number(kpiEx?.khach_moi_muc_tieu || kpiEx?.du_an_lam_viec_muc_tieu || 16);
+  const khBaoGiaEx = Number(kpiEx?.bao_gia_muc_tieu || Math.round(khTiepCanEx * 0.25) || 4);
+  const khHopDongEx = Number(kpiEx?.hop_dong_muc_tieu || Math.round(khTiepCanEx * 0.15) || 2);
+  const thTiepCanEx =
+    Number(baoCao.thuc_hien_tiep_can_tuan_nay) > 0
+      ? Number(baoCao.thuc_hien_tiep_can_tuan_nay)
+      : Number(ttNayEx.tong_tiep_can || kpiEx?.khach_moi_thuc_te || 0);
+  const thBaoGiaEx = Number(ttNayEx.bao_gia ?? kpiEx?.bao_gia_thuc_te ?? 0);
+  const thHopDongEx = Number(ttNayEx.hop_dong ?? kpiEx?.hop_dong_thuc_te ?? 0);
+
+  const valTiLeTiepCanKHEx = khTiepCanEx > 0 ? (khBaoGiaEx + khHopDongEx) / khTiepCanEx : 0.35;
+  const strTiLeTiepCanKHEx = `${(valTiLeTiepCanKHEx * 100).toFixed(1).replace('.', ',')}%`;
+  const valTiLeTiepCanTHEx = thTiepCanEx > 0 ? (thBaoGiaEx + thHopDongEx) / thTiepCanEx : 0;
+  const strTiLeTiepCanTHEx = thTiepCanEx > 0 ? `${(valTiLeTiepCanTHEx * 100).toFixed(1).replace('.', ',')}%` : '0,0%';
+  const strPctTiepCanEx =
+    valTiLeTiepCanKHEx > 0 ? `${Math.round((valTiLeTiepCanTHEx / valTiLeTiepCanKHEx) * 100)}%` : '—';
+
+  const tongKHChuyenDoiEx = khBaoGiaEx + khHopDongEx;
+  const valTiLeBaoGiaKHEx = tongKHChuyenDoiEx > 0 ? khHopDongEx / tongKHChuyenDoiEx : 0.25;
+  const strTiLeBaoGiaKHEx = `${(valTiLeBaoGiaKHEx * 100).toFixed(1).replace('.', ',')}%`;
+  const tongTHChuyenDoiEx = thBaoGiaEx + thHopDongEx;
+  const valTiLeBaoGiaTHEx =
+    tongTHChuyenDoiEx > 0
+      ? thHopDongEx / tongTHChuyenDoiEx
+      : thBaoGiaEx > 0
+      ? thHopDongEx / thBaoGiaEx
+      : 0;
+  const strTiLeBaoGiaTHEx = `${(valTiLeBaoGiaTHEx * 100).toFixed(1).replace('.', ',')}%`;
+  const strPctBaoGiaEx =
+    valTiLeBaoGiaKHEx > 0 ? `${Math.round((valTiLeBaoGiaTHEx / valTiLeBaoGiaKHEx) * 100)}%` : '—';
+  const strPctTongTiepCanEx =
+    khTiepCanEx > 0 ? `${Math.round((thTiepCanEx / khTiepCanEx) * 100)}%` : '—';
+
+  s2.addRow([]);
+  const hCD = s2.addRow(['HIỆU QUẢ TIẾP CẬN & TỈ LỆ CHUYỂN ĐỔI', 'Kế hoạch', 'Thực hiện', 'Thực hiện/kế hoạch']);
+  styleHeader(hCD);
+  [
+    ['Tổng tiếp cận', khTiepCanEx, thTiepCanEx, strPctTongTiepCanEx],
+    ['Tỉ lệ chuyển đổi: Tiếp cận → Báo giá & Hợp đồng', strTiLeTiepCanKHEx, strTiLeTiepCanTHEx, strPctTiepCanEx],
+    ['Tỉ lệ chuyển đổi: Báo giá → Hợp đồng', strTiLeBaoGiaKHEx, strTiLeBaoGiaTHEx, strPctBaoGiaEx]
+  ].forEach((r) => {
+    const row = s2.addRow(r);
+    styleBody(row, ['left', 'center', 'center', 'center']);
+  });
+
+  s2.columns = [{ width: 44 }, { width: 18 }, { width: 18 }, { width: 22 }];
 
   // Sheet Kế hoạch Dự án Tiềm năng
   const dsTNDung: DuAnTiemNangTongHopExport[] = dsDuAnTiemNangChon && dsDuAnTiemNangChon.length > 0
@@ -414,8 +466,55 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
 
   const ttNay = baoCao.tinh_trang_tuan_nay;
   const ttTruoc = baoCao.tinh_trang_tuan_truoc;
-  const tiLeChuyenDoiTiepCan = fmtPct(ttNay.bao_gia + ttNay.hop_dong, ttNay.tong_tiep_can);
-  const tiLeChuyenDoiBaoGia = fmtPct(ttNay.hop_dong, ttNay.bao_gia + ttNay.hop_dong);
+  const kpi = baoCao.kpi_tuan_qua;
+
+  // 1. Chỉ số Kế hoạch & Thực hiện Tổng tiếp cận
+  const khTiepCan =
+    Number(baoCao.ke_hoach_tiep_can_tuan_nay) > 0
+      ? Number(baoCao.ke_hoach_tiep_can_tuan_nay)
+      : Number(kpi?.khach_moi_muc_tieu || kpi?.du_an_lam_viec_muc_tieu || 16);
+
+  const khBaoGia = Number(kpi?.bao_gia_muc_tieu || Math.round(khTiepCan * 0.25) || 4);
+  const khHopDong = Number(kpi?.hop_dong_muc_tieu || Math.round(khTiepCan * 0.15) || 2);
+
+  const thTiepCan =
+    Number(baoCao.thuc_hien_tiep_can_tuan_nay) > 0
+      ? Number(baoCao.thuc_hien_tiep_can_tuan_nay)
+      : Number(ttNay.tong_tiep_can || kpi?.khach_moi_thuc_te || 0);
+
+  const thBaoGia = Number(ttNay.bao_gia ?? kpi?.bao_gia_thuc_te ?? 0);
+  const thHopDong = Number(ttNay.hop_dong ?? kpi?.hop_dong_thuc_te ?? 0);
+
+  // 2. Tỉ lệ Tiếp cận -> Báo giá và Hợp đồng
+  const valTiLeTiepCanKH = khTiepCan > 0 ? (khBaoGia + khHopDong) / khTiepCan : 0.35;
+  const strTiLeTiepCanKH = `${(valTiLeTiepCanKH * 100).toFixed(1).replace('.', ',')}%`;
+
+  const valTiLeTiepCanTH = thTiepCan > 0 ? (thBaoGia + thHopDong) / thTiepCan : 0;
+  const strTiLeTiepCanTH = thTiepCan > 0 ? `${(valTiLeTiepCanTH * 100).toFixed(1).replace('.', ',')}%` : '0,0%';
+
+  const strPctTiepCan =
+    valTiLeTiepCanKH > 0 ? `${Math.round((valTiLeTiepCanTH / valTiLeTiepCanKH) * 100)}%` : '—';
+
+  // 3. Tỉ lệ Báo giá -> Hợp đồng
+  const tongKHChuyenDoi = khBaoGia + khHopDong;
+  const valTiLeBaoGiaKH = tongKHChuyenDoi > 0 ? khHopDong / tongKHChuyenDoi : 0.25;
+  const strTiLeBaoGiaKH = `${(valTiLeBaoGiaKH * 100).toFixed(1).replace('.', ',')}%`;
+
+  const tongTHChuyenDoi = thBaoGia + thHopDong;
+  const valTiLeBaoGiaTH =
+    tongTHChuyenDoi > 0
+      ? thHopDong / tongTHChuyenDoi
+      : thBaoGia > 0
+      ? thHopDong / thBaoGia
+      : 0;
+  const strTiLeBaoGiaTH = `${(valTiLeBaoGiaTH * 100).toFixed(1).replace('.', ',')}%`;
+
+  const strPctBaoGia =
+    valTiLeBaoGiaKH > 0 ? `${Math.round((valTiLeBaoGiaTH / valTiLeBaoGiaKH) * 100)}%` : '—';
+
+  // 4. Tỉ lệ Thực hiện / Kế hoạch Tổng tiếp cận
+  const strPctTongTiepCan =
+    khTiepCan > 0 ? `${Math.round((thTiepCan / khTiepCan) * 100)}%` : '—';
 
   const inSlidePDF = () => {
     if (!containerRef.current) return;
@@ -989,33 +1088,41 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
               <tbody>
                 <tr className="h-[36px]">
                   <td className="border border-slate-700 px-3 font-bold text-center">Kế hoạch</td>
-                  <td className="border border-slate-700 px-3 text-center font-semibold">
-                    {baoCao.ke_hoach_tiep_can_tuan_nay}
+                  <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums">
+                    {khTiepCan}
                   </td>
-                  <td className="border border-slate-700 px-3 text-center"></td>
-                  <td className="border border-slate-700 px-3 text-center"></td>
+                  <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums">
+                    {strTiLeTiepCanKH}
+                  </td>
+                  <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums">
+                    {strTiLeBaoGiaKH}
+                  </td>
                 </tr>
                 <tr className="h-[36px]">
                   <td className="border border-slate-700 px-3 font-bold text-center">Thực hiện</td>
-                  <td className="border border-slate-700 px-3 text-center font-semibold">
-                    {baoCao.thuc_hien_tiep_can_tuan_nay}
+                  <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums">
+                    {thTiepCan}
                   </td>
-                  <td className="border border-slate-700 px-3 text-center font-bold">
-                    {tiLeChuyenDoiTiepCan}
+                  <td className="border border-slate-700 px-3 text-center font-bold text-blue-800 tabular-nums">
+                    {strTiLeTiepCanTH}
                   </td>
-                  <td className="border border-slate-700 px-3 text-center font-bold">
-                    {tiLeChuyenDoiBaoGia}
+                  <td className="border border-slate-700 px-3 text-center font-bold text-emerald-800 tabular-nums">
+                    {strTiLeBaoGiaTH}
                   </td>
                 </tr>
                 <tr className="h-[36px]">
                   <td className="border border-slate-700 px-3 font-bold text-center">
                     Thực hiện/kế hoạch
                   </td>
-                  <td className="border border-slate-700 px-3 text-center font-bold">
-                    {fmtPctInt(baoCao.thuc_hien_tiep_can_tuan_nay, baoCao.ke_hoach_tiep_can_tuan_nay)}
+                  <td className="border border-slate-700 px-3 text-center font-bold text-slate-900 tabular-nums">
+                    {strPctTongTiepCan}
                   </td>
-                  <td className="border border-slate-700 px-3 text-center"></td>
-                  <td className="border border-slate-700 px-3 text-center"></td>
+                  <td className="border border-slate-700 px-3 text-center font-bold text-blue-900 tabular-nums">
+                    {strPctTiepCan}
+                  </td>
+                  <td className="border border-slate-700 px-3 text-center font-bold text-emerald-900 tabular-nums">
+                    {strPctBaoGia}
+                  </td>
                 </tr>
               </tbody>
             </table>

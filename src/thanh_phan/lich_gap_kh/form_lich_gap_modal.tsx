@@ -183,6 +183,9 @@ export default function FormLichGapModal({
   const [timKiemNS, setTimKiemNS] = useState<string>('');
   const [moGoiYNS, setMoGoiYNS] = useState(false);
 
+  // Khóa khởi tạo form để không bị reset khi parent re-render lúc user đang đổi ngày/giờ
+  const daKhoiTaoFormRef = useRef<string | null>(null);
+
   // Tải dự án nội bộ nếu caller không truyền dsDuAn
   useEffect(() => {
     if (!mo) return;
@@ -246,7 +249,17 @@ export default function FormLichGapModal({
 
   // Initialize form state
   useEffect(() => {
-    if (!mo) return;
+    if (!mo) {
+      daKhoiTaoFormRef.current = null;
+      return;
+    }
+    const khoaKhoiTao = `${dang_sua?.id || 'them_moi'}_${dang_sua?.ngay_cap_nhat || ''}`;
+    if (daKhoiTaoFormRef.current === khoaKhoiTao) {
+      // Đã khởi tạo cho bản ghi này, không ghi đè form khi user đang gõ/chọn ngày
+      return;
+    }
+    daKhoiTaoFormRef.current = khoaKhoiTao;
+
     if (dang_sua) {
       const ll = dang_sua.loai_lich || 'cong_tac_di_chuyen';
       setLoaiLich(ll);
