@@ -537,6 +537,29 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
     );
   }, [danhSachBaoCaoTeam]);
 
+  // Tổng cộng chỉ số Tuần trước (Tuần 1) của toàn đội ngũ KD
+  const tongTeamTuanTruoc = useMemo(() => {
+    if (!danhSachBaoCaoTeam || danhSachBaoCaoTeam.length === 0) return null;
+    return danhSachBaoCaoTeam.reduce(
+      (acc, x) => {
+        const tr = x.baoCao.tinh_trang_tuan_truoc;
+        acc.tong_tiep_can += Number(tr?.tong_tiep_can || 0);
+        acc.dang_tiep_can += Number(tr?.dang_tiep_can || 0);
+        acc.bao_gia += Number(tr?.bao_gia || 0);
+        acc.hop_dong += Number(tr?.hop_dong || 0);
+        acc.khong_phu_hop += Number(tr?.khong_phu_hop || 0);
+        return acc;
+      },
+      {
+        tong_tiep_can: 0,
+        dang_tiep_can: 0,
+        bao_gia: 0,
+        hop_dong: 0,
+        khong_phu_hop: 0
+      }
+    );
+  }, [danhSachBaoCaoTeam]);
+
   // Tổng cộng chỉ tiêu kế hoạch cam kết tuần tới của toàn bộ đội ngũ KD
   const tongTeamKeHoach = useMemo(() => {
     if (!danhSachBaoCaoTeam || danhSachBaoCaoTeam.length === 0) return null;
@@ -567,6 +590,33 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   const kpi = baoCao.kpi_tuan_qua;
   const laBaoCaoTong = baoCao.nhan_vien_id === 'tong_chi_nhanh' || danhSachBaoCaoTeam.length > 0;
 
+  // Các chỉ số thực tế của Tuần trước (Tuần 1)
+  const trTongTiepCan =
+    laBaoCaoTong && tongTeamTuanTruoc && tongTeamTuanTruoc.tong_tiep_can > 0
+      ? tongTeamTuanTruoc.tong_tiep_can
+      : Number(ttTruoc?.tong_tiep_can || 0);
+
+  // Chỉ số đang tiếp cận chính là Tổng số dự án đã làm việc
+  const trDangTiepCan =
+    laBaoCaoTong && tongTeamTuanTruoc && tongTeamTuanTruoc.dang_tiep_can > 0
+      ? tongTeamTuanTruoc.dang_tiep_can
+      : Number(ttTruoc?.dang_tiep_can || 0);
+
+  const trBaoGia =
+    laBaoCaoTong && tongTeamTuanTruoc && tongTeamTuanTruoc.bao_gia > 0
+      ? tongTeamTuanTruoc.bao_gia
+      : Number(ttTruoc?.bao_gia || 0);
+
+  const trHopDong =
+    laBaoCaoTong && tongTeamTuanTruoc && tongTeamTuanTruoc.hop_dong > 0
+      ? tongTeamTuanTruoc.hop_dong
+      : Number(ttTruoc?.hop_dong || 0);
+
+  const trKhongPhuHop =
+    laBaoCaoTong && tongTeamTuanTruoc
+      ? tongTeamTuanTruoc.khong_phu_hop
+      : Number(ttTruoc?.khong_phu_hop || 0);
+
   // 1. Chỉ số Kế hoạch & Thực hiện Tổng tiếp cận (cộng từ tất cả sale nếu là báo cáo tổng)
   const khTiepCan =
     laBaoCaoTong && tongTeamThucHien && tongTeamThucHien.tiepCanMT > 0
@@ -578,15 +628,26 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
       ? tongTeamThucHien.tiepCanTT
       : Number(kpi?.khach_moi_thuc_te || baoCao.thuc_hien_tiep_can_tuan_nay || ttNay.tong_tiep_can || 0);
 
+  // Chỉ số đang tiếp cận chính là Tổng số dự án đã làm việc trong tuần
+  const thDangTiepCan =
+    laBaoCaoTong && tongTeamThucHien && tongTeamThucHien.duAnTT > 0
+      ? tongTeamThucHien.duAnTT
+      : Number(kpi?.du_an_lam_viec_thuc_te ?? ttNay.dang_tiep_can ?? 0);
+
   const thBaoGia =
-    laBaoCaoTong && tongTeamThucHien
+    laBaoCaoTong && tongTeamThucHien && tongTeamThucHien.baoGiaTT > 0
       ? tongTeamThucHien.baoGiaTT
       : Number(kpi?.bao_gia_thuc_te ?? ttNay.bao_gia ?? 0);
 
   const thHopDong =
-    laBaoCaoTong && tongTeamThucHien
+    laBaoCaoTong && tongTeamThucHien && tongTeamThucHien.hopDongTT > 0
       ? tongTeamThucHien.hopDongTT
       : Number(kpi?.hop_dong_thuc_te ?? ttNay.hop_dong ?? 0);
+
+  const thKhongPhuHop =
+    laBaoCaoTong && tongTeamThucHien
+      ? ttNay.khong_phu_hop || 0
+      : Number(ttNay.khong_phu_hop || 0);
 
   // 2. Tỉ lệ Tiếp cận -> Báo giá và Hợp đồng (Thực hiện)
   // Công thức: (Báo giá + Hợp đồng) / Tổng tiếp cận
@@ -1137,11 +1198,11 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
               </thead>
               <tbody>
                 {[
-                  ['TỔNG TIẾP CẬN', ttTruoc.tong_tiep_can, thTiepCan],
-                  ['ĐANG TIẾP CẬN', ttTruoc.dang_tiep_can, Math.max(0, thTiepCan - thBaoGia - thHopDong - (ttNay.khong_phu_hop || 0))],
-                  ['BÁO GIÁ', ttTruoc.bao_gia, thBaoGia],
-                  ['HỢP ĐỒNG', ttTruoc.hop_dong, thHopDong],
-                  ['KHÔNG PHÙ HỢP', ttTruoc.khong_phu_hop || '', ttNay.khong_phu_hop || '']
+                  ['TỔNG TIẾP CẬN', trTongTiepCan, thTiepCan],
+                  ['ĐANG TIẾP CẬN', trDangTiepCan, thDangTiepCan],
+                  ['BÁO GIÁ', trBaoGia, thBaoGia],
+                  ['HỢP ĐỒNG', trHopDong, thHopDong],
+                  ['KHÔNG PHÙ HỢP', trKhongPhuHop || '', thKhongPhuHop || '']
                 ].map(([nhan, tr, nay], idx) => (
                   <tr key={idx} className="h-[36px]">
                     <td className="border border-slate-700 px-3 font-extrabold text-center">{nhan}</td>

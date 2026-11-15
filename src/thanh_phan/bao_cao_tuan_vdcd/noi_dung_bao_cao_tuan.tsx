@@ -61,7 +61,8 @@ import {
   type BaoCaoTuanVDCD,
   type CauHinhMucTieuBaoCaoTuan,
   type DongDoanhThuTuan,
-  type DongKeHoachDuAnTuan
+  type DongKeHoachDuAnTuan,
+  type SoLieuTinhTrangDuAnTuan
 } from '../../thu_vien/types/bao_cao_tuan_vdcd';
 import {
   duyetBaoCaoTuanVDCD,
@@ -516,9 +517,20 @@ export default function NoiDungBaoCaoTuan() {
         dsChiNhanh,
         dsNhanSu
       });
+
+      // Số liệu gợi ý từ CRM cho Tuần trước (Tuần 1) để luôn có đầy đủ số liệu đối soát
+      const goiYTuanTruoc = tinhSoLieuTuCRM({
+        tuan: tuanTruocISO,
+        dsDuAn: dsDaNV,
+        dsKhachHang,
+        dsSanPham,
+        dsChiNhanh,
+        dsNhanSu
+      });
+
       const truoc = dsBaoCaoTuanTruoc.find((b) => b.nhan_vien_id === nv.id) || null;
       const tenCN = nv.chi_nhanh_id ? mapChiNhanh.get(nv.chi_nhanh_id) : 'An Giang';
-      const baoCao =
+      const baoCaoGoc =
         daLuu ||
         taoBaoCaoTuanMacDinh({
           tuan: tuanChon,
@@ -528,6 +540,68 @@ export default function NoiDungBaoCaoTuan() {
           baoCaoTuanTruoc: truoc,
           kpiMacDinh: kpiCauHinh
         });
+
+      // Đảm bảo số liệu Tuần 1 luôn có đủ các chỉ số thực tế
+      const daThucTeTuanTruoc = Number(
+        truoc?.kpi_tuan_qua?.du_an_lam_viec_thuc_te ??
+          truoc?.tinh_trang_tuan_nay?.dang_tiep_can ??
+          goiYTuanTruoc.tinh_trang_tuan_nay.dang_tiep_can ??
+          0
+      );
+      const bgThucTeTuanTruoc = Number(
+        truoc?.kpi_tuan_qua?.bao_gia_thuc_te ??
+          truoc?.tinh_trang_tuan_nay?.bao_gia ??
+          goiYTuanTruoc.tinh_trang_tuan_nay.bao_gia ??
+          0
+      );
+      const hdThucTeTuanTruoc = Number(
+        truoc?.kpi_tuan_qua?.hop_dong_thuc_te ??
+          truoc?.tinh_trang_tuan_nay?.hop_dong ??
+          goiYTuanTruoc.tinh_trang_tuan_nay.hop_dong ??
+          0
+      );
+      const kpThucTeTuanTruoc = Number(
+        truoc?.tinh_trang_tuan_nay?.khong_phu_hop ??
+          goiYTuanTruoc.tinh_trang_tuan_nay.khong_phu_hop ??
+          0
+      );
+      const tcThucTeTuanTruoc = Number(
+        truoc?.kpi_tuan_qua?.khach_moi_thuc_te ??
+          truoc?.thuc_hien_tiep_can_tuan_nay ??
+          truoc?.tinh_trang_tuan_nay?.tong_tiep_can ??
+          goiYTuanTruoc.tinh_trang_tuan_nay.tong_tiep_can ??
+          (daThucTeTuanTruoc + bgThucTeTuanTruoc + hdThucTeTuanTruoc + kpThucTeTuanTruoc)
+      );
+
+      const ttTruocChuan: SoLieuTinhTrangDuAnTuan = {
+        tong_tiep_can: Math.max(tcThucTeTuanTruoc, daThucTeTuanTruoc + bgThucTeTuanTruoc + hdThucTeTuanTruoc + kpThucTeTuanTruoc),
+        dang_tiep_can: daThucTeTuanTruoc,
+        bao_gia: bgThucTeTuanTruoc,
+        hop_dong: hdThucTeTuanTruoc,
+        khong_phu_hop: kpThucTeTuanTruoc
+      };
+
+      const baoCao: BaoCaoTuanVDCD = {
+        ...baoCaoGoc,
+        tinh_trang_tuan_truoc:
+          baoCaoGoc.tinh_trang_tuan_truoc &&
+          (baoCaoGoc.tinh_trang_tuan_truoc.tong_tiep_can > 0 ||
+            baoCaoGoc.tinh_trang_tuan_truoc.dang_tiep_can > 0 ||
+            baoCaoGoc.tinh_trang_tuan_truoc.bao_gia > 0)
+            ? {
+                ...baoCaoGoc.tinh_trang_tuan_truoc,
+                // Luôn cập nhật đúng chỉ số đang tiếp cận là dự án làm việc
+                dang_tiep_can: baoCaoGoc.tinh_trang_tuan_truoc.dang_tiep_can || daThucTeTuanTruoc
+              }
+            : ttTruocChuan,
+        nguon_tuan_truoc:
+          baoCaoGoc.nguon_tuan_truoc &&
+          (baoCaoGoc.nguon_tuan_truoc.gioi_thieu > 0 ||
+            baoCaoGoc.nguon_tuan_truoc.tu_khai_thac > 0 ||
+            baoCaoGoc.nguon_tuan_truoc.hotline_fanpage > 0)
+            ? baoCaoGoc.nguon_tuan_truoc
+            : (truoc?.nguon_tuan_nay || goiYTuanTruoc.nguon_tuan_nay)
+      };
 
       const dsDATiemNang = dsDuAn.filter(
         (d) =>
@@ -559,6 +633,7 @@ export default function NoiDungBaoCaoTuan() {
     infoTuanToi,
     dsDuAn,
     tuanChon,
+    tuanTruocISO,
     dsKhachHang,
     dsSanPham,
     dsChiNhanh,
