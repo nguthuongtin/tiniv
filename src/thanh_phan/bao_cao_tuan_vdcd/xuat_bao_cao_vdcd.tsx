@@ -139,7 +139,11 @@ export async function xuatExcelBaoCaoTuanVDCD(
 ): Promise<void> {
   const wb = new ExcelJS.Workbook();
   const infoTuan = phanTichTuanISO(baoCao.tuan);
+  const infoTuanTruoc = phanTichTuanISO(dichChuyenTuanISO(baoCao.tuan, -1));
   const infoTuanToi = phanTichTuanISO(dichChuyenTuanISO(baoCao.tuan, 1));
+  const nhanTuanTruoc = `Tuần ${infoTuanTruoc.tuanTrongThang} Tháng ${infoTuanTruoc.thang}`;
+  const nhanTuanNay = `Tuần ${infoTuan.tuanTrongThang} Tháng ${infoTuan.thang}`;
+  const nhanTuanToi = `Tuần ${infoTuanToi.tuanTrongThang} Tháng ${infoTuanToi.thang}`;
 
   const borderThin: Partial<ExcelJS.Borders> = {
     top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
@@ -219,7 +223,7 @@ export async function xuatExcelBaoCaoTuanVDCD(
 
   // Sheet 2: Tình trạng DA & Nguồn
   const s2 = wb.addWorksheet('Tinh_Trang_DA');
-  const hTT = s2.addRow(['TÌNH TRẠNG DỰ ÁN TRIỂN KHAI TRONG TUẦN', 'Tuần trước', 'Tuần này']);
+  const hTT = s2.addRow([`TÌNH TRẠNG DỰ ÁN TRIỂN KHAI TRONG ${nhanTuanNay.toUpperCase()}`, nhanTuanTruoc, nhanTuanNay]);
   styleHeader(hTT);
   [
     ['TỔNG TIẾP CẬN', baoCao.tinh_trang_tuan_truoc.tong_tiep_can, baoCao.tinh_trang_tuan_nay.tong_tiep_can],
@@ -233,7 +237,7 @@ export async function xuatExcelBaoCaoTuanVDCD(
   });
 
   s2.addRow([]);
-  const hNguon = s2.addRow(['CƠ CẤU NGUỒN TIẾP CẬN (%)', 'Tuần trước', 'Tuần này']);
+  const hNguon = s2.addRow(['CƠ CẤU NGUỒN TIẾP CẬN (%)', nhanTuanTruoc, nhanTuanNay]);
   styleHeader(hNguon);
   [
     ['Giới thiệu', `${baoCao.nguon_tuan_truoc.gioi_thieu}%`, `${baoCao.nguon_tuan_nay.gioi_thieu}%`],
@@ -285,7 +289,7 @@ export async function xuatExcelBaoCaoTuanVDCD(
     khTiepCanEx > 0 ? `${Math.round((thTiepCanEx / khTiepCanEx) * 100)}%` : '—';
 
   s2.addRow([]);
-  const hCD = s2.addRow(['HIỆU QUẢ TIẾP CẬN & TỈ LỆ CHUYỂN ĐỔI', 'Kế hoạch', 'Thực hiện', 'Thực hiện/kế hoạch']);
+  const hCD = s2.addRow(['HIỆU QUẢ TIẾP CẬN & TỈ LỆ CHUYỂN ĐỔI', `Kế hoạch ${nhanTuanNay}`, `Thực hiện ${nhanTuanNay}`, 'Thực hiện/kế hoạch']);
   styleHeader(hCD);
   [
     ['Tổng tiếp cận', khTiepCanEx, thTiepCanEx, strPctTongTiepCanEx],
@@ -431,10 +435,18 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   const [duAnThemId, setDuAnThemId] = useState('');
 
   const infoTuan = useMemo(() => phanTichTuanISO(baoCao.tuan), [baoCao.tuan]);
+  const infoTuanTruoc = useMemo(
+    () => phanTichTuanISO(dichChuyenTuanISO(baoCao.tuan, -1)),
+    [baoCao.tuan]
+  );
   const infoTuanToi = useMemo(
     () => phanTichTuanISO(dichChuyenTuanISO(baoCao.tuan, 1)),
     [baoCao.tuan]
   );
+
+  const nhanTuanTruoc = `Tuần ${infoTuanTruoc.tuanTrongThang} Tháng ${infoTuanTruoc.thang}`;
+  const nhanTuanHienTai = `Tuần ${infoTuan.tuanTrongThang} Tháng ${infoTuan.thang}`;
+  const nhanTuanToi = `Tuần ${infoTuanToi.tuanTrongThang} Tháng ${infoTuanToi.thang}`;
 
   // Danh sách dự án xuất slide/PDF có thể thêm, sửa, xoá bớt
   const [dsDuAnXuat, setDsDuAnXuat] = useState<DuAnTiemNangTongHopExport[]>(() => {
@@ -480,40 +492,34 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
     [danhSachBaoCaoTeam]
   );
 
-  // Tổng cộng chỉ số thực hiện tuần qua của toàn bộ đội ngũ KD
+  // Tổng cộng chỉ số thực hiện tuần của toàn bộ đội ngũ KD
+  // Lấy CHUẨN XÁC 100% từ mục Đánh giá kết quả thực hiện chỉ tiêu tuần qua của từng Sale
   const tongTeamThucHien = useMemo(() => {
     if (!danhSachBaoCaoTeam || danhSachBaoCaoTeam.length === 0) return null;
     return danhSachBaoCaoTeam.reduce(
       (acc, x) => {
         const k = x.baoCao.kpi_tuan_qua;
-        const thTiepCan =
-          Number(x.baoCao.thuc_hien_tiep_can_tuan_nay) ||
-          Number(x.baoCao.tinh_trang_tuan_nay?.tong_tiep_can) ||
-          Number(k?.khach_moi_thuc_te) ||
-          0;
-        const mtTiepCan =
-          Number(x.baoCao.ke_hoach_tiep_can_tuan_nay) ||
-          Number(k?.khach_moi_muc_tieu) ||
-          0;
-        const thBaoGia = Number(x.baoCao.tinh_trang_tuan_nay?.bao_gia ?? k?.bao_gia_thuc_te ?? 0);
-        const mtBaoGia = Number(k?.bao_gia_muc_tieu || 0);
-        const thDuAn = Number(k?.du_an_lam_viec_thuc_te || 0);
-        const mtDuAn = Number(k?.du_an_lam_viec_muc_tieu || 0);
-        const thHopDong = Number(x.baoCao.tinh_trang_tuan_nay?.hop_dong ?? k?.hop_dong_thuc_te ?? 0);
-        const mtHopDong = Number(k?.hop_dong_muc_tieu || 0);
-        const dtKyKet = Number(x.baoCao.dt_tuan_ky_ket || k?.doanh_so_thuc_te || 0);
-        const dtTienVe = Number(x.baoCao.dt_tuan_tien_ve || 0);
+        const kmTT = Number(k?.khach_moi_thuc_te ?? x.baoCao.thuc_hien_tiep_can_tuan_nay ?? 0);
+        const kmMT = Number(k?.khach_moi_muc_tieu ?? x.baoCao.ke_hoach_tiep_can_tuan_nay ?? 0);
+        const bgTT = Number(k?.bao_gia_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.bao_gia ?? 0);
+        const bgMT = Number(k?.bao_gia_muc_tieu ?? 0);
+        const daTT = Number(k?.du_an_lam_viec_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.tong_tiep_can ?? 0);
+        const daMT = Number(k?.du_an_lam_viec_muc_tieu ?? 0);
+        const hdTT = Number(k?.hop_dong_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.hop_dong ?? 0);
+        const hdMT = Number(k?.hop_dong_muc_tieu ?? 0);
+        const dsTT = Number(k?.doanh_so_thuc_te ?? (x.baoCao.dt_tuan_ky_ket || 0) + (x.baoCao.dt_tuan_tien_ve || 0));
+        const dsMT = Number(k?.doanh_so_muc_tieu ?? 0);
 
-        acc.tiepCanTT += thTiepCan;
-        acc.tiepCanMT += mtTiepCan;
-        acc.baoGiaTT += thBaoGia;
-        acc.baoGiaMT += mtBaoGia;
-        acc.duAnTT += thDuAn;
-        acc.duAnMT += mtDuAn;
-        acc.hopDongTT += thHopDong;
-        acc.hopDongMT += mtHopDong;
-        acc.dtKyKet += dtKyKet;
-        acc.dtTienVe += dtTienVe;
+        acc.tiepCanTT += kmTT;
+        acc.tiepCanMT += kmMT;
+        acc.baoGiaTT += bgTT;
+        acc.baoGiaMT += bgMT;
+        acc.duAnTT += daTT;
+        acc.duAnMT += daMT;
+        acc.hopDongTT += hdTT;
+        acc.hopDongMT += hdMT;
+        acc.doanhSoTT += dsTT;
+        acc.doanhSoMT += dsMT;
         return acc;
       },
       {
@@ -525,8 +531,8 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
         duAnMT: 0,
         hopDongTT: 0,
         hopDongMT: 0,
-        dtKyKet: 0,
-        dtTienVe: 0
+        doanhSoTT: 0,
+        doanhSoMT: 0
       }
     );
   }, [danhSachBaoCaoTeam]);
@@ -539,7 +545,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
         const ck = x.baoCao.cam_ket_tuan_toi;
         acc.khachMoi += Number(ck?.khach_moi?.target || 0);
         acc.baoGia += Number(ck?.bao_gia?.target || 0);
-        acc.duAn += Number(ck?.du_an_lam_viec?.target || 0);
+        acc.duAn += Number(ck?.du_an_lam_viec?.target || ck?.cuoc_hen?.target || 0);
         acc.hopDong += Number(ck?.hop_dong?.target || 0);
         acc.doanhSo += Number(ck?.doanh_so?.target || 0);
         return acc;
@@ -565,26 +571,22 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   const khTiepCan =
     laBaoCaoTong && tongTeamThucHien && tongTeamThucHien.tiepCanMT > 0
       ? tongTeamThucHien.tiepCanMT
-      : Number(baoCao.ke_hoach_tiep_can_tuan_nay) > 0
-      ? Number(baoCao.ke_hoach_tiep_can_tuan_nay)
-      : Number(kpi?.khach_moi_muc_tieu || kpi?.du_an_lam_viec_muc_tieu || 16);
+      : Number(kpi?.khach_moi_muc_tieu || baoCao.ke_hoach_tiep_can_tuan_nay || 16);
 
   const thTiepCan =
     laBaoCaoTong && tongTeamThucHien && tongTeamThucHien.tiepCanTT > 0
       ? tongTeamThucHien.tiepCanTT
-      : Number(baoCao.thuc_hien_tiep_can_tuan_nay) > 0
-      ? Number(baoCao.thuc_hien_tiep_can_tuan_nay)
-      : Number(ttNay.tong_tiep_can || kpi?.khach_moi_thuc_te || 0);
+      : Number(kpi?.khach_moi_thuc_te || baoCao.thuc_hien_tiep_can_tuan_nay || ttNay.tong_tiep_can || 0);
 
   const thBaoGia =
     laBaoCaoTong && tongTeamThucHien
       ? tongTeamThucHien.baoGiaTT
-      : Number(ttNay.bao_gia ?? kpi?.bao_gia_thuc_te ?? 0);
+      : Number(kpi?.bao_gia_thuc_te ?? ttNay.bao_gia ?? 0);
 
   const thHopDong =
     laBaoCaoTong && tongTeamThucHien
       ? tongTeamThucHien.hopDongTT
-      : Number(ttNay.hop_dong ?? kpi?.hop_dong_thuc_te ?? 0);
+      : Number(kpi?.hop_dong_thuc_te ?? ttNay.hop_dong ?? 0);
 
   // 2. Tỉ lệ Tiếp cận -> Báo giá và Hợp đồng (Thực hiện)
   // Công thức: (Báo giá + Hợp đồng) / Tổng tiếp cận
@@ -697,7 +699,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
     <>
       <div className="text-center mb-4">
         <h2 className="text-[24px] font-black tracking-tight text-slate-900 uppercase">
-          KẾ HOẠCH TRIỂN KHAI TUẦN TIẾP THEO
+          KẾ HOẠCH TRIỂN KHAI {nhanTuanToi.toUpperCase()}
         </h2>
         <div className="text-[20px] font-black text-[#D11317] uppercase">{tieuDeCon}</div>
       </div>
@@ -991,7 +993,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
           {/* SLIDE 2: BÁO CÁO DOANH THU */}
           <SlideFrame>
             <h2 className="text-center text-[24px] font-black text-slate-900 uppercase mb-4">
-              BÁO CÁO DOANH THU TUẦN {infoTuan.tuanTrongThang} THÁNG {infoTuan.thang}
+              BÁO CÁO DOANH THU {nhanTuanHienTai.toUpperCase()}
             </h2>
 
             <table className="w-full border-collapse text-[13px] bg-white">
@@ -999,7 +1001,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                 <tr className="bg-[#D11317] text-white">
                   <th className="border border-slate-700 py-2.5 px-3 w-[22%]"></th>
                   <th className="border border-slate-700 py-2.5 px-3 text-center font-bold">
-                    DT Tuần (VND)
+                    DT {nhanTuanHienTai} (VND)
                   </th>
                   <th className="border border-slate-700 py-2.5 px-3 text-center font-bold">
                     MTD (VND)
@@ -1116,7 +1118,9 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
               <h2 className="text-[24px] font-black text-slate-900 uppercase">
                 BÁO CÁO TÌNH TRẠNG DỰ ÁN
               </h2>
-              <div className="text-[18px] font-bold text-slate-800">Triển khai trong tuần</div>
+              <div className="text-[18px] font-bold text-slate-800">
+                Triển khai trong {nhanTuanHienTai}
+              </div>
             </div>
 
             <table className="w-full border-collapse text-[13px] bg-white mb-5">
@@ -1124,19 +1128,19 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                 <tr className="bg-[#D11317] text-white">
                   <th className="border border-slate-700 py-2.5 px-3 w-[34%]"></th>
                   <th className="border border-slate-700 py-2.5 px-3 text-center font-bold w-[33%]">
-                    Tuần trước
+                    {nhanTuanTruoc}
                   </th>
                   <th className="border border-slate-700 py-2.5 px-3 text-center font-bold w-[33%]">
-                    Tuần này
+                    {nhanTuanHienTai}
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  ['TỔNG TIẾP CẬN', ttTruoc.tong_tiep_can, ttNay.tong_tiep_can],
-                  ['ĐANG TIẾP CẬN', ttTruoc.dang_tiep_can, ttNay.dang_tiep_can],
-                  ['BÁO GIÁ', ttTruoc.bao_gia, ttNay.bao_gia],
-                  ['HỢP ĐỒNG', ttTruoc.hop_dong, ttNay.hop_dong],
+                  ['TỔNG TIẾP CẬN', ttTruoc.tong_tiep_can, thTiepCan],
+                  ['ĐANG TIẾP CẬN', ttTruoc.dang_tiep_can, Math.max(0, thTiepCan - thBaoGia - thHopDong - (ttNay.khong_phu_hop || 0))],
+                  ['BÁO GIÁ', ttTruoc.bao_gia, thBaoGia],
+                  ['HỢP ĐỒNG', ttTruoc.hop_dong, thHopDong],
                   ['KHÔNG PHÙ HỢP', ttTruoc.khong_phu_hop || '', ttNay.khong_phu_hop || '']
                 ].map(([nhan, tr, nay], idx) => (
                   <tr key={idx} className="h-[36px]">
@@ -1171,7 +1175,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
               </thead>
               <tbody>
                 <tr className="h-[38px]">
-                  <td className="border border-slate-700 px-3 font-bold text-center">Kế hoạch</td>
+                  <td className="border border-slate-700 px-3 font-bold text-center">Kế hoạch {nhanTuanHienTai}</td>
                   <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums">
                     {khTiepCan}
                   </td>
@@ -1179,7 +1183,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                   <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums"></td>
                 </tr>
                 <tr className="h-[38px]">
-                  <td className="border border-slate-700 px-3 font-bold text-center">Thực hiện</td>
+                  <td className="border border-slate-700 px-3 font-bold text-center">Thực hiện {nhanTuanHienTai}</td>
                   <td className="border border-slate-700 px-3 text-center font-semibold tabular-nums">
                     {thTiepCan}
                   </td>
@@ -1216,66 +1220,66 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                 <SlideFrame key={`team_th_${trangIdx}`}>
                   <div className="text-center mb-3">
                     <h2 className="text-[22px] font-black text-slate-900 uppercase">
-                      BÁO CÁO THỰC HIỆN KINH DOANH TUẦN {infoTuan.tuanTrongThang} THÁNG {infoTuan.thang}
+                      BÁO CÁO THỰC HIỆN KINH DOANH {nhanTuanHienTai.toUpperCase()}
                     </h2>
-                    <div className="text-[14px] font-bold text-[#D11317] uppercase">
-                      - KẾT QUẢ THEO TỪNG CHUYÊN VIÊN KINH DOANH {trangTeamThucHien.length > 1 ? `(Trang ${trangIdx + 1}/${trangTeamThucHien.length})` : ''} -
+                    <div className="text-[13px] font-bold text-[#D11317] uppercase">
+                      - ĐÁNH GIÁ KẾT QUẢ THỰC HIỆN CHỈ TIÊU CỦA TỪNG CHUYÊN VIÊN KD {trangTeamThucHien.length > 1 ? `(Trang ${trangIdx + 1}/${trangTeamThucHien.length})` : ''} -
                     </div>
                   </div>
 
-                  <table className="w-full border-collapse text-[11.5px] bg-white">
+                  <table className="w-full border-collapse text-[11px] bg-white">
                     <thead>
                       <tr className="bg-[#D11317] text-white">
-                        <th className="border border-slate-700 py-2 px-1.5 text-center font-bold w-[5%]">
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[4%]">
                           STT
                         </th>
-                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[18%]">
+                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[19%]">
                           CHUYÊN VIÊN KD
                         </th>
                         <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[12%]">
-                          TIẾP CẬN
-                          <div className="text-[9.5px] font-normal">(TT / MT)</div>
+                          KH MỚI TIẾP CẬN
+                          <div className="text-[9px] font-normal">(Đạt / Mục tiêu)</div>
                         </th>
                         <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
-                          BÁO GIÁ
-                          <div className="text-[9.5px] font-normal">(TT / MT)</div>
+                          BÁO GIÁ ĐÃ GỬI
+                          <div className="text-[9px] font-normal">(Đạt / Mục tiêu)</div>
                         </th>
                         <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
-                          DỰ ÁN
-                          <div className="text-[9.5px] font-normal">(TT / MT)</div>
+                          DỰ ÁN LÀM VIỆC
+                          <div className="text-[9px] font-normal">(Đạt / Mục tiêu)</div>
                         </th>
                         <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
-                          HỢP ĐỒNG
-                          <div className="text-[9.5px] font-normal">(TT / MT)</div>
+                          HỢP ĐỒNG KÝ KẾT
+                          <div className="text-[9px] font-normal">(Đạt / Mục tiêu)</div>
                         </th>
-                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[16%]">
-                          DOANH THU KÝ KẾT
+                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[21%]">
+                          DOANH SỐ THỰC TẾ (VND)
+                          <div className="text-[9px] font-normal">(Đạt / Mục tiêu)</div>
                         </th>
-                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[16%]">
-                          DOANH THU TIỀN VỀ
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                          % HOÀN THÀNH
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.map((item, rIdx) => {
                         const k = item.baoCao.kpi_tuan_qua;
-                        const thTC =
-                          Number(item.baoCao.thuc_hien_tiep_can_tuan_nay) ||
-                          Number(item.baoCao.tinh_trang_tuan_nay?.tong_tiep_can) ||
-                          Number(k?.khach_moi_thuc_te) ||
-                          0;
-                        const mtTC =
-                          Number(item.baoCao.ke_hoach_tiep_can_tuan_nay) ||
-                          Number(k?.khach_moi_muc_tieu) ||
-                          0;
-                        const thBG = Number(item.baoCao.tinh_trang_tuan_nay?.bao_gia ?? k?.bao_gia_thuc_te ?? 0);
-                        const mtBG = Number(k?.bao_gia_muc_tieu || 0);
-                        const thDA = Number(k?.du_an_lam_viec_thuc_te || 0);
-                        const mtDA = Number(k?.du_an_lam_viec_muc_tieu || 0);
-                        const thHD = Number(item.baoCao.tinh_trang_tuan_nay?.hop_dong ?? k?.hop_dong_thuc_te ?? 0);
-                        const mtHD = Number(k?.hop_dong_muc_tieu || 0);
-                        const dtKy = Number(item.baoCao.dt_tuan_ky_ket || k?.doanh_so_thuc_te || 0);
-                        const dtVe = Number(item.baoCao.dt_tuan_tien_ve || 0);
+                        const kmTT = Number(k?.khach_moi_thuc_te ?? item.baoCao.thuc_hien_tiep_can_tuan_nay ?? 0);
+                        const kmMT = Number(k?.khach_moi_muc_tieu ?? item.baoCao.ke_hoach_tiep_can_tuan_nay ?? 0);
+                        const bgTT = Number(k?.bao_gia_thuc_te ?? item.baoCao.tinh_trang_tuan_nay?.bao_gia ?? 0);
+                        const bgMT = Number(k?.bao_gia_muc_tieu ?? 0);
+                        const daTT = Number(k?.du_an_lam_viec_thuc_te ?? item.baoCao.tinh_trang_tuan_nay?.tong_tiep_can ?? 0);
+                        const daMT = Number(k?.du_an_lam_viec_muc_tieu ?? 0);
+                        const hdTT = Number(k?.hop_dong_thuc_te ?? item.baoCao.tinh_trang_tuan_nay?.hop_dong ?? 0);
+                        const hdMT = Number(k?.hop_dong_muc_tieu ?? 0);
+                        const dsTT = Number(k?.doanh_so_thuc_te ?? (item.baoCao.dt_tuan_ky_ket || 0) + (item.baoCao.dt_tuan_tien_ve || 0));
+                        const dsMT = Number(k?.doanh_so_muc_tieu ?? 0);
+
+                        const pct = dsMT > 0
+                          ? Math.round((dsTT / dsMT) * 100)
+                          : kmMT > 0
+                          ? Math.round((kmTT / kmMT) * 100)
+                          : 100;
 
                         return (
                           <tr key={item.nv.id} className="h-[46px] hover:bg-slate-50/70">
@@ -1286,26 +1290,31 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                               {item.nv.ho_va_ten}
                             </td>
                             <td className="border border-slate-700 px-1 py-1.5 text-center font-semibold tabular-nums">
-                              <span className="text-blue-700">{thTC}</span>
-                              {mtTC > 0 && <span className="text-slate-400 font-normal"> / {mtTC}</span>}
+                              <span className="text-blue-700 font-bold">{kmTT}</span>
+                              {kmMT > 0 && <span className="text-slate-400 font-normal"> / {kmMT}</span>}
                             </td>
                             <td className="border border-slate-700 px-1 py-1.5 text-center font-semibold tabular-nums">
-                              <span className="text-amber-700">{thBG}</span>
-                              {mtBG > 0 && <span className="text-slate-400 font-normal"> / {mtBG}</span>}
+                              <span className="text-amber-700 font-bold">{bgTT}</span>
+                              {bgMT > 0 && <span className="text-slate-400 font-normal"> / {bgMT}</span>}
                             </td>
                             <td className="border border-slate-700 px-1 py-1.5 text-center font-semibold tabular-nums">
-                              <span className="text-purple-700">{thDA}</span>
-                              {mtDA > 0 && <span className="text-slate-400 font-normal"> / {mtDA}</span>}
+                              <span className="text-purple-700 font-bold">{daTT}</span>
+                              {daMT > 0 && <span className="text-slate-400 font-normal"> / {daMT}</span>}
                             </td>
                             <td className="border border-slate-700 px-1 py-1.5 text-center font-semibold tabular-nums">
-                              <span className="text-emerald-700">{thHD}</span>
-                              {mtHD > 0 && <span className="text-slate-400 font-normal"> / {mtHD}</span>}
+                              <span className="text-emerald-700 font-bold">{hdTT}</span>
+                              {hdMT > 0 && <span className="text-slate-400 font-normal"> / {hdMT}</span>}
                             </td>
                             <td className="border border-slate-700 px-2 py-1.5 text-right font-medium tabular-nums">
-                              {dtKy > 0 ? fmtTien(dtKy) : '—'}
+                              <span className="font-bold text-[#D11317]">{fmtTien(dsTT)}</span>
+                              {dsMT > 0 && (
+                                <div className="text-[10px] text-slate-500 font-normal">MT: {fmtTien(dsMT)}</div>
+                              )}
                             </td>
-                            <td className="border border-slate-700 px-2 py-1.5 text-right font-medium tabular-nums">
-                              {dtVe > 0 ? fmtTien(dtVe) : '—'}
+                            <td className="border border-slate-700 px-1 py-1.5 text-center font-bold">
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[10.5px] ${pct >= 100 ? 'bg-emerald-100 text-emerald-800' : pct >= 70 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                                {pct}%
+                              </span>
                             </td>
                           </tr>
                         );
@@ -1342,10 +1351,15 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                             )}
                           </td>
                           <td className="border border-slate-700 px-2 py-1.5 text-right tabular-nums text-[#D11317]">
-                            {fmtTien(tongTeamThucHien.dtKyKet)}
+                            <span className="font-bold">{fmtTien(tongTeamThucHien.doanhSoTT)}</span>
+                            {tongTeamThucHien.doanhSoMT > 0 && (
+                              <div className="text-[10px] text-slate-500 font-bold">MT: {fmtTien(tongTeamThucHien.doanhSoMT)}</div>
+                            )}
                           </td>
-                          <td className="border border-slate-700 px-2 py-1.5 text-right tabular-nums text-[#D11317]">
-                            {fmtTien(tongTeamThucHien.dtTienVe)}
+                          <td className="border border-slate-700 px-1 py-1.5 text-center font-black text-slate-900">
+                            {tongTeamThucHien.doanhSoMT > 0
+                              ? `${Math.round((tongTeamThucHien.doanhSoTT / tongTeamThucHien.doanhSoMT) * 100)}%`
+                              : '100%'}
                           </td>
                         </tr>
                       )}
@@ -1353,7 +1367,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                   </table>
 
                   <div className="mt-auto pt-2 flex items-center justify-between text-[11px] italic font-semibold text-slate-600">
-                    <span>* Dữ liệu tổng hợp từ báo cáo tuần và hoạt động tác nghiệp thực tế của từng Chuyên viên KD</span>
+                    <span>* Dữ liệu đối soát chuẩn xác 100% từ mục Đánh giá kết quả thực hiện chỉ tiêu tuần qua của từng Chuyên viên KD</span>
                     <span>VDCD Group</span>
                   </div>
                 </SlideFrame>
@@ -1371,10 +1385,10 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                 <tr className="bg-[#D11317] text-white h-[48px]">
                   <th className="border border-slate-700 px-4 w-[36%]"></th>
                   <th className="border border-slate-700 px-4 text-center font-bold w-[32%]">
-                    Tuần trước
+                    {nhanTuanTruoc}
                   </th>
                   <th className="border border-slate-700 px-4 text-center font-bold w-[32%]">
-                    Tuần này
+                    {nhanTuanHienTai}
                   </th>
                 </tr>
               </thead>
@@ -1407,9 +1421,9 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                 <SlideFrame key={`team_kh_${trangIdx}`}>
                   <div className="text-center mb-3">
                     <h2 className="text-[22px] font-black text-slate-900 uppercase">
-                      KẾ HOẠCH CHỈ TIÊU {infoTuanToi.nhanTieuDe}
+                      KẾ HOẠCH CHỈ TIÊU {nhanTuanToi.toUpperCase()}
                     </h2>
-                    <div className="text-[14px] font-bold text-[#D11317] uppercase">
+                    <div className="text-[13px] font-bold text-[#D11317] uppercase">
                       - MỤC TIÊU CAM KẾT THEO TỪNG CHUYÊN VIÊN KINH DOANH {trangTeamKeHoach.length > 1 ? `(Trang ${trangIdx + 1}/${trangTeamKeHoach.length})` : ''} -
                     </div>
                   </div>
@@ -1536,7 +1550,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
             <SlideFrame key={`tn_${idx}`}>
               <div className="text-center mb-4">
                 <h2 className="text-[24px] font-black tracking-tight text-slate-900 uppercase">
-                  KẾ HOẠCH TRIỂN KHAI TUẦN TIẾP THEO
+                  KẾ HOẠCH TRIỂN KHAI {nhanTuanToi.toUpperCase()}
                 </h2>
                 <div className="text-[20px] font-black text-[#D11317] uppercase">
                   - DỰ ÁN TRỌNG ĐIỂM TIỀM NĂNG CAO {trangTiemNang.length > 1 ? `(Trang ${idx + 1}/${trangTiemNang.length})` : ''} -
@@ -1621,10 +1635,10 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
               <SlideFrame key={`lich_${idx}`}>
                 <div className="text-center mb-4">
                   <h2 className="text-[24px] font-black text-slate-900 uppercase">
-                    LỊCH CÔNG TÁC {infoTuanToi.nhanTieuDe}
+                    LỊCH CÔNG TÁC {nhanTuanToi.toUpperCase()}
                   </h2>
                   <div className="text-[14px] font-semibold text-[#D11317]">
-                    {infoTuanToi.khoangNgayNhan}/{infoTuanToi.nam} • Mục tiêu tiếp cận tuần tới: {baoCao.ke_hoach_tiep_can_tuan_toi} dự án
+                    Kỳ công tác: {infoTuanToi.khoangNgayNhan}/{infoTuanToi.nam} • Mục tiêu tiếp cận: {baoCao.ke_hoach_tiep_can_tuan_toi} dự án
                   </div>
                 </div>
                 <table className="w-full border-collapse text-[12px] bg-white">
