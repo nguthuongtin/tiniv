@@ -333,23 +333,34 @@ export function tinhSoLieuTuCRM(params: {
   for (const da of dsDuAn) {
     if (da.trang_thai === 'da_xoa') continue;
     const gd = String(da.giai_doan || '');
+    const ngayTao = (da.ngay_tao || '').slice(0, 10);
     const ngayCapNhat = (da.ngay_cap_nhat || da.ngay_tao || '').slice(0, 10);
     const trongTuanNay = ngayCapNhat >= infoTuan.ngayBatDau && ngayCapNhat <= infoTuan.ngayKetThuc;
+    const coTacNghiepTrongTuan =
+      trongTuanNay || (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc);
 
-    // Slide 3: bỏ các dự án đã nghiệm thu/hoàn thành hoặc dừng ở kỳ trước
+    // Slide 3: Tình trạng dự án Triển khai trong tuần
+    // - Bỏ các dự án đã hoàn thành / nghiệm thu hoặc dừng từ kỳ trước
     const daKetThucKyTruoc =
       (gd === 'hoan_thanh' || gd === 'hoan_thanh_tt_dot_2' || gd === 'nghiem_thu' || GIAI_DOAN_KHONG_PHU_HOP.has(gd)) &&
       ngayCapNhat < infoTuan.ngayBatDau;
 
     if (!daKetThucKyTruoc) {
       if (GIAI_DOAN_KHONG_PHU_HOP.has(gd)) {
-        tinhTrang.khong_phu_hop += 1;
-      } else {
-        tinhTrang.tong_tiep_can += 1;
-        if (GIAI_DOAN_HOP_DONG.has(gd)) tinhTrang.hop_dong += 1;
-        else if (GIAI_DOAN_BAO_GIA.has(gd)) tinhTrang.bao_gia += 1;
-        else if (GIAI_DOAN_DANG_TIEP_CAN.has(gd)) tinhTrang.dang_tiep_can += 1;
-        else tinhTrang.dang_tiep_can += 1;
+        if (coTacNghiepTrongTuan) {
+          tinhTrang.khong_phu_hop += 1;
+        }
+      } else if (GIAI_DOAN_HOP_DONG.has(gd)) {
+        // Hợp đồng triển khai trong tuần: có ký kết / thanh toán / tác nghiệp trong tuần
+        if (coTacNghiepTrongTuan) {
+          tinhTrang.hop_dong += 1;
+        }
+      } else if (GIAI_DOAN_BAO_GIA.has(gd)) {
+        tinhTrang.bao_gia += 1;
+      } else if (GIAI_DOAN_DANG_TIEP_CAN.has(gd)) {
+        tinhTrang.dang_tiep_can += 1;
+      } else if (coTacNghiepTrongTuan) {
+        tinhTrang.dang_tiep_can += 1;
       }
 
       const kenhKey = chuanHoaKenhTiepCan(da.kenh_ban_hang);
@@ -429,6 +440,9 @@ export function tinhSoLieuTuCRM(params: {
       goiYTiemNang.push({ ...dongMau, id: `tn_${da.id}` });
     }
   }
+
+  tinhTrang.tong_tiep_can =
+    tinhTrang.dang_tiep_can + tinhTrang.bao_gia + tinhTrang.hop_dong + (tinhTrang.khong_phu_hop || 0);
 
   const nguonPct: SoLieuNguonTiepCanTuan =
     tongNguon > 0

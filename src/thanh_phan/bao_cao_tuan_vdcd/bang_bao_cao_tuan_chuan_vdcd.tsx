@@ -31,7 +31,12 @@ import {
   MessageSquareWarning,
   RotateCcw,
   MapPin,
-  CalendarCheck
+  CalendarCheck,
+  FileText,
+  Award,
+  TrendingUp,
+  DollarSign,
+  Briefcase
 } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
@@ -1095,7 +1100,10 @@ export default function BangBaoCaoTuanChuanVDCD({
         soLichCongTac: lichTrongNgay.length,
         soViecBanLamViec: viecKhongTrung.length,
         noiDung: noiDungCuoi,
-        noiDungGocHeThong: tongHopTuHeThong
+        noiDungGocHeThong: tongHopTuHeThong,
+        lichTrongNgay,
+        viecKhongTrung,
+        tongHopArray
       };
     });
   }, [infoTuanToi, dsLichTuanToiCuaNV, keHoachTuanToi, ghiChuLichNgay]);
@@ -1636,8 +1644,8 @@ export default function BangBaoCaoTuanChuanVDCD({
               </div>
             </div>
           ) : (
-            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-              <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs space-y-4 p-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap pb-3 border-b border-border/80">
                 <div className="flex items-center gap-2">
                   <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
                     I
@@ -1647,7 +1655,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                       Đánh giá kết quả thực hiện chỉ tiêu tuần qua
                     </h3>
                     <p className="text-[11px] text-muted-foreground">
-                      Tự động theo dõi &amp; tổng hợp từ Lịch làm việc &amp; Hồ sơ dự án
+                      Tự động theo dõi tiến độ &amp; tổng hợp từ Lịch làm việc &amp; Hồ sơ dự án
                     </p>
                   </div>
                 </div>
@@ -1663,10 +1671,179 @@ export default function BangBaoCaoTuanChuanVDCD({
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* 5 EXECUTIVE KPI CARDS TRỰC QUAN */}
+              {(() => {
+                const pctKhachMoi = kpiKhachMoi.keHoachTuanTruoc > 0 ? Math.min(200, Math.round((kpiKhachMoi.thucTe / kpiKhachMoi.keHoachTuanTruoc) * 100)) : 0;
+                const pctBaoGia = kpiBaoGia.keHoachTuanTruoc > 0 ? Math.min(200, Math.round((kpiBaoGia.thucTe / kpiBaoGia.keHoachTuanTruoc) * 100)) : 0;
+                const pctDuAn = kpiDuAnLamViec.keHoachTuanTruoc > 0 ? Math.min(200, Math.round((kpiDuAnLamViec.thucTe / kpiDuAnLamViec.keHoachTuanTruoc) * 100)) : 0;
+                const pctHopDong = kpiHopDong.keHoachTuanTruoc > 0 ? Math.min(200, Math.round((kpiHopDong.thucTe / kpiHopDong.keHoachTuanTruoc) * 100)) : 0;
+                const pctDoanhThu = kpiDoanhThu.keHoachTuanTruoc > 0 ? Math.min(200, Math.round((kpiDoanhThu.thucTe / kpiDoanhThu.keHoachTuanTruoc) * 100)) : 0;
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    {/* Card 1: Khách hàng mới */}
+                    <div
+                      onClick={() => moModalDrillDown('khachMoi', 'Chi tiết Khách hàng mới tiếp cận tuần qua', soLieuThucTeTuBanLamViec.khachMoi.chiTiet)}
+                      className="group p-3.5 rounded-xl border border-blue-200/70 bg-blue-50/30 hover:bg-blue-50/70 hover:border-blue-300 transition-all cursor-pointer shadow-2xs space-y-2"
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+                        <span className="flex items-center gap-1.5 text-blue-900">
+                          <Users className="size-3.5 text-blue-600" />
+                          <span>Khách mới tiếp cận</span>
+                        </span>
+                        <span className="text-[10px] text-blue-700 font-mono font-bold bg-blue-100/80 px-1.5 py-0.2 rounded-full">
+                          {pctKhachMoi}%
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between">
+                        <div className="text-xl font-black font-mono text-blue-700">
+                          {kpiKhachMoi.thucTe} <span className="text-xs font-semibold text-muted-foreground">KH</span>
+                        </div>
+                        <div className="text-[10.5px] text-muted-foreground font-mono">
+                          Mục tiêu: <b className="text-foreground">{kpiKhachMoi.keHoachTuanTruoc || 0}</b>
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full bg-blue-200/50 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${Math.min(100, pctKhachMoi)}%` }} />
+                      </div>
+                      <div className="text-[10.5px] text-blue-600 group-hover:underline flex items-center gap-1 font-semibold pt-0.5">
+                        <Sparkles className="size-3 text-amber-500" />
+                        <span>Xem chi tiết danh sách</span>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Báo giá đã gửi */}
+                    <div
+                      onClick={() => moModalDrillDown('baoGia', 'Chi tiết Báo giá đã gửi trong tuần qua', soLieuThucTeTuBanLamViec.baoGia.chiTiet)}
+                      className="group p-3.5 rounded-xl border border-amber-200/70 bg-amber-50/30 hover:bg-amber-50/70 hover:border-amber-300 transition-all cursor-pointer shadow-2xs space-y-2"
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+                        <span className="flex items-center gap-1.5 text-amber-900">
+                          <FileText className="size-3.5 text-amber-600" />
+                          <span>Báo giá đã gửi</span>
+                        </span>
+                        <span className="text-[10px] text-amber-700 font-mono font-bold bg-amber-100/80 px-1.5 py-0.2 rounded-full">
+                          {pctBaoGia}%
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between">
+                        <div className="text-xl font-black font-mono text-amber-700">
+                          {kpiBaoGia.thucTe} <span className="text-xs font-semibold text-muted-foreground">báo giá</span>
+                        </div>
+                        <div className="text-[10.5px] text-muted-foreground font-mono">
+                          Mục tiêu: <b className="text-foreground">{kpiBaoGia.keHoachTuanTruoc || 0}</b>
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full bg-amber-200/50 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${Math.min(100, pctBaoGia)}%` }} />
+                      </div>
+                      <div className="text-[10.5px] text-amber-700 group-hover:underline flex items-center gap-1 font-semibold pt-0.5">
+                        <Sparkles className="size-3 text-amber-500" />
+                        <span>Xem chi tiết danh sách</span>
+                      </div>
+                    </div>
+
+                    {/* Card 3: Dự án làm việc */}
+                    <div
+                      onClick={() => moModalDrillDown('duAnLamViec', 'Chi tiết Dự án đã làm việc trong tuần qua', soLieuThucTeTuBanLamViec.duAnLamViec.chiTiet)}
+                      className="group p-3.5 rounded-xl border border-indigo-200/70 bg-indigo-50/30 hover:bg-indigo-50/70 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs space-y-2"
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+                        <span className="flex items-center gap-1.5 text-indigo-900">
+                          <Briefcase className="size-3.5 text-indigo-600" />
+                          <span>Dự án làm việc</span>
+                        </span>
+                        <span className="text-[10px] text-indigo-700 font-mono font-bold bg-indigo-100/80 px-1.5 py-0.2 rounded-full">
+                          {pctDuAn}%
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between">
+                        <div className="text-xl font-black font-mono text-indigo-700">
+                          {kpiDuAnLamViec.thucTe} <span className="text-xs font-semibold text-muted-foreground">dự án</span>
+                        </div>
+                        <div className="text-[10.5px] text-muted-foreground font-mono">
+                          Mục tiêu: <b className="text-foreground">{kpiDuAnLamViec.keHoachTuanTruoc || 0}</b>
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full bg-indigo-200/50 rounded-full overflow-hidden">
+                        <div className="h-full bg-indigo-600 rounded-full transition-all" style={{ width: `${Math.min(100, pctDuAn)}%` }} />
+                      </div>
+                      <div className="text-[10.5px] text-indigo-700 group-hover:underline flex items-center gap-1 font-semibold pt-0.5">
+                        <Sparkles className="size-3 text-amber-500" />
+                        <span>Xem chi tiết danh sách</span>
+                      </div>
+                    </div>
+
+                    {/* Card 4: Hợp đồng ký kết */}
+                    <div
+                      onClick={() => moModalDrillDown('hopDong', 'Chi tiết Hợp đồng / Đơn hàng ký kết tuần qua', soLieuThucTeTuBanLamViec.hopDong.chiTiet)}
+                      className="group p-3.5 rounded-xl border border-purple-200/70 bg-purple-50/30 hover:bg-purple-50/70 hover:border-purple-300 transition-all cursor-pointer shadow-2xs space-y-2"
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+                        <span className="flex items-center gap-1.5 text-purple-900">
+                          <Award className="size-3.5 text-purple-600" />
+                          <span>Hợp đồng ký kết</span>
+                        </span>
+                        <span className="text-[10px] text-purple-700 font-mono font-bold bg-purple-100/80 px-1.5 py-0.2 rounded-full">
+                          {pctHopDong}%
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between">
+                        <div className="text-xl font-black font-mono text-purple-700">
+                          {kpiHopDong.thucTe} <span className="text-xs font-semibold text-muted-foreground">HĐ</span>
+                        </div>
+                        <div className="text-[10.5px] text-muted-foreground font-mono">
+                          Mục tiêu: <b className="text-foreground">{kpiHopDong.keHoachTuanTruoc || 0}</b>
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full bg-purple-200/50 rounded-full overflow-hidden">
+                        <div className="h-full bg-purple-600 rounded-full transition-all" style={{ width: `${Math.min(100, pctHopDong)}%` }} />
+                      </div>
+                      <div className="text-[10.5px] text-purple-700 group-hover:underline flex items-center gap-1 font-semibold pt-0.5">
+                        <Sparkles className="size-3 text-amber-500" />
+                        <span>Xem chi tiết danh sách</span>
+                      </div>
+                    </div>
+
+                    {/* Card 5: Doanh thu thực tế */}
+                    <div
+                      onClick={() => moModalDrillDown('doanhThu', 'Chi tiết Doanh thu thực tế tuần qua', soLieuThucTeTuBanLamViec.doanhThu.chiTiet, true)}
+                      className="group p-3.5 rounded-xl border border-emerald-200/70 bg-emerald-50/30 hover:bg-emerald-50/70 hover:border-emerald-300 transition-all cursor-pointer shadow-2xs space-y-2"
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+                        <span className="flex items-center gap-1.5 text-emerald-900">
+                          <DollarSign className="size-3.5 text-emerald-600" />
+                          <span>Doanh thu thực tế</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-700 font-mono font-bold bg-emerald-100/80 px-1.5 py-0.2 rounded-full">
+                          {pctDoanhThu}%
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between">
+                        <div className="text-base font-black font-mono text-emerald-700 truncate" title={fmtTien(kpiDoanhThu.thucTe)}>
+                          {fmtTien(kpiDoanhThu.thucTe)}
+                        </div>
+                        <div className="text-[10.5px] text-muted-foreground font-mono truncate ml-1">
+                          KH: {fmtTien(kpiDoanhThu.keHoachTuanTruoc)}
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full bg-emerald-200/50 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-600 rounded-full transition-all" style={{ width: `${Math.min(100, pctDoanhThu)}%` }} />
+                      </div>
+                      <div className="text-[10.5px] text-emerald-700 group-hover:underline flex items-center gap-1 font-semibold pt-0.5">
+                        <Sparkles className="size-3 text-amber-500" />
+                        <span>Xem chi tiết dòng tiền</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* BẢNG CHI TIẾT SỐ LIỆU ĐỐI SOÁT */}
+              <div className="overflow-x-auto rounded-xl border border-border/80">
                 <table className="w-full text-xs border-collapse">
                   <thead>
-                    <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
+                    <tr className="bg-muted/40 border-b border-border text-[11px] text-muted-foreground font-bold">
                       <th className="py-2.5 px-3 text-center w-12">STT</th>
                       <th className="py-2.5 px-4 text-left">Chỉ tiêu đánh giá tuần qua</th>
                       <th className="py-2.5 px-3 text-center w-28">ĐVT</th>
@@ -1931,9 +2108,9 @@ export default function BangBaoCaoTuanChuanVDCD({
                       </td>
                     </tr>
 
-                    {/* Dòng Tổng kết Khối I */}
-                    <tr className="bg-red-500/[0.04] font-bold text-xs border-t border-red-500/20">
-                      <td colSpan={3} className="py-3 px-4 text-left text-red-950 font-black">
+                    {/* Dòng Tổng Doanh thu */}
+                    <tr className="bg-emerald-500/[0.04] font-bold text-xs border-t border-emerald-500/20">
+                      <td colSpan={3} className="py-3 px-4 text-left text-emerald-950 font-black">
                         TỔNG DOANH THU THỰC TẾ TUẦN (VNĐ)
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-foreground font-extrabold">
@@ -2221,111 +2398,214 @@ export default function BangBaoCaoTuanChuanVDCD({
               </div>
             </div>
           ) : (
-            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-              <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs space-y-4 p-4">
+              <div className="bg-muted/50 -m-4 mb-0 px-4 py-3 border-b border-border flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
                     III
                   </span>
-                  <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
-                    Chỉ tiêu cam kết tuần tới
-                  </h3>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">
+                      Chỉ tiêu cam kết tuần tới
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Kế hoạch mục tiêu tuần tới ({infoTuanToi.khoangNgayNhan}/{infoTuanToi.nam})
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* 5 THẺ CAM KẾT (COMMITMENT CARDS) SANG TRỌNG & RÕ RÀNG */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2">
+                {/* 1. Khách hàng mới */}
+                <div className="p-3.5 rounded-xl border border-blue-200/80 bg-blue-50/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-blue-900">
+                    <span className="flex items-center gap-1.5">
+                      <Users className="size-3.5 text-blue-600" />
+                      <span>Khách mới tiếp cận</span>
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      Đạt tuần qua: <b className="text-blue-700">{kpiKhachMoi.thucTe}</b>
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10.5px] font-bold text-muted-foreground block">
+                      Target cam kết tuần tới:
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={camKet.khachMoi.target}
+                        onChange={(e) =>
+                          setCamKet({ ...camKet, khachMoi: { ...camKet.khachMoi, target: Number(e.target.value) } })
+                        }
+                        className="w-full text-right font-mono text-base font-black text-blue-700 bg-background border border-border/80 rounded-lg px-2.5 py-1.5 focus:border-primary"
+                      />
+                      <span className="text-xs font-bold text-muted-foreground shrink-0">KH</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Báo giá */}
+                <div className="p-3.5 rounded-xl border border-amber-200/80 bg-amber-50/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+                    <span className="flex items-center gap-1.5">
+                      <FileText className="size-3.5 text-amber-600" />
+                      <span>Báo giá dự kiến gửi</span>
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      Đạt tuần qua: <b className="text-amber-700">{kpiBaoGia.thucTe}</b>
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10.5px] font-bold text-muted-foreground block">
+                      Target cam kết tuần tới:
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={camKet.baoGia.target}
+                        onChange={(e) =>
+                          setCamKet({ ...camKet, baoGia: { ...camKet.baoGia, target: Number(e.target.value) } })
+                        }
+                        className="w-full text-right font-mono text-base font-black text-amber-700 bg-background border border-border/80 rounded-lg px-2.5 py-1.5 focus:border-primary"
+                      />
+                      <span className="text-xs font-bold text-muted-foreground shrink-0">BG</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Dự án làm việc */}
+                <div className="p-3.5 rounded-xl border border-indigo-200/80 bg-indigo-50/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-indigo-900">
+                    <span className="flex items-center gap-1.5">
+                      <Briefcase className="size-3.5 text-indigo-600" />
+                      <span>Dự án làm việc</span>
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      Đạt tuần qua: <b className="text-indigo-700">{kpiDuAnLamViec.thucTe}</b>
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10.5px] font-bold text-muted-foreground block">
+                      Target cam kết tuần tới:
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={camKet.duAnLamViec.target}
+                        onChange={(e) =>
+                          setCamKet({ ...camKet, duAnLamViec: { ...camKet.duAnLamViec, target: Number(e.target.value) } })
+                        }
+                        className="w-full text-right font-mono text-base font-black text-indigo-700 bg-background border border-border/80 rounded-lg px-2.5 py-1.5 focus:border-primary"
+                      />
+                      <span className="text-xs font-bold text-muted-foreground shrink-0">DA</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Hợp đồng ký mới */}
+                <div className="p-3.5 rounded-xl border border-purple-200/80 bg-purple-50/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-purple-900">
+                    <span className="flex items-center gap-1.5">
+                      <Award className="size-3.5 text-purple-600" />
+                      <span>Hợp đồng ký mới</span>
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      Đạt tuần qua: <b className="text-purple-700">{kpiHopDong.thucTe}</b>
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10.5px] font-bold text-muted-foreground block">
+                      Target cam kết tuần tới:
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        value={camKet.hopDong.target}
+                        onChange={(e) =>
+                          setCamKet({ ...camKet, hopDong: { ...camKet.hopDong, target: Number(e.target.value) } })
+                        }
+                        className="w-full text-right font-mono text-base font-black text-purple-700 bg-background border border-border/80 rounded-lg px-2.5 py-1.5 focus:border-primary"
+                      />
+                      <span className="text-xs font-bold text-muted-foreground shrink-0">HĐ</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Doanh thu dự kiến */}
+                <div className="p-3.5 rounded-xl border border-emerald-200/80 bg-emerald-50/40 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-emerald-900">
+                    <span className="flex items-center gap-1.5">
+                      <DollarSign className="size-3.5 text-emerald-600" />
+                      <span>Doanh thu dự kiến</span>
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono truncate" title={fmtTien(kpiDoanhThu.thucTe)}>
+                      Đạt: <b className="text-emerald-700">{fmtTien(kpiDoanhThu.thucTe)}</b>
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10.5px] font-bold text-muted-foreground block">
+                      Target cam kết tuần tới:
+                    </label>
+                    <ONhapSoTien
+                      giaTri={camKet.doanhThu.target}
+                      onChange={(val) =>
+                        setCamKet({ ...camKet, doanhThu: { ...camKet.doanhThu, target: val } })
+                      }
+                      className="w-full text-right font-mono text-sm font-black text-emerald-700 bg-background border border-border/80 rounded-lg px-2.5 py-1.5 focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* BẢNG ĐỐI SOÁT CHỈ TIÊU CAM KẾT CHUẨN MỰC */}
+              <div className="overflow-x-auto rounded-xl border border-border/80">
                 <table className="w-full text-xs border-collapse">
                   <thead>
-                    <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
+                    <tr className="bg-muted/40 border-b border-border text-[11px] text-muted-foreground font-bold">
                       <th className="py-2.5 px-3 text-center w-12">STT</th>
                       <th className="py-2.5 px-4 text-left">Chỉ tiêu cam kết tuần tới</th>
                       <th className="py-2.5 px-3 text-center w-28">ĐVT</th>
+                      <th className="py-2.5 px-4 text-right w-44">Thực tế tuần qua</th>
                       <th className="py-2.5 px-4 text-right w-48">Mục tiêu cam kết (Target)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
-                    {/* 1. Khách hàng mới */}
                     <tr className="hover:bg-muted/20">
                       <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">1</td>
                       <td className="py-2.5 px-4 font-bold text-foreground">Số lượng khách hàng mới tiếp cận</td>
                       <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Khách hàng</td>
-                      <td className="py-2.5 px-4 text-right">
-                        <input
-                          type="number"
-                          value={camKet.khachMoi.target}
-                          onChange={(e) =>
-                            setCamKet({ ...camKet, khachMoi: { ...camKet.khachMoi, target: Number(e.target.value) } })
-                          }
-                          className="w-32 text-right font-mono text-xs font-bold text-blue-700 bg-transparent border border-border/80 rounded px-2 py-1"
-                        />
-                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono text-muted-foreground">{kpiKhachMoi.thucTe}</td>
+                      <td className="py-2.5 px-4 text-right font-mono font-bold text-blue-700">{camKet.khachMoi.target}</td>
                     </tr>
-
-                    {/* 2. Báo giá */}
                     <tr className="hover:bg-muted/20">
                       <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">2</td>
                       <td className="py-2.5 px-4 font-bold text-foreground">Tổng số báo giá dự kiến gửi</td>
                       <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Báo giá</td>
-                      <td className="py-2.5 px-4 text-right">
-                        <input
-                          type="number"
-                          value={camKet.baoGia.target}
-                          onChange={(e) =>
-                            setCamKet({ ...camKet, baoGia: { ...camKet.baoGia, target: Number(e.target.value) } })
-                          }
-                          className="w-32 text-right font-mono text-xs font-bold text-amber-700 bg-transparent border border-border/80 rounded px-2 py-1"
-                        />
-                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono text-muted-foreground">{kpiBaoGia.thucTe}</td>
+                      <td className="py-2.5 px-4 text-right font-mono font-bold text-amber-700">{camKet.baoGia.target}</td>
                     </tr>
-
-                    {/* 3. Dự án làm việc */}
                     <tr className="hover:bg-muted/20">
                       <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">3</td>
                       <td className="py-2.5 px-4 font-bold text-foreground">Tổng số dự án dự kiến làm việc</td>
                       <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Dự án</td>
-                      <td className="py-2.5 px-4 text-right">
-                        <input
-                          type="number"
-                          value={camKet.duAnLamViec.target}
-                          onChange={(e) =>
-                            setCamKet({ ...camKet, duAnLamViec: { ...camKet.duAnLamViec, target: Number(e.target.value) } })
-                          }
-                          className="w-32 text-right font-mono text-xs font-bold text-indigo-700 bg-transparent border border-border/80 rounded px-2 py-1"
-                        />
-                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono text-muted-foreground">{kpiDuAnLamViec.thucTe}</td>
+                      <td className="py-2.5 px-4 text-right font-mono font-bold text-indigo-700">{camKet.duAnLamViec.target}</td>
                     </tr>
-
-                    {/* 4. Hợp đồng ký mới */}
                     <tr className="hover:bg-muted/20">
                       <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">4</td>
                       <td className="py-2.5 px-4 font-bold text-foreground">Số hợp đồng / đơn hàng ký mới</td>
                       <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">Hợp đồng</td>
-                      <td className="py-2.5 px-4 text-right">
-                        <input
-                          type="number"
-                          value={camKet.hopDong.target}
-                          onChange={(e) =>
-                            setCamKet({ ...camKet, hopDong: { ...camKet.hopDong, target: Number(e.target.value) } })
-                          }
-                          className="w-32 text-right font-mono text-xs font-bold text-purple-700 bg-transparent border border-border/80 rounded px-2 py-1"
-                        />
-                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono text-muted-foreground">{kpiHopDong.thucTe}</td>
+                      <td className="py-2.5 px-4 text-right font-mono font-bold text-purple-700">{camKet.hopDong.target}</td>
                     </tr>
-
-                    {/* 5. Tổng doanh thu dự kiến thu về */}
                     <tr className="hover:bg-muted/20">
                       <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">5</td>
                       <td className="py-2.5 px-4 font-bold text-foreground">Tổng doanh thu dự kiến thu về</td>
                       <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">VNĐ</td>
-                      <td className="py-2.5 px-4 text-right">
-                        <ONhapSoTien
-                          giaTri={camKet.doanhThu.target}
-                          onChange={(val) =>
-                            setCamKet({ ...camKet, doanhThu: { ...camKet.doanhThu, target: val } })
-                          }
-                          className="w-40 text-right font-mono text-xs font-bold text-emerald-700 bg-transparent border border-border/80 rounded px-2 py-1"
-                        />
-                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono text-muted-foreground">{fmtTien(kpiDoanhThu.thucTe)}</td>
+                      <td className="py-2.5 px-4 text-right font-mono font-bold text-emerald-700">{fmtTien(camKet.doanhThu.target)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2335,9 +2615,10 @@ export default function BangBaoCaoTuanChuanVDCD({
 
           {/* =================================================================== */}
           {/* KHỐI IV: KẾ HOẠCH LỊCH LÀM VIỆC TUẦN TỚI (Lấy từ Lịch & Bàn làm việc) */}
+          {/* TRÌNH BÀY DẠNG 7 THẺ NGÀY (7-DAY SCHEDULE CARDS) CHUYÊN NGHIỆP TRỰC QUAN */}
           {/* =================================================================== */}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-            <div className="bg-muted/50 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs space-y-4 p-4">
+            <div className="bg-muted/50 -m-4 mb-0 px-4 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2">
                 <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center">
                   IV
@@ -2347,7 +2628,7 @@ export default function BangBaoCaoTuanChuanVDCD({
                     {laTruongPhongKD ? 'Kế hoạch lịch làm việc & Điều hành tuần tới' : 'Kế hoạch lịch làm việc tuần tới'}
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    Tự động tổng hợp 100% từ Lịch làm việc &amp; Bàn làm việc có sẵn trên hệ thống
+                    Tự động đồng bộ 100% từ Lịch làm việc &amp; Bàn làm việc có sẵn trên hệ thống ({infoTuanToi.nhanTieuDe})
                   </p>
                 </div>
               </div>
@@ -2361,60 +2642,71 @@ export default function BangBaoCaoTuanChuanVDCD({
                   <RefreshCw className="size-3.5" />
                   <span>Tải lại từ Lịch làm việc</span>
                 </button>
-                <span className="text-xs font-bold text-primary">
-                  {infoTuanToi.nhanTieuDe} ({infoTuanToi.khoangNgayNhan})
+                <span className="text-xs font-bold text-primary font-mono bg-primary/10 px-2.5 py-1 rounded-lg">
+                  {infoTuanToi.khoangNgayNhan}/{infoTuanToi.nam}
                 </span>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="bg-muted/30 border-b border-border text-[11px] text-muted-foreground font-bold">
-                    <th className="py-2.5 px-3 text-center w-12">STT</th>
-                    <th className="py-2.5 px-4 text-left w-52">Lịch tuần / Ngày</th>
-                    <th className="py-2.5 px-4 text-left">Nội dung công việc chi tiết (Đã đồng bộ từ Lịch làm việc)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {danhSach7NgayTuanToi.map((d) => (
-                    <tr key={d.ngayISO} className="hover:bg-muted/20">
-                      <td className="py-3 px-3 text-center font-bold text-muted-foreground">
+            {/* DANH SÁCH 7 THẺ NGÀY TRỰC QUAN */}
+            <div className="space-y-3 pt-2">
+              {danhSach7NgayTuanToi.map((d) => (
+                <div
+                  key={d.ngayISO}
+                  className="rounded-xl border border-border/80 bg-background/80 hover:border-primary/40 transition-colors p-3.5 flex flex-col md:flex-row md:items-start gap-4 shadow-2xs"
+                >
+                  {/* Cột Thứ & Ngày */}
+                  <div className="w-full md:w-44 shrink-0 flex md:flex-col items-center md:items-start justify-between gap-1 border-b md:border-b-0 md:border-r border-border/60 pb-2 md:pb-0 md:pr-3">
+                    <div className="flex items-center gap-2">
+                      <span className="size-6 rounded-md bg-muted text-muted-foreground font-black text-xs flex items-center justify-center">
                         {d.thuIndex}
-                      </td>
-                      <td className="py-3 px-4 font-bold text-foreground">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span>{d.tenThuNgay}</span>
-                            {d.soLich > 0 && (
-                              <span className="px-1.5 py-0.2 rounded-full bg-blue-500/15 text-blue-700 text-[10px] font-bold">
-                                {d.soLich} việc / lịch
-                              </span>
-                            )}
+                      </span>
+                      <span className="font-extrabold text-foreground text-xs">{d.tenThuNgay}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                      {d.soLich > 0 ? (
+                        <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-700 text-[10.5px] font-bold">
+                          {d.soLich} việc / lịch
+                        </span>
+                      ) : (
+                        <span className="text-[10.5px] text-muted-foreground">Chưa có lịch</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Cột Danh sách việc từ Lịch làm việc & Textarea ghi chú */}
+                  <div className="flex-1 space-y-2.5 min-w-0">
+                    {/* Danh sách các việc đã có từ CRM */}
+                    {d.tongHopArray && d.tongHopArray.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {d.tongHopArray.map((dong, vIdx) => (
+                          <div
+                            key={vIdx}
+                            className="text-[11px] px-2.5 py-1 rounded-lg border border-border/70 bg-muted/40 text-foreground flex items-center gap-1.5"
+                          >
+                            <CalendarCheck className="size-3 text-primary shrink-0" />
+                            <span className="font-medium">{dong}</span>
                           </div>
-                          {d.soLich > 0 && (
-                            <div className="text-[10px] text-muted-foreground font-normal">
-                              {d.soLichCongTac > 0 && `${d.soLichCongTac} lịch gặp `}
-                              {d.soViecBanLamViec > 0 && `• ${d.soViecBanLamViec} việc Bàn làm việc`}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <textarea
-                          rows={2}
-                          value={d.noiDung}
-                          onChange={(e) =>
-                            setGhiChuLichNgay({ ...ghiChuLichNgay, [d.ngayISO]: e.target.value })
-                          }
-                          placeholder="Chưa có lịch. Nhập nội dung hoặc lên lịch trên Bàn làm việc để tự động đồng bộ..."
-                          className="w-full bg-transparent border border-border/70 rounded-lg p-2 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary shadow-2xs resize-y"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Ô nhập kế hoạch / ghi chú ngày */}
+                    <div className="space-y-1">
+                      <textarea
+                        rows={2}
+                        value={d.noiDung}
+                        onChange={(e) =>
+                          setGhiChuLichNgay({ ...ghiChuLichNgay, [d.ngayISO]: e.target.value })
+                        }
+                        placeholder="Nội dung công việc chi tiết trong ngày (Đã tự động lấy từ Lịch làm việc, có thể gõ thêm)..."
+                        className="w-full bg-card border border-border/80 rounded-xl p-2.5 text-xs font-medium text-foreground focus:outline-hidden focus:border-primary shadow-2xs resize-y"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

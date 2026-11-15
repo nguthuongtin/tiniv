@@ -1,33 +1,73 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import ExcelJS from 'exceljs';
-import { FileSpreadsheet, Printer, X, Loader2 } from 'lucide-react';
-import type { LichGapKH } from '../../thu_vien/types/lich_gap_kh';
+import {
+  FileSpreadsheet,
+  Printer,
+  X,
+  Loader2,
+  Plus,
+  Trash2,
+  Edit2,
+  Save,
+  Check,
+  Building2,
+  SlidersHorizontal,
+  ChevronDown
+} from 'lucide-react';
 import {
   phanTichTuanISO,
+  dichChuyenTuanISO,
   type BaoCaoTuanVDCD,
   type DongKeHoachDuAnTuan
 } from '../../thu_vien/types/bao_cao_tuan_vdcd';
-import { dichChuyenTuanISO } from '../../thu_vien/types/bao_cao_tuan_vdcd';
+import type { LichGapKH } from '../../thu_vien/types/lich_gap_kh';
+import type { HoSoDuAn } from '../../thu_vien/types/du_an';
+import type { KhachHang } from '../../thu_vien/types/khach_hang';
+import type { NhanSu } from '../../thu_vien/types/nhan_su';
+import type { SanPhamDichVu } from '../../thu_vien/types/san_pham_dich_vu';
+import { layCauHinhGiaiDoanTheoKey } from '../../thu_vien/cau_hinh/giai_doan_du_an';
+
+export interface DuAnTiemNangTongHopExport {
+  stt?: number;
+  id: string;
+  tenDuAn: string;
+  tenKhachHang: string;
+  tenNhanVienPhuTrach?: string;
+  nguoiLienHe?: string;
+  soDienThoai?: string;
+  sanPhamDichVu?: string;
+  giaTriDeal?: number;
+  giaiDoanKey?: string;
+  tenGiaiDoan?: string;
+  mucDoTiemNang?: string;
+  xacSuatPct?: number;
+}
 
 interface Props {
   mo: boolean;
   onDong: () => void;
   baoCao: BaoCaoTuanVDCD;
   lichTuanToi?: (LichGapKH & { ten_nhan_vien?: string })[];
+  dsDuAnTiemNangChon?: DuAnTiemNangTongHopExport[];
+  dsTatCaDuAnCRM?: HoSoDuAn[];
+  dsKhachHang?: KhachHang[];
+  dsNhanSu?: NhanSu[];
+  dsSanPham?: SanPhamDichVu[];
   tieuDePhu?: string;
 }
 
 const fmtTien = (val?: number | null): string => {
   const n = Number(val || 0);
-  if (!n) return '';
-  return new Intl.NumberFormat('vi-VN').format(Math.round(n));
+  return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + ' ₫';
 };
+
+const formatTienTe = fmtTien;
 
 const fmtPct = (tu: number, mau: number): string => {
   if (!mau || mau <= 0) return '';
-  return `${((tu / mau) * 100).toFixed(2).replace('.', ',')}%`;
+  return `${((tu / mau) * 100).toFixed(1).replace('.', ',')}%`;
 };
 
 const fmtPctInt = (tu: number, mau: number): string => {
@@ -43,6 +83,13 @@ const chiaTrang = <T,>(items: T[], kichThuocTrang: number): T[][] => {
   }
   return pages;
 };
+
+function tinhChieuCaoHangExcel(text: string, colWidthApprox: number = 35, minHeight: number = 26): number {
+  if (!text) return minHeight;
+  const lines = text.split('\n');
+  const count = lines.reduce((acc, l) => acc + Math.max(1, Math.ceil(l.length / colWidthApprox)), 0);
+  return Math.max(minHeight, count * 18 + 6);
+}
 
 const SlideFrame: React.FC<{ children: React.ReactNode; nenTrang?: boolean }> = ({
   children,
@@ -78,22 +125,6 @@ const SlideFrame: React.FC<{ children: React.ReactNode; nenTrang?: boolean }> = 
   </section>
 );
 
-export interface DuAnTiemNangTongHopExport {
-  stt?: number;
-  id: string;
-  tenDuAn: string;
-  tenKhachHang: string;
-  tenNhanVienPhuTrach?: string;
-  nguoiLienHe?: string;
-  soDienThoai?: string;
-  sanPhamDichVu?: string;
-  giaTriDeal?: number;
-  giaiDoanKey?: string;
-  tenGiaiDoan?: string;
-  mucDoTiemNang?: string;
-  xacSuatPct?: number;
-}
-
 export async function xuatExcelBaoCaoTuanVDCD(
   baoCao: BaoCaoTuanVDCD,
   lichTuanToi: (LichGapKH & { ten_nhan_vien?: string })[] = [],
@@ -103,32 +134,47 @@ export async function xuatExcelBaoCaoTuanVDCD(
   const infoTuan = phanTichTuanISO(baoCao.tuan);
   const infoTuanToi = phanTichTuanISO(dichChuyenTuanISO(baoCao.tuan, 1));
 
+  const borderThin: Partial<ExcelJS.Borders> = {
+    top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+    left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+    bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+    right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+  };
+
   const styleHeader = (row: ExcelJS.Row) => {
     row.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD11317' } };
-      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 10.5 };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
+        top: { style: 'thin', color: { argb: 'FF991B1B' } },
+        left: { style: 'thin', color: { argb: 'FF991B1B' } },
+        bottom: { style: 'thin', color: { argb: 'FF991B1B' } },
+        right: { style: 'thin', color: { argb: 'FF991B1B' } }
       };
     });
-    row.height = 28;
+    row.height = 30;
   };
 
-  const styleBody = (row: ExcelJS.Row) => {
-    row.eachCell((cell) => {
-      cell.font = { size: 11 };
-      cell.alignment = { vertical: 'middle', wrapText: true };
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-        bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+  const styleBody = (row: ExcelJS.Row, alignments?: ('left' | 'center' | 'right')[]) => {
+    let maxVisual = 1;
+    row.eachCell((cell, colNumber) => {
+      const align = alignments?.[colNumber - 1] || 'left';
+      cell.font = { size: 10 };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: align,
+        wrapText: true,
+        indent: align === 'left' ? 1 : 0
       };
+      cell.border = borderThin;
+
+      const strVal = cell.value != null ? String(cell.value) : '';
+      const lines = strVal.split('\n');
+      const linesCell = lines.reduce((acc, l) => acc + Math.max(1, Math.ceil(l.length / 35)), 0);
+      if (linesCell > maxVisual) maxVisual = linesCell;
     });
+    row.height = Math.max(26, maxVisual * 18 + 6);
   };
 
   // Sheet 1: Doanh thu
@@ -138,33 +184,35 @@ export async function xuatExcelBaoCaoTuanVDCD(
   styleHeader(s1.getRow(2));
   const rKy = s1.addRow([
     'Doanh thu ký kết',
-    baoCao.dt_tuan_ky_ket,
-    baoCao.mtd_ky_ket,
-    baoCao.ytd_ky_ket,
+    formatTienTe(baoCao.dt_tuan_ky_ket),
+    formatTienTe(baoCao.mtd_ky_ket),
+    formatTienTe(baoCao.ytd_ky_ket),
     fmtPct(baoCao.mtd_ky_ket, baoCao.kpi_thang_ky_ket),
     fmtPct(baoCao.ytd_ky_ket, baoCao.kpi_nam_ky_ket)
   ]);
   const rVe = s1.addRow([
     'Doanh thu tiền về',
-    baoCao.dt_tuan_tien_ve,
-    baoCao.mtd_tien_ve,
-    baoCao.ytd_tien_ve,
+    formatTienTe(baoCao.dt_tuan_tien_ve),
+    formatTienTe(baoCao.mtd_tien_ve),
+    formatTienTe(baoCao.ytd_tien_ve),
     fmtPct(baoCao.mtd_tien_ve, baoCao.kpi_thang_tien_ve),
     fmtPct(baoCao.ytd_tien_ve, baoCao.kpi_nam_tien_ve)
   ]);
-  styleBody(rKy);
-  styleBody(rVe);
+  styleBody(rKy, ['left', 'right', 'right', 'right', 'center', 'center']);
+  styleBody(rVe, ['left', 'right', 'right', 'right', 'center', 'center']);
   s1.addRow([]);
+
   const hChiTiet = s1.addRow(['TÊN CÔNG TY / CÁ NHÂN', 'TÊN DỰ ÁN', 'TRẠNG THÁI', 'DOANH THU KÝ KẾT', 'DOANH THU TIỀN VỀ']);
   styleHeader(hChiTiet);
   for (const d of baoCao.chi_tiet_doanh_thu) {
-    styleBody(s1.addRow([d.ten_khach_hang, d.ten_du_an, d.trang_thai, d.doanh_thu_ky_ket, d.doanh_thu_tien_ve]));
+    const row = s1.addRow([d.ten_khach_hang, d.ten_du_an, d.trang_thai, formatTienTe(d.doanh_thu_ky_ket), formatTienTe(d.doanh_thu_tien_ve)]);
+    styleBody(row, ['left', 'left', 'center', 'right', 'right']);
   }
-  s1.columns = [{ width: 32 }, { width: 38 }, { width: 22 }, { width: 20 }, { width: 20 }, { width: 16 }];
+  s1.columns = [{ width: 34 }, { width: 40 }, { width: 22 }, { width: 22 }, { width: 22 }, { width: 16 }];
 
   // Sheet 2: Tình trạng DA & Nguồn
   const s2 = wb.addWorksheet('Tinh_Trang_DA');
-  const hTT = s2.addRow(['TÌNH TRẠNG DỰ ÁN', 'Tuần trước', 'Tuần này']);
+  const hTT = s2.addRow(['TÌNH TRẠNG DỰ ÁN TRIỂN KHAI TRONG TUẦN', 'Tuần trước', 'Tuần này']);
   styleHeader(hTT);
   [
     ['TỔNG TIẾP CẬN', baoCao.tinh_trang_tuan_truoc.tong_tiep_can, baoCao.tinh_trang_tuan_nay.tong_tiep_can],
@@ -172,136 +220,126 @@ export async function xuatExcelBaoCaoTuanVDCD(
     ['BÁO GIÁ', baoCao.tinh_trang_tuan_truoc.bao_gia, baoCao.tinh_trang_tuan_nay.bao_gia],
     ['HỢP ĐỒNG', baoCao.tinh_trang_tuan_truoc.hop_dong, baoCao.tinh_trang_tuan_nay.hop_dong],
     ['KHÔNG PHÙ HỢP', baoCao.tinh_trang_tuan_truoc.khong_phu_hop, baoCao.tinh_trang_tuan_nay.khong_phu_hop]
-  ].forEach((r) => styleBody(s2.addRow(r)));
+  ].forEach((r) => {
+    const row = s2.addRow(r);
+    styleBody(row, ['left', 'center', 'center']);
+  });
+
   s2.addRow([]);
-  const hNguon = s2.addRow(['NGUỒN TIẾP CẬN (%)', 'Tuần trước', 'Tuần này']);
+  const hNguon = s2.addRow(['CƠ CẤU NGUỒN TIẾP CẬN (%)', 'Tuần trước', 'Tuần này']);
   styleHeader(hNguon);
   [
     ['Giới thiệu', `${baoCao.nguon_tuan_truoc.gioi_thieu}%`, `${baoCao.nguon_tuan_nay.gioi_thieu}%`],
     ['Tự khai thác', `${baoCao.nguon_tuan_truoc.tu_khai_thac}%`, `${baoCao.nguon_tuan_nay.tu_khai_thac}%`],
     ['Hotline & Fanpage', `${baoCao.nguon_tuan_truoc.hotline_fanpage}%`, `${baoCao.nguon_tuan_nay.hotline_fanpage}%`],
     ['Đấu thầu Online', `${baoCao.nguon_tuan_truoc.dau_thau_online}%`, `${baoCao.nguon_tuan_nay.dau_thau_online}%`]
-  ].forEach((r) => styleBody(s2.addRow(r)));
-  s2.columns = [{ width: 32 }, { width: 18 }, { width: 18 }];
+  ].forEach((r) => {
+    const row = s2.addRow(r);
+    styleBody(row, ['left', 'center', 'center']);
+  });
+  s2.columns = [{ width: 34 }, { width: 20 }, { width: 20 }];
 
-  // Helper sheet Kế hoạch
-  const addPlanSheet = (tenSheet: string, ds: DongKeHoachDuAnTuan[], coDeXuat: boolean) => {
-    const sh = wb.addWorksheet(tenSheet);
-    const cols = ['TÊN KHÁCH HÀNG', 'ĐƠN VỊ / GĐ DA', 'SẢN PHẨM', 'TRẠNG THÁI', 'DOANH THU KÝ KẾT', 'DOANH THU TIỀN VỀ'];
-    if (coDeXuat) cols.push('ĐỀ XUẤT');
-    styleHeader(sh.addRow(cols));
-    for (const d of ds) {
-      const row = [
-        d.ten_khach_hang,
-        d.giam_doc_du_an,
-        d.san_pham,
-        d.trang_thai,
-        d.doanh_thu_ky_ket,
-        d.ghi_chu_tien_ve ? `${fmtTien(d.doanh_thu_tien_ve)} (${d.ghi_chu_tien_ve})` : d.doanh_thu_tien_ve
-      ];
-      if (coDeXuat) row.push(d.de_xuat || '');
-      styleBody(sh.addRow(row));
-    }
-    sh.columns = [
-      { width: 30 },
-      { width: 18 },
-      { width: 34 },
-      { width: 22 },
-      { width: 20 },
-      { width: 24 },
-      ...(coDeXuat ? [{ width: 28 }] : [])
-    ];
-  };
+  // Sheet Kế hoạch Dự án Tiềm năng
+  const dsTNDung: DuAnTiemNangTongHopExport[] = dsDuAnTiemNangChon && dsDuAnTiemNangChon.length > 0
+    ? dsDuAnTiemNangChon
+    : (baoCao.ke_hoach_tiem_nang || []).map((x, idx) => ({
+        stt: idx + 1,
+        id: x.du_an_id || x.id || `tn_${idx}`,
+        tenDuAn: x.san_pham || 'Dự án',
+        tenKhachHang: x.ten_khach_hang || 'Khách hàng',
+        tenNhanVienPhuTrach: x.giam_doc_du_an || '',
+        nguoiLienHe: '',
+        soDienThoai: '',
+        sanPhamDichVu: x.san_pham || 'Khảo sát / Đo đạc',
+        giaTriDeal: x.doanh_thu_ky_ket || 0,
+        giaiDoanKey: 'dang_tiep_can',
+        tenGiaiDoan: x.trang_thai || 'Đang bám sát',
+        mucDoTiemNang: 'cao',
+        xacSuatPct: 70
+      }));
 
-  addPlanSheet('KH_Dong_Tien', baoCao.ke_hoach_dong_tien, false);
+  const sTN = wb.addWorksheet('KH_DA_Tiem_Nang');
+  sTN.addRow([`DANH SÁCH DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT (TIỀM NĂNG CAO) — ${baoCao.ten_chi_nhanh || baoCao.ten_nhan_vien}`]);
+  styleHeader(sTN.addRow([
+    'STT',
+    'TÊN DỰ ÁN',
+    'KHÁCH HÀNG / CĐT',
+    'PHỤ TRÁCH / KINH DOANH',
+    'NGƯỜI LIÊN HỆ & SĐT',
+    'GIÁ TRỊ DEAL / HĐ (VNĐ)',
+    'GIAI ĐOẠN',
+    'MỨC TIỀM NĂNG',
+    'DỊCH VỤ'
+  ]));
 
-  // Sheet Kế hoạch Dự án Tiềm năng cao (Căn cứ theo danh sách đã chọn)
-  if (dsDuAnTiemNangChon && dsDuAnTiemNangChon.length > 0) {
-    const sTN = wb.addWorksheet('KH_DA_Tiem_Nang');
-    sTN.addRow([`DANH SÁCH DỰ ÁN TRỌNG ĐIỂM ĐANG BÁM SÁT (TIỀM NĂNG CAO) — ${baoCao.ten_chi_nhanh || baoCao.ten_nhan_vien}`]);
-    styleHeader(sTN.addRow([
-      'STT',
-      'TÊN DỰ ÁN',
-      'KHÁCH HÀNG / CĐT',
-      'PHỤ TRÁCH / KINH DOANH',
-      'NGƯỜI LIÊN HỆ & SĐT',
-      'GIÁ TRỊ DEAL / HĐ (VNĐ)',
-      'GIAI ĐOẠN',
-      'MỨC TIỀM NĂNG',
-      'DỊCH VỤ'
-    ]));
-
-    let tongGiaTriTN = 0;
-    dsDuAnTiemNangChon.forEach((d, idx) => {
-      const gt = Number(d.giaTriDeal || 0);
-      tongGiaTriTN += gt;
-      const r = sTN.addRow([
-        idx + 1,
-        d.tenDuAn,
-        d.tenKhachHang,
-        d.tenNhanVienPhuTrach || '—',
-        `${d.nguoiLienHe || ''}${d.soDienThoai ? ` (${d.soDienThoai})` : ''}`.trim() || '—',
-        gt > 0 ? fmtTien(gt) : '—',
-        d.tenGiaiDoan || d.giaiDoanKey || 'Đang bám sát',
-        d.mucDoTiemNang === 'rat_cao' ? 'Rất cao (70-90%)' : 'Cao (50-70%)',
-        d.sanPhamDichVu || 'Khảo sát / Đo đạc'
-      ]);
-      styleBody(r);
-      r.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
-      r.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
-      r.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
-    });
-
-    const rTongTN = sTN.addRow([
-      '',
-      '',
-      '',
-      'TỔNG GIÁ TRỊ DEAL BÁM SÁT',
-      `${dsDuAnTiemNangChon.length} dự án`,
-      fmtTien(tongGiaTriTN),
-      '',
-      '',
-      ''
+  let tongGiaTriTN = 0;
+  dsTNDung.forEach((d, idx) => {
+    const gt = Number(d.giaTriDeal || 0);
+    tongGiaTriTN += gt;
+    const r = sTN.addRow([
+      idx + 1,
+      d.tenDuAn,
+      d.tenKhachHang,
+      d.tenNhanVienPhuTrach || '—',
+      `${d.nguoiLienHe || ''}${d.soDienThoai ? ` (${d.soDienThoai})` : ''}`.trim() || '—',
+      formatTienTe(gt),
+      d.tenGiaiDoan || d.giaiDoanKey || 'Đang bám sát',
+      d.mucDoTiemNang === 'rat_cao' ? 'Rất cao (90%)' : 'Cao (70%)',
+      d.sanPhamDichVu || 'Khảo sát / Đo đạc'
     ]);
-    rTongTN.height = 26;
-    rTongTN.eachCell((cell) => {
-      cell.font = { bold: true, size: 11, color: { argb: 'FFB91C1C' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
-    });
-    rTongTN.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+    styleBody(r, ['center', 'left', 'left', 'left', 'left', 'right', 'center', 'center', 'left']);
+  });
 
-    sTN.columns = [
-      { width: 8 },
-      { width: 34 },
-      { width: 28 },
-      { width: 24 },
-      { width: 26 },
-      { width: 24 },
-      { width: 20 },
-      { width: 22 },
-      { width: 24 }
-    ];
-  } else {
-    addPlanSheet('KH_DA_Tiem_Nang', baoCao.ke_hoach_tiem_nang, false);
-  }
+  const rTongTN = sTN.addRow([
+    '',
+    '',
+    '',
+    'TỔNG GIÁ TRỊ DEAL BÁM SÁT',
+    `${dsTNDung.length} dự án`,
+    formatTienTe(tongGiaTriTN),
+    '',
+    '',
+    ''
+  ]);
+  rTongTN.height = 28;
+  rTongTN.eachCell((cell) => {
+    cell.font = { bold: true, size: 10.5, color: { argb: 'FFB91C1C' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+    cell.border = borderThin;
+  });
+  rTongTN.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+  rTongTN.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
+
+  sTN.columns = [
+    { width: 8 },
+    { width: 36 },
+    { width: 30 },
+    { width: 24 },
+    { width: 26 },
+    { width: 24 },
+    { width: 22 },
+    { width: 22 },
+    { width: 26 }
+  ];
 
   // Sheet Lịch công tác tuần tới
-  const sLich = wb.addWorksheet('Lich_Cong_Tac_Tuan');
-  sLich.addRow([`LỊCH CÔNG TÁC ${infoTuanToi.nhanTieuDe} (${infoTuanToi.khoangNgayNhan})`]);
-  styleHeader(sLich.addRow(['NGÀY', 'GIỜ', 'NHÂN SỰ', 'KHÁCH HÀNG / ĐỊA BÀN', 'NỘI DUNG CÔNG TÁC', 'TRẠNG THÁI']));
-  for (const l of lichTuanToi) {
-    styleBody(
-      sLich.addRow([
+  if (lichTuanToi.length > 0) {
+    const sLich = wb.addWorksheet('Lich_Cong_Tac_Tuan');
+    sLich.addRow([`LỊCH CÔNG TÁC ${infoTuanToi.nhanTieuDe} (${infoTuanToi.khoangNgayNhan})`]);
+    styleHeader(sLich.addRow(['NGÀY', 'GIỜ', 'NHÂN SỰ', 'KHÁCH HÀNG / ĐỊA BÀN', 'NỘI DUNG CÔNG TÁC', 'TRẠNG THÁI']));
+    for (const l of lichTuanToi) {
+      const r = sLich.addRow([
         l.ngay,
         `${l.gio_bat_dau || ''} - ${l.gio_ket_thuc || ''}`,
         l.ten_nhan_vien || baoCao.ten_nhan_vien,
         `${l.ten_khach_hang}${l.dia_diem ? ` (${l.dia_diem})` : ''}`,
         l.noi_dung || l.tieu_de,
         l.trang_thai === 'da_hoan_thanh' ? 'Đã gặp' : 'Kế hoạch'
-      ])
-    );
+      ]);
+      styleBody(r, ['center', 'center', 'left', 'left', 'left', 'center']);
+    }
+    sLich.columns = [{ width: 14 }, { width: 16 }, { width: 24 }, { width: 32 }, { width: 40 }, { width: 15 }];
   }
-  sLich.columns = [{ width: 14 }, { width: 15 }, { width: 22 }, { width: 30 }, { width: 36 }, { width: 14 }];
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {
@@ -320,10 +358,17 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   onDong,
   baoCao,
   lichTuanToi = [],
+  dsDuAnTiemNangChon = [],
+  dsTatCaDuAnCRM = [],
+  dsKhachHang = [],
+  dsNhanSu = [],
+  dsSanPham = [],
   tieuDePhu
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dangXuatExcel, setDangXuatExcel] = useState(false);
+  const [moBangQuanLyDA, setMoBangQuanLyDA] = useState(false);
+  const [duAnThemId, setDuAnThemId] = useState('');
 
   const infoTuan = useMemo(() => phanTichTuanISO(baoCao.tuan), [baoCao.tuan]);
   const infoTuanToi = useMemo(
@@ -331,10 +376,35 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
     [baoCao.tuan]
   );
 
+  // Danh sách dự án xuất slide/PDF có thể thêm, sửa, xoá bớt
+  const [dsDuAnXuat, setDsDuAnXuat] = useState<DuAnTiemNangTongHopExport[]>(() => {
+    if (dsDuAnTiemNangChon && dsDuAnTiemNangChon.length > 0) return dsDuAnTiemNangChon;
+    return (baoCao.ke_hoach_tiem_nang || []).map((x, idx) => ({
+      stt: idx + 1,
+      id: x.du_an_id || x.id || `da_${idx}`,
+      tenDuAn: x.san_pham || 'Dự án',
+      tenKhachHang: x.ten_khach_hang || 'Khách hàng',
+      tenNhanVienPhuTrach: x.giam_doc_du_an || '',
+      giaTriDeal: x.doanh_thu_ky_ket || 0,
+      tenGiaiDoan: x.trang_thai || 'Đang bám sát',
+      mucDoTiemNang: 'cao',
+      xacSuatPct: 70
+    }));
+  });
+
+  // Đồng bộ lại khi dsDuAnTiemNangChon từ props thay đổi
+  React.useEffect(() => {
+    if (dsDuAnTiemNangChon && dsDuAnTiemNangChon.length > 0) {
+      setDsDuAnXuat(dsDuAnTiemNangChon);
+    }
+  }, [dsDuAnTiemNangChon]);
+
+  // Phân trang cho Slide Dự án tiềm năng: 5 dự án mỗi slide
   const trangTiemNang = useMemo(
-    () => chiaTrang(baoCao.ke_hoach_tiem_nang, 6),
-    [baoCao.ke_hoach_tiem_nang]
+    () => chiaTrang(dsDuAnXuat, 5),
+    [dsDuAnXuat]
   );
+
   const trangDongTien = useMemo(
     () => chiaTrang(baoCao.ke_hoach_dong_tien, 6),
     [baoCao.ke_hoach_dong_tien]
@@ -388,16 +458,58 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   const handleXuatExcel = async () => {
     setDangXuatExcel(true);
     try {
-      await xuatExcelBaoCaoTuanVDCD(baoCao, lichTuanToi);
+      await xuatExcelBaoCaoTuanVDCD(baoCao, lichTuanToi, dsDuAnXuat);
     } finally {
       setDangXuatExcel(false);
     }
   };
 
-  const renderBangKeHoach = (
+  // Thêm dự án từ CRM vào danh sách Slide
+  const handleThemDuAnTuCRM = () => {
+    if (!duAnThemId) return;
+    const da = dsTatCaDuAnCRM.find((d) => d.id === duAnThemId);
+    if (!da) return;
+
+    const kh = dsKhachHang.find((k) => k.id === da.khach_hang_id);
+    const ns = dsNhanSu.find((n) => n.id === da.nguoi_phu_trach_id);
+    const sp = dsSanPham.find((s) => s.id === da.san_pham_dich_vu_id);
+    const cfg = layCauHinhGiaiDoanTheoKey(da.giai_doan);
+
+    const daMoi: DuAnTiemNangTongHopExport = {
+      id: da.id,
+      tenDuAn: da.ten_du_an,
+      tenKhachHang: kh?.ten_khach_hang || '',
+      tenNhanVienPhuTrach: ns?.ho_va_ten || '',
+      soDienThoai: kh?.so_dien_thoai || '',
+      sanPhamDichVu: sp?.ten_san_pham || da.san_pham_khac_mo_ta || 'Khảo sát / Đo đạc',
+      giaTriDeal: Number(da.gia_tri_hop_dong || da.gia_tri_du_kien || 0),
+      giaiDoanKey: da.giai_doan,
+      tenGiaiDoan: cfg.nhan_ngan,
+      mucDoTiemNang: da.muc_do_tiem_nang || 'cao',
+      xacSuatPct: da.muc_do_tiem_nang === 'rat_cao' ? 90 : 70
+    };
+
+    setDsDuAnXuat((prev) => [...prev, daMoi]);
+    setDuAnThemId('');
+  };
+
+  // Sửa trường thông tin dự án
+  const handleSuaTruong = (idx: number, field: keyof DuAnTiemNangTongHopExport, val: any) => {
+    setDsDuAnXuat((prev) => {
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], [field]: val };
+      return copy;
+    });
+  };
+
+  // Xoá dự án khỏi Slide
+  const handleXoaDuAn = (idx: number) => {
+    setDsDuAnXuat((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const renderBangKeHoachDongTien = (
     tieuDeCon: string,
-    danhSach: DongKeHoachDuAnTuan[],
-    coCotDeXuat = false
+    danhSach: DongKeHoachDuAnTuan[]
   ) => (
     <>
       <div className="text-center mb-4">
@@ -428,16 +540,11 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
             <th className="border border-slate-700 py-2.5 px-2.5 text-center font-bold w-[16%]">
               Doanh thu tiền về
             </th>
-            {coCotDeXuat && (
-              <th className="border border-slate-700 py-2.5 px-2.5 text-center font-bold w-[15%]">
-                ĐỀ XUẤT
-              </th>
-            )}
           </tr>
         </thead>
         <tbody>
           {(danhSach.length > 0 ? danhSach : Array.from({ length: 4 }, () => null)).map((row, idx) => (
-            <tr key={row?.id || idx} className="h-[54px]">
+            <tr key={row?.id || idx} className="h-[52px]">
               <td className="border border-slate-700 px-2.5 py-1.5 font-medium">
                 {row?.ten_khach_hang || ''}
               </td>
@@ -458,9 +565,6 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                       .join(' ')
                   : ''}
               </td>
-              {coCotDeXuat && (
-                <td className="border border-slate-700 px-2.5 py-1.5">{row?.de_xuat || ''}</td>
-              )}
             </tr>
           ))}
         </tbody>
@@ -469,7 +573,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-[120] bg-slate-950/80 backdrop-blur-xs flex flex-col">
+    <div className="fixed inset-0 z-[120] bg-slate-950/85 backdrop-blur-xs flex flex-col">
       {/* Thanh công cụ modal */}
       <div className="flex items-center justify-between px-5 py-3 bg-slate-900 border-b border-slate-800 text-white shrink-0">
         <div>
@@ -479,6 +583,20 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
           {tieuDePhu && <p className="text-xs text-slate-400">{tieuDePhu}</p>}
         </div>
         <div className="flex items-center gap-2">
+          {/* Nút bật/tắt quản lý danh sách dự án slide */}
+          <button
+            type="button"
+            onClick={() => setMoBangQuanLyDA((v) => !v)}
+            className={`h-9 px-3 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition ${
+              moBangQuanLyDA
+                ? 'bg-blue-600 border-blue-500 text-white'
+                : 'border-slate-700 hover:bg-slate-800 text-slate-200'
+            }`}
+          >
+            <SlidersHorizontal className="size-3.5" />
+            <span>Quản lý dự án Slide ({dsDuAnXuat.length})</span>
+          </button>
+
           <button
             type="button"
             onClick={handleXuatExcel}
@@ -506,6 +624,135 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
           </button>
         </div>
       </div>
+
+      {/* PANEL QUẢN LÝ DỰ ÁN TRƯỚC KHI XUẤT (THÊM, SỬA, XOÁ) */}
+      {moBangQuanLyDA && (
+        <div className="bg-slate-900 border-b border-slate-800 px-5 py-4 max-h-[360px] overflow-y-auto text-xs space-y-3 shrink-0 shadow-2xl">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800 flex-wrap gap-2">
+            <div>
+              <h4 className="font-bold text-white text-sm">
+                Quản lý danh sách dự án trọng điểm xuất Slide &amp; File
+              </h4>
+              <p className="text-[11px] text-slate-400">
+                Cho phép thêm, sửa giá trị, giai đoạn hoặc xoá bớt dự án trước khi xuất file Slide và PDF
+              </p>
+            </div>
+
+            {/* Ô thêm dự án từ CRM */}
+            <div className="flex items-center gap-2">
+              <select
+                value={duAnThemId}
+                onChange={(e) => setDuAnThemId(e.target.value)}
+                className="h-8.5 px-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-xs focus:border-blue-500 max-w-xs"
+              >
+                <option value="">-- Chọn dự án từ CRM để thêm --</option>
+                {dsTatCaDuAnCRM
+                  .filter((d) => !dsDuAnXuat.some((x) => x.id === d.id))
+                  .slice(0, 30)
+                  .map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.ten_du_an}
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleThemDuAnTuCRM}
+                disabled={!duAnThemId}
+                className="h-8.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold inline-flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="size-3.5" />
+                <span>Thêm</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-slate-300 border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 font-bold text-[11px]">
+                  <th className="py-2 text-center w-10">STT</th>
+                  <th className="py-2 text-left">Tên dự án</th>
+                  <th className="py-2 text-left">Khách hàng</th>
+                  <th className="py-2 text-left">Phụ trách</th>
+                  <th className="py-2 text-right w-36">Giá trị deal (VND)</th>
+                  <th className="py-2 text-left w-32">Giai đoạn</th>
+                  <th className="py-2 text-center w-28">Tiềm năng</th>
+                  <th className="py-2 text-center w-12">Xoá</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {dsDuAnXuat.map((d, idx) => (
+                  <tr key={d.id || idx} className="hover:bg-slate-800/40">
+                    <td className="py-2 text-center text-slate-400">{idx + 1}</td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        value={d.tenDuAn}
+                        onChange={(e) => handleSuaTruong(idx, 'tenDuAn', e.target.value)}
+                        className="w-full bg-slate-800/80 border border-slate-700 rounded px-2 py-1 text-white text-xs font-semibold"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        value={d.tenKhachHang}
+                        onChange={(e) => handleSuaTruong(idx, 'tenKhachHang', e.target.value)}
+                        className="w-full bg-slate-800/80 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        value={d.tenNhanVienPhuTrach || ''}
+                        onChange={(e) => handleSuaTruong(idx, 'tenNhanVienPhuTrach', e.target.value)}
+                        className="w-full bg-slate-800/80 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs"
+                      />
+                    </td>
+                    <td className="py-2 pr-2 text-right">
+                      <input
+                        type="number"
+                        value={d.giaTriDeal || ''}
+                        onChange={(e) => handleSuaTruong(idx, 'giaTriDeal', Number(e.target.value))}
+                        className="w-32 bg-slate-800/80 border border-slate-700 rounded px-2 py-1 text-emerald-400 text-xs font-mono text-right"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        value={d.tenGiaiDoan || d.giaiDoanKey || ''}
+                        onChange={(e) => handleSuaTruong(idx, 'tenGiaiDoan', e.target.value)}
+                        className="w-full bg-slate-800/80 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs"
+                      />
+                    </td>
+                    <td className="py-2 pr-2 text-center">
+                      <select
+                        value={d.mucDoTiemNang || 'cao'}
+                        onChange={(e) => handleSuaTruong(idx, 'mucDoTiemNang', e.target.value)}
+                        className="bg-slate-800/80 border border-slate-700 rounded px-1.5 py-1 text-xs text-slate-200"
+                      >
+                        <option value="rat_cao">Rất cao (90%)</option>
+                        <option value="cao">Cao (70%)</option>
+                        <option value="trung_binh">Trung bình (50%)</option>
+                      </select>
+                    </td>
+                    <td className="py-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleXoaDuAn(idx)}
+                        className="p-1 rounded text-rose-400 hover:bg-rose-500/20 cursor-pointer"
+                        title="Xoá khỏi slide"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Khu vực preview các slide 16:9 */}
       <div className="flex-1 overflow-y-auto py-6 px-4 space-y-6">
@@ -680,7 +927,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
             </table>
           </SlideFrame>
 
-          {/* SLIDE 3: BÁO CÁO TÌNH TRẠNG DỰ ÁN */}
+          {/* SLIDE 3: BÁO CÁO TÌNH TRẠNG DỰ ÁN TRIỂN KHAI TRONG TUẦN */}
           <SlideFrame>
             <div className="text-center mb-4">
               <h2 className="text-[24px] font-black text-slate-900 uppercase">
@@ -774,7 +1021,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
             </table>
 
             <div className="mt-auto pt-2 text-[11px] italic font-bold text-slate-800">
-              Chỉ áp dụng với các dự án đang triển khai, không bao gồm các dự án đã nghiệm thu hoặc dừng hoạt động ở các kỳ trước
+              Áp dụng với các dự án đang triển khai bám sát trong tuần, không tính các dự án đã nghiệm thu hoặc dừng từ kỳ trước
             </div>
           </SlideFrame>
 
@@ -820,14 +1067,91 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
           {/* SLIDE 5+: KẾ HOẠCH DÒNG TIỀN */}
           {trangDongTien.map((items, idx) => (
             <SlideFrame key={`dt_${idx}`}>
-              {renderBangKeHoach('- DÒNG TIỀN -', items, false)}
+              {renderBangKeHoachDongTien('- DÒNG TIỀN -', items)}
             </SlideFrame>
           ))}
 
-          {/* SLIDE 6+: KẾ HOẠCH DỰ ÁN TIỀM NĂNG */}
+          {/* SLIDE 6+: KẾ HOẠCH DỰ ÁN TIỀM NĂNG (LẤY TỪ KẾ HOẠCH TUẦN CỦA SALE & CÓ THỂ CHỈNH SỬA) */}
           {trangTiemNang.map((items, idx) => (
             <SlideFrame key={`tn_${idx}`}>
-              {renderBangKeHoach('- DA TIỀM NĂNG -', items, false)}
+              <div className="text-center mb-4">
+                <h2 className="text-[24px] font-black tracking-tight text-slate-900 uppercase">
+                  KẾ HOẠCH TRIỂN KHAI TUẦN TIẾP THEO
+                </h2>
+                <div className="text-[20px] font-black text-[#D11317] uppercase">
+                  - DỰ ÁN TRỌNG ĐIỂM TIỀM NĂNG CAO {trangTiemNang.length > 1 ? `(Trang ${idx + 1}/${trangTiemNang.length})` : ''} -
+                </div>
+              </div>
+
+              <table className="w-full border-collapse text-[12px] bg-white">
+                <thead>
+                  <tr className="bg-[#D11317] text-white">
+                    <th className="border border-slate-700 py-2.5 px-2 text-center font-bold w-[6%]">
+                      STT
+                    </th>
+                    <th className="border border-slate-700 py-2.5 px-2.5 text-center font-bold w-[25%]">
+                      TÊN DỰ ÁN &amp; KHÁCH HÀNG
+                    </th>
+                    <th className="border border-slate-700 py-2.5 px-2.5 text-center font-bold w-[18%]">
+                      PHỤ TRÁCH / LIÊN HỆ
+                    </th>
+                    <th className="border border-slate-700 py-2.5 px-2 text-center font-bold w-[15%]">
+                      GIAI ĐOẠN
+                    </th>
+                    <th className="border border-slate-700 py-2.5 px-2 text-center font-bold w-[16%]">
+                      GIÁ TRỊ DEAL (VND)
+                    </th>
+                    <th className="border border-slate-700 py-2.5 px-2 text-center font-bold w-[20%]">
+                      DỊCH VỤ / TIỀM NĂNG
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(items.length > 0 ? items : Array.from({ length: 5 }, () => null)).map((row, rIdx) => (
+                    <tr key={row?.id || rIdx} className="h-[52px]">
+                      <td className="border border-slate-700 px-2 py-1.5 text-center font-bold text-slate-500">
+                        {row ? idx * 5 + rIdx + 1 : ''}
+                      </td>
+                      <td className="border border-slate-700 px-2.5 py-1.5 font-medium">
+                        {row ? (
+                          <div>
+                            <div className="font-bold text-slate-900">{row.tenDuAn}</div>
+                            {row.tenKhachHang && (
+                              <div className="text-[11px] text-slate-600">CĐT: {row.tenKhachHang}</div>
+                            )}
+                          </div>
+                        ) : ''}
+                      </td>
+                      <td className="border border-slate-700 px-2.5 py-1.5">
+                        {row ? (
+                          <div>
+                            <div className="font-semibold">{row.tenNhanVienPhuTrach || row.nguoiLienHe || '—'}</div>
+                            {row.soDienThoai && (
+                              <div className="text-[10px] text-slate-500">{row.soDienThoai}</div>
+                            )}
+                          </div>
+                        ) : ''}
+                      </td>
+                      <td className="border border-slate-700 px-2 py-1.5 text-center">
+                        {row?.tenGiaiDoan || row?.giaiDoanKey || ''}
+                      </td>
+                      <td className="border border-slate-700 px-2.5 py-1.5 text-right font-bold text-blue-700 tabular-nums">
+                        {row && row.giaTriDeal ? fmtTien(row.giaTriDeal) : ''}
+                      </td>
+                      <td className="border border-slate-700 px-2.5 py-1.5">
+                        {row ? (
+                          <div>
+                            <div className="text-slate-800">{row.sanPhamDichVu || 'Khảo sát / Đo đạc'}</div>
+                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                              {row.mucDoTiemNang === 'rat_cao' ? 'Rất cao (90%)' : 'Cao (70%)'}
+                            </span>
+                          </div>
+                        ) : ''}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </SlideFrame>
           ))}
 

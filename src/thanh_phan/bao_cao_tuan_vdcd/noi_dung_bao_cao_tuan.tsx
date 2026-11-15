@@ -71,6 +71,11 @@ import {
   luuCauHinhKPIBaoCaoTuan
 } from '../../dich_vu/bao_cao_tuan_vdcd/dich_vu_bao_cao_tuan_vdcd';
 import ModalXuatBaoCaoVDCD, { xuatExcelBaoCaoTuanVDCD } from './xuat_bao_cao_vdcd';
+import {
+  taoFileExcelTongHopToanBoSaleChiNhanh,
+  taiFileExcelBlob,
+  type DuLieuBaoCaoTuanVDCDChuan
+} from '../../dich_vu/bao_cao_tuan_vdcd/xuat_excel_vdcd_chuan';
 
 const fmtSo = (n?: number | null) =>
   new Intl.NumberFormat('vi-VN').format(Math.round(Number(n || 0)));
@@ -855,6 +860,102 @@ export default function NoiDungBaoCaoTuan() {
     );
   };
 
+  const xuLyXuatExcelToanBoSale = async () => {
+    try {
+      const danhSachBaoCaoSale: DuLieuBaoCaoTuanVDCDChuan[] = danhSachBaoCaoTeam.map((item) => {
+        const nv = item.nv;
+        const bc = item.baoCao;
+        const laTP = nv.chuc_vu?.toLowerCase().includes('trưởng') || nv.chuc_vu?.toLowerCase().includes('tp');
+
+        const daCuaSale = dsDuAnTiemNangChiNhanh.filter(
+          (d) => d.duAnGoc.nguoi_phu_trach_id === nv.id || d.duAnGoc.nguoi_tao_id === nv.id
+        );
+
+        return {
+          tuan: bc.tuan,
+          nhanTieuDeTuan: infoTuan.nhanTieuDe,
+          nhanVien: {
+            id: nv.id,
+            ho_va_ten: nv.ho_va_ten,
+            ma_nhan_vien: nv.ma_nhan_vien,
+            chuc_vu: nv.chuc_vu || undefined,
+            phong_ban: nv.phong_ban_id || undefined
+          },
+          kpiTuanQua: {
+            khachHangMoi: { mucTieu: 3, thucTe: bc.tinh_trang_tuan_nay.dang_tiep_can },
+            baoGia: { mucTieu: 2, thucTe: bc.tinh_trang_tuan_nay.bao_gia },
+            duAnLamViec: { mucTieu: 4, thucTe: bc.tinh_trang_tuan_nay.tong_tiep_can },
+            hopDongKy: { mucTieu: 1, thucTe: bc.tinh_trang_tuan_nay.hop_dong },
+            doanhThu: { mucTieu: 0, thucTe: bc.dt_tuan_ky_ket + bc.dt_tuan_tien_ve }
+          },
+          danhSachDuAnTrongDiem: daCuaSale.map((d, idx) => ({
+            stt: idx + 1,
+            id: d.id,
+            tenDuAn: d.tenDuAn,
+            tenKhachHang: d.tenKhachHang,
+            nguoiLienHe: d.nguoiLienHe,
+            soDienThoai: d.soDienThoai,
+            sanPhamDichVu: d.sanPhamDichVu,
+            giaTriDeal: d.giaTriDeal,
+            giaiDoanKey: d.giaiDoanKey,
+            tenGiaiDoan: d.tenGiaiDoan,
+            mucDoTiemNang: d.mucDoTiemNang,
+            xacSuatPct: d.xacSuatPct
+          })),
+          camKetTuanToi: {
+            khachHangMoi: { target: 3, min: 2, max: 5 },
+            baoGia: { target: 2, min: 1, max: 4 },
+            duAnLamViec: { target: 4, min: 2, max: 6 },
+            hopDongMoi: { target: 1, min: 1, max: 2 },
+            doanhThu: { target: 0, min: 0, max: 0 }
+          },
+          lichLamViecTuanToi: infoTuanToi.danhSachNgay.map((d, idx) => {
+            const lichNgay = lichTuanToiToanTeam.filter(
+              (l) => l.ngay === d.ngay && (l.nguoi_phu_trach_id === nv.id || l.nguoi_tao_id === nv.id)
+            );
+            const nd = lichNgay.map((l) => `${l.gio_bat_dau || ''} ${l.ten_khach_hang}: ${l.noi_dung || l.tieu_de || ''}`).join('; ');
+            return {
+              thu: idx + 1,
+              tenThuNgay: `${d.thuNhan === 'CN' ? 'Chủ Nhật' : `Thứ ${d.thuNhan.replace('T', '')}`} (${d.ngayNgan})`,
+              noiDungChiTiet: nd || 'Tác nghiệp văn phòng / Bám sát dự án'
+            };
+          }),
+          laTruongPhong: laTP
+        };
+      });
+
+      const blob = await taoFileExcelTongHopToanBoSaleChiNhanh({
+        tuan: tuanChon,
+        nhanTieuDeTuan: infoTuan.nhanTieuDe,
+        tenChiNhanh: baoCaoTongChiNhanh.ten_chi_nhanh || 'Chi Nhánh',
+        baoCaoTongChiNhanh,
+        danhSachBaoCaoSale,
+        lichTuanToiToanChiNhanh: lichTuanToiToanTeam,
+        danhSachDuAnTrongDiemChiNhanh: dsDuAnTiemNangChiNhanh.map((d, idx) => ({
+          stt: idx + 1,
+          id: d.id,
+          tenDuAn: d.tenDuAn,
+          tenKhachHang: d.tenKhachHang,
+          nguoiLienHe: d.nguoiLienHe,
+          soDienThoai: d.soDienThoai,
+          sanPhamDichVu: d.sanPhamDichVu,
+          giaTriDeal: d.giaTriDeal,
+          giaiDoanKey: d.giaiDoanKey,
+          tenGiaiDoan: d.tenGiaiDoan,
+          mucDoTiemNang: d.mucDoTiemNang,
+          xacSuatPct: d.xacSuatPct,
+          nguoiPhuTrach: d.tenNhanVienPhuTrach
+        }))
+      });
+
+      taiFileExcelBlob(blob, `BaoCao_TongHop_DoiNguSale_${baoCaoTongChiNhanh.ten_chi_nhanh || 'ChiNhanh'}_${tuanChon}.xlsx`);
+      hienThongBao('Đã xuất thành công file Excel tổng hợp đội ngũ (mỗi Sale 1 sheet)!');
+    } catch (e) {
+      console.error(e);
+      alert('Không thể xuất file Excel tổng hợp đội ngũ.');
+    }
+  };
+
   const renderBangKeHoachUI = (
     nhom: NhomKeHoach,
     tieuDe: string,
@@ -1134,6 +1235,15 @@ export default function NoiDungBaoCaoTuan() {
                 >
                   <FileSpreadsheet className="size-4" />
                   <span>Xuất Excel Tổng</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={xuLyXuatExcelToanBoSale}
+                  className="h-9 px-3.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                  title="Xuất 1 file Excel gồm Sheet 1 Tổng quan Chi nhánh và mỗi Sale 1 sheet riêng biệt"
+                >
+                  <FileSpreadsheet className="size-4 text-emerald-700" />
+                  <span>Xuất Excel Đội ngũ (Mỗi Sale 1 Sheet)</span>
                 </button>
                 <button
                   type="button"
@@ -2099,6 +2209,11 @@ export default function NoiDungBaoCaoTuan() {
           baoCao={modalSlide.baoCao}
           lichTuanToi={modalSlide.lichTuanToi}
           tieuDePhu={modalSlide.tieuDePhu}
+          dsDuAnTiemNangChon={dsDuAnTiemNangChiNhanh}
+          dsTatCaDuAnCRM={dsDuAn}
+          dsKhachHang={dsKhachHang}
+          dsNhanSu={dsNhanSu}
+          dsSanPham={dsSanPham}
         />
       )}
     </div>
