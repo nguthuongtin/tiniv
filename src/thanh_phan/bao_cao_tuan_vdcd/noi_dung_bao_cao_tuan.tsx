@@ -583,20 +583,59 @@ export default function NoiDungBaoCaoTuan() {
   const lichTuanToiToanTeam = useMemo(() => {
     const mapTenNV = new Map(dsNhanSu.map((n) => [n.id, n.ho_va_ten]));
     const allowedIds = new Set(dsSaleTeam.map((n) => n.id));
+
+    // Thêm Trưởng phòng Kinh doanh để lịch công tác xuất ra có đầy đủ TPKD
+    if (tpKinhDoanh) {
+      allowedIds.add(tpKinhDoanh.id);
+    }
+    dsNhanSu.forEach((n) => {
+      const vt = String(n.vai_tro || '');
+      const cv = (n.chuc_vu || '').toLowerCase();
+      if (
+        (vt === 'truong_phong_kd' || vt === 'truong_phong' || cv.includes('trưởng phòng kinh doanh') || cv.includes('tpkd')) &&
+        (chiNhanhLocId === 'tat_ca' || n.chi_nhanh_id === chiNhanhLocId)
+      ) {
+        const ten = (n.ho_va_ten || '').toLowerCase();
+        if (!ten.includes('trần minh đạt') && !ten.includes('trần mình đạt')) {
+          allowedIds.add(n.id);
+        }
+      }
+    });
+    if (nguoiDungHienTai?.id) {
+      const vt = String(nguoiDungHienTai?.vai_tro || '');
+      if (vt === 'truong_phong_kd' || vt === 'truong_phong') {
+        allowedIds.add(nguoiDungHienTai.id);
+      }
+    }
+
     return dsLichGap
       .filter(
         (l) =>
           !l.da_xoa &&
           l.ngay >= infoTuanToi.ngayBatDau &&
           l.ngay <= infoTuanToi.ngayKetThuc &&
-          (allowedIds.has(l.nguoi_phu_trach_id) || allowedIds.has(l.nguoi_tao_id))
+          (allowedIds.has(l.nguoi_phu_trach_id) ||
+            allowedIds.has(l.nguoi_tao_id) ||
+            (Array.isArray(l.nguoi_tham_gia_ids) && l.nguoi_tham_gia_ids.some((id) => allowedIds.has(id))))
       )
       .sort((a, b) => `${a.ngay}_${a.gio_bat_dau}`.localeCompare(`${b.ngay}_${b.gio_bat_dau}`))
-      .map((l) => ({
-        ...l,
-        ten_nhan_vien: mapTenNV.get(l.nguoi_phu_trach_id) || ''
-      }));
-  }, [dsLichGap, dsNhanSu, dsSaleTeam, infoTuanToi]);
+      .map((l) => {
+        let tenNV = mapTenNV.get(l.nguoi_phu_trach_id) || mapTenNV.get(l.nguoi_tao_id) || '';
+        const idNV = l.nguoi_phu_trach_id || l.nguoi_tao_id;
+        const laTP =
+          (tpKinhDoanh && idNV === tpKinhDoanh.id) ||
+          (nguoiDungHienTai &&
+            idNV === nguoiDungHienTai.id &&
+            String(nguoiDungHienTai.vai_tro).includes('truong_phong'));
+        if (laTP && tenNV && !tenNV.includes('TPKD') && !tenNV.includes('Trưởng phòng')) {
+          tenNV = `${tenNV} (TPKD)`;
+        }
+        return {
+          ...l,
+          ten_nhan_vien: tenNV
+        };
+      });
+  }, [dsLichGap, dsNhanSu, dsSaleTeam, tpKinhDoanh, chiNhanhLocId, nguoiDungHienTai, infoTuanToi]);
 
   const dsDuAnTiemNangChiNhanh = useMemo(() => {
     const setIdsDuAnChon = new Set(
@@ -946,7 +985,9 @@ export default function NoiDungBaoCaoTuan() {
             !l.da_xoa &&
             l.ngay >= infoTuanToi.ngayBatDau &&
             l.ngay <= infoTuanToi.ngayKetThuc &&
-            (l.nguoi_phu_trach_id === tpKinhDoanh.id || l.nguoi_tao_id === tpKinhDoanh.id)
+            (l.nguoi_phu_trach_id === tpKinhDoanh.id ||
+              l.nguoi_tao_id === tpKinhDoanh.id ||
+              (Array.isArray(l.nguoi_tham_gia_ids) && l.nguoi_tham_gia_ids.includes(tpKinhDoanh.id)))
         );
 
         danhSachBaoCaoSale.push({

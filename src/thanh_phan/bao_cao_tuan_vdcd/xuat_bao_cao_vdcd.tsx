@@ -1227,37 +1227,34 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  <table className="w-full border-collapse text-[11px] bg-white">
+                  <table className="w-full border-collapse text-[11.5px] bg-white">
                     <thead>
                       <tr className="bg-[#D11317] text-white">
-                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[4%]">
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[5%]">
                           STT
                         </th>
-                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[19%]">
+                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[21%]">
                           CHUYÊN VIÊN KD
                         </th>
-                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[12%]">
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[15%]">
                           KH MỚI TIẾP CẬN
-                          <div className="text-[9px] font-normal">(Đạt / Mục tiêu)</div>
+                          <div className="text-[9.5px] font-normal">(Đạt / Mục tiêu)</div>
                         </th>
-                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[14%]">
                           BÁO GIÁ ĐÃ GỬI
-                          <div className="text-[9px] font-normal">(Đạt / Mục tiêu)</div>
+                          <div className="text-[9.5px] font-normal">(Đạt / Mục tiêu)</div>
                         </th>
-                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[14%]">
                           DỰ ÁN LÀM VIỆC
-                          <div className="text-[9px] font-normal">(Đạt / Mục tiêu)</div>
+                          <div className="text-[9.5px] font-normal">(Đạt / Mục tiêu)</div>
                         </th>
-                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[14%]">
                           HỢP ĐỒNG KÝ KẾT
-                          <div className="text-[9px] font-normal">(Đạt / Mục tiêu)</div>
+                          <div className="text-[9.5px] font-normal">(Đạt / Mục tiêu)</div>
                         </th>
-                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[21%]">
+                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[17%]">
                           DOANH SỐ THỰC TẾ (VND)
-                          <div className="text-[9px] font-normal">(Đạt / Mục tiêu)</div>
-                        </th>
-                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
-                          % HOÀN THÀNH
+                          <div className="text-[9.5px] font-normal">(Đạt / Mục tiêu)</div>
                         </th>
                       </tr>
                     </thead>
@@ -1274,12 +1271,6 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                         const hdMT = Number(k?.hop_dong_muc_tieu ?? 0);
                         const dsTT = Number(k?.doanh_so_thuc_te ?? (item.baoCao.dt_tuan_ky_ket || 0) + (item.baoCao.dt_tuan_tien_ve || 0));
                         const dsMT = Number(k?.doanh_so_muc_tieu ?? 0);
-
-                        const pct = dsMT > 0
-                          ? Math.round((dsTT / dsMT) * 100)
-                          : kmMT > 0
-                          ? Math.round((kmTT / kmMT) * 100)
-                          : 100;
 
                         return (
                           <tr key={item.nv.id} className="h-[46px] hover:bg-slate-50/70">
@@ -1310,11 +1301,6 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                               {dsMT > 0 && (
                                 <div className="text-[10px] text-slate-500 font-normal">MT: {fmtTien(dsMT)}</div>
                               )}
-                            </td>
-                            <td className="border border-slate-700 px-1 py-1.5 text-center font-bold">
-                              <span className={`inline-block px-1.5 py-0.5 rounded text-[10.5px] ${pct >= 100 ? 'bg-emerald-100 text-emerald-800' : pct >= 70 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                                {pct}%
-                              </span>
                             </td>
                           </tr>
                         );
@@ -1355,11 +1341,6 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                             {tongTeamThucHien.doanhSoMT > 0 && (
                               <div className="text-[10px] text-slate-500 font-bold">MT: {fmtTien(tongTeamThucHien.doanhSoMT)}</div>
                             )}
-                          </td>
-                          <td className="border border-slate-700 px-1 py-1.5 text-center font-black text-slate-900">
-                            {tongTeamThucHien.doanhSoMT > 0
-                              ? `${Math.round((tongTeamThucHien.doanhSoTT / tongTeamThucHien.doanhSoMT) * 100)}%`
-                              : '100%'}
                           </td>
                         </tr>
                       )}
@@ -1434,30 +1415,27 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                         <th className="border border-slate-700 py-2 px-1.5 text-center font-bold w-[5%]">
                           STT
                         </th>
-                        <th className="border border-slate-700 py-2 px-2.5 text-center font-bold w-[18%]">
+                        <th className="border border-slate-700 py-2 px-2.5 text-center font-bold w-[21%]">
                           CHUYÊN VIÊN KD
                         </th>
-                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[12%]">
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[15%]">
                           KH TIẾP CẬN
                           <div className="text-[9.5px] font-normal">(Mục tiêu)</div>
                         </th>
-                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[14%]">
                           BÁO GIÁ
                           <div className="text-[9.5px] font-normal">(Mục tiêu)</div>
                         </th>
-                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[14%]">
                           DỰ ÁN
                           <div className="text-[9.5px] font-normal">(Mục tiêu)</div>
                         </th>
-                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[11%]">
+                        <th className="border border-slate-700 py-2 px-1 text-center font-bold w-[14%]">
                           HỢP ĐỒNG
                           <div className="text-[9.5px] font-normal">(Mục tiêu)</div>
                         </th>
-                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[16%]">
-                          DOANH SỐ CAM KẾT
-                        </th>
-                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[16%]">
-                          TRỌNG TÂM HÀNH ĐỘNG
+                        <th className="border border-slate-700 py-2 px-2 text-center font-bold w-[17%]">
+                          DOANH SỐ CAM KẾT (VND)
                         </th>
                       </tr>
                     </thead>
@@ -1469,7 +1447,6 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                         const daTarget = Number(ck?.du_an_lam_viec?.target || 0);
                         const hdTarget = Number(ck?.hop_dong?.target || 0);
                         const dsTarget = Number(ck?.doanh_so?.target || 0);
-                        const trongTam = ck?.muc_tieu_trong_tam || 'Tập trung chốt hợp đồng và mở rộng KH mới';
 
                         return (
                           <tr key={item.nv.id} className="h-[46px] hover:bg-slate-50/70">
@@ -1493,9 +1470,6 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                             </td>
                             <td className="border border-slate-700 px-2 py-1.5 text-right font-bold text-[#D11317] tabular-nums">
                               {dsTarget > 0 ? fmtTien(dsTarget) : '—'}
-                            </td>
-                            <td className="border border-slate-700 px-2 py-1.5 text-left text-[11px] text-slate-700 line-clamp-2">
-                              {trongTam}
                             </td>
                           </tr>
                         );
@@ -1521,9 +1495,6 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
                           </td>
                           <td className="border border-slate-700 px-2 py-1.5 text-right tabular-nums text-[#D11317]">
                             {fmtTien(tongTeamKeHoach.doanhSo)}
-                          </td>
-                          <td className="border border-slate-700 px-2 py-1.5 text-left text-[10.5px] italic text-slate-600 font-medium">
-                            Toàn đội ngũ tập trung mục tiêu tăng trưởng
                           </td>
                         </tr>
                       )}
