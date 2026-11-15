@@ -129,17 +129,27 @@ export interface BaoCaoTuanVDCD {
     doanh_so_thuc_te: number;
     khach_moi_muc_tieu: number;
     khach_moi_thuc_te: number;
+    bao_gia_muc_tieu?: number;
+    bao_gia_thuc_te?: number;
+    du_an_lam_viec_muc_tieu?: number;
+    du_an_lam_viec_thuc_te?: number;
     cuoc_gap_muc_tieu: number;
     cuoc_gap_thuc_te: number;
     hop_dong_muc_tieu: number;
     hop_dong_thuc_te: number;
+    da_sua_tay_khach_moi?: boolean;
+    da_sua_tay_bao_gia?: boolean;
+    da_sua_tay_du_an_lam_viec?: boolean;
+    da_sua_tay_hop_dong?: boolean;
+    da_sua_tay_doanh_so?: boolean;
   };
   du_an_trong_diem_ids?: string[];
   cam_ket_tuan_toi?: {
     doanh_so: { target: number; min: number; max: number };
     khach_moi: { target: number; min: number; max: number };
-    cuoc_hen: { target: number; min: number; max: number };
+    cuoc_hen?: { target: number; min: number; max: number };
     bao_gia: { target: number; min: number; max: number };
+    du_an_lam_viec?: { target: number; min: number; max: number };
     hop_dong: { target: number; min: number; max: number };
   };
   ghi_chu_lich_ngay?: Record<string, string>;
@@ -522,6 +532,31 @@ export function taoBaoCaoTuanMacDinh(params: {
     ke_hoach_san_xuat: goiY.goi_y_san_xuat.slice(0, 8),
     marketing_content: [],
     marketing_performance: [],
+
+    // Khởi tạo KPI tuần qua từ thực tế CRM & Mục tiêu tuần trước
+    kpi_tuan_qua: {
+      khach_moi_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi?.target ?? 20,
+      khach_moi_thuc_te: goiY.tinh_trang_tuan_nay.dang_tiep_can ?? 0,
+      bao_gia_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.bao_gia?.target ?? 4,
+      bao_gia_thuc_te: goiY.tinh_trang_tuan_nay.bao_gia ?? 0,
+      du_an_lam_viec_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.du_an_lam_viec?.target ?? baoCaoTuanTruoc?.cam_ket_tuan_toi?.cuoc_hen?.target ?? 5,
+      du_an_lam_viec_thuc_te: goiY.tinh_trang_tuan_nay.tong_tiep_can ?? 0,
+      hop_dong_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.hop_dong?.target ?? 4,
+      hop_dong_thuc_te: goiY.tinh_trang_tuan_nay.hop_dong ?? 0,
+      doanh_so_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.doanh_so?.target ?? 150000000,
+      doanh_so_thuc_te: (goiY.dt_tuan_ky_ket || 0) + (goiY.dt_tuan_tien_ve || 0),
+      cuoc_gap_muc_tieu: 0,
+      cuoc_gap_thuc_te: 0
+    },
+
+    // Khởi tạo Cam kết tuần tới
+    cam_ket_tuan_toi: {
+      khach_moi: baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi || { target: 20, min: 0, max: 0 },
+      bao_gia: baoCaoTuanTruoc?.cam_ket_tuan_toi?.bao_gia || { target: 4, min: 0, max: 0 },
+      du_an_lam_viec: baoCaoTuanTruoc?.cam_ket_tuan_toi?.du_an_lam_viec || { target: 5, min: 0, max: 0 },
+      hop_dong: baoCaoTuanTruoc?.cam_ket_tuan_toi?.hop_dong || { target: 4, min: 0, max: 0 },
+      doanh_so: baoCaoTuanTruoc?.cam_ket_tuan_toi?.doanh_so || { target: 150000000, min: 0, max: 0 }
+    },
 
     trang_thai: 'nhap',
     ghi_chu_quan_ly: null,

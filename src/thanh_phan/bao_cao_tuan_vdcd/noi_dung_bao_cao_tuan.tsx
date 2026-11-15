@@ -318,10 +318,53 @@ export default function NoiDungBaoCaoTuan() {
     });
   }, [dsNhanSu, chiNhanhLocId]);
 
+  // Trưởng phòng Kinh doanh của chi nhánh (nếu có) để có trang báo cáo điều hành riêng biệt
+  const tpKinhDoanh = useMemo(() => {
+    return dsNhanSu.find((n) => {
+      if (n.trang_thai_du_lieu === 'da_xoa') return false;
+      if (chiNhanhLocId !== 'tat_ca' && n.chi_nhanh_id !== chiNhanhLocId) return false;
+      const ten = (n.ho_va_ten || '').toLowerCase().trim();
+      if (ten.includes('trần minh đạt') || ten.includes('trần mình đạt') || ten.includes('tran minh dat')) {
+        return false;
+      }
+      const vt = String(n.vai_tro || '');
+      const cv = (n.chuc_vu || '').toLowerCase();
+      return vt === 'truong_phong_kd' || cv.includes('trưởng phòng kinh doanh') || cv.includes('trưởng phòng kd') || cv.includes('tpkd');
+    }) || (nguoiDungHienTai?.vai_tro === 'truong_phong_kd' ? (nguoiDungHienTai as any as NhanSu) : null);
+  }, [dsNhanSu, chiNhanhLocId, nguoiDungHienTai]);
+
+  // Danh sách nhân sự để Quản lý chọn xem chi tiết: Trưởng phòng + Đội ngũ Sale (Tuyệt đối không có Trần Minh Đạt)
+  const dsNhanSuChonXem = useMemo(() => {
+    const list: { id: string; tenHienThi: string; nv: NhanSu; laTP: boolean }[] = [];
+    if (tpKinhDoanh) {
+      list.push({
+        id: tpKinhDoanh.id,
+        tenHienThi: `👑 ${tpKinhDoanh.ho_va_ten} (Trưởng phòng Kinh doanh)`,
+        nv: tpKinhDoanh,
+        laTP: true
+      });
+    }
+    dsSaleTeam.forEach((s) => {
+      list.push({
+        id: s.id,
+        tenHienThi: `👤 ${s.ho_va_ten} (Chuyên viên Kinh doanh)`,
+        nv: s,
+        laTP: false
+      });
+    });
+    return list;
+  }, [tpKinhDoanh, dsSaleTeam]);
+
   const nhanSuMucTieu = useMemo(() => {
-    const targetId = (laQuanLy && nhanVienDangXemId) ? nhanVienDangXemId : uid;
+    if (laQuanLy && nhanVienDangXemId) {
+      const found = dsNhanSu.find((n) => n.id === nhanVienDangXemId);
+      if (found) return found;
+    }
+    if (laQuanLy && dsNhanSuChonXem.length > 0) {
+      return dsNhanSuChonXem[0].nv;
+    }
     return (
-      dsNhanSu.find((n) => n.id === targetId) ||
+      dsNhanSu.find((n) => n.id === uid) ||
       (nguoiDungHienTai
         ? ({
             id: nguoiDungHienTai.id,
@@ -331,7 +374,7 @@ export default function NoiDungBaoCaoTuan() {
           } as NhanSu)
         : null)
     );
-  }, [dsNhanSu, nhanVienDangXemId, uid, nguoiDungHienTai]);
+  }, [dsNhanSu, nhanVienDangXemId, laQuanLy, dsNhanSuChonXem, uid, nguoiDungHienTai]);
 
   const baoCaoTuanTruocCuaNV = useMemo(() => {
     const targetId = nhanSuMucTieu?.id;
@@ -892,7 +935,97 @@ export default function NoiDungBaoCaoTuan() {
 
   const xuLyXuatExcelToanBoSale = async () => {
     try {
-      const danhSachBaoCaoSale: DuLieuBaoCaoTuanVDCDChuan[] = danhSachBaoCaoTeam.map((item) => {
+      const danhSachBaoCaoSale: DuLieuBaoCaoTuanVDCDChuan[] = [];
+
+      // 1. Thêm Sheet của Trưởng phòng Kinh doanh nếu có (với form điều hành chuẩn Trưởng phòng)
+      if (tpKinhDoanh) {
+        const daLuuTP = dsBaoCaoTuan.find((b) => b.nhan_vien_id === tpKinhDoanh.id);
+        const dh = daLuuTP?.dinh_huong_dieu_hanh_tuan_toi;
+        const lichToiTP = dsLichGap.filter(
+          (l) =>
+            !l.da_xoa &&
+            l.ngay >= infoTuanToi.ngayBatDau &&
+            l.ngay <= infoTuanToi.ngayKetThuc &&
+            (l.nguoi_phu_trach_id === tpKinhDoanh.id || l.nguoi_tao_id === tpKinhDoanh.id)
+        );
+
+        danhSachBaoCaoSale.push({
+          tuan: tuanChon,
+          nhanTieuDeTuan: infoTuan.nhanTieuDe,
+          nhanVien: {
+            id: tpKinhDoanh.id,
+            ho_va_ten: tpKinhDoanh.ho_va_ten,
+            ma_nhan_vien: tpKinhDoanh.ma_nhan_vien,
+            chuc_vu: 'Trưởng phòng Kinh doanh',
+            phong_ban: tpKinhDoanh.phong_ban_id || undefined
+          },
+          kpiTuanQua: {
+            khachHangMoi: {
+              mucTieu: baoCaoTongChiNhanh.ke_hoach_tiep_can_tuan_nay || 0,
+              thucTe: baoCaoTongChiNhanh.thuc_hien_tiep_can_tuan_nay || 0
+            },
+            baoGia: {
+              mucTieu: 0,
+              thucTe: baoCaoTongChiNhanh.tinh_trang_tuan_nay.bao_gia || 0
+            },
+            duAnLamViec: {
+              mucTieu: 0,
+              thucTe: baoCaoTongChiNhanh.tinh_trang_tuan_nay.tong_tiep_can || 0
+            },
+            hopDongKy: {
+              mucTieu: 0,
+              thucTe: baoCaoTongChiNhanh.tinh_trang_tuan_nay.hop_dong || 0
+            },
+            doanhThu: {
+              mucTieu: baoCaoTongChiNhanh.kpi_thang_ky_ket || 0,
+              thucTe: (baoCaoTongChiNhanh.dt_tuan_ky_ket || 0) + (baoCaoTongChiNhanh.dt_tuan_tien_ve || 0)
+            }
+          },
+          danhSachDuAnTrongDiem: dsDuAnTiemNangChiNhanh.map((d, idx) => ({
+            stt: idx + 1,
+            id: d.id,
+            tenDuAn: d.tenDuAn,
+            tenKhachHang: d.tenKhachHang,
+            nguoiLienHe: d.nguoiLienHe,
+            soDienThoai: d.soDienThoai,
+            sanPhamDichVu: d.sanPhamDichVu,
+            giaTriDeal: d.giaTriDeal,
+            giaiDoanKey: d.giaiDoanKey,
+            tenGiaiDoan: d.tenGiaiDoan,
+            mucDoTiemNang: d.mucDoTiemNang,
+            xacSuatPct: d.xacSuatPct,
+            nguoiPhuTrach: d.tenNhanVienPhuTrach
+          })),
+          camKetTuanToi: {
+            khachHangMoi: { target: 0, min: 0, max: 0 },
+            baoGia: { target: 0, min: 0, max: 0 },
+            duAnLamViec: { target: 0, min: 0, max: 0 },
+            hopDongMoi: { target: dh?.so_hop_dong_du_kien || 0, min: 0, max: 0 },
+            doanhThu: { target: dh?.muc_tieu_doanh_thu_phong || 0, min: 0, max: 0 }
+          },
+          lichLamViecTuanToi: infoTuanToi.danhSachNgay.map((d, idx) => {
+            const lichNgay = lichToiTP.filter((l) => l.ngay === d.ngay);
+            const nd = lichNgay.map((l) => `${l.gio_bat_dau || ''} ${l.ten_khach_hang}: ${l.noi_dung || l.tieu_de || ''}`).join('; ');
+            return {
+              thu: idx + 1,
+              tenThuNgay: `${d.thuNhan === 'CN' ? 'Chủ Nhật' : `Thứ ${d.thuNhan.replace('T', '')}`} (${d.ngayNgan})`,
+              noiDungChiTiet: nd || 'Điều hành hoạt động phòng kinh doanh / Đồng hành hỗ trợ nhân sự'
+            };
+          }),
+          laTruongPhong: true,
+          dinhHuongDieuHanh: {
+            mucTieuDoanhThuPhong: dh?.muc_tieu_doanh_thu_phong || 0,
+            soHopDongDuKien: dh?.so_hop_dong_du_kien || 0,
+            trongTamDieuHanh: dh?.trong_tam_dieu_hanh || '',
+            keHoachHoTroNhanSu: dh?.ke_hoach_ho_tro_nhan_su || ''
+          },
+          danhGiaTuanQuaTP: daLuuTP?.danh_gia_tuan_qua || '',
+          deXuatBanGiamDocTP: daLuuTP?.de_xuat_ban_giam_doc || ''
+        });
+      }
+
+      // 2. Thêm Sheet của từng Chuyên viên Kinh doanh thực sự
+      danhSachBaoCaoTeam.forEach((item) => {
         const nv = item.nv;
         const bc = item.baoCao;
         const bcTruoc = dsBaoCaoTuanTruoc.find((b) => b.nhan_vien_id === nv.id);
@@ -901,28 +1034,28 @@ export default function NoiDungBaoCaoTuan() {
           (d) => d.duAnGoc.nguoi_phu_trach_id === nv.id || d.duAnGoc.nguoi_tao_id === nv.id
         );
 
-        // Mục tiêu tuần qua: Lấy chuẩn từ kế hoạch tuần trước của nhân sự (nếu có), không gán số giả
-        const mtKhachMoi = bcTruoc?.cam_ket_tuan_toi?.khach_moi?.target || bc.kpi_tuan_qua?.khach_moi_muc_tieu || 0;
-        const mtBaoGia = bcTruoc?.cam_ket_tuan_toi?.bao_gia?.target || 0;
-        const mtDuAn = bcTruoc?.cam_ket_tuan_toi?.cuoc_hen?.target || bc.kpi_tuan_qua?.cuoc_gap_muc_tieu || 0;
-        const mtHopDong = bcTruoc?.cam_ket_tuan_toi?.hop_dong?.target || bc.kpi_tuan_qua?.hop_dong_muc_tieu || 0;
-        const mtDoanhThu = bcTruoc?.cam_ket_tuan_toi?.doanh_so?.target || bc.kpi_tuan_qua?.doanh_so_muc_tieu || 0;
+        // Mục tiêu tuần qua: Ưu tiên lấy từ kpi_tuan_qua của báo cáo, fallback từ cam_ket_tuan_toi của tuần trước
+        const mtKhachMoi = Number(bc.kpi_tuan_qua?.khach_moi_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.khach_moi?.target ?? 20);
+        const mtBaoGia = Number(bc.kpi_tuan_qua?.bao_gia_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.bao_gia?.target ?? 4);
+        const mtDuAn = Number(bc.kpi_tuan_qua?.du_an_lam_viec_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.du_an_lam_viec?.target ?? bcTruoc?.cam_ket_tuan_toi?.cuoc_hen?.target ?? 5);
+        const mtHopDong = Number(bc.kpi_tuan_qua?.hop_dong_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.hop_dong?.target ?? 4);
+        const mtDoanhThu = Number(bc.kpi_tuan_qua?.doanh_so_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.doanh_so?.target ?? 150000000);
 
-        // Số thực tế đạt được từ CRM và Báo cáo tuần này
-        const ttKhachMoi = bc.kpi_tuan_qua?.khach_moi_thuc_te ?? bc.tinh_trang_tuan_nay.dang_tiep_can ?? 0;
-        const ttBaoGia = bc.tinh_trang_tuan_nay.bao_gia ?? 0;
-        const ttDuAn = bc.tinh_trang_tuan_nay.tong_tiep_can ?? 0;
-        const ttHopDong = bc.tinh_trang_tuan_nay.hop_dong ?? 0;
-        const ttDoanhThu = (bc.dt_tuan_ky_ket || 0) + (bc.dt_tuan_tien_ve || 0);
+        // Số thực tế đạt được: Đọc trực tiếp từ kpi_tuan_qua của báo cáo hoặc fallback từ CRM
+        const ttKhachMoi = Number(bc.kpi_tuan_qua?.khach_moi_thuc_te ?? bc.tinh_trang_tuan_nay.dang_tiep_can ?? 0);
+        const ttBaoGia = Number(bc.kpi_tuan_qua?.bao_gia_thuc_te ?? bc.tinh_trang_tuan_nay.bao_gia ?? 0);
+        const ttDuAn = Number(bc.kpi_tuan_qua?.du_an_lam_viec_thuc_te ?? bc.tinh_trang_tuan_nay.tong_tiep_can ?? 0);
+        const ttHopDong = Number(bc.kpi_tuan_qua?.hop_dong_thuc_te ?? bc.tinh_trang_tuan_nay.hop_dong ?? 0);
+        const ttDoanhThu = Number(bc.kpi_tuan_qua?.doanh_so_thuc_te ?? ((bc.dt_tuan_ky_ket || 0) + (bc.dt_tuan_tien_ve || 0)));
 
-        return {
+        danhSachBaoCaoSale.push({
           tuan: bc.tuan,
           nhanTieuDeTuan: infoTuan.nhanTieuDe,
           nhanVien: {
             id: nv.id,
             ho_va_ten: nv.ho_va_ten,
             ma_nhan_vien: nv.ma_nhan_vien,
-            chuc_vu: nv.chuc_vu || 'Nhân viên Kinh doanh',
+            chuc_vu: nv.chuc_vu || 'Chuyên viên Kinh doanh',
             phong_ban: nv.phong_ban_id || undefined
           },
           kpiTuanQua: {
@@ -947,11 +1080,11 @@ export default function NoiDungBaoCaoTuan() {
             xacSuatPct: d.xacSuatPct
           })),
           camKetTuanToi: {
-            khachHangMoi: bc.cam_ket_tuan_toi?.khach_moi || { target: 0, min: 0, max: 0 },
-            baoGia: bc.cam_ket_tuan_toi?.bao_gia || { target: 0, min: 0, max: 0 },
-            duAnLamViec: bc.cam_ket_tuan_toi?.cuoc_hen || { target: 0, min: 0, max: 0 },
-            hopDongMoi: bc.cam_ket_tuan_toi?.hop_dong || { target: 0, min: 0, max: 0 },
-            doanhThu: bc.cam_ket_tuan_toi?.doanh_so || { target: 0, min: 0, max: 0 }
+            khachHangMoi: bc.cam_ket_tuan_toi?.khach_moi || { target: 20, min: 0, max: 0 },
+            baoGia: bc.cam_ket_tuan_toi?.bao_gia || { target: 4, min: 0, max: 0 },
+            duAnLamViec: bc.cam_ket_tuan_toi?.du_an_lam_viec || bc.cam_ket_tuan_toi?.cuoc_hen || { target: 5, min: 0, max: 0 },
+            hopDongMoi: bc.cam_ket_tuan_toi?.hop_dong || { target: 4, min: 0, max: 0 },
+            doanhThu: bc.cam_ket_tuan_toi?.doanh_so || { target: 150000000, min: 0, max: 0 }
           },
           lichLamViecTuanToi: infoTuanToi.danhSachNgay.map((d, idx) => {
             const lichNgay = lichTuanToiToanTeam.filter(
@@ -965,7 +1098,7 @@ export default function NoiDungBaoCaoTuan() {
             };
           }),
           laTruongPhong: false
-        };
+        });
       });
 
       const blob = await taoFileExcelTongHopToanBoSaleChiNhanh({
@@ -992,11 +1125,11 @@ export default function NoiDungBaoCaoTuan() {
         }))
       });
 
-      taiFileExcelBlob(blob, `BaoCao_TongHop_DoiNguSale_${baoCaoTongChiNhanh.ten_chi_nhanh || 'ChiNhanh'}_${tuanChon}.xlsx`);
-      hienThongBao('Đã xuất thành công file Excel tổng hợp đội ngũ (mỗi Sale 1 sheet)!');
+      taiFileExcelBlob(blob, `BaoCao_TongHop_ChiNhanh_${baoCaoTongChiNhanh.ten_chi_nhanh || 'ChiNhanh'}_${tuanChon}.xlsx`);
+      hienThongBao('Đã xuất thành công file Excel tổng hợp chi nhánh (gồm Trưởng phòng & mỗi Sale 1 sheet)!');
     } catch (e) {
       console.error(e);
-      alert('Không thể xuất file Excel tổng hợp đội ngũ.');
+      alert('Không thể xuất file Excel tổng hợp chi nhánh.');
     }
   };
 
@@ -1220,9 +1353,9 @@ export default function NoiDungBaoCaoTuan() {
               onChange={(e) => setNhanVienDangXemId(e.target.value)}
               className="h-9 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
             >
-              {dsSaleTeam.map((nv) => (
-                <option key={nv.id} value={nv.id}>
-                  {nv.ho_va_ten}
+              {dsNhanSuChonXem.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.tenHienThi}
                 </option>
               ))}
             </select>
@@ -1296,7 +1429,7 @@ export default function NoiDungBaoCaoTuan() {
                       mo: true,
                       baoCao: baoCaoTongChiNhanh,
                       lichTuanToi: lichTuanToiToanTeam,
-                      tieuDePhu: `Tổng hợp ${danhSachBaoCaoTeam.length} nhân sự`
+                      tieuDePhu: `Tổng hợp ${danhSachBaoCaoTeam.length} Chuyên viên Kinh doanh`
                     })
                   }
                   className="h-9 px-4 rounded-xl bg-[#D11317] hover:bg-red-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
@@ -1392,7 +1525,7 @@ export default function NoiDungBaoCaoTuan() {
                         <span className="text-slate-700 font-bold tabular-nums">{pctGui}%</span>
                       </div>
                       <div className="text-lg font-extrabold text-slate-900 tabular-nums">
-                        {soDaGui}/{danhSachBaoCaoTeam.length} NVKD đã nộp
+                        {soDaGui}/{danhSachBaoCaoTeam.length} Chuyên viên KD đã nộp
                       </div>
                       <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
                         <div className="h-full bg-slate-800 rounded-full" style={{ width: `${pctGui}%` }} />

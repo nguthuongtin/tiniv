@@ -755,7 +755,9 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   const rT2 = sTong.addRow([]);
   sTong.mergeCells('B2:H2');
   const cT2 = rT2.getCell(2);
-  cT2.value = `Kỳ: ${nhanTieuDeTuan}  |  Đơn vị: ${tenChiNhanh}  |  Tổng hợp dữ liệu ${danhSachBaoCaoSale.length} nhân sự kinh doanh`;
+  const soSale = danhSachBaoCaoSale.filter((x) => !x.laTruongPhong).length;
+  const coTP = danhSachBaoCaoSale.some((x) => x.laTruongPhong);
+  cT2.value = `Kỳ: ${nhanTieuDeTuan}  |  Đơn vị: ${tenChiNhanh}  |  Tổng hợp ${soSale} Chuyên viên Kinh doanh${coTP ? ' (kèm 01 Báo cáo Điều hành Trưởng phòng)' : ''}`;
   cT2.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
   cT2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
   cT2.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -825,20 +827,28 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   const rHeadT2 = sTong.addRow([
     '',
     'STT',
-    'Họ và tên NVKD',
-    'Khách mới (Thực tế đạt)',
-    'Báo giá (Thực tế đạt)',
-    'Dự án bám sát',
-    'HĐ ký kết (Thực tế đạt)',
-    'DT Thực tế tuần (VNĐ)'
+    'Họ và tên Chuyên viên Kinh doanh',
+    'Số lượng KH tiếp cận mới',
+    'Tổng số báo giá đã gửi',
+    'Tổng số dự án đã làm việc',
+    'Số hợp đồng ký kết',
+    'Tổng doanh thu thực tế tuần (VNĐ)'
   ]);
   styleTableHeaderTong(rHeadT2);
 
+  // Chỉ tổng hợp các bạn Chuyên viên Kinh doanh (Loại trừ Trưởng phòng vì TP không nhận KPI sale cá nhân)
+  const dsSaleThucTe = danhSachBaoCaoSale.filter((x) => !x.laTruongPhong);
+
   let tongKhachMoiThuc = 0;
+  let tongKhachMoiMT = 0;
   let tongBaoGiaThuc = 0;
+  let tongBaoGiaMT = 0;
   let tongDuAnThuc = 0;
+  let tongDuAnMT = 0;
   let tongHopDongThuc = 0;
+  let tongHopDongMT = 0;
   let tongDTThuc = 0;
+  let tongDTMT = 0;
 
   const fmtChiSoSale = (thucTe: number, mucTieu?: number, dvt: string = '') => {
     if (mucTieu && mucTieu > 0) {
@@ -847,23 +857,30 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     return `${thucTe}${dvt ? ` ${dvt}` : ''}`;
   };
 
-  danhSachBaoCaoSale.forEach((sale, idx) => {
+  dsSaleThucTe.forEach((sale, idx) => {
     const kp = sale.kpiTuanQua;
     tongKhachMoiThuc += kp.khachHangMoi.thucTe;
+    tongKhachMoiMT += kp.khachHangMoi.mucTieu;
     tongBaoGiaThuc += kp.baoGia.thucTe;
+    tongBaoGiaMT += kp.baoGia.mucTieu;
     tongDuAnThuc += kp.duAnLamViec.thucTe;
+    tongDuAnMT += kp.duAnLamViec.mucTieu;
     tongHopDongThuc += kp.hopDongKy.thucTe;
+    tongHopDongMT += kp.hopDongKy.mucTieu;
     tongDTThuc += kp.doanhThu.thucTe;
+    tongDTMT += kp.doanhThu.mucTieu;
 
     const row = sTong.addRow([
       '',
       idx + 1,
       sale.nhanVien.ho_va_ten,
       fmtChiSoSale(kp.khachHangMoi.thucTe, kp.khachHangMoi.mucTieu, 'KH'),
-      fmtChiSoSale(kp.baoGia.thucTe, kp.baoGia.mucTieu, 'BG'),
-      `${kp.duAnLamViec.thucTe} dự án`,
+      fmtChiSoSale(kp.baoGia.thucTe, kp.baoGia.mucTieu, 'báo giá'),
+      fmtChiSoSale(kp.duAnLamViec.thucTe, kp.duAnLamViec.mucTieu, 'dự án'),
       fmtChiSoSale(kp.hopDongKy.thucTe, kp.hopDongKy.mucTieu, 'HĐ'),
-      formatTienTe(kp.doanhThu.thucTe)
+      kp.doanhThu.mucTieu > 0
+        ? `${formatTienTe(kp.doanhThu.thucTe)} (MT: ${formatTienTe(kp.doanhThu.mucTieu)})`
+        : formatTienTe(kp.doanhThu.thucTe)
     ]);
     row.height = 26;
     for (let c = 2; c <= 8; c++) {
@@ -883,23 +900,30 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     }
   });
 
-  // Dòng tổng cộng NVKD
+  // Dòng tổng cộng NVKD (Có viền kép kế toán ở đáy, in đầy đủ cả Thực tế và Mục tiêu)
   const rTongSale = sTong.addRow([
     '',
     '',
     'TỔNG CỘNG TOÀN ĐỘI NGŨ KINH DOANH',
-    `${tongKhachMoiThuc} KH`,
-    `${tongBaoGiaThuc} báo giá`,
-    `${tongDuAnThuc} dự án`,
-    `${tongHopDongThuc} HĐ`,
-    formatTienTe(tongDTThuc)
+    fmtChiSoSale(tongKhachMoiThuc, tongKhachMoiMT, 'KH'),
+    fmtChiSoSale(tongBaoGiaThuc, tongBaoGiaMT, 'báo giá'),
+    fmtChiSoSale(tongDuAnThuc, tongDuAnMT, 'dự án'),
+    fmtChiSoSale(tongHopDongThuc, tongHopDongMT, 'HĐ'),
+    tongDTMT > 0
+      ? `${formatTienTe(tongDTThuc)} (MT: ${formatTienTe(tongDTMT)})`
+      : formatTienTe(tongDTThuc)
   ]);
   rTongSale.height = 28;
   for (let c = 2; c <= 8; c++) {
     const cell = rTongSale.getCell(c);
     cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF991B1B' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
-    cell.border = borderThin;
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF991B1B' } },
+      left: { style: 'thin', color: { argb: 'FF991B1B' } },
+      bottom: { style: 'double', color: { argb: 'FF991B1B' } },
+      right: { style: 'thin', color: { argb: 'FF991B1B' } }
+    };
     if (c === 3) cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
     else if (c === 8) cell.alignment = { vertical: 'middle', horizontal: 'right' };
     else cell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -914,12 +938,12 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   const rHeadT3 = sTong.addRow([
     '',
     'STT',
-    'Họ và tên NVKD',
-    'Khách mới cam kết',
-    'Báo giá cam kết',
-    'Dự án bám sát',
-    'HĐ mới cam kết',
-    'DT Mục tiêu tuần tới (VNĐ)'
+    'Họ và tên Chuyên viên Kinh doanh',
+    'Số lượng KH tiếp cận mới',
+    'Tổng số báo giá dự kiến gửi',
+    'Tổng số dự án dự kiến làm việc',
+    'Số hợp đồng / đơn hàng ký mới',
+    'Tổng doanh thu dự kiến thu về (VNĐ)'
   ]);
   styleTableHeaderTong(rHeadT3);
 
@@ -929,7 +953,7 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   let tongHopDongCK = 0;
   let tongDTCK = 0;
 
-  danhSachBaoCaoSale.forEach((sale, idx) => {
+  dsSaleThucTe.forEach((sale, idx) => {
     const ck = sale.camKetTuanToi;
     tongKhachCK += ck.khachHangMoi.target;
     tongBaoGiaCK += ck.baoGia.target;
@@ -968,7 +992,7 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   const rTongCK = sTong.addRow([
     '',
     '',
-    'TỔNG CAM KẾT TOÀN PHÒNG',
+    'TỔNG CỘNG CAM KẾT TOÀN ĐỘI NGŨ',
     `${tongKhachCK} khách`,
     `${tongBaoGiaCK} báo giá`,
     `${tongDuAnCK} dự án`,
@@ -980,7 +1004,12 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     const cell = rTongCK.getCell(c);
     cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF1E40AF' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
-    cell.border = borderThin;
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF1E40AF' } },
+      left: { style: 'thin', color: { argb: 'FF1E40AF' } },
+      bottom: { style: 'double', color: { argb: 'FF1E40AF' } },
+      right: { style: 'thin', color: { argb: 'FF1E40AF' } }
+    };
     if (c === 3) cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
     else if (c === 8) cell.alignment = { vertical: 'middle', horizontal: 'right' };
     else cell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -1144,8 +1173,10 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   setTenSheets.add('Tổng Quan Chi Nhánh');
 
   for (const sale of danhSachBaoCaoSale) {
-    let rawSheetName = sale.laTruongPhong ? 'TP - Điều Hành' : `Sale - ${sale.nhanVien.ho_va_ten}`;
-    // Cắt tối đa 30 ký tự vì giới hạn Excel sheet name là 31 ký tự
+    let rawSheetName = sale.laTruongPhong
+      ? `TP - ${sale.nhanVien.ho_va_ten}`
+      : `Sale - ${sale.nhanVien.ho_va_ten}`;
+    // Cắt tối đa 28 ký tự vì giới hạn Excel sheet name là 31 ký tự
     rawSheetName = rawSheetName.slice(0, 28).trim();
     let tenSheet = rawSheetName;
     let dem = 2;
