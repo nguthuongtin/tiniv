@@ -287,14 +287,20 @@ function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanV
     ];
 
     for (const item of kpiData) {
+      const coMucTieu = item.mucTieu > 0;
+      const hienThiMucTieu = coMucTieu
+        ? (item.laTien ? formatTienTe(item.mucTieu) : item.mucTieu)
+        : '—';
+      const hienThiThucTe = item.laTien ? formatTienTe(item.thucTe) : item.thucTe;
+
       const row = ws.addRow([
         '',
         item.stt,
         item.ten,
         '',
         item.dvt,
-        item.laTien ? formatTienTe(item.mucTieu) : item.mucTieu,
-        item.laTien ? formatTienTe(item.thucTe) : item.thucTe,
+        hienThiMucTieu,
+        hienThiThucTe,
         ''
       ]);
       const rIdx = row.number;
@@ -305,11 +311,18 @@ function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanV
         const cell = row.getCell(c);
         cell.font = { name: 'Calibri', size: 10 };
         cell.border = borderThin;
-        if (c === 2 || c === 5) cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        else if (c === 6 || c === 7) {
+        if (c === 2 || c === 5) {
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        } else if (c === 6) {
+          cell.alignment = { vertical: 'middle', horizontal: coMucTieu ? 'right' : 'center' };
+          if (coMucTieu && item.laTien) cell.font = { name: 'Calibri', size: 10, bold: true };
+        } else if (c === 7) {
           cell.alignment = { vertical: 'middle', horizontal: 'right' };
-          if (item.laTien) cell.font = { name: 'Calibri', size: 10, bold: true };
-        } else cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+          cell.font = { name: 'Calibri', size: 10, bold: true };
+          if (item.laTien) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF047857' } };
+        } else {
+          cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+        }
       }
     }
 
@@ -813,10 +826,10 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     '',
     'STT',
     'Họ và tên NVKD',
-    'Khách mới (Đạt/KH)',
-    'Báo giá (Đạt/KH)',
+    'Khách mới (Thực tế đạt)',
+    'Báo giá (Thực tế đạt)',
     'Dự án bám sát',
-    'HĐ ký kết (Đạt/KH)',
+    'HĐ ký kết (Thực tế đạt)',
     'DT Thực tế tuần (VNĐ)'
   ]);
   styleTableHeaderTong(rHeadT2);
@@ -826,6 +839,13 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   let tongDuAnThuc = 0;
   let tongHopDongThuc = 0;
   let tongDTThuc = 0;
+
+  const fmtChiSoSale = (thucTe: number, mucTieu?: number, dvt: string = '') => {
+    if (mucTieu && mucTieu > 0) {
+      return `${thucTe}${dvt ? ` ${dvt}` : ''} (MT: ${mucTieu})`;
+    }
+    return `${thucTe}${dvt ? ` ${dvt}` : ''}`;
+  };
 
   danhSachBaoCaoSale.forEach((sale, idx) => {
     const kp = sale.kpiTuanQua;
@@ -839,10 +859,10 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
       '',
       idx + 1,
       sale.nhanVien.ho_va_ten,
-      `${kp.khachHangMoi.thucTe} / ${kp.khachHangMoi.mucTieu}`,
-      `${kp.baoGia.thucTe} / ${kp.baoGia.mucTieu}`,
-      `${kp.duAnLamViec.thucTe} / ${kp.duAnLamViec.mucTieu}`,
-      `${kp.hopDongKy.thucTe} / ${kp.hopDongKy.mucTieu}`,
+      fmtChiSoSale(kp.khachHangMoi.thucTe, kp.khachHangMoi.mucTieu, 'KH'),
+      fmtChiSoSale(kp.baoGia.thucTe, kp.baoGia.mucTieu, 'BG'),
+      `${kp.duAnLamViec.thucTe} dự án`,
+      fmtChiSoSale(kp.hopDongKy.thucTe, kp.hopDongKy.mucTieu, 'HĐ'),
       formatTienTe(kp.doanhThu.thucTe)
     ]);
     row.height = 26;
@@ -867,11 +887,11 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   const rTongSale = sTong.addRow([
     '',
     '',
-    'TỔNG CỘNG TOÀN ĐỘI NGŨ',
-    `${tongKhachMoiThuc} khách`,
+    'TỔNG CỘNG TOÀN ĐỘI NGŨ KINH DOANH',
+    `${tongKhachMoiThuc} KH`,
     `${tongBaoGiaThuc} báo giá`,
     `${tongDuAnThuc} dự án`,
-    `${tongHopDongThuc} hợp đồng`,
+    `${tongHopDongThuc} HĐ`,
     formatTienTe(tongDTThuc)
   ]);
   rTongSale.height = 28;

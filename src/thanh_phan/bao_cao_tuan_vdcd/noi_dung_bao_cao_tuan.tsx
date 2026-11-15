@@ -280,11 +280,41 @@ export default function NoiDungBaoCaoTuan() {
   );
 
   // Danh sách nhân sự kinh doanh trong phạm vi xem
+  // CHỈ DÀNH CHO SALE THỰC SỰ - TUYỆT ĐỐI LOẠI BỎ TPKD VÀ TRẦN MINH ĐẠT (KỸ THUẬT)
   const dsSaleTeam = useMemo(() => {
     return dsNhanSu.filter((n) => {
+      if (n.trang_thai_du_lieu === 'da_xoa') return false;
       if (chiNhanhLocId !== 'tat_ca' && n.chi_nhanh_id !== chiNhanhLocId) return false;
+
+      const ten = (n.ho_va_ten || '').toLowerCase().trim();
+      // Loại trừ Trần Minh Đạt theo yêu cầu người dùng ("trần minh đạt đâu phải sale")
+      if (ten.includes('trần minh đạt') || ten.includes('trần mình đạt') || ten.includes('tran minh dat')) {
+        return false;
+      }
+
       const vt = String(n.vai_tro || '');
-      return vt === 'nhan_vien_kinh_doanh' || vt === 'truong_phong_kd' || vt === 'nhan_vien_ky_thuat';
+      const cv = (n.chuc_vu || '').toLowerCase();
+
+      // Loại trừ Trưởng phòng (TPKD không nộp báo cáo sale)
+      if (vt === 'truong_phong_kd' || vt === 'truong_phong' || cv.includes('trưởng phòng') || cv.includes('tpkd')) {
+        return false;
+      }
+
+      // Loại trừ Kỹ thuật, Hành chính, Lãnh đạo
+      if (
+        vt === 'nhan_vien_ky_thuat' ||
+        vt === 'hanh_chinh_van_phong' ||
+        vt === 'giam_doc' ||
+        vt === 'quan_tri_he_thong' ||
+        cv.includes('kỹ thuật') ||
+        cv.includes('hành chính') ||
+        cv.includes('giám đốc')
+      ) {
+        return false;
+      }
+
+      // Chỉ lấy đúng Nhân viên Kinh doanh
+      return vt === 'nhan_vien_kinh_doanh' || cv.includes('kinh doanh') || cv.includes('sale');
     });
   }, [dsNhanSu, chiNhanhLocId]);
 
@@ -865,11 +895,25 @@ export default function NoiDungBaoCaoTuan() {
       const danhSachBaoCaoSale: DuLieuBaoCaoTuanVDCDChuan[] = danhSachBaoCaoTeam.map((item) => {
         const nv = item.nv;
         const bc = item.baoCao;
-        const laTP = nv.chuc_vu?.toLowerCase().includes('trưởng') || nv.chuc_vu?.toLowerCase().includes('tp');
+        const bcTruoc = dsBaoCaoTuanTruoc.find((b) => b.nhan_vien_id === nv.id);
 
         const daCuaSale = dsDuAnTiemNangChiNhanh.filter(
           (d) => d.duAnGoc.nguoi_phu_trach_id === nv.id || d.duAnGoc.nguoi_tao_id === nv.id
         );
+
+        // Mục tiêu tuần qua: Lấy chuẩn từ kế hoạch tuần trước của nhân sự (nếu có), không gán số giả
+        const mtKhachMoi = bcTruoc?.cam_ket_tuan_toi?.khach_moi?.target || bc.kpi_tuan_qua?.khach_moi_muc_tieu || 0;
+        const mtBaoGia = bcTruoc?.cam_ket_tuan_toi?.bao_gia?.target || 0;
+        const mtDuAn = bcTruoc?.cam_ket_tuan_toi?.cuoc_hen?.target || bc.kpi_tuan_qua?.cuoc_gap_muc_tieu || 0;
+        const mtHopDong = bcTruoc?.cam_ket_tuan_toi?.hop_dong?.target || bc.kpi_tuan_qua?.hop_dong_muc_tieu || 0;
+        const mtDoanhThu = bcTruoc?.cam_ket_tuan_toi?.doanh_so?.target || bc.kpi_tuan_qua?.doanh_so_muc_tieu || 0;
+
+        // Số thực tế đạt được từ CRM và Báo cáo tuần này
+        const ttKhachMoi = bc.kpi_tuan_qua?.khach_moi_thuc_te ?? bc.tinh_trang_tuan_nay.dang_tiep_can ?? 0;
+        const ttBaoGia = bc.tinh_trang_tuan_nay.bao_gia ?? 0;
+        const ttDuAn = bc.tinh_trang_tuan_nay.tong_tiep_can ?? 0;
+        const ttHopDong = bc.tinh_trang_tuan_nay.hop_dong ?? 0;
+        const ttDoanhThu = (bc.dt_tuan_ky_ket || 0) + (bc.dt_tuan_tien_ve || 0);
 
         return {
           tuan: bc.tuan,
@@ -878,15 +922,15 @@ export default function NoiDungBaoCaoTuan() {
             id: nv.id,
             ho_va_ten: nv.ho_va_ten,
             ma_nhan_vien: nv.ma_nhan_vien,
-            chuc_vu: nv.chuc_vu || undefined,
+            chuc_vu: nv.chuc_vu || 'Nhân viên Kinh doanh',
             phong_ban: nv.phong_ban_id || undefined
           },
           kpiTuanQua: {
-            khachHangMoi: { mucTieu: 3, thucTe: bc.tinh_trang_tuan_nay.dang_tiep_can },
-            baoGia: { mucTieu: 2, thucTe: bc.tinh_trang_tuan_nay.bao_gia },
-            duAnLamViec: { mucTieu: 4, thucTe: bc.tinh_trang_tuan_nay.tong_tiep_can },
-            hopDongKy: { mucTieu: 1, thucTe: bc.tinh_trang_tuan_nay.hop_dong },
-            doanhThu: { mucTieu: 0, thucTe: bc.dt_tuan_ky_ket + bc.dt_tuan_tien_ve }
+            khachHangMoi: { mucTieu: mtKhachMoi, thucTe: ttKhachMoi },
+            baoGia: { mucTieu: mtBaoGia, thucTe: ttBaoGia },
+            duAnLamViec: { mucTieu: mtDuAn, thucTe: ttDuAn },
+            hopDongKy: { mucTieu: mtHopDong, thucTe: ttHopDong },
+            doanhThu: { mucTieu: mtDoanhThu, thucTe: ttDoanhThu }
           },
           danhSachDuAnTrongDiem: daCuaSale.map((d, idx) => ({
             stt: idx + 1,
@@ -903,11 +947,11 @@ export default function NoiDungBaoCaoTuan() {
             xacSuatPct: d.xacSuatPct
           })),
           camKetTuanToi: {
-            khachHangMoi: { target: 3, min: 2, max: 5 },
-            baoGia: { target: 2, min: 1, max: 4 },
-            duAnLamViec: { target: 4, min: 2, max: 6 },
-            hopDongMoi: { target: 1, min: 1, max: 2 },
-            doanhThu: { target: 0, min: 0, max: 0 }
+            khachHangMoi: bc.cam_ket_tuan_toi?.khach_moi || { target: 0, min: 0, max: 0 },
+            baoGia: bc.cam_ket_tuan_toi?.bao_gia || { target: 0, min: 0, max: 0 },
+            duAnLamViec: bc.cam_ket_tuan_toi?.cuoc_hen || { target: 0, min: 0, max: 0 },
+            hopDongMoi: bc.cam_ket_tuan_toi?.hop_dong || { target: 0, min: 0, max: 0 },
+            doanhThu: bc.cam_ket_tuan_toi?.doanh_so || { target: 0, min: 0, max: 0 }
           },
           lichLamViecTuanToi: infoTuanToi.danhSachNgay.map((d, idx) => {
             const lichNgay = lichTuanToiToanTeam.filter(
@@ -920,7 +964,7 @@ export default function NoiDungBaoCaoTuan() {
               noiDungChiTiet: nd || 'Tác nghiệp văn phòng / Bám sát dự án'
             };
           }),
-          laTruongPhong: laTP
+          laTruongPhong: false
         };
       });
 
@@ -1348,7 +1392,7 @@ export default function NoiDungBaoCaoTuan() {
                         <span className="text-slate-700 font-bold tabular-nums">{pctGui}%</span>
                       </div>
                       <div className="text-lg font-extrabold text-slate-900 tabular-nums">
-                        {soDaGui}/{danhSachBaoCaoTeam.length} nhân sự
+                        {soDaGui}/{danhSachBaoCaoTeam.length} NVKD đã nộp
                       </div>
                       <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
                         <div className="h-full bg-slate-800 rounded-full" style={{ width: `${pctGui}%` }} />
