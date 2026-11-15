@@ -657,60 +657,55 @@ export default function NoiDungBaoCaoTuan() {
 
   const lichTuanToiToanTeam = useMemo(() => {
     const mapTenNV = new Map(dsNhanSu.map((n) => [n.id, n.ho_va_ten]));
-    const allowedIds = new Set(dsSaleTeam.map((n) => n.id));
 
-    // Thêm Trưởng phòng Kinh doanh để lịch công tác xuất ra có đầy đủ TPKD
+    // CHỈ LẤY ĐÚNG NHÂN SỰ THUỘC PHÒNG KINH DOANH: TPKD + ĐỘI NGŨ SALE
+    // Tuyệt đối không lấy Kỹ thuật, Ban Giám đốc, Kế toán, Admin hay bất kỳ ai ngoài phòng KD
+    const idPhongKD = new Set<string>();
+    dsSaleTeam.forEach((s) => idPhongKD.add(s.id));
     if (tpKinhDoanh) {
-      allowedIds.add(tpKinhDoanh.id);
-    }
-    dsNhanSu.forEach((n) => {
-      const vt = String(n.vai_tro || '');
-      const cv = (n.chuc_vu || '').toLowerCase();
-      if (
-        (vt === 'truong_phong_kd' || vt === 'truong_phong' || cv.includes('trưởng phòng kinh doanh') || cv.includes('tpkd')) &&
-        (chiNhanhLocId === 'tat_ca' || n.chi_nhanh_id === chiNhanhLocId)
-      ) {
-        const ten = (n.ho_va_ten || '').toLowerCase();
-        if (!ten.includes('trần minh đạt') && !ten.includes('trần mình đạt')) {
-          allowedIds.add(n.id);
-        }
-      }
-    });
-    if (nguoiDungHienTai?.id) {
-      const vt = String(nguoiDungHienTai?.vai_tro || '');
-      if (vt === 'truong_phong_kd' || vt === 'truong_phong') {
-        allowedIds.add(nguoiDungHienTai.id);
-      }
+      idPhongKD.add(tpKinhDoanh.id);
     }
 
     return dsLichGap
-      .filter(
-        (l) =>
-          !l.da_xoa &&
-          l.ngay >= infoTuanToi.ngayBatDau &&
-          l.ngay <= infoTuanToi.ngayKetThuc &&
-          (allowedIds.has(l.nguoi_phu_trach_id) ||
-            allowedIds.has(l.nguoi_tao_id) ||
-            (Array.isArray(l.nguoi_tham_gia_ids) && l.nguoi_tham_gia_ids.some((id) => allowedIds.has(id))))
-      )
+      .filter((l) => {
+        if (l.da_xoa) return false;
+        if (l.trang_thai === 'huy') return false;
+        if (l.ngay < infoTuanToi.ngayBatDau || l.ngay > infoTuanToi.ngayKetThuc) return false;
+
+        // Chỉ lấy lịch công tác theo kế hoạch của nhân sự phòng Kinh doanh
+        const idPhuTrach = l.nguoi_phu_trach_id && idPhongKD.has(l.nguoi_phu_trach_id)
+          ? l.nguoi_phu_trach_id
+          : l.nguoi_tao_id && idPhongKD.has(l.nguoi_tao_id)
+          ? l.nguoi_tao_id
+          : null;
+
+        if (!idPhuTrach) return false;
+
+        // Kiểm tra loại trừ nếu lỡ dính tên Trần Minh Đạt
+        const ten = (mapTenNV.get(idPhuTrach) || '').toLowerCase();
+        if (ten.includes('trần minh đạt') || ten.includes('trần mình đạt') || ten.includes('tran minh dat')) {
+          return false;
+        }
+
+        return true;
+      })
       .sort((a, b) => `${a.ngay}_${a.gio_bat_dau}`.localeCompare(`${b.ngay}_${b.gio_bat_dau}`))
       .map((l) => {
-        let tenNV = mapTenNV.get(l.nguoi_phu_trach_id) || mapTenNV.get(l.nguoi_tao_id) || '';
-        const idNV = l.nguoi_phu_trach_id || l.nguoi_tao_id;
-        const laTP =
-          (tpKinhDoanh && idNV === tpKinhDoanh.id) ||
-          (nguoiDungHienTai &&
-            idNV === nguoiDungHienTai.id &&
-            String(nguoiDungHienTai.vai_tro).includes('truong_phong'));
+        const idPhuTrach = (l.nguoi_phu_trach_id && idPhongKD.has(l.nguoi_phu_trach_id))
+          ? l.nguoi_phu_trach_id
+          : l.nguoi_tao_id;
+        let tenNV = mapTenNV.get(idPhuTrach) || '';
+        const laTP = tpKinhDoanh && idPhuTrach === tpKinhDoanh.id;
         if (laTP && tenNV && !tenNV.includes('TPKD') && !tenNV.includes('Trưởng phòng')) {
           tenNV = `${tenNV} (TPKD)`;
         }
         return {
           ...l,
+          nguoi_phu_trach_id: idPhuTrach,
           ten_nhan_vien: tenNV
         };
       });
-  }, [dsLichGap, dsNhanSu, dsSaleTeam, tpKinhDoanh, chiNhanhLocId, nguoiDungHienTai, infoTuanToi]);
+  }, [dsLichGap, dsNhanSu, dsSaleTeam, tpKinhDoanh, infoTuanToi]);
 
   const dsDuAnTiemNangChiNhanh = useMemo(() => {
     const setIdsDuAnChon = new Set(

@@ -4,6 +4,7 @@ import React, { useRef, useState, useMemo } from 'react';
 import ExcelJS from 'exceljs';
 import {
   FileSpreadsheet,
+  FileText,
   Printer,
   X,
   Loader2,
@@ -98,12 +99,13 @@ function tinhChieuCaoHangExcel(text: string, colWidthApprox: number = 35, minHei
   return Math.max(minHeight, count * 18 + 6);
 }
 
-const SlideFrame: React.FC<{ children: React.ReactNode; nenTrang?: boolean }> = ({
+const SlideFrame: React.FC<{ children: React.ReactNode; nenTrang?: boolean; className?: string }> = ({
   children,
-  nenTrang = true
+  nenTrang = true,
+  className = ''
 }) => (
   <section
-    className="vdcd-slide relative w-[1120px] h-[630px] bg-white text-slate-900 overflow-hidden shadow-lg border border-slate-200 mx-auto shrink-0 flex flex-col"
+    className={`vdcd-slide relative w-[1120px] h-[630px] bg-white text-slate-900 overflow-hidden shadow-lg border border-slate-200 mx-auto shrink-0 flex flex-col ${className}`}
     style={{ pageBreakAfter: 'always', breakAfter: 'page' }}
   >
     {/* Góc trang trí đỏ-đen chuẩn mẫu VDCD */}
@@ -385,14 +387,22 @@ export async function xuatExcelBaoCaoTuanVDCD(
     { width: 26 }
   ];
 
-  // Sheet Lịch công tác tuần tới (nhóm theo từng nhân sự)
-  if (lichTuanToi.length > 0) {
+  // Sheet Lịch công tác tuần tới (nhóm theo từng nhân sự phòng Kinh doanh)
+  const lichKeHoachHopLe = lichTuanToi.filter((l) => {
+    if (l.da_xoa) return false;
+    if (l.trang_thai === 'huy') return false;
+    const ten = (l.ten_nhan_vien || '').toLowerCase();
+    if (ten.includes('trần minh đạt') || ten.includes('tran minh dat')) return false;
+    return true;
+  });
+
+  if (lichKeHoachHopLe.length > 0) {
     const sLich = wb.addWorksheet('Lich_Cong_Tac_Tuan');
     sLich.addRow([`LỊCH CÔNG TÁC ${infoTuanToi.nhanTieuDe} (${infoTuanToi.khoangNgayNhan}) - THEO TỪNG NHÂN SỰ`]);
     styleHeader(sLich.addRow(['STT', 'NGÀY', 'GIỜ', 'NHÂN SỰ', 'KHÁCH HÀNG / ĐỊA BÀN', 'NỘI DUNG CÔNG TÁC', 'TRẠNG THÁI']));
 
-    const mapLichEx = new Map<string, typeof lichTuanToi>();
-    lichTuanToi.forEach((l) => {
+    const mapLichEx = new Map<string, typeof lichKeHoachHopLe>();
+    lichKeHoachHopLe.forEach((l) => {
       const ten = l.ten_nhan_vien || baoCao.ten_nhan_vien || 'Kinh doanh';
       if (!mapLichEx.has(ten)) mapLichEx.set(ten, []);
       mapLichEx.get(ten)!.push(l);
@@ -464,6 +474,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   tieuDePhu
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [cheDoXem, setCheDoXem] = useState<'day_du' | 'don_gian'>('day_du');
   const [dangXuatExcel, setDangXuatExcel] = useState(false);
   const [moBangQuanLyDA, setMoBangQuanLyDA] = useState(false);
   const [duAnThemId, setDuAnThemId] = useState('');
@@ -621,12 +632,23 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   const danhSachLichTheoNguoi = useMemo(() => {
     if (!lichTuanToi || lichTuanToi.length === 0) return [];
 
+    // Lọc chỉ lấy lịch theo kế hoạch và thuộc phòng Kinh doanh
+    const dsHopLe = (lichTuanToi || []).filter((l) => {
+      if (l.da_xoa) return false;
+      if (l.trang_thai === 'huy') return false;
+      const ten = (l.ten_nhan_vien || '').toLowerCase();
+      if (ten.includes('trần minh đạt') || ten.includes('tran minh dat')) return false;
+      return true;
+    });
+
+    if (dsHopLe.length === 0) return [];
+
     // Nếu là báo cáo cá nhân của 1 nhân sự
     if (baoCao.nhan_vien_id !== 'tong_chi_nhanh' && danhSachBaoCaoTeam.length === 0) {
       return [
         {
           tenNhanVien: baoCao.ten_nhan_vien,
-          danhSachLich: [...lichTuanToi].sort(
+          danhSachLich: [...dsHopLe].sort(
             (a, b) => `${a.ngay}_${a.gio_bat_dau}`.localeCompare(`${b.ngay}_${b.gio_bat_dau}`)
           )
         }
@@ -636,7 +658,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
     // Nếu là báo cáo tổng hợp chi nhánh: nhóm theo từng người
     const mapLich = new Map<string, (LichGapKH & { ten_nhan_vien?: string })[]>();
 
-    lichTuanToi.forEach((l) => {
+    dsHopLe.forEach((l) => {
       const ten = l.ten_nhan_vien || baoCao.ten_nhan_vien || 'Chuyên viên KD';
       if (!mapLich.has(ten)) {
         mapLich.set(ten, []);
@@ -668,6 +690,18 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
 
     return ketQua;
   }, [lichTuanToi, baoCao.nhan_vien_id, baoCao.ten_nhan_vien, danhSachBaoCaoTeam.length]);
+
+  const soTrangDonGian = useMemo(() => {
+    const coTeam = danhSachBaoCaoTeam.length > 0;
+    const trangSale = coTeam ? trangTeamThucHien.length + trangTeamKeHoach.length : 0;
+    return 1 + 1 + trangSale + trangDongTien.length + trangTiemNang.length + 1;
+  }, [danhSachBaoCaoTeam.length, trangTeamThucHien.length, trangTeamKeHoach.length, trangDongTien.length, trangTiemNang.length]);
+
+  const soTrangLich = useMemo(() => {
+    return danhSachLichTheoNguoi.reduce((acc, n) => acc + chiaTrang(n.danhSachLich, 6).length, 0);
+  }, [danhSachLichTheoNguoi]);
+
+  const soTrangDayDu = soTrangDonGian + soTrangLich;
 
   if (!mo) return null;
 
@@ -749,9 +783,17 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   const strPctTongTiepCan =
     khTiepCan > 0 ? `${Math.round((thTiepCan / khTiepCan) * 100)}%` : '100%';
 
-  const inSlidePDF = () => {
+  const inSlidePDF = (coLich: boolean = true) => {
     if (!containerRef.current) return;
-    const htmlSlides = containerRef.current.innerHTML;
+    const clone = containerRef.current.cloneNode(true) as HTMLElement;
+
+    // Nếu xuất slide đơn giản: loại bỏ toàn bộ slide lịch công tác
+    if (!coLich) {
+      const lichSlides = clone.querySelectorAll('.slide-lich-cong-tac');
+      lichSlides.forEach((el) => el.remove());
+    }
+
+    const htmlSlides = clone.innerHTML;
     const win = window.open('', '_blank', 'width=1280,height=780');
     if (!win) {
       alert('Vui lòng cho phép mở cửa sổ bật lên (pop-up) để xuất PDF.');
@@ -762,17 +804,21 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
       .map((el) => el.outerHTML)
       .join('\n');
 
+    const tieuDePDF = coLich
+      ? `Báo cáo ${infoTuan.nhanTieuDe} (Đầy đủ) - ${baoCao.ten_nhan_vien}`
+      : `Báo cáo ${infoTuan.nhanTieuDe} (Đơn giản) - ${baoCao.ten_nhan_vien}`;
+
     win.document.write(`<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>Báo cáo ${infoTuan.nhanTieuDe} - ${baoCao.ten_nhan_vien}</title>
+  <title>${tieuDePDF}</title>
   ${styles}
   <style>
     @page { size: 1120px 630px; margin: 0; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     html, body { margin: 0; padding: 0; background: #fff; }
-    .vdcd-slide { box-shadow: none !important; border: none !important; margin: 0 !important; }
+    .vdcd-slide { box-shadow: none !important; border: none !important; margin: 0 !important; display: flex !important; }
     @media screen {
       body { background: #1e293b; padding: 16px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
     }
@@ -907,14 +953,43 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   return (
     <div className="fixed inset-0 z-[120] bg-slate-950/85 backdrop-blur-xs flex flex-col">
       {/* Thanh công cụ modal */}
-      <div className="flex items-center justify-between px-5 py-3 bg-slate-900 border-b border-slate-800 text-white shrink-0">
-        <div>
-          <h3 className="text-sm font-bold">
-            Xem trước Slide Báo cáo {infoTuan.nhanTieuDe} — {baoCao.ten_nhan_vien}
-          </h3>
-          {tieuDePhu && <p className="text-xs text-slate-400">{tieuDePhu}</p>}
+      <div className="flex items-center justify-between px-5 py-3 bg-slate-900 border-b border-slate-800 text-white shrink-0 flex-wrap gap-2.5">
+        <div className="flex items-center gap-3">
+          <div>
+            <h3 className="text-sm font-bold">
+              Xem trước Slide Báo cáo {infoTuan.nhanTieuDe} — {baoCao.ten_nhan_vien}
+            </h3>
+            {tieuDePhu && <p className="text-xs text-slate-400">{tieuDePhu}</p>}
+          </div>
+
+          {/* Toggle xem trước Đầy đủ / Đơn giản */}
+          <div className="hidden sm:inline-flex items-center bg-slate-800 p-0.5 rounded-xl border border-slate-700 text-xs">
+            <button
+              type="button"
+              onClick={() => setCheDoXem('day_du')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                cheDoXem === 'day_du'
+                  ? 'bg-[#D11317] text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Bản đầy đủ ({soTrangDayDu} slide)
+            </button>
+            <button
+              type="button"
+              onClick={() => setCheDoXem('don_gian')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                cheDoXem === 'don_gian'
+                  ? 'bg-slate-700 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Bản đơn giản ({soTrangDonGian} slide)
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Nút bật/tắt quản lý danh sách dự án slide */}
           <button
             type="button"
@@ -934,18 +1009,40 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
             onClick={handleXuatExcel}
             disabled={dangXuatExcel}
             className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition disabled:opacity-50"
+            title="Xuất file Excel tổng hợp"
           >
             {dangXuatExcel ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
             <span>Xuất Excel</span>
           </button>
+
+          {/* NÚT 1: XUẤT SLIDE ĐƠN GIẢN (KHÔNG CÓ LỊCH CÔNG TÁC) */}
           <button
             type="button"
-            onClick={inSlidePDF}
-            className="h-9 px-4 rounded-xl bg-[#D11317] hover:bg-red-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition"
+            onClick={() => {
+              setCheDoXem('don_gian');
+              inSlidePDF(false);
+            }}
+            className="h-9 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition shadow-xs"
+            title="Xuất Slide Đơn giản (Không bao gồm lịch công tác)"
+          >
+            <FileText className="size-4 text-slate-300" />
+            <span>Xuất Slide Đơn giản</span>
+          </button>
+
+          {/* NÚT 2: XUẤT SLIDE ĐẦY ĐỦ (CÓ LỊCH CÔNG TÁC TỪNG NHÂN SỰ) */}
+          <button
+            type="button"
+            onClick={() => {
+              setCheDoXem('day_du');
+              inSlidePDF(true);
+            }}
+            className="h-9 px-4 rounded-xl bg-[#D11317] hover:bg-red-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition shadow-xs"
+            title="Xuất Slide Đầy đủ (Kèm lịch công tác chi tiết từng nhân sự)"
           >
             <Printer className="size-4" />
-            <span>Xuất Slide PDF (16:9)</span>
+            <span>Xuất Slide Đầy đủ</span>
           </button>
+
           <button
             type="button"
             onClick={onDong}
@@ -1088,6 +1185,9 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
 
       {/* Khu vực preview các slide 16:9 */}
       <div className="flex-1 overflow-y-auto py-6 px-4 space-y-6">
+        {cheDoXem === 'don_gian' && (
+          <style>{`.slide-lich-cong-tac { display: none !important; }`}</style>
+        )}
         <div ref={containerRef} className="space-y-6">
           {/* SLIDE 1: TRANG BÌA */}
           <SlideFrame nenTrang={false}>
@@ -1751,7 +1851,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
           {danhSachLichTheoNguoi.map((nguoi) => {
             const trangCuaNguoi = chiaTrang(nguoi.danhSachLich, 6);
             return trangCuaNguoi.map((items, trangIdx) => (
-              <SlideFrame key={`lich_${nguoi.tenNhanVien}_${trangIdx}`}>
+              <SlideFrame key={`lich_${nguoi.tenNhanVien}_${trangIdx}`} className="slide-lich-cong-tac">
                 <div className="text-center mb-4">
                   <h2 className="text-[23px] font-black text-slate-900 uppercase">
                     LỊCH CÔNG TÁC {nhanTuanToi.toUpperCase()}
