@@ -279,18 +279,67 @@ export const laQuanLyCapCaoHoacTruongPhong = (
   dsVaiTro?: VaiTro[]
 ): boolean => {
   if (!nguoiDung) return false;
-  const vaiTroKey = String(nguoiDung.vai_tro || '');
+  const vaiTroKey = String(nguoiDung.vai_tro || '').toLowerCase();
+  const chucVuLower = String(nguoiDung.chuc_vu || '').toLowerCase();
+
+  // 1. Kiểm tra trực tiếp key vai trò chuẩn
   if (
     vaiTroKey === 'quan_tri_he_thong' ||
     vaiTroKey === 'giam_doc' ||
     vaiTroKey === 'truong_phong' ||
-    vaiTroKey.startsWith('truong_phong_') ||
+    vaiTroKey.startsWith('truong_phong_')
+  ) {
+    return true;
+  }
+
+  // 2. Kiểm tra theo chức vụ nhân sự (Trưởng phòng, Phó phòng, Giám đốc, Quản lý, v.v.)
+  if (
+    chucVuLower.includes('trưởng phòng') ||
+    chucVuLower.includes('phó phòng') ||
+    chucVuLower.includes('giám đốc') ||
+    chucVuLower.includes('quản lý') ||
+    chucVuLower.includes('leader') ||
+    chucVuLower.includes('manager')
+  ) {
+    return true;
+  }
+
+  // 3. Phân giải vai trò từ cache danh mục vai trò nếu vaiTroKey là ID
+  let effectiveRoles = dsVaiTro;
+  if ((!effectiveRoles || effectiveRoles.length === 0) && typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('ebms_danh_sach_vai_tro');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) effectiveRoles = parsed;
+      }
+    } catch {}
+  }
+  if (effectiveRoles && effectiveRoles.length > 0) {
+    const vt = effectiveRoles.find((v) => v.id === vaiTroKey || v.ma_vai_tro === vaiTroKey);
+    const maVT = (vt?.ma_vai_tro || '').toLowerCase();
+    if (
+      maVT === 'quan_tri_he_thong' ||
+      maVT === 'giam_doc' ||
+      maVT === 'truong_phong' ||
+      maVT.startsWith('truong_phong_')
+    ) {
+      return true;
+    }
+  }
+
+  // 4. Kiểm tra theo quyền hạn hệ thống
+  if (
     coQuyen(nguoiDung, 'lanh_dao.xem', dsVaiTro) ||
+    coQuyen(nguoiDung, 'ke_hoach.duyet', dsVaiTro) ||
+    coQuyen(nguoiDung, 'tong_quan.theo_doi_kinh_doanh', dsVaiTro) ||
+    coQuyen(nguoiDung, 'he_thong.quan_tri', dsVaiTro) ||
     coQuyen(nguoiDung, 'khach_hang.xem_toan_bo', dsVaiTro) ||
     coQuyen(nguoiDung, 'du_an.xem_toan_bo', dsVaiTro)
   ) {
     return true;
   }
+
   return false;
 };
 

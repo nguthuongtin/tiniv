@@ -23,7 +23,8 @@ import {
   BarChart3,
   CalendarCheck,
   Briefcase,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -543,7 +544,7 @@ export function NoiDungLichCongTac({
   const lichNgayChon = useMemo(
     () =>
       dsLichLoc
-        .filter((l) => l.ngay === ngayTuanHienThi.iso && l.trang_thai !== 'huy')
+        .filter((l) => l.ngay === ngayTuanHienThi.iso)
         .sort((a, b) => a.gio_bat_dau.localeCompare(b.gio_bat_dau)),
     [dsLichLoc, ngayTuanHienThi.iso]
   );
@@ -1333,6 +1334,7 @@ export function NoiDungLichCongTac({
                                 const infoHienThi = taoTieuDeLichHienThi(lich);
 
                                 if (laViecVP) {
+                                  const daHuy = lich.trang_thai === 'huy';
                                   return (
                                     <div
                                       key={lich.id}
@@ -1341,8 +1343,10 @@ export function NoiDungLichCongTac({
                                         setMoModal(true);
                                       }}
                                       className={cn(
-                                        'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs space-y-1 border-l-4',
-                                        daHoanThanh
+                                        'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs space-y-1 border-l-4 group',
+                                        daHuy
+                                          ? 'bg-slate-100/90 border-slate-200 opacity-60 border-l-slate-400'
+                                          : daHoanThanh
                                           ? 'bg-slate-50/80 border-slate-200 opacity-70 border-l-slate-400'
                                           : 'bg-sky-50/90 border-sky-200/90 hover:bg-sky-100/90 border-l-sky-500 text-sky-950'
                                       )}
@@ -1352,39 +1356,62 @@ export function NoiDungLichCongTac({
                                           <span>{infoHienThi.icon}</span>
                                           <span>{infoHienThi.nhanLoai}</span>
                                         </span>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => void handleToggleXong(lich, e)}
-                                          className={cn(
-                                            'size-5 rounded-md border flex items-center justify-center transition cursor-pointer shrink-0',
-                                            daHoanThanh
-                                              ? 'bg-emerald-600 border-emerald-600 text-white'
-                                              : 'bg-white border-slate-300 text-slate-400 hover:border-emerald-500'
+                                        <div className="flex items-center gap-1">
+                                          {laQuanLy && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                void handleXoaLich(lich.id, infoHienThi.tieuDeChinh);
+                                              }}
+                                              className="size-5 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition"
+                                              title="Xóa lịch (Chỉ Quản lý)"
+                                            >
+                                              <Trash2 className="size-3" />
+                                            </button>
                                           )}
-                                          title={daHoanThanh ? 'Đã xong (Bấm để mở lại)' : 'Đánh dấu hoàn thành'}
-                                        >
-                                          <Check className="size-3" strokeWidth={3} />
-                                        </button>
+                                          {!daHuy && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => void handleToggleXong(lich, e)}
+                                              className={cn(
+                                                'size-5 rounded-md border flex items-center justify-center transition cursor-pointer shrink-0',
+                                                daHoanThanh
+                                                  ? 'bg-emerald-600 border-emerald-600 text-white'
+                                                  : 'bg-white border-slate-300 text-slate-400 hover:border-emerald-500'
+                                              )}
+                                              title={daHoanThanh ? 'Đã xong (Bấm để mở lại)' : 'Đánh dấu hoàn thành'}
+                                            >
+                                              <Check className="size-3" strokeWidth={3} />
+                                            </button>
+                                          )}
+                                          {daHuy && (
+                                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700">
+                                              Đã hủy
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
 
-                                      <div className={cn('text-xs font-bold leading-snug line-clamp-2 text-slate-900', daHoanThanh && 'line-through text-slate-500')}>
+                                      <div className={cn('text-xs font-bold leading-snug line-clamp-2', (daHoanThanh || daHuy) ? 'line-through text-slate-500' : 'text-slate-900')}>
                                         {infoHienThi.tieuDeChinh}
                                       </div>
 
                                       {infoHienThi.chiTietThem && (
-                                        <div className="text-[11px] text-slate-500 truncate">
+                                        <div className={cn('text-[11px] truncate', daHuy ? 'line-through text-slate-400' : 'text-slate-500')}>
                                           {infoHienThi.chiTietThem}
                                         </div>
                                       )}
 
                                       <div className="flex items-center justify-between pt-1 border-t border-sky-100/80 text-[10.5px] text-slate-500">
-                                        <span>{lich.gio_bat_dau || 'VP'}</span>
+                                        <span className={cn(daHuy && 'line-through text-slate-400')}>{lich.gio_bat_dau || 'VP'}</span>
                                         <span className="truncate max-w-[100px]">{ns?.ho_va_ten || ''}</span>
                                       </div>
                                     </div>
                                   );
                                 }
 
+                                const daHuy = lich.trang_thai === 'huy';
                                 return (
                                   <div
                                     key={lich.id}
@@ -1393,37 +1420,52 @@ export function NoiDungLichCongTac({
                                       setMoModal(true);
                                     }}
                                     className={cn(
-                                      'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs space-y-1.5 border-l-4',
-                                      lich.trang_thai === 'huy'
-                                        ? 'bg-slate-100 border-slate-200 opacity-60 line-through border-l-slate-400'
+                                      'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs space-y-1.5 border-l-4 group',
+                                      daHuy
+                                        ? 'bg-slate-100 border-slate-200 opacity-60 border-l-slate-400'
                                         : 'bg-amber-50/90 border-amber-200/90 hover:bg-amber-100/90 border-l-amber-500 text-amber-950'
                                     )}
                                   >
                                     <div className="flex items-center justify-between gap-1">
                                       <div className="flex items-center gap-1 min-w-0">
-                                        <span className="text-[9.5px] font-bold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded-md border border-amber-200/80 inline-flex items-center gap-1 shrink-0">
+                                        <span className={cn('text-[9.5px] font-bold px-1.5 py-0.5 rounded-md border inline-flex items-center gap-1 shrink-0', daHuy ? 'text-slate-600 bg-slate-200 border-slate-300' : 'text-amber-800 bg-amber-100/90 border-amber-200/80')}>
                                           <span>🚗</span>
-                                          <span>Công tác</span>
+                                          <span>{daHuy ? 'Đã hủy' : 'Công tác'}</span>
                                         </span>
-                                        <span className="text-[10.5px] font-extrabold text-amber-900 tabular-nums truncate">
+                                        <span className={cn('text-[10.5px] font-extrabold tabular-nums truncate', daHuy ? 'line-through text-slate-400' : 'text-amber-900')}>
                                           {lich.gio_bat_dau}–{lich.gio_ket_thuc}
                                         </span>
                                       </div>
-                                      <span
-                                        className={cn(
-                                          'size-2 rounded-full shrink-0',
-                                          ttObj?.mauDot || 'bg-amber-500'
+                                      <div className="flex items-center gap-1">
+                                        {laQuanLy && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              void handleXoaLich(lich.id, infoHienThi.tieuDeChinh);
+                                            }}
+                                            className="size-5 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition"
+                                            title="Xóa lịch (Chỉ Quản lý)"
+                                          >
+                                            <Trash2 className="size-3" />
+                                          </button>
                                         )}
-                                        title={ttObj?.tieu_de}
-                                      />
+                                        <span
+                                          className={cn(
+                                            'size-2 rounded-full shrink-0',
+                                            ttObj?.mauDot || 'bg-amber-500'
+                                          )}
+                                          title={ttObj?.tieu_de}
+                                        />
+                                      </div>
                                     </div>
 
-                                    <div className="text-xs font-bold leading-snug line-clamp-2 text-slate-900">
+                                    <div className={cn('text-xs font-bold leading-snug line-clamp-2', daHuy ? 'line-through text-slate-500' : 'text-slate-900')}>
                                       {infoHienThi.tieuDeChinh}
                                     </div>
 
                                     {infoHienThi.chiTietThem && (
-                                      <div className="flex items-center gap-1 text-[11px] text-slate-600 truncate">
+                                      <div className={cn('flex items-center gap-1 text-[11px] truncate', daHuy ? 'line-through text-slate-400' : 'text-slate-600')}>
                                         {lich.dia_diem && <MapPin className="size-3 shrink-0 text-slate-400" />}
                                         <span className="truncate">{infoHienThi.chiTietThem}</span>
                                       </div>
@@ -1486,7 +1528,7 @@ export function NoiDungLichCongTac({
                   <div className="grid grid-cols-7 gap-1">
                     {ds7NgayTuan.map((ngay, idx) => {
                       const dangChon = ngay.iso === ngayTuanHienThi.iso;
-                      const coLich = dsLichLoc.some((l) => l.ngay === ngay.iso && l.trang_thai !== 'huy');
+                      const coLich = dsLichLoc.some((l) => l.ngay === ngay.iso);
                       return (
                         <button
                           key={ngay.iso}
@@ -1625,7 +1667,7 @@ export function NoiDungLichCongTac({
                                       {infoH.icon} {isVP ? infoH.nhanLoai : 'Công tác'}
                                     </span>
                                   </div>
-                                  <div className="text-[13px] font-bold text-slate-900 leading-snug line-clamp-2">
+                                  <div className={cn('text-[13px] font-bold leading-snug line-clamp-2', lich.trang_thai === 'huy' ? 'line-through text-slate-500' : 'text-slate-900')}>
                                     {infoH.tieuDeChinh}
                                   </div>
                                   {infoH.chiTietThem && (
@@ -1795,7 +1837,7 @@ export function NoiDungLichCongTac({
                   <div className="grid grid-cols-7 gap-y-1">
                     {luoiNgayThang.map((oNgay) => {
                       const lichNgay = dsLichLoc.filter(
-                        (l) => l.ngay === oNgay.iso && l.trang_thai !== 'huy'
+                        (l) => l.ngay === oNgay.iso
                       );
                       const dangChon = ngayChonTrongThang === oNgay.iso;
                       const coLich = lichNgay.length > 0;
@@ -1896,6 +1938,7 @@ export function NoiDungLichCongTac({
                               (t) => t.key === lich.trang_thai
                             );
 
+                            const daHuy = lich.trang_thai === 'huy';
                             return (
                               <div
                                 key={lich.id}
@@ -1903,7 +1946,12 @@ export function NoiDungLichCongTac({
                                   setLichDangSua(lich);
                                   setMoModal(true);
                                 }}
-                                className="p-3.5 bg-white rounded-[22px] border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] active:scale-[0.99] transition cursor-pointer"
+                                className={cn(
+                                  'p-3.5 rounded-[22px] border transition cursor-pointer',
+                                  daHuy
+                                    ? 'bg-slate-100/90 border-slate-200 opacity-60'
+                                    : 'bg-white border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] active:scale-[0.99]'
+                                )}
                               >
                                 <div className="flex items-start gap-2">
                                   <span className="text-slate-400 text-[11.5px] font-extrabold tabular-nums mt-0.5 shrink-0">
@@ -1916,16 +1964,16 @@ export function NoiDungLichCongTac({
                                         const isVP = lich.loai_lich === 'van_phong';
                                         return (
                                           <div className="space-y-0.5">
-                                            <div className="flex items-center gap-1.5">
-                                              <span className={cn('text-[9.5px] font-bold px-1.5 py-0.2 rounded', isVP ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800')}>
-                                                {infoH.icon} {isVP ? infoH.nhanLoai : 'Công tác'}
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <span className={cn('text-[9.5px] font-bold px-1.5 py-0.2 rounded', daHuy ? 'bg-slate-200 text-slate-600' : (isVP ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'))}>
+                                                {infoH.icon} {daHuy ? 'Đã hủy' : (isVP ? infoH.nhanLoai : 'Công tác')}
                                               </span>
-                                              <span className="font-bold text-slate-900 text-[13.5px]">
+                                              <span className={cn('font-bold text-[13.5px]', daHuy ? 'line-through text-slate-500' : 'text-slate-900')}>
                                                 {infoH.tieuDeChinh}
                                               </span>
                                             </div>
                                             {infoH.chiTietThem && (
-                                              <div className="text-[11.5px] text-slate-500">
+                                              <div className={cn('text-[11.5px]', daHuy ? 'line-through text-slate-400' : 'text-slate-500')}>
                                                 {infoH.chiTietThem}
                                               </div>
                                             )}
@@ -1940,18 +1988,34 @@ export function NoiDungLichCongTac({
                                     </div>
 
                                     {(lich.dia_diem || lich.noi_dung) && (
-                                      <div className="text-[12px] text-slate-500 mt-1 line-clamp-1">
+                                      <div className={cn('text-[12px] mt-1 line-clamp-1', daHuy ? 'line-through text-slate-400' : 'text-slate-500')}>
                                         {lich.dia_diem ? `📍 ${lich.dia_diem}` : lich.noi_dung}
                                       </div>
                                     )}
 
                                     <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-slate-100">
-                                      <span className="font-mono font-extrabold text-[#107555] text-[12px] bg-emerald-50/80 px-2.5 py-0.5 rounded-full border border-emerald-200/60 tabular-nums">
+                                      <span className={cn('font-mono font-extrabold text-[12px] px-2.5 py-0.5 rounded-full border tabular-nums', daHuy ? 'bg-slate-200/80 text-slate-500 border-slate-300 line-through' : 'bg-emerald-50/80 text-[#107555] border-emerald-200/60')}>
                                         {lich.gio_bat_dau} - {lich.gio_ket_thuc}
                                       </span>
-                                      <div className="flex items-center gap-1 shrink-0 bg-slate-100 px-2 py-0.5 rounded-full text-[11px] font-semibold text-slate-700">
-                                        <UserRound className="size-3 text-slate-400" />
-                                        <span>{tenNsNgan}</span>
+                                      <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center gap-1 shrink-0 bg-slate-100 px-2 py-0.5 rounded-full text-[11px] font-semibold text-slate-700">
+                                          <UserRound className="size-3 text-slate-400" />
+                                          <span>{tenNsNgan}</span>
+                                        </div>
+                                        {laQuanLy && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const infoH = taoTieuDeLichHienThi(lich);
+                                              void handleXoaLich(lich.id, infoH.tieuDeChinh);
+                                            }}
+                                            className="size-6 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition shrink-0"
+                                            title="Xóa lịch (Chỉ Quản lý)"
+                                          >
+                                            <Trash2 className="size-3" />
+                                          </button>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
@@ -2026,6 +2090,7 @@ export function NoiDungLichCongTac({
 
                           const infoH = taoTieuDeLichHienThi(lich);
                           const isVP = lich.loai_lich === 'van_phong';
+                          const daHuy = lich.trang_thai === 'huy';
 
                           return (
                             <div
@@ -2035,13 +2100,17 @@ export function NoiDungLichCongTac({
                                 setMoModal(true);
                               }}
                               className={cn(
-                                'p-4 hover:bg-slate-50/80 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer border-l-4',
-                                isVP ? 'border-l-sky-500' : 'border-l-amber-500'
+                                'p-4 hover:bg-slate-50/80 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer border-l-4 group',
+                                daHuy
+                                  ? 'bg-slate-100/70 border-l-slate-400 opacity-60'
+                                  : isVP
+                                  ? 'border-l-sky-500'
+                                  : 'border-l-amber-500'
                               )}
                             >
                               <div className="flex items-start gap-3.5 min-w-0">
                                 <div className="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-center shrink-0 min-w-[72px]">
-                                  <div className="text-xs font-black tabular-nums">{lich.gio_bat_dau}</div>
+                                  <div className={cn('text-xs font-black tabular-nums', daHuy && 'line-through text-slate-400')}>{lich.gio_bat_dau}</div>
                                   <div className="text-[10px] font-semibold text-slate-500 tabular-nums">
                                     {lich.gio_ket_thuc}
                                   </div>
@@ -2049,11 +2118,11 @@ export function NoiDungLichCongTac({
 
                                 <div className="min-w-0 space-y-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-md inline-flex items-center gap-1', isVP ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800')}>
+                                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-md inline-flex items-center gap-1', daHuy ? 'bg-slate-200 text-slate-600' : (isVP ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'))}>
                                       <span>{infoH.icon}</span>
-                                      <span>{isVP ? infoH.nhanLoai : 'Công tác ngoài'}</span>
+                                      <span>{daHuy ? 'Đã hủy' : (isVP ? infoH.nhanLoai : 'Công tác ngoài')}</span>
                                     </span>
-                                    <span className="font-bold text-slate-900 text-sm sm:text-base">
+                                    <span className={cn('font-bold text-sm sm:text-base', daHuy ? 'line-through text-slate-500' : 'text-slate-900')}>
                                       {infoH.tieuDeChinh}
                                     </span>
                                     {ttObj && (
@@ -2070,19 +2139,19 @@ export function NoiDungLichCongTac({
 
                                   <div className="flex items-center gap-3 text-xs text-slate-600 flex-wrap">
                                     {lich.ten_nguoi_lien_he && (
-                                      <span className="inline-flex items-center gap-1">
+                                      <span className={cn('inline-flex items-center gap-1', daHuy && 'line-through text-slate-400')}>
                                         <UserRound className="size-3.5 text-slate-400" />
                                         {lich.ten_nguoi_lien_he}
                                       </span>
                                     )}
                                     {lich.so_dien_thoai && (
-                                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-700">
+                                      <span className={cn('inline-flex items-center gap-1 font-semibold', daHuy ? 'line-through text-slate-400' : 'text-emerald-700')}>
                                         <Phone className="size-3" />
                                         {lich.so_dien_thoai}
                                       </span>
                                     )}
                                     {lich.dia_diem && (
-                                      <span className="inline-flex items-center gap-1">
+                                      <span className={cn('inline-flex items-center gap-1', daHuy && 'line-through text-slate-400')}>
                                         <MapPin className="size-3.5 text-slate-400" />
                                         {lich.dia_diem}
                                       </span>
@@ -2090,7 +2159,7 @@ export function NoiDungLichCongTac({
                                   </div>
 
                                   {lich.noi_dung && (
-                                    <p className="text-xs text-slate-500 line-clamp-1">{lich.noi_dung}</p>
+                                    <p className={cn('text-xs line-clamp-1', daHuy ? 'line-through text-slate-400' : 'text-slate-500')}>{lich.noi_dung}</p>
                                   )}
                                 </div>
                               </div>
@@ -2113,6 +2182,19 @@ export function NoiDungLichCongTac({
                                     )}
                                   </div>
                                 </div>
+                                {laQuanLy && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void handleXoaLich(lich.id, infoH.tieuDeChinh);
+                                    }}
+                                    className="size-8 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition shrink-0"
+                                    title="Xóa lịch (Chỉ Quản lý)"
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </button>
+                                )}
                               </div>
                             </div>
                           );

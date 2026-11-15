@@ -133,7 +133,7 @@ export const danhSachLichGapKH = async (
     const snap = await getDocs(q);
     snap.docs.forEach((d) => {
       const lich = chuyenDoiDocThanhLichGap(d.id, d.data());
-      if (lich.da_xoa || (lich as any).trang_thai === 'huy') {
+      if (lich.da_xoa) {
         map.delete(lich.id);
       } else {
         map.set(lich.id, lich);
@@ -153,7 +153,7 @@ export const danhSachLichGapKH = async (
     const snapFallback = await getDocs(qFallback);
     snapFallback.docs.forEach((d) => {
       const lich = chuyenDoiDocThanhLichGap(d.id, d.data());
-      if (lich.da_xoa || (lich as any).trang_thai === 'huy') {
+      if (lich.da_xoa) {
         map.delete(lich.id);
       } else if (!map.has(lich.id)) {
         map.set(lich.id, lich);
@@ -233,7 +233,7 @@ export const langNgheLichGapKH = (
         const dsDaXoaIds = new Set<string>();
         snap.forEach((d) => {
           const l = chuyenDoiDocThanhLichGap(d.id, d.data());
-          if (l.da_xoa || (l as any).trang_thai === 'huy') {
+          if (l.da_xoa) {
             dsDaXoaIds.add(l.id);
           } else {
             tuRemote.push(l);
@@ -271,7 +271,7 @@ export const langNgheLichGapKH = (
     const current = docCacheLocal();
     let next: LichGapKH[];
     if (updated && updated.id) {
-      if (updated.da_xoa || (updated as any).trang_thai === 'huy') {
+      if (updated.da_xoa) {
         next = current.filter((x) => x.id !== updated.id);
       } else {
         next = current.some((x) => x.id === updated.id)
@@ -442,28 +442,37 @@ export const doiTrangThaiLichGapKH = async (
 export const xoaLichGapKH = async (id: string, nguoiXoaId?: string): Promise<void> => {
   const patch = {
     da_xoa: true,
-    trang_thai: 'huy',
     ngay_cap_nhat: new Date().toISOString()
   };
 
-  // 1. Xoa vinh vien va danh dau da_xoa tren CA HAI collection (lich_gap_kh va fallback cong_viec)
-  await Promise.allSettled([
-    deleteDoc(thamChieuBanGhi(TEN_COLLECTION, id)),
-    deleteDoc(thamChieuBanGhi(COLLECTION_FALLBACK, id)),
-    setDoc(thamChieuBanGhi(TEN_COLLECTION, id), patch, { merge: true }),
-    setDoc(thamChieuBanGhi(COLLECTION_FALLBACK, id), patch, { merge: true })
-  ]);
+  // 1. Xoa thuc su tren Cloud Firestore, neu loi phan quyen hoac mang thi soft delete
+  try {
+    await deleteDoc(thamChieuBanGhi(TEN_COLLECTION, id));
+  } catch (errDelete) {
+    console.warn('[xoaLichGapKH] deleteDoc chinh that bai, thu setDoc da_xoa:', errDelete);
+    try {
+      await setDoc(thamChieuBanGhi(TEN_COLLECTION, id), patch, { merge: true });
+    } catch (errSet) {
+      console.warn('[xoaLichGapKH] setDoc da_xoa cung that bai:', errSet);
+    }
+  }
+
+  try {
+    await deleteDoc(thamChieuBanGhi(COLLECTION_FALLBACK, id));
+  } catch {
+    // fallback collection
+  }
 
   // 2. Don sach khoi toan bo localStorage cache
-  const dsLocal = docCacheLocal().filter((x) => x.id !== id && !x.da_xoa);
+  const dsLocal = docCacheLocal().filter((x) => x.id !== id);
   ghiCacheLocal(dsLocal);
   xoaCacheLichGapKH();
 
   // 3. Phat event cap nhat tuc thoi 0ms cho cac component dang mo
-  phatSuKienCapNhat({ id, da_xoa: true, trang_thai: 'huy' } as any);
+  phatSuKienCapNhat({ id, da_xoa: true } as any);
 
   if (nguoiXoaId) {
-    await ghiNhatKyHoatDong(nguoiXoaId, 'lich_gap_kh', 'xoa', id, 'Xóa lịch gặp khách hàng');
+    await ghiNhatKyHoatDong(nguoiXoaId, 'lich_gap_kh', 'xoa', id, 'Xóa lịch làm việc / công tác');
   }
 };
 
