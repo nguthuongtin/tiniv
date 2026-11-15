@@ -6,6 +6,7 @@ import {
   setDoc,
   updateDoc,
   addDoc,
+  deleteDoc,
   query,
   where,
   onSnapshot
@@ -26,17 +27,46 @@ import {
 import type { NguoiDungDangNhap, NhanSu } from '../../thu_vien/types/nhan_su';
 import { themTaiLieuDuAn } from '../tai_lieu_du_an/dich_vu_tai_lieu_du_an';
 import { taoTaiLieuMoi } from '../kho_tai_lieu/dich_vu_kho_tai_lieu';
-import { dongBoYeuCauPhoiHopSangLichVaBaoCaoNgay } from '../ke_hoach/dich_vu_dong_bo_tac_nghiep';
+import {
+  dongBoYeuCauPhoiHopSangLichVaBaoCaoNgay,
+  dongBoXoaLichGapSangKeHoachTuan,
+  dongBoXoaLichGapSangBaoCaoNgay
+} from '../ke_hoach/dich_vu_dong_bo_tac_nghiep';
+import { xoaLichGapKH } from '../lich_gap_kh/dich_vu_lich_gap_kh';
 
 export type { YeuCauPhoiHop };
 
 const TEN_COLLECTION = 'yeu_cau_phoi_hop' as const;
 const CACHE_KEYS = [
+  'ebms_yeu_cau_phoi_hop_cache_v5',
   'ebms_yeu_cau_phoi_hop_cache_v4',
   'ebms_yeu_cau_phoi_hop_cache_v3',
   'ebms_yeu_cau_phoi_hop_cache_v2',
   'ebms_yeu_cau_phoi_hop_cache'
 ];
+
+const YC_DA_XOA_KEYS = 'ebms_yeu_cau_da_xoa_ids';
+
+export const layDanhSachYCDaXoa = (): Set<string> => {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(YC_DA_XOA_KEYS);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set();
+  }
+};
+
+export const ghiNhanYCDaXoa = (id: string) => {
+  if (typeof window === 'undefined' || !id) return;
+  try {
+    const set = layDanhSachYCDaXoa();
+    set.add(id);
+    localStorage.setItem(YC_DA_XOA_KEYS, JSON.stringify(Array.from(set).slice(-500)));
+  } catch {}
+};
 
 export interface DieuKienLocYeuCauPhoiHop {
   du_an_id?: string | null;
@@ -93,6 +123,7 @@ export interface ChuyenBuocDTO {
 // ==== Helpers Cache Local & Event ====
 const docCacheLocal = (): YeuCauPhoiHop[] => {
   if (typeof window === 'undefined') return [];
+  const dsDaXoa = layDanhSachYCDaXoa();
   try {
     for (const key of CACHE_KEYS) {
       const raw = localStorage.getItem(key);
@@ -100,7 +131,7 @@ const docCacheLocal = (): YeuCauPhoiHop[] => {
         try {
           const list = JSON.parse(raw);
           if (Array.isArray(list) && list.length > 0) {
-            return list;
+            return list.filter((x) => x && x.id && x.trang_thai_du_lieu !== 'da_xoa' && !dsDaXoa.has(x.id));
           }
         } catch {}
       }
@@ -342,8 +373,9 @@ const hopNhatDanhSach = (remote: YeuCauPhoiHop[], local: YeuCauPhoiHop[]): YeuCa
 export const langNgheYeuCauPhoiHop = (
   callback: (ds: YeuCauPhoiHop[]) => void
 ): (() => void) => {
+  const dsDaXoaInit = layDanhSachYCDaXoa();
   // 1. Gửi cache ngay lập tức để render tức thì (0ms)
-  const cached = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+  const cached = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa' && !dsDaXoaInit.has(x.id));
   if (cached.length > 0) {
     callback(cached.sort((a, b) => new Date(b.ngay_tao || 0).getTime() - new Date(a.ngay_tao || 0).getTime()));
   }
@@ -355,36 +387,31 @@ export const langNgheYeuCauPhoiHop = (
     unsubscribeFirestore = onSnapshot(
       colRef,
       (snapshot) => {
+        const dsDaXoa = layDanhSachYCDaXoa();
         const tuRemote: YeuCauPhoiHop[] = [];
         snapshot.forEach((d) => {
           const docData = d.data() as any;
-          if (docData && docData.trang_thai_du_lieu !== 'da_xoa') {
+          if (docData && docData.trang_thai_du_lieu !== 'da_xoa' && !dsDaXoa.has(d.id)) {
             tuRemote.push({ id: d.id, ...docData });
           }
         });
 
-        const local = docCacheLocal();
-        const hopNhat = hopNhatDanhSach(tuRemote, local);
+        const local = docCacheLocal().filter((x) => !dsDaXoa.has(x.id));
+        const hopNhat = hopNhatDanhSach(tuRemote, local).filter((x) => !dsDaXoa.has(x.id));
         ghiCacheLocal(hopNhat);
         callback(hopNhat);
-
-        // Tự động đẩy bất kỳ item nào có ở local nhưng chưa có trên Firestore
-        const remoteIdSet = new Set(tuRemote.map((r) => r.id));
-        local.forEach((item) => {
-          if (item && item.id && !remoteIdSet.has(item.id) && item.trang_thai_du_lieu !== 'da_xoa') {
-            setDoc(thamChieuBanGhi(TEN_COLLECTION, item.id), item, { merge: true }).catch(() => {});
-          }
-        });
       },
       (error) => {
         console.warn('[langNgheYeuCauPhoiHop] Lỗi onSnapshot Firestore, sử dụng cache cục bộ:', error);
-        const fallback = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+        const dsDaXoa = layDanhSachYCDaXoa();
+        const fallback = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa' && !dsDaXoa.has(x.id));
         callback(fallback.sort((a, b) => new Date(b.ngay_tao || 0).getTime() - new Date(a.ngay_tao || 0).getTime()));
       }
     );
   } catch (err) {
     console.warn('[langNgheYeuCauPhoiHop] Không thể tạo onSnapshot:', err);
-    const fallback = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+    const dsDaXoa = layDanhSachYCDaXoa();
+    const fallback = docCacheLocal().filter((x) => x.trang_thai_du_lieu !== 'da_xoa' && !dsDaXoa.has(x.id));
     callback(fallback.sort((a, b) => new Date(b.ngay_tao || 0).getTime() - new Date(a.ngay_tao || 0).getTime()));
   }
 
@@ -392,16 +419,21 @@ export const langNgheYeuCauPhoiHop = (
   const handleCustomEvent = (ev: Event) => {
     const custom = ev as CustomEvent<YeuCauPhoiHop | undefined>;
     const updated = custom.detail;
+    const dsDaXoa = layDanhSachYCDaXoa();
     const current = docCacheLocal();
     let next: YeuCauPhoiHop[];
     if (updated && updated.id) {
-      next = current.some((x) => x.id === updated.id)
-        ? current.map((x) => (x.id === updated.id ? updated : x))
-        : [updated, ...current];
+      if (updated.trang_thai_du_lieu === 'da_xoa' || dsDaXoa.has(updated.id)) {
+        next = current.filter((x) => x.id !== updated.id);
+      } else {
+        next = current.some((x) => x.id === updated.id)
+          ? current.map((x) => (x.id === updated.id ? updated : x))
+          : [updated, ...current];
+      }
     } else {
       next = current;
     }
-    const valid = next.filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+    const valid = next.filter((x) => x.trang_thai_du_lieu !== 'da_xoa' && !dsDaXoa.has(x.id));
     ghiCacheLocal(valid);
     callback(valid.sort((a, b) => new Date(b.ngay_tao || 0).getTime() - new Date(a.ngay_tao || 0).getTime()));
   };
@@ -424,7 +456,8 @@ export const langNgheYeuCauPhoiHop = (
 export const danhSachYeuCauPhoiHop = async (
   dieuKien: DieuKienLocYeuCauPhoiHop = {}
 ): Promise<YeuCauPhoiHop[]> => {
-  const local = docCacheLocal();
+  const dsDaXoa = layDanhSachYCDaXoa();
+  const local = docCacheLocal().filter((x) => !dsDaXoa.has(x.id));
   let danhSach: YeuCauPhoiHop[] = [...local];
 
   try {
@@ -433,24 +466,16 @@ export const danhSachYeuCauPhoiHop = async (
     const tuRemote: YeuCauPhoiHop[] = [];
     snap.forEach((d) => {
       const docData = d.data() as any;
-      if (docData && docData.trang_thai_du_lieu !== 'da_xoa') {
+      if (docData && docData.trang_thai_du_lieu !== 'da_xoa' && !dsDaXoa.has(d.id)) {
         tuRemote.push({ id: d.id, ...docData });
       }
     });
 
-    danhSach = hopNhatDanhSach(tuRemote, local);
+    danhSach = hopNhatDanhSach(tuRemote, local).filter((x) => !dsDaXoa.has(x.id));
     ghiCacheLocal(danhSach);
-
-    // Tự động đẩy bất kỳ item nào có ở local nhưng chưa có trên Firestore
-    const remoteIdSet = new Set(tuRemote.map((r) => r.id));
-    local.forEach((item) => {
-      if (item && item.id && !remoteIdSet.has(item.id) && item.trang_thai_du_lieu !== 'da_xoa') {
-        setDoc(thamChieuBanGhi(TEN_COLLECTION, item.id), item, { merge: true }).catch(() => {});
-      }
-    });
   } catch (err) {
     console.warn('[danhSachYeuCauPhoiHop] Lỗi đọc Firestore, dùng cache:', err);
-    danhSach = local.filter((x) => x.trang_thai_du_lieu !== 'da_xoa');
+    danhSach = local.filter((x) => x.trang_thai_du_lieu !== 'da_xoa' && !dsDaXoa.has(x.id));
   }
 
   if (dieuKien.du_an_id) {
@@ -911,18 +936,37 @@ export const capNhatThongTinYeuCau = async (
 };
 
 /**
- * Xóa yêu cầu phối hợp (xóa mềm đổi trang_thai_du_lieu sang 'da_xoa')
+ * Xóa yêu cầu phối hợp (xóa vĩnh viễn và đồng bộ xóa liên hoàn lịch công tác, kế hoạch tuần, báo cáo ngày)
  */
 export const xoaYeuCauPhoiHop = async (
   yeuCauId: string,
   nguoiThucHien?: { id: string; ho_va_ten?: string | null; [key: string]: any } | null
 ): Promise<boolean> => {
-  // 1. Xóa khỏi local cache & phát event ngay
-  const localList = docCacheLocal();
-  ghiCacheLocal(localList.filter((x) => x.id !== yeuCauId));
-  phatSuKienCapNhat();
+  if (!yeuCauId) return false;
 
-  // 2. Ghi cập nhật Firestore
+  // 1. Ghi nhận vào danh sách đen các ID đã xóa để không bao giờ bị hồi sinh từ cache
+  ghiNhanYCDaXoa(yeuCauId);
+
+  // Tìm yêu cầu hiện tại để lấy thông tin đồng bộ xóa lịch và báo cáo
+  const hienTai = docCacheLocal().find((x) => x.id === yeuCauId);
+
+  // 2. Dọn sạch khỏi tất cả các key local cache
+  if (typeof window !== 'undefined') {
+    CACHE_KEYS.forEach((k) => {
+      try {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            localStorage.setItem(k, JSON.stringify(list.filter((x: any) => x && x.id !== yeuCauId)));
+          }
+        }
+      } catch {}
+    });
+  }
+  phatSuKienCapNhat({ id: yeuCauId, trang_thai_du_lieu: 'da_xoa' } as any);
+
+  // 3. Ghi cập nhật Firestore & Xóa document
   try {
     const nowISO = new Date().toISOString();
     await setDoc(
@@ -933,6 +977,7 @@ export const xoaYeuCauPhoiHop = async (
       },
       { merge: true }
     );
+    await deleteDoc(thamChieuBanGhi(TEN_COLLECTION, yeuCauId));
   } catch (err) {
     console.warn('[xoaYeuCauPhoiHop] Lỗi xóa Firestore, chuyển sang API:', err);
     try {
@@ -941,6 +986,60 @@ export const xoaYeuCauPhoiHop = async (
         method: 'DELETE'
       });
     } catch {}
+  }
+
+  // 4. Đồng bộ xóa liên hoàn sang Lịch công tác
+  const docIdLich = `lich_yc_${yeuCauId}`;
+  try {
+    await xoaLichGapKH(docIdLich, nguoiThucHien?.id);
+    await xoaLichGapKH(yeuCauId, nguoiThucHien?.id);
+  } catch (eLich) {
+    console.warn('[xoaYeuCauPhoiHop] Lỗi xóa lịch kèm theo:', eLich);
+  }
+
+  // 5. Đồng bộ xóa sang Kế hoạch Tuần & Báo cáo Tuần
+  try {
+    const targetUserId = hienTai?.nguoi_nhan_id || hienTai?.nguoi_tao_id;
+    const ngayYC = hienTai?.han_hoan_thanh || (hienTai?.ngay_tao ? hienTai.ngay_tao.slice(0, 10) : undefined);
+    if (targetUserId) {
+      await dongBoXoaLichGapSangKeHoachTuan({
+        lichId: docIdLich,
+        nhanVienId: targetUserId,
+        ngayISO: ngayYC,
+        tenKhachHang: hienTai?.ten_du_an || hienTai?.ten_khach_hang,
+        duAnId: hienTai?.du_an_id,
+        nguoiThucHien: nguoiThucHien as any
+      });
+    }
+  } catch (eTuan) {
+    console.warn('[xoaYeuCauPhoiHop] Lỗi xóa kế hoạch tuần kèm theo:', eTuan);
+  }
+
+  // 6. Đồng bộ xóa khỏi Báo cáo công việc ngày
+  try {
+    const ngayYC = hienTai?.han_hoan_thanh || (hienTai?.ngay_tao ? hienTai.ngay_tao.slice(0, 10) : undefined);
+    if (ngayYC) {
+      const dsUids = Array.from(
+        new Set([
+          hienTai?.nguoi_tao_id,
+          hienTai?.nguoi_nhan_id,
+          ...(hienTai?.danh_sach_nhan_su_thuc_hien_ids || [])
+        ])
+      ).filter(Boolean) as string[];
+
+      for (const uid of dsUids) {
+        await dongBoXoaLichGapSangBaoCaoNgay({
+          nhanVienId: uid,
+          ngayISO: ngayYC,
+          tieuDeLich: hienTai?.noi_dung_yeu_cau,
+          tenKhachHang: hienTai?.ten_du_an,
+          duAnId: hienTai?.du_an_id,
+          nguoiThucHien: nguoiThucHien as any
+        });
+      }
+    }
+  } catch (eBc) {
+    console.warn('[xoaYeuCauPhoiHop] Lỗi xóa báo cáo ngày kèm theo:', eBc);
   }
 
   return true;

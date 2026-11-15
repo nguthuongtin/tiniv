@@ -34,6 +34,7 @@ import {
   danhSachYeuCauPhoiHop,
   langNgheYeuCauPhoiHop,
   xoaYeuCauPhoiHop,
+  layDanhSachYCDaXoa,
   type YeuCauPhoiHop
 } from '../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
 import { danhSachHoSoDuAn } from '../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
@@ -459,10 +460,21 @@ export function NoiDungLichCongTac({
   // Tự động chuyển đổi các yêu cầu phối hợp chưa có trong dsLich thành việc văn phòng
   const dsLichTongHop = useMemo(() => {
     const dsIdLichDaCo = new Set(dsLich.map((l) => l.id));
+    const setYcDaXoa = layDanhSachYCDaXoa();
+    let setLichDaXoa = new Set<string>();
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('ebms_lich_gap_kh_da_xoa_ids');
+        if (raw) setLichDaXoa = new Set(JSON.parse(raw));
+      } catch {}
+    }
+
     const lichTuYeuCau: LichGapKH[] = danhSachYeuCau
       .filter((yc) => {
-        if (yc.trang_thai_du_lieu === 'da_xoa') return false;
+        if (!yc || yc.trang_thai_du_lieu === 'da_xoa') return false;
+        if (setYcDaXoa.has(yc.id)) return false;
         const idTuongUng = `lich_yc_${yc.id}`;
+        if (setLichDaXoa.has(idTuongUng) || setLichDaXoa.has(yc.id)) return false;
         if (dsIdLichDaCo.has(idTuongUng) || dsIdLichDaCo.has(yc.id)) return false;
         return true;
       })
