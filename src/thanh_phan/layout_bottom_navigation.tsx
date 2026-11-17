@@ -41,7 +41,7 @@ export default function ThanhDieuHuongDuoi() {
             } else if (muc.href === '/yeu-cau-ho-tro') {
               active = pathname.startsWith('/yeu-cau-ho-tro');
             } else if (muc.href === '/bao-cao-cong-viec') {
-              active = pathname.startsWith('/bao-cao-cong-viec');
+              active = pathname.startsWith('/bao-cao-cong-viec') || pathname.startsWith('/bao-cao-tuan');
             } else if (muc.href === '/ho-so-du-an') {
               active = pathname.startsWith('/ho-so-du-an');
             } else if (muc.href === '/khach-hang') {

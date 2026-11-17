@@ -25,7 +25,8 @@ import {
   Briefcase,
   Check,
   Trash2,
-  Pencil
+  Pencil,
+  Car
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -1222,37 +1223,39 @@ export function NoiDungLichCongTac({
             type="button"
             onClick={() => setLocLoaiLich('tat_ca')}
             className={cn(
-              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer',
+              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer text-center',
               locLoaiLich === 'tat_ca'
                 ? 'bg-white text-slate-900 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
             )}
           >
-            Tất cả lịch
+            Tất cả
           </button>
           <button
             type="button"
             onClick={() => setLocLoaiLich('cong_tac_di_chuyen')}
             className={cn(
-              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1',
+              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center justify-center gap-1.5',
               locLoaiLich === 'cong_tac_di_chuyen'
                 ? 'bg-white text-emerald-800 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
             )}
           >
-            <span>🚗 Công tác ngoài</span>
+            <Car className="size-3.5 text-emerald-600 shrink-0" />
+            <span>Công tác</span>
           </button>
           <button
             type="button"
             onClick={() => setLocLoaiLich('van_phong')}
             className={cn(
-              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1',
+              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center justify-center gap-1.5',
               locLoaiLich === 'van_phong'
                 ? 'bg-white text-blue-800 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
             )}
           >
-            <span>🏢 Việc tại VP</span>
+            <Building2 className="size-3.5 text-blue-600 shrink-0" />
+            <span>Tại VP</span>
           </button>
         </div>
 
@@ -1669,7 +1672,7 @@ export function NoiDungLichCongTac({
                   </div>
                 </div>
 
-                {/* 3. Danh sách tác nghiệp ngày được chọn (siêu tinh gọn trên Mobile, chỉ hiển thị tiêu đề) */}
+                {/* 3. Danh sách tác nghiệp ngày được chọn (siêu tinh gọn trên Mobile: Icon hiện đại, tiêu đề, không checkmark) */}
                 {lichNgayChon.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center space-y-3">
                     <div className="size-10 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
@@ -1730,60 +1733,59 @@ export function NoiDungLichCongTac({
                             setMoModal(true);
                           }}
                           className={cn(
-                            'p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 active:scale-[0.99] select-none',
+                            'p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2.5 active:scale-[0.99] select-none',
                             daXong
                               ? 'bg-slate-50 border-slate-200/80 opacity-70'
                               : isHoTro
                               ? 'bg-amber-50/50 border-amber-200/80 hover:border-amber-300'
                               : isVP
-                              ? 'bg-blue-50/50 border-blue-200/80 hover:border-blue-300'
+                              ? 'bg-sky-50/50 border-sky-200/80 hover:border-sky-300'
                               : 'bg-white border-slate-200/90 shadow-2xs hover:border-emerald-300'
                           )}
                         >
-                          {/* Nút tick hoàn thành 1 chạm */}
-                          <button
-                            type="button"
-                            onClick={(e) => handleToggleXong(lich, e)}
+                          {/* Icon phân loại hiện đại, tinh gọn */}
+                          <div
                             className={cn(
-                              'size-5.5 rounded-lg flex items-center justify-center shrink-0 border transition cursor-pointer',
-                              daXong
-                                ? 'bg-emerald-600 border-emerald-600 text-white shadow-2xs'
-                                : 'bg-white border-slate-300 text-transparent hover:border-emerald-500'
+                              'size-7 rounded-lg flex items-center justify-center shrink-0 border shadow-2xs',
+                              isHoTro
+                                ? 'bg-amber-100/90 border-amber-300 text-amber-700'
+                                : isVP
+                                ? 'bg-sky-100/90 border-sky-300 text-sky-700'
+                                : 'bg-emerald-100/90 border-emerald-300 text-emerald-700'
                             )}
-                            title={daXong ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'}
+                            title={isHoTro ? 'Yêu cầu hỗ trợ' : isVP ? 'Việc tại VP' : 'Công tác ngoài'}
                           >
-                            <Check className={cn('size-3.5 stroke-[3]', daXong ? 'text-white' : 'text-slate-300')} />
-                          </button>
+                            {isHoTro ? (
+                              <Sparkles className="size-3.5" />
+                            ) : isVP ? (
+                              <Building2 className="size-3.5" />
+                            ) : (
+                              <Car className="size-3.5" />
+                            )}
+                          </div>
 
-                          {/* Cột thông tin: Giờ + Tag loại + Tiêu đề gọn gàng */}
+                          {/* Cột thông tin: Giờ + Trạng thái KQ + Tiêu đề */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-[11px] font-bold text-slate-500 tabular-nums">
                                 {lich.gio_bat_dau} - {lich.gio_ket_thuc}
-                              </span>
-                              <span
-                                className={cn(
-                                  'text-[9.5px] font-bold px-1.5 py-0.2 rounded border',
-                                  isHoTro
-                                    ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                    : isVP
-                                    ? 'bg-sky-100 text-sky-900 border-sky-300'
-                                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                                )}
-                              >
-                                {isHoTro ? '⚡ Hỗ trợ' : isVP ? '🏢 Việc VP' : '🚗 Công tác'}
                               </span>
                               {lich.ket_qua && (
                                 <span className="text-[9.5px] font-semibold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200">
                                   Đã ghi KQ
                                 </span>
                               )}
+                              {daXong && !lich.ket_qua && (
+                                <span className="text-[9.5px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                  Đã xong
+                                </span>
+                              )}
                             </div>
 
-                            {/* Tiêu đề ngắn gọn, nổi bật, bấm vào để xem chi tiết/sửa */}
+                            {/* Tiêu đề ngắn gọn, nổi bật, bấm vào để xem chi tiết / nhập kết quả */}
                             <h4
                               className={cn(
-                                'text-[13px] font-bold leading-snug mt-0.5 truncate',
+                                'text-[13.5px] font-bold leading-snug mt-0.5 truncate',
                                 daXong ? 'line-through text-slate-400 font-normal' : 'text-slate-900'
                               )}
                             >
@@ -2023,57 +2025,57 @@ export function NoiDungLichCongTac({
                                   setMoModal(true);
                                 }}
                                 className={cn(
-                                  'p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 active:scale-[0.99] select-none',
+                                  'p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2.5 active:scale-[0.99] select-none',
                                   daXong
                                     ? 'bg-slate-50 border-slate-200/80 opacity-70'
                                     : isHoTro
                                     ? 'bg-amber-50/50 border-amber-200/80 hover:border-amber-300'
                                     : isVP
-                                    ? 'bg-blue-50/50 border-blue-200/80 hover:border-blue-300'
+                                    ? 'bg-sky-50/50 border-sky-200/80 hover:border-sky-300'
                                     : 'bg-white border-slate-200/90 shadow-2xs hover:border-emerald-300'
                                 )}
                               >
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleToggleXong(lich, e)}
+                                {/* Icon loại lịch hiện đại */}
+                                <div
                                   className={cn(
-                                    'size-5.5 rounded-lg flex items-center justify-center shrink-0 border transition cursor-pointer',
-                                    daXong
-                                      ? 'bg-emerald-600 border-emerald-600 text-white shadow-2xs'
-                                      : 'bg-white border-slate-300 text-transparent hover:border-emerald-500'
+                                    'size-7 rounded-lg flex items-center justify-center shrink-0 border shadow-2xs',
+                                    isHoTro
+                                      ? 'bg-amber-100/90 border-amber-300 text-amber-700'
+                                      : isVP
+                                      ? 'bg-sky-100/90 border-sky-300 text-sky-700'
+                                      : 'bg-emerald-100/90 border-emerald-300 text-emerald-700'
                                   )}
-                                  title={daXong ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'}
+                                  title={isHoTro ? 'Yêu cầu hỗ trợ' : isVP ? 'Việc tại VP' : 'Công tác ngoài'}
                                 >
-                                  <Check className={cn('size-3.5 stroke-[3]', daXong ? 'text-white' : 'text-slate-300')} />
-                                </button>
+                                  {isHoTro ? (
+                                    <Sparkles className="size-3.5" />
+                                  ) : isVP ? (
+                                    <Building2 className="size-3.5" />
+                                  ) : (
+                                    <Car className="size-3.5" />
+                                  )}
+                                </div>
 
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="text-[11px] font-bold text-slate-500 tabular-nums">
                                       {lich.gio_bat_dau} - {lich.gio_ket_thuc}
                                     </span>
-                                    <span
-                                      className={cn(
-                                        'text-[9.5px] font-bold px-1.5 py-0.2 rounded border',
-                                        isHoTro
-                                          ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                          : isVP
-                                          ? 'bg-sky-100 text-sky-900 border-sky-300'
-                                          : 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                                      )}
-                                    >
-                                      {isHoTro ? '⚡ Hỗ trợ' : isVP ? '🏢 Việc VP' : '🚗 Công tác'}
-                                    </span>
                                     {lich.ket_qua && (
                                       <span className="text-[9.5px] font-semibold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200">
                                         Đã ghi KQ
+                                      </span>
+                                    )}
+                                    {daXong && !lich.ket_qua && (
+                                      <span className="text-[9.5px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                        Đã xong
                                       </span>
                                     )}
                                   </div>
 
                                   <h4
                                     className={cn(
-                                      'text-[13px] font-bold leading-snug mt-0.5 truncate',
+                                      'text-[13.5px] font-bold leading-snug mt-0.5 truncate',
                                       daXong ? 'line-through text-slate-400 font-normal' : 'text-slate-900'
                                     )}
                                   >

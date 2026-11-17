@@ -6,6 +6,7 @@ import {
   Plus,
   FileText,
   CalendarDays,
+  CalendarRange,
   Trash2,
   Pencil,
   Loader2,
@@ -680,6 +681,23 @@ export default function TrangBaoCaoCongViec() {
 
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-5">
+      {/* THANH CHUYỂN NHANH BÁO CÁO NGÀY / BÁO CÁO TUẦN */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/80 w-full sm:w-fit">
+        <Link
+          href="/bao-cao-cong-viec"
+          className="flex-1 sm:flex-none px-4 py-1.5 rounded-xl bg-white text-slate-900 font-extrabold text-xs shadow-2xs inline-flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <FileText className="size-3.5 text-emerald-600" />
+          <span>Báo cáo ngày</span>
+        </Link>
+        <Link
+          href="/bao-cao-tuan"
+          className="flex-1 sm:flex-none px-4 py-1.5 rounded-xl text-slate-500 hover:text-slate-800 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition cursor-pointer"
+        >
+          <CalendarRange className="size-3.5 text-purple-600" />
+          <span>Báo cáo tuần</span>
+        </Link>
+      </div>
       <ThanhSoLieu
         items={[
           {
