@@ -47,6 +47,7 @@ const DANH_MUC_SIDEBAR: MucSidebar[] = [
     quyen: 'lanh_dao.xem'
   },
   { href: '/lich-cong-tac', icon: CalendarCheck, nhan: 'Lịch làm việc', nhom: 'Module' },
+  { href: '/ke-hoach', icon: ListTodo, nhan: 'Kế hoạch công tác', nhom: 'Module', quyen: 'ke_hoach.xem' },
   { href: '/yeu-cau-ho-tro', icon: Sparkles, nhan: 'Yêu cầu hỗ trợ', nhom: 'Module' },
   { href: '/khach-hang', icon: Building2, nhan: 'Khách hàng', nhom: 'Module' },
   { href: '/ban-do-3d', icon: MapPin, nhan: 'Bản đồ địa bàn', nhom: 'Module' },
@@ -56,7 +57,8 @@ const DANH_MUC_SIDEBAR: MucSidebar[] = [
   { href: '/kho-tai-lieu', icon: BookOpen, nhan: 'Kho tài liệu', nhom: 'Module' },
   { href: '/nhan-su', icon: Users, nhan: 'Nhân sự', nhom: 'Module', quyen: ['nhan_su.xem', 'nhan_su.quan_ly'] },
   { href: '/bao-cao', icon: BarChart3, nhan: 'Báo cáo & Thống kê', nhom: 'Quản trị', quyen: 'bao_cao.xem' },
-  { href: '/quan-tri', icon: Settings2, nhan: 'Quản trị', nhom: 'Quản trị', quyen: 'he_thong.quan_tri' }
+  { href: '/quan-tri', icon: Settings2, nhan: 'Quản trị', nhom: 'Quản trị', quyen: 'he_thong.quan_tri' },
+  { href: '/tai-khoan', icon: User, nhan: 'Tài khoản cá nhân', nhom: 'Quản trị' }
 ];
 
 const MAP_TEN_VAI_TRO: Record<string, string> = {
@@ -188,7 +190,7 @@ const renderDanhMuc = (
 
   return (
     <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
-      {['Tổng quan & Lịch', 'Kinh doanh & Dự án', 'Báo cáo', 'Hệ thống'].map((tenNhom) => {
+      {['Tổng quan', 'Module', 'Quản trị'].map((tenNhom) => {
         const ds = danhMucTuyChinh.filter(
           (m) => m.nhom === tenNhom && kiemTraQuyenMuc(m)
         );
