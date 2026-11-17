@@ -26,7 +26,8 @@ import {
   Check,
   Trash2,
   Pencil,
-  Car
+  Car,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -738,21 +739,102 @@ export function NoiDungLichCongTac({
     }
   };
 
-  const handleToggleXong = async (lich: LichGapKH, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const trangThaiMoi = lich.trang_thai === 'da_hoan_thanh' ? 'da_duyet' : 'da_hoan_thanh';
+  // Modal nhập kết quả khi bấm "Hoàn thành"
+  const [modalKetQua, setModalKetQua] = useState<{
+    mo: boolean;
+    lich: LichGapKH | null;
+  }>({ mo: false, lich: null });
+  const [noiDungKetQuaNhap, setNoiDungKetQuaNhap] = useState('');
+  const [dangLuuKetQua, setDangLuuKetQua] = useState(false);
+
+  const moFormNhapKetQua = (lich: LichGapKH, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setModalKetQua({ mo: true, lich });
+    setNoiDungKetQuaNhap(lich.ket_qua || '');
+  };
+
+  const handleLuuKetQuaHoanThanh = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modalKetQua.lich) return;
+    const lich = modalKetQua.lich;
+    const ketQuaText = noiDungKetQuaNhap.trim();
+
+    if (!ketQuaText) {
+      alert('Vui lòng nhập nội dung kết quả công việc để ghi nhận hoàn thành.');
+      return;
+    }
+
+    setDangLuuKetQua(true);
     try {
-      await capNhatLichGapKH(lich.id, { trang_thai: trangThaiMoi }, nguoiDungHienTai?.id);
-      setDsLich((prev) =>
-        prev.map((x) => (x.id === lich.id ? { ...x, trang_thai: trangThaiMoi } : x))
+      await capNhatLichGapKH(
+        lich.id,
+        {
+          trang_thai: 'da_hoan_thanh',
+          ket_qua: ketQuaText
+        },
+        nguoiDungHienTai?.id
       );
+
+      const lichMoi: LichGapKH = {
+        ...lich,
+        trang_thai: 'da_hoan_thanh',
+        ket_qua: ketQuaText
+      };
+
+      setDsLich((prev) => prev.map((x) => (x.id === lich.id ? lichMoi : x)));
+
       void dongBoLichGapSangKeHoachTuanVaBaoCaoNgay({
-        lich: { ...lich, trang_thai: trangThaiMoi },
+        lich: lichMoi,
         nguoiThucHien: nguoiDungHienTai
       });
+
+      setModalKetQua({ mo: false, lich: null });
     } catch (err) {
-      console.error('Lỗi cập nhật hoàn thành việc:', err);
+      console.error('Lỗi lưu kết quả hoàn thành:', err);
+      alert('Không thể lưu kết quả. Vui lòng thử lại!');
+    } finally {
+      setDangLuuKetQua(false);
     }
+  };
+
+  const handleHuyHoanThanh = async () => {
+    if (!modalKetQua.lich) return;
+    const lich = modalKetQua.lich;
+    setDangLuuKetQua(true);
+    try {
+      const trangThaiMoi = 'da_duyet';
+      await capNhatLichGapKH(
+        lich.id,
+        {
+          trang_thai: trangThaiMoi
+        },
+        nguoiDungHienTai?.id
+      );
+
+      const lichMoi: LichGapKH = {
+        ...lich,
+        trang_thai: trangThaiMoi
+      };
+
+      setDsLich((prev) => prev.map((x) => (x.id === lich.id ? lichMoi : x)));
+
+      void dongBoLichGapSangKeHoachTuanVaBaoCaoNgay({
+        lich: lichMoi,
+        nguoiThucHien: nguoiDungHienTai
+      });
+
+      setModalKetQua({ mo: false, lich: null });
+    } catch (err) {
+      console.error('Lỗi hủy hoàn thành:', err);
+      alert('Không thể cập nhật trạng thái. Vui lòng thử lại!');
+    } finally {
+      setDangLuuKetQua(false);
+    }
+  };
+
+  const handleToggleXong = (lich: LichGapKH, e: React.MouseEvent) => {
+    e.stopPropagation();
+    moFormNhapKetQua(lich, e);
   };
 
     const handleXoaLich = async (id: string, tenKH: string) => {
@@ -1782,10 +1864,10 @@ export function NoiDungLichCongTac({
                               )}
                             </div>
 
-                            {/* Tiêu đề ngắn gọn, nổi bật, bấm vào để xem chi tiết / nhập kết quả */}
+                            {/* Tiêu đề ngắn gọn, nổi bật */}
                             <h4
                               className={cn(
-                                'text-[13.5px] font-bold leading-snug mt-0.5 truncate',
+                                'text-[13px] font-bold leading-snug mt-0.5 truncate',
                                 daXong ? 'line-through text-slate-400 font-normal' : 'text-slate-900'
                               )}
                             >
@@ -1793,10 +1875,23 @@ export function NoiDungLichCongTac({
                             </h4>
                           </div>
 
-                          {/* Mũi tên nhẹ */}
-                          <div className="flex items-center shrink-0 text-slate-400">
-                            <ChevronRight className="size-4" />
-                          </div>
+                          {/* Nút Hoàn thành (Bấm vào hiển thị form nhập kết quả) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              moFormNhapKetQua(lich, e);
+                            }}
+                            className={cn(
+                              'px-2 py-1 rounded-lg text-[10.5px] font-bold border inline-flex items-center gap-1 transition cursor-pointer shrink-0 active:scale-95 shadow-2xs',
+                              daXong
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : 'bg-white text-slate-700 border-slate-300 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50/50'
+                            )}
+                          >
+                            <CheckCircle2 className={cn('size-3.5', daXong ? 'text-emerald-600' : 'text-slate-400')} />
+                            <span>{daXong ? 'Đã xong' : 'Hoàn thành'}</span>
+                          </button>
                         </div>
                       );
                     })}
@@ -2075,7 +2170,7 @@ export function NoiDungLichCongTac({
 
                                   <h4
                                     className={cn(
-                                      'text-[13.5px] font-bold leading-snug mt-0.5 truncate',
+                                      'text-[13px] font-bold leading-snug mt-0.5 truncate',
                                       daXong ? 'line-through text-slate-400 font-normal' : 'text-slate-900'
                                     )}
                                   >
@@ -2083,9 +2178,23 @@ export function NoiDungLichCongTac({
                                   </h4>
                                 </div>
 
-                                <div className="flex items-center shrink-0 text-slate-400">
-                                  <ChevronRight className="size-4" />
-                                </div>
+                                {/* Nút Hoàn thành (Bấm vào hiển thị form nhập kết quả) */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    moFormNhapKetQua(lich, e);
+                                  }}
+                                  className={cn(
+                                    'px-2 py-1 rounded-lg text-[10.5px] font-bold border inline-flex items-center gap-1 transition cursor-pointer shrink-0 active:scale-95 shadow-2xs',
+                                    daXong
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                      : 'bg-white text-slate-700 border-slate-300 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50/50'
+                                  )}
+                                >
+                                  <CheckCircle2 className={cn('size-3.5', daXong ? 'text-emerald-600' : 'text-slate-400')} />
+                                  <span>{daXong ? 'Đã xong' : 'Hoàn thành'}</span>
+                                </button>
                               </div>
                             );
                           })}
@@ -2309,6 +2418,143 @@ export function NoiDungLichCongTac({
           setDanhSachYeuCau((prev) => [ycMoi, ...prev.filter((x) => x.id !== ycMoi.id)]);
         }}
       />
+
+
+      {/* MODAL NHẬP KẾT QUẢ CÔNG VIỆC KHI BẤM HOÀN THÀNH */}
+      {modalKetQua.mo && modalKetQua.lich && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => !dangLuuKetQua && setModalKetQua({ mo: false, lich: null })}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header modal */}
+            <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-2">
+                <div className="size-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <CheckCircle2 className="size-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Ghi nhận kết quả công việc
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    {modalKetQua.lich.gio_bat_dau} - {modalKetQua.lich.gio_ket_thuc} • Ngày {formatNgay(modalKetQua.lich.ngay)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalKetQua({ mo: false, lich: null })}
+                disabled={dangLuuKetQua}
+                className="size-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Form nội dung */}
+            <form onSubmit={handleLuuKetQuaHoanThanh} className="p-4 space-y-3.5">
+              {/* Tên việc */}
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
+                <span className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  Nội dung công tác / việc VP
+                </span>
+                <span className="font-bold text-slate-800 leading-snug block">
+                  {taoTieuDeLichHienThi(modalKetQua.lich).tieuDeChinh}
+                </span>
+                {modalKetQua.lich.ten_khach_hang && (
+                  <span className="text-[11.5px] text-slate-500 font-medium block mt-0.5">
+                    Khách hàng: {modalKetQua.lich.ten_khach_hang}
+                  </span>
+                )}
+              </div>
+
+              {/* Ô nhập kết quả */}
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                  Kết quả đạt được <span className="text-rose-500">*</span>
+                </label>
+                <textarea
+                  value={noiDungKetQuaNhap}
+                  onChange={(e) => setNoiDungKetQuaNhap(e.target.value)}
+                  placeholder="Ghi nhận tóm tắt kết quả: Đã gặp ai, nội dung trao đổi, tiến độ hoặc bước tiếp theo..."
+                  rows={4}
+                  autoFocus
+                  required
+                  className="w-full p-3 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition"
+                />
+              </div>
+
+              {/* Gợi ý mẫu kết quả nhanh */}
+              <div className="space-y-1">
+                <span className="text-[10.5px] text-slate-400 font-semibold block">Gợi ý nhanh:</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    'Đã gặp trao đổi, khách đồng ý phương án',
+                    'Đã gửi báo giá, hẹn phản hồi tuần sau',
+                    'Khách bận, hẹn dời lịch sang ngày khác',
+                    'Đã hoàn thành công việc theo kế hoạch'
+                  ].map((goiY) => (
+                    <button
+                      key={goiY}
+                      type="button"
+                      onClick={() => setNoiDungKetQuaNhap(goiY)}
+                      className="text-[10.5px] px-2 py-0.5 rounded-md bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-600 transition border border-slate-200/60 cursor-pointer"
+                    >
+                      {goiY}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Nút hành động */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                {modalKetQua.lich.trang_thai === 'da_hoan_thanh' ? (
+                  <button
+                    type="button"
+                    onClick={handleHuyHoanThanh}
+                    disabled={dangLuuKetQua}
+                    className="text-xs font-bold text-rose-600 hover:underline cursor-pointer"
+                  >
+                    Bỏ hoàn thành
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalKetQua({ mo: false, lich: null })}
+                    disabled={dangLuuKetQua}
+                    className="h-8.5 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={dangLuuKetQua || !noiDungKetQuaNhap.trim()}
+                    className="h-8.5 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition active:scale-95 cursor-pointer"
+                  >
+                    {dangLuuKetQua ? (
+                      <>
+                        <Loader2 className="size-3.5 animate-spin" />
+                        <span>Đang lưu...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="size-3.5" />
+                        <span>Lưu kết quả &amp; Hoàn thành</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </Bo_Cuc_Trang>
   );
