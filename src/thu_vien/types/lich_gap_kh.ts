@@ -87,14 +87,8 @@ export const DANH_SACH_TRANG_THAI_LICH_GAP: {
     mauDot: 'bg-amber-500'
   },
   {
-    key: 'sap_toi',
-    tieu_de: 'Sắp tới',
-    mauBadge: 'bg-slate-100 text-slate-700 border-slate-200',
-    mauDot: 'bg-slate-500'
-  },
-  {
     key: 'da_hoan_thanh',
-    tieu_de: 'Đã gặp',
+    tieu_de: 'Đã hoàn thành',
     mauBadge: 'bg-teal-50 text-teal-700 border-teal-200',
     mauDot: 'bg-teal-600'
   },

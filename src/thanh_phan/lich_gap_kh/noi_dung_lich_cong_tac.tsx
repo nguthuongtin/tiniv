@@ -512,7 +512,7 @@ export function NoiDungLichCongTac({
           nguoi_thuc_hien_id: yc.nguoi_nhan_id || yc.nguoi_tao_id,
           nguoi_tao_id: yc.nguoi_tao_id,
           nguoi_tham_gia_ids: nguoiThamGia,
-          trang_thai: daXong ? ('da_hoan_thanh' as const) : ('sap_toi' as const),
+          trang_thai: daXong ? ('da_hoan_thanh' as const) : ('da_duyet' as const),
           noi_dung: yc.noi_dung_yeu_cau,
           ket_qua: yc.ghi_chu_phan_hoi || (daXong ? 'Đã hoàn thành phối hợp' : null),
           ngay_tao: yc.ngay_tao,
@@ -1485,7 +1485,7 @@ export function NoiDungLichCongTac({
                                       setMoModal(true);
                                     }}
                                     className={cn(
-                                      'p-2 rounded-xl border transition cursor-pointer shadow-2xs group space-y-1.5 active:scale-[0.99] select-none',
+                                      'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs group space-y-1.5 active:scale-[0.99] select-none',
                                       daHuy
                                         ? 'bg-slate-100/80 border-slate-200 opacity-60'
                                         : daHoanThanh
@@ -1494,12 +1494,12 @@ export function NoiDungLichCongTac({
                                         ? 'bg-amber-50/60 border-amber-200/90 hover:border-amber-300'
                                         : isVP
                                         ? 'bg-rose-50/60 border-rose-200/90 hover:border-rose-300'
-                                        : 'bg-white border-slate-200/90 hover:border-emerald-300'
+                                        : 'bg-white border-slate-200/90 hover:border-emerald-300 hover:shadow-xs'
                                     )}
                                   >
-                                    {/* Dòng 1: Icon phân loại + Giờ + Avatar & Tên NV quy chuẩn (vd: T. Linh) + Nút Xóa */}
+                                    {/* Dòng 1: Icon phân loại + Giờ (trái) & Dấu check hoàn thành (góc trên phải) */}
                                     <div className="flex items-center justify-between gap-1">
-                                      <div className="flex items-center gap-1 min-w-0">
+                                      <div className="flex items-center gap-1.5 min-w-0">
                                         {/* Icon loại lịch: Xanh lá (Công tác), Đỏ (Tại VP), Hổ phách (Hỗ trợ) */}
                                         <div
                                           className={cn(
@@ -1521,37 +1521,28 @@ export function NoiDungLichCongTac({
                                           )}
                                         </div>
 
-                                        <span className={cn('text-[10px] font-bold tabular-nums text-slate-500 shrink-0', daHuy && 'line-through')}>
-                                          {lich.gio_bat_dau}
+                                        <span className={cn('text-[11px] font-bold tabular-nums text-slate-500 shrink-0', daHuy && 'line-through')}>
+                                          {lich.gio_bat_dau || 'Cả ngày'}
                                         </span>
-
-                                        {/* Avatar nhân sự + Tên quy chuẩn */}
-                                        {ns && (
-                                          <div className="inline-flex items-center gap-1 bg-slate-100/90 pl-0.5 pr-1.5 py-0.5 rounded-full shrink-0 max-w-[95px]" title={ns.ho_va_ten}>
-                                            <DaiDien
-                                              ten={ns.ho_va_ten}
-                                              anh={ns.url_anh_dai_dien}
-                                              kich_thuoc="xs"
-                                              className="size-3.5 text-[7.5px] shrink-0"
-                                            />
-                                            <span className="text-[9.5px] font-bold text-slate-700 truncate">
-                                              {tenNVRutGon}
-                                            </span>
-                                          </div>
-                                        )}
                                       </div>
 
-                                      {duocXoaLichCongTac(nguoiDungHienTai, lich, mapNhanSu) && (
+                                      {/* Dấu check đưa lên góc trên phải */}
+                                      {!daHuy && (
                                         <button
                                           type="button"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            void handleXoaLich(lich.id, infoHienThi.tieuDeChinh);
+                                            moFormNhapKetQua(lich, e);
                                           }}
-                                          className="size-4.5 rounded hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition cursor-pointer shrink-0"
-                                          title="Xóa lịch (Chỉ Trưởng phòng/BGD)"
+                                          className={cn(
+                                            'size-5 rounded-md border flex items-center justify-center transition cursor-pointer shrink-0 active:scale-95 shadow-2xs',
+                                            daHoanThanh
+                                              ? 'bg-emerald-600 border-emerald-600 text-white'
+                                              : 'bg-white border-slate-300 text-slate-300 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50/50'
+                                          )}
+                                          title={daHoanThanh ? 'Đã xong (Bấm xem/sửa kết quả)' : 'Bấm để ghi kết quả / hoàn thành'}
                                         >
-                                          <Trash2 className="size-2.5" />
+                                          <Check className="size-3 stroke-[3]" />
                                         </button>
                                       )}
                                     </div>
@@ -1559,7 +1550,7 @@ export function NoiDungLichCongTac({
                                     {/* Dòng 2: Tiêu đề công việc - tinh gọn, nổi bật, bỏ hết chú thích rườm rà */}
                                     <h4
                                       className={cn(
-                                        'text-[11.5px] font-bold leading-snug line-clamp-2',
+                                        'text-[12px] font-bold leading-snug line-clamp-2',
                                         daHuy
                                           ? 'line-through text-slate-400 font-normal'
                                           : daHoanThanh
@@ -1571,9 +1562,23 @@ export function NoiDungLichCongTac({
                                       {infoHienThi.tieuDeChinh}
                                     </h4>
 
-                                    {/* Dòng 3: Footer thẻ - Trạng thái KQ & Dấu check hoàn thành (Bấm mở modal nhập KQ) */}
-                                    <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100">
-                                      <div className="min-w-0">
+                                    {/* Dòng 3 (chỗ icon check cũ): Avatar và tên nhân viên to nhẹ lên + Huy hiệu KQ */}
+                                    <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-slate-100">
+                                      {ns && (
+                                        <div className="inline-flex items-center gap-1.5 min-w-0" title={ns.ho_va_ten}>
+                                          <DaiDien
+                                            ten={ns.ho_va_ten}
+                                            anh={ns.url_anh_dai_dien}
+                                            kich_thuoc="xs"
+                                            className="size-5 text-[9px] shrink-0"
+                                          />
+                                          <span className="text-[11px] font-bold text-slate-800 truncate">
+                                            {tenNVRutGon}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      <div className="shrink-0 ml-auto">
                                         {lich.ket_qua ? (
                                           <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200 truncate inline-block">
                                             Đã ghi KQ
@@ -1584,25 +1589,6 @@ export function NoiDungLichCongTac({
                                           </span>
                                         ) : null}
                                       </div>
-
-                                      {!daHuy && (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            moFormNhapKetQua(lich, e);
-                                          }}
-                                          className={cn(
-                                            'size-5.5 rounded-md border flex items-center justify-center transition cursor-pointer shrink-0 active:scale-95 shadow-2xs ml-auto',
-                                            daHoanThanh
-                                              ? 'bg-emerald-600 border-emerald-600 text-white'
-                                              : 'bg-white border-slate-300 text-slate-300 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50/50'
-                                          )}
-                                          title={daHoanThanh ? 'Đã xong (Bấm xem/sửa kết quả)' : 'Bấm để ghi kết quả / hoàn thành'}
-                                        >
-                                          <Check className="size-3 stroke-[3]" />
-                                        </button>
-                                      )}
                                     </div>
                                   </div>
                                 );
@@ -2395,19 +2381,7 @@ export function NoiDungLichCongTac({
                                   </button>
                                 )}
 
-                                {duocXoaLichCongTac(nguoiDungHienTai, lich, mapNhanSu) && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      void handleXoaLich(lich.id, infoH.tieuDeChinh);
-                                    }}
-                                    className="size-8 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition cursor-pointer"
-                                    title="Xóa lịch (Chỉ Trưởng phòng/BGD)"
-                                  >
-                                    <Trash2 className="size-4" />
-                                  </button>
-                                )}
+                                
                               </div>
                             </div>
                           );
