@@ -1530,7 +1530,7 @@ export default function HopYeuCauPhoiHop({
           )}
         </div>
 
-        {/* Header Mobile: Thống kê 3 thẻ nhanh (Đang chạy, Cần xử lý, Hoàn thành) tương tự trang Lịch công tác */}
+        {/* Header Mobile: Thống kê 3 thẻ nhanh (Đang chạy, Cần xử lý, Hoàn thành) trung tính, không dùng màu */}
         <div className="sm:hidden grid grid-cols-3 gap-2">
           <button
             type="button"
@@ -1541,14 +1541,14 @@ export default function HopYeuCauPhoiHop({
             className={cn(
               'p-2.5 rounded-2xl border text-center transition active:scale-95 cursor-pointer',
               tabHienTai === 'dang_chay'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                : 'bg-slate-50/80 border-slate-200/80 text-slate-700 hover:bg-slate-100'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                : 'bg-white border-slate-200/90 text-slate-800 hover:bg-slate-50'
             )}
           >
-            <div className={cn('text-base font-black tabular-nums leading-none', tabHienTai === 'dang_chay' ? 'text-white' : 'text-blue-600')}>
+            <div className="text-base font-black tabular-nums leading-none">
               {thongKeTabs.dang_chay}
             </div>
-            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'dang_chay' ? 'text-blue-100' : 'text-slate-500')}>
+            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'dang_chay' ? 'text-slate-300' : 'text-slate-500')}>
               Đang chạy
             </div>
           </button>
@@ -1562,14 +1562,14 @@ export default function HopYeuCauPhoiHop({
             className={cn(
               'p-2.5 rounded-2xl border text-center transition active:scale-95 cursor-pointer',
               tabHienTai === 'cho_tpkd' || tabHienTai === 'cho_tpkh' || tabHienTai === 'khth_dang_lam' || tabHienTai === 'cho_sale'
-                ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                : 'bg-slate-50/80 border-slate-200/80 text-slate-700 hover:bg-slate-100'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                : 'bg-white border-slate-200/90 text-slate-800 hover:bg-slate-50'
             )}
           >
-            <div className={cn('text-base font-black tabular-nums leading-none', tabHienTai === 'cho_tpkd' || tabHienTai === 'cho_tpkh' || tabHienTai === 'khth_dang_lam' || tabHienTai === 'cho_sale' ? 'text-white' : 'text-amber-600')}>
+            <div className="text-base font-black tabular-nums leading-none">
               {thongKeTabs.cho_tpkd + thongKeTabs.cho_tpkh + thongKeTabs.khth_dang_lam + thongKeTabs.cho_sale}
             </div>
-            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'cho_tpkd' || tabHienTai === 'cho_tpkh' || tabHienTai === 'khth_dang_lam' || tabHienTai === 'cho_sale' ? 'text-amber-100' : 'text-slate-500')}>
+            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'cho_tpkd' || tabHienTai === 'cho_tpkh' || tabHienTai === 'khth_dang_lam' || tabHienTai === 'cho_sale' ? 'text-slate-300' : 'text-slate-500')}>
               Cần xử lý
             </div>
           </button>
@@ -1583,14 +1583,14 @@ export default function HopYeuCauPhoiHop({
             className={cn(
               'p-2.5 rounded-2xl border text-center transition active:scale-95 cursor-pointer',
               tabHienTai === 'da_hoan_thanh'
-                ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
-                : 'bg-slate-50/80 border-slate-200/80 text-slate-700 hover:bg-slate-100'
+                ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                : 'bg-white border-slate-200/90 text-slate-800 hover:bg-slate-50'
             )}
           >
-            <div className={cn('text-base font-black tabular-nums leading-none', tabHienTai === 'da_hoan_thanh' ? 'text-white' : 'text-emerald-700')}>
+            <div className="text-base font-black tabular-nums leading-none">
               {thongKeTabs.da_hoan_thanh}
             </div>
-            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'da_hoan_thanh' ? 'text-emerald-100' : 'text-slate-500')}>
+            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'da_hoan_thanh' ? 'text-slate-300' : 'text-slate-500')}>
               Hoàn thành
             </div>
           </button>
@@ -1826,7 +1826,7 @@ export default function HopYeuCauPhoiHop({
               </table>
             </div>
 
-            {/* 2. DANH SÁCH THẺ SIÊU TINH GỌN TRÊN MOBILE (TINH THẦN NHƯ TRANG LỊCH CÔNG TÁC) */}
+            {/* 2. DANH SÁCH THẺ TINH GỌN TRÊN MOBILE: Chỉ tên yêu cầu đầy đủ & trạng thái ai đang thực hiện, icon nổi bật khi cần xử lý */}
             <div className="md:hidden space-y-2">
               {dsHienThi.map((yc) => {
                 const tt = layThongTinHienThiHang(yc);
@@ -1836,121 +1836,108 @@ export default function HopYeuCauPhoiHop({
                 const nsNguoiTao = yc.ten_nguoi_tao ? mapNhanSuTheoTen.get(yc.ten_nguoi_tao.trim().toLowerCase()) : null;
 
                 const isHoanThanh = yc.trang_thai === 'da_hoan_thanh';
-                const isQuaHan = tt.laQuaHan;
-                const isDangXuLy =
-                  yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien' ||
-                  yc.trang_thai === 'cho_sale_nghiem_thu' ||
-                  yc.trang_thai === 'cho_tpkh_duyet_ket_qua' ||
-                  yc.trang_thai === 'cho_tpkd_duyet_ket_qua';
+
+                // Yêu cầu đến tài khoản hiện tại cần phải xử lý (phê duyệt, giao việc, nộp KQ, nghiệm thu, chỉnh sửa)
+                const canXuLy = Boolean(
+                  tt.hanhDong &&
+                  !isHoanThanh &&
+                  (tt.hanhDong.label !== 'Sửa yêu cầu' || yc.trang_thai === 'yeu_cau_chinh_sua')
+                );
 
                 return (
                   <div
                     key={yc.id}
                     onClick={() => setYeuCauDangXemChiTiet(yc)}
                     className={cn(
-                      'p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-2.5 active:scale-[0.99] select-none',
+                      'p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 active:scale-[0.99] select-none',
                       isHoanThanh
-                        ? 'bg-slate-50/70 border-slate-200/80 opacity-75'
-                        : isQuaHan
-                        ? 'bg-rose-50/30 border-rose-200/90 hover:border-rose-300'
-                        : isDangXuLy
-                        ? 'bg-blue-50/30 border-blue-200/90 hover:border-blue-300'
-                        : 'bg-white border-slate-200/90 shadow-2xs hover:border-emerald-300'
+                        ? 'bg-slate-50/70 border-slate-200/80 opacity-70'
+                        : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
                     )}
                   >
-                    {/* Icon đại diện trạng thái hiện đại, màu sắc trực quan (tinh thần như lịch công tác) */}
+                    {/* Icon phía trước: Nếu đến tài khoản hiện tại phải xử lý thì làm nổi bật lên! */}
                     <div
                       className={cn(
-                        'size-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs',
-                        isHoanThanh
-                          ? 'bg-emerald-100/90 border-emerald-300 text-emerald-700'
-                          : isQuaHan
-                          ? 'bg-rose-100/90 border-rose-300 text-rose-700'
-                          : isDangXuLy
-                          ? 'bg-blue-100/90 border-blue-300 text-blue-700'
-                          : 'bg-amber-100/90 border-amber-300 text-amber-700'
+                        'size-9 rounded-xl flex items-center justify-center shrink-0 border transition-all',
+                        canXuLy
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-500/30 relative'
+                          : 'bg-slate-100 text-slate-500 border-slate-200/80 shadow-2xs'
                       )}
-                      title={tt.nhanTrangThai}
+                      title={canXuLy ? 'Cần bạn xử lý' : tt.nhanTrangThai}
                     >
                       {isHoanThanh ? (
-                        <Check className="size-4 stroke-[2.5]" />
-                      ) : isQuaHan ? (
-                        <AlertCircle className="size-4" />
-                      ) : isDangXuLy ? (
-                        <Sparkles className="size-4" />
+                        <Check className="size-4 stroke-[2]" />
+                      ) : canXuLy ? (
+                        <>
+                          <Sparkles className="size-4.5 stroke-[2.2]" />
+                          <span className="absolute -top-1 -right-1 size-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
+                        </>
                       ) : (
-                        <Clock className="size-4" />
+                        <Sparkles className="size-4 stroke-[1.8]" />
                       )}
                     </div>
 
-                    {/* Nội dung trung tâm: Metadata + Tiêu đề + Dự án */}
+                    {/* Nội dung trung tâm: Chỉ tên yêu cầu đầy đủ và trạng thái ai đang thực hiện */}
                     <div className="flex-1 min-w-0">
-                      {/* Dòng 1: Badge trạng thái + Thời hạn/Hoàn thành + Avatar người phụ trách */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span
-                          className={cn(
-                            'px-1.5 py-0.2 rounded text-[10px] font-bold border leading-tight',
-                            tt.cfgTrangThai.mauBadge
-                          )}
-                        >
-                          {tt.nhanTrangThai}
-                        </span>
-
-                        {renderMocThoiGianXL(yc, tt)}
-
-                        {tt.nguoiNhan ? (
-                          <div
-                            className="inline-flex items-center gap-1 bg-slate-100/90 pl-0.5 pr-1.5 py-0.5 rounded-full shrink-0"
-                            title={`Người xử lý: ${tt.nguoiNhan}`}
-                          >
-                            <DaiDien
-                              ten={tt.nguoiNhan}
-                              anh={nsNguoiXL?.url_anh_dai_dien}
-                              kich_thuoc="xs"
-                              className="size-4 text-[8px] shrink-0"
-                            />
-                            <span className="text-[10px] font-bold text-slate-700">
-                              {tenNguoiXLRutGon || tt.nguoiNhan}
-                            </span>
-                          </div>
-                        ) : yc.ten_nguoi_tao ? (
-                          <div
-                            className="inline-flex items-center gap-1 bg-slate-100/90 pl-0.5 pr-1.5 py-0.5 rounded-full shrink-0"
-                            title={`Người tạo: ${yc.ten_nguoi_tao}`}
-                          >
-                            <DaiDien
-                              ten={yc.ten_nguoi_tao}
-                              anh={nsNguoiTao?.url_anh_dai_dien}
-                              kich_thuoc="xs"
-                              className="size-4 text-[8px] shrink-0"
-                            />
-                            <span className="text-[10px] font-bold text-slate-700">
-                              {tenNguoiTaoRutGon || yc.ten_nguoi_tao}
-                            </span>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {/* Dòng 2: Tiêu đề yêu cầu chính */}
+                      {/* Tên yêu cầu cho đầy đủ */}
                       <h4
                         className={cn(
-                          'text-[13px] font-bold leading-snug mt-0.5 truncate',
+                          'text-[13.5px] font-bold leading-snug break-words',
                           isHoanThanh ? 'text-slate-500 line-through font-normal' : 'text-slate-900'
                         )}
                       >
                         {taoTenYeuCauHienThi(yc)}
                       </h4>
 
-                      {/* Dòng 3: Tên dự án (nếu có) */}
-                      {yc.ten_du_an && (
-                        <div className="text-[10.5px] text-slate-400 truncate flex items-center gap-1 mt-0.5 font-medium">
-                          <FolderKanban className="size-3 shrink-0 text-blue-500" />
-                          <span className="truncate">{yc.ten_du_an}</span>
-                        </div>
-                      )}
+                      {/* Trạng thái & Ai đang thực hiện */}
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 flex-wrap">
+                        <span className="font-semibold text-slate-700">
+                          {tt.nhanTrangThai}
+                        </span>
+
+                        {tt.nguoiNhan ? (
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <div
+                              className="inline-flex items-center gap-1 font-medium text-slate-600"
+                              title={`Người xử lý: ${tt.nguoiNhan}`}
+                            >
+                              <DaiDien
+                                ten={tt.nguoiNhan}
+                                anh={nsNguoiXL?.url_anh_dai_dien}
+                                kich_thuoc="xs"
+                                className="size-4 text-[8px] shrink-0"
+                              />
+                              <span>{tenNguoiXLRutGon || tt.nguoiNhan}</span>
+                            </div>
+                          </>
+                        ) : yc.ten_nguoi_tao && yc.trang_thai === 'yeu_cau_chinh_sua' ? (
+                          <>
+                            <span className="text-slate-300">•</span>
+                            <div
+                              className="inline-flex items-center gap-1 font-medium text-slate-600"
+                              title={`Người tạo: ${yc.ten_nguoi_tao}`}
+                            >
+                              <DaiDien
+                                ten={yc.ten_nguoi_tao}
+                                anh={nsNguoiTao?.url_anh_dai_dien}
+                                kich_thuoc="xs"
+                                className="size-4 text-[8px] shrink-0"
+                              />
+                              <span>{tenNguoiTaoRutGon || yc.ten_nguoi_tao}</span>
+                            </div>
+                          </>
+                        ) : null}
+
+                        {canXuLy && (
+                          <span className="ml-auto text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                            Cần bạn xử lý
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Mũi tên dẫn vào chi tiết */}
+                    {/* Mũi tên dẫn vào xem chi tiết */}
                     <ChevronRight className="size-4 text-slate-300 shrink-0" />
                   </div>
                 );

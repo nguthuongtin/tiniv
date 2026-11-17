@@ -1092,7 +1092,7 @@ export function NoiDungLichCongTac({
       {coLichNgoaiKyHienTai && lichGanNhat && (
         <div className="p-3 sm:p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-amber-600 shrink-0" />
+            <Sparkles className="size-4 text-slate-600 shrink-0" />
             <span>
               Kỳ đang xem (<strong>{tieuDeThoiGian}</strong>) chưa có lịch hẹn. Bạn đang có{' '}
               <strong className="text-amber-800">{dsLichLoc.length}</strong> lịch công tác ở các kỳ khác.
@@ -1324,7 +1324,7 @@ export function NoiDungLichCongTac({
                 : 'text-slate-500 hover:text-slate-800'
             )}
           >
-            <Car className="size-3.5 text-emerald-600 shrink-0" />
+            <Car className="size-3.5 text-slate-600 shrink-0" />
             <span>Công tác</span>
           </button>
           <button
@@ -1337,7 +1337,7 @@ export function NoiDungLichCongTac({
                 : 'text-slate-500 hover:text-slate-800'
             )}
           >
-            <Building2 className="size-3.5 text-rose-600 shrink-0" />
+            <Building2 className="size-3.5 text-slate-600 shrink-0" />
             <span>Tại VP</span>
           </button>
         </div>
@@ -1490,11 +1490,7 @@ export function NoiDungLichCongTac({
                                         ? 'bg-slate-100/80 border-slate-200 opacity-60'
                                         : daHoanThanh
                                         ? 'bg-slate-50/80 border-slate-200/90 opacity-75'
-                                        : isHoTro
-                                        ? 'bg-amber-50/60 border-amber-200/90 hover:border-amber-300'
-                                        : isVP
-                                        ? 'bg-rose-50/60 border-rose-200/90 hover:border-rose-300'
-                                        : 'bg-white border-slate-200/90 hover:border-emerald-300 hover:shadow-xs'
+                                        : 'bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-xs'
                                     )}
                                   >
                                     {/* Dòng 1: Icon phân loại + Giờ (trái) & Dấu check hoàn thành (góc trên phải) */}
@@ -1502,14 +1498,7 @@ export function NoiDungLichCongTac({
                                       <div className="flex items-center gap-1.5 min-w-0">
                                         {/* Icon loại lịch: Xanh lá (Công tác), Đỏ (Tại VP), Hổ phách (Hỗ trợ) */}
                                         <div
-                                          className={cn(
-                                            'size-5 rounded flex items-center justify-center shrink-0 border',
-                                            isHoTro
-                                              ? 'bg-amber-100/90 border-amber-300 text-amber-700'
-                                              : isVP
-                                              ? 'bg-rose-100/90 border-rose-300 text-rose-700'
-                                              : 'bg-emerald-100/90 border-emerald-300 text-emerald-700'
-                                          )}
+                                          className="size-5 rounded flex items-center justify-center shrink-0 border bg-slate-100 border-slate-200 text-slate-700"
                                           title={isHoTro ? 'Yêu cầu hỗ trợ' : isVP ? 'Việc tại VP' : 'Công tác ngoài'}
                                         >
                                           {isHoTro ? (
@@ -1779,23 +1768,12 @@ export function NoiDungLichCongTac({
                                   'p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2.5 active:scale-[0.99] select-none',
                                   daXong
                                     ? 'bg-slate-50 border-slate-200/80 opacity-70'
-                                    : isHoTro
-                                    ? 'bg-amber-50/50 border-amber-200/80 hover:border-amber-300'
-                                    : isVP
-                                    ? 'bg-rose-50/50 border-rose-200/80 hover:border-rose-300'
-                                    : 'bg-white border-slate-200/90 shadow-2xs hover:border-emerald-300'
+                                    : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
                                 )}
                               >
                                 {/* Icon loại lịch hiện đại: Xanh lá (Công tác), Đỏ (Việc tại VP), Hổ phách (Hỗ trợ) */}
                                 <div
-                                  className={cn(
-                                    'size-7 rounded-lg flex items-center justify-center shrink-0 border shadow-2xs',
-                                    isHoTro
-                                      ? 'bg-amber-100/90 border-amber-300 text-amber-700'
-                                      : isVP
-                                      ? 'bg-rose-100/90 border-rose-300 text-rose-700'
-                                      : 'bg-emerald-100/90 border-emerald-300 text-emerald-700'
-                                  )}
+                                  className="size-7 rounded-lg flex items-center justify-center shrink-0 border shadow-2xs bg-slate-100 border-slate-200 text-slate-700"
                                   title={isHoTro ? 'Yêu cầu hỗ trợ' : isVP ? 'Việc tại VP' : 'Công tác ngoài'}
                                 >
                                   {isHoTro ? (
@@ -1947,11 +1925,7 @@ export function NoiDungLichCongTac({
                                       'px-1.5 py-1 rounded text-[11px] font-semibold truncate cursor-pointer border flex items-center justify-between gap-1',
                                       daXong
                                         ? 'bg-slate-100 border-slate-200 text-slate-500 line-through'
-                                        : isHoTro
-                                        ? 'bg-amber-50 border-amber-200 text-amber-950 hover:bg-amber-100'
-                                        : isVP
-                                        ? 'bg-rose-50 border-rose-200 text-rose-950 hover:bg-rose-100'
-                                        : 'bg-emerald-50 border-emerald-200 text-emerald-950 hover:bg-emerald-100'
+                                        : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
                                     )}
                                     title={infoH.tieuDeChinh}
                                   >
@@ -2125,23 +2099,12 @@ export function NoiDungLichCongTac({
                                   'p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2.5 active:scale-[0.99] select-none',
                                   daXong
                                     ? 'bg-slate-50 border-slate-200/80 opacity-70'
-                                    : isHoTro
-                                    ? 'bg-amber-50/50 border-amber-200/80 hover:border-amber-300'
-                                    : isVP
-                                    ? 'bg-sky-50/50 border-sky-200/80 hover:border-sky-300'
-                                    : 'bg-white border-slate-200/90 shadow-2xs hover:border-emerald-300'
+                                    : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
                                 )}
                               >
                                 {/* Icon loại lịch hiện đại */}
                                 <div
-                                  className={cn(
-                                    'size-7 rounded-lg flex items-center justify-center shrink-0 border shadow-2xs',
-                                    isHoTro
-                                      ? 'bg-amber-100/90 border-amber-300 text-amber-700'
-                                      : isVP
-                                      ? 'bg-sky-100/90 border-sky-300 text-sky-700'
-                                      : 'bg-emerald-100/90 border-emerald-300 text-emerald-700'
-                                  )}
+                                  className="size-7 rounded-lg flex items-center justify-center shrink-0 border shadow-2xs bg-slate-100 border-slate-200 text-slate-700"
                                   title={isHoTro ? 'Yêu cầu hỗ trợ' : isVP ? 'Việc tại VP' : 'Công tác ngoài'}
                                 >
                                   {isHoTro ? (
@@ -2285,24 +2248,13 @@ export function NoiDungLichCongTac({
                                   ? 'bg-slate-50/60 opacity-60'
                                   : daXong
                                   ? 'bg-slate-50/60 opacity-75'
-                                  : isHoTro
-                                  ? 'bg-amber-50/40 hover:bg-amber-50/70'
-                                  : isVP
-                                  ? 'bg-rose-50/40 hover:bg-rose-50/70'
                                   : 'bg-white hover:bg-slate-50/80'
                               )}
                             >
                               <div className="flex items-center gap-3 min-w-0">
                                 {/* Icon phân loại: Xanh lá (Công tác), Đỏ (Việc tại VP), Hổ phách (Hỗ trợ) */}
                                 <div
-                                  className={cn(
-                                    'size-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs',
-                                    isHoTro
-                                      ? 'bg-amber-100/90 border-amber-300 text-amber-700'
-                                      : isVP
-                                      ? 'bg-rose-100/90 border-rose-300 text-rose-700'
-                                      : 'bg-emerald-100/90 border-emerald-300 text-emerald-700'
-                                  )}
+                                  className="size-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs bg-slate-100 border-slate-200 text-slate-700"
                                   title={isHoTro ? 'Yêu cầu hỗ trợ' : isVP ? 'Việc tại VP' : 'Công tác ngoài'}
                                 >
                                   {isHoTro ? (
