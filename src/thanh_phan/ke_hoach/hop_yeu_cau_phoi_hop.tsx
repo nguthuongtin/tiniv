@@ -20,6 +20,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Pencil,
   Trash2,
   Search,
@@ -33,6 +34,8 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { cn } from '../../thu_vien/utils/cn';
+import { DaiDien } from '../ui/dai_dien';
+import { rutGonTenNhanVienQuyChuan } from '../../thu_vien/utils/format_ten';
 import { formatNgay, formatNgayGio } from '../../thu_vien/utils/format_ngay';
 import {
   moZaloChiaSeYeuCau,
@@ -219,6 +222,16 @@ export default function HopYeuCauPhoiHop({
   useEffect(() => {
     void taiDuLieuNhanSuVaPhongBan();
   }, []);
+
+  // Map nhân sự theo tên và ID để lấy avatar
+  const mapNhanSuTheoTen = useMemo(() => {
+    const m = new Map<string, NhanSu>();
+    dsNhanSuToanBo.forEach((ns) => {
+      if (ns.ho_va_ten) m.set(ns.ho_va_ten.trim().toLowerCase(), ns);
+      if (ns.id) m.set(ns.id, ns);
+    });
+    return m;
+  }, [dsNhanSuToanBo]);
 
   // Map ID phòng ban sang tên
   const mapTenPhongBan = useMemo(() => {
@@ -1486,8 +1499,9 @@ export default function HopYeuCauPhoiHop({
   return (
     <div className="space-y-4">
       {/* KHỐI HEADER TRANG */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-5 shadow-xs space-y-3">
+        {/* Header Desktop: Tiêu đề + Nút tạo mới */}
+        <div className="hidden sm:flex sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="size-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold border border-blue-100 shadow-2xs">
               <Sparkles className="size-4.5" />
@@ -1504,58 +1518,87 @@ export default function HopYeuCauPhoiHop({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {onMoModalTaoYeuCau && (
-              <button
-                type="button"
-                onClick={onMoModalTaoYeuCau}
-                className="w-full sm:w-auto text-xs font-bold px-3.5 py-2.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition active:scale-95"
-              >
-                <Sparkles className="size-3.5" />
-                <span>+ Tạo yêu cầu mới</span>
-              </button>
+          {onMoModalTaoYeuCau && (
+            <button
+              type="button"
+              onClick={onMoModalTaoYeuCau}
+              className="text-xs font-bold px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition active:scale-95"
+            >
+              <Sparkles className="size-3.5" />
+              <span>+ Tạo yêu cầu mới</span>
+            </button>
+          )}
+        </div>
+
+        {/* Header Mobile: Thống kê 3 thẻ nhanh (Đang chạy, Cần xử lý, Hoàn thành) tương tự trang Lịch công tác */}
+        <div className="sm:hidden grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setTabHienTai('dang_chay');
+              setTrangHienTai(1);
+            }}
+            className={cn(
+              'p-2.5 rounded-2xl border text-center transition active:scale-95 cursor-pointer',
+              tabHienTai === 'dang_chay'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                : 'bg-slate-50/80 border-slate-200/80 text-slate-700 hover:bg-slate-100'
             )}
-          </div>
+          >
+            <div className={cn('text-base font-black tabular-nums leading-none', tabHienTai === 'dang_chay' ? 'text-white' : 'text-blue-600')}>
+              {thongKeTabs.dang_chay}
+            </div>
+            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'dang_chay' ? 'text-blue-100' : 'text-slate-500')}>
+              Đang chạy
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setTabHienTai('cho_tpkd');
+              setTrangHienTai(1);
+            }}
+            className={cn(
+              'p-2.5 rounded-2xl border text-center transition active:scale-95 cursor-pointer',
+              tabHienTai === 'cho_tpkd' || tabHienTai === 'cho_tpkh' || tabHienTai === 'khth_dang_lam' || tabHienTai === 'cho_sale'
+                ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                : 'bg-slate-50/80 border-slate-200/80 text-slate-700 hover:bg-slate-100'
+            )}
+          >
+            <div className={cn('text-base font-black tabular-nums leading-none', tabHienTai === 'cho_tpkd' || tabHienTai === 'cho_tpkh' || tabHienTai === 'khth_dang_lam' || tabHienTai === 'cho_sale' ? 'text-white' : 'text-amber-600')}>
+              {thongKeTabs.cho_tpkd + thongKeTabs.cho_tpkh + thongKeTabs.khth_dang_lam + thongKeTabs.cho_sale}
+            </div>
+            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'cho_tpkd' || tabHienTai === 'cho_tpkh' || tabHienTai === 'khth_dang_lam' || tabHienTai === 'cho_sale' ? 'text-amber-100' : 'text-slate-500')}>
+              Cần xử lý
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setTabHienTai('da_hoan_thanh');
+              setTrangHienTai(1);
+            }}
+            className={cn(
+              'p-2.5 rounded-2xl border text-center transition active:scale-95 cursor-pointer',
+              tabHienTai === 'da_hoan_thanh'
+                ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
+                : 'bg-slate-50/80 border-slate-200/80 text-slate-700 hover:bg-slate-100'
+            )}
+          >
+            <div className={cn('text-base font-black tabular-nums leading-none', tabHienTai === 'da_hoan_thanh' ? 'text-white' : 'text-emerald-700')}>
+              {thongKeTabs.da_hoan_thanh}
+            </div>
+            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'da_hoan_thanh' ? 'text-emerald-100' : 'text-slate-500')}>
+              Hoàn thành
+            </div>
+          </button>
         </div>
 
-        {/* Thanh Tabs phân loại trạng thái */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-b border-slate-100">
-          {danhSachTabs.map((tab) => {
-            const dangChon = tabHienTai === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  setTabHienTai(tab.key);
-                  setTrangHienTai(1);
-                }}
-                className={cn(
-                  'h-8.5 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-all shrink-0',
-                  dangChon
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                )}
-              >
-                <span>{tab.nhan}</span>
-                {tab.count > 0 && (
-                  <span
-                    className={cn(
-                      'px-1.5 py-0.2 rounded-full text-[10.5px] font-bold',
-                      dangChon ? 'bg-white/20 text-white' : tab.badgeColor || 'bg-slate-100 text-slate-600'
-                    )}
-                  >
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Thanh tìm kiếm nhanh */}
+        {/* Thanh tìm kiếm nhanh + Nút tạo mới gọn gàng trên mobile */}
         <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
             <input
               type="text"
@@ -1564,7 +1607,7 @@ export default function HopYeuCauPhoiHop({
                 setTuKhoaTim(e.target.value);
                 setTrangHienTai(1);
               }}
-              placeholder="Tìm theo tên yêu cầu, dự án, nội dung, người tạo..."
+              placeholder="Tìm yêu cầu, dự án, người tạo..."
               className="w-full h-9 pl-8.5 pr-8 text-xs rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
             />
             {tuKhoaTim && (
@@ -1580,11 +1623,58 @@ export default function HopYeuCauPhoiHop({
               </button>
             )}
           </div>
+
+          {onMoModalTaoYeuCau && (
+            <button
+              type="button"
+              onClick={onMoModalTaoYeuCau}
+              className="sm:hidden h-9 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold inline-flex items-center gap-1 shrink-0 shadow-2xs transition cursor-pointer"
+            >
+              <Plus className="size-3.5 stroke-[2.5]" />
+              <span>Tạo YC</span>
+            </button>
+          )}
+
           {dsSauLoc.length > 0 && (
-            <span className="text-xs text-slate-400 whitespace-nowrap shrink-0 font-medium">
+            <span className="hidden sm:inline text-xs text-slate-400 whitespace-nowrap shrink-0 font-medium">
               {dsSauLoc.length} yêu cầu
             </span>
           )}
+        </div>
+
+        {/* Thanh Tabs phân loại trạng thái (trượt ngang mượt mà trên mobile) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none border-b border-slate-100">
+          {danhSachTabs.map((tab) => {
+            const dangChon = tabHienTai === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  setTabHienTai(tab.key);
+                  setTrangHienTai(1);
+                }}
+                className={cn(
+                  'h-8 px-2.5 sm:px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-all shrink-0',
+                  dangChon
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                )}
+              >
+                <span>{tab.nhan}</span>
+                {tab.count > 0 && (
+                  <span
+                    className={cn(
+                      'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                      dangChon ? 'bg-white/20 text-white' : tab.badgeColor || 'bg-slate-100 text-slate-600'
+                    )}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* DANH SÁCH YÊU CẦU DẠNG BẢNG GỌN GÀNG, CHUẨN MỰC */}
@@ -1736,96 +1826,132 @@ export default function HopYeuCauPhoiHop({
               </table>
             </div>
 
-            {/* 2. DANH SÁCH THẺ GỌN GÀNG TRÊN MOBILE */}
-            <div className="md:hidden space-y-2.5">
+            {/* 2. DANH SÁCH THẺ SIÊU TINH GỌN TRÊN MOBILE (TINH THẦN NHƯ TRANG LỊCH CÔNG TÁC) */}
+            <div className="md:hidden space-y-2">
               {dsHienThi.map((yc) => {
                 const tt = layThongTinHienThiHang(yc);
+                const tenNguoiTaoRutGon = rutGonTenNhanVienQuyChuan(yc.ten_nguoi_tao);
+                const tenNguoiXLRutGon = tt.nguoiNhan ? rutGonTenNhanVienQuyChuan(tt.nguoiNhan) : '';
+                const nsNguoiXL = tt.nguoiNhan ? mapNhanSuTheoTen.get(tt.nguoiNhan.trim().toLowerCase()) : null;
+                const nsNguoiTao = yc.ten_nguoi_tao ? mapNhanSuTheoTen.get(yc.ten_nguoi_tao.trim().toLowerCase()) : null;
+
+                const isHoanThanh = yc.trang_thai === 'da_hoan_thanh';
+                const isQuaHan = tt.laQuaHan;
+                const isDangXuLy =
+                  yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien' ||
+                  yc.trang_thai === 'cho_sale_nghiem_thu' ||
+                  yc.trang_thai === 'cho_tpkh_duyet_ket_qua' ||
+                  yc.trang_thai === 'cho_tpkd_duyet_ket_qua';
 
                 return (
                   <div
                     key={yc.id}
                     onClick={() => setYeuCauDangXemChiTiet(yc)}
-                    className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-2xs hover:border-slate-300 transition-all cursor-pointer"
+                    className={cn(
+                      'p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-2.5 active:scale-[0.99] select-none',
+                      isHoanThanh
+                        ? 'bg-slate-50/70 border-slate-200/80 opacity-75'
+                        : isQuaHan
+                        ? 'bg-rose-50/30 border-rose-200/90 hover:border-rose-300'
+                        : isDangXuLy
+                        ? 'bg-blue-50/30 border-blue-200/90 hover:border-blue-300'
+                        : 'bg-white border-slate-200/90 shadow-2xs hover:border-emerald-300'
+                    )}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-1.5 font-bold text-slate-900 text-[13px] leading-snug min-w-0">
-                        <FolderKanban className="size-3.5 text-blue-600 shrink-0 mt-0.5" />
-                        <span className="break-words">{taoTenYeuCauHienThi(yc)}</span>
-                      </div>
-                      <span
-                        className={cn(
-                          'px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 max-w-[55%] text-right leading-snug',
-                          tt.cfgTrangThai.mauBadge
-                        )}
-                      >
-                        {tt.nhanTrangThai}
-                      </span>
-                    </div>
-
-                    {renderTaiLieuBadges(yc, true)}
-
-                    <div className="space-y-1.5 text-[11px] pt-2 border-t border-slate-100">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <span className="inline-flex items-center justify-center w-6 h-4 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">
-                            YC
-                          </span>
-                          <span className="font-semibold text-slate-800 truncate">
-                            {yc.ten_nguoi_tao}
-                          </span>
-                        </div>
-                        <span className="font-mono text-[11px] text-slate-500 tabular-nums shrink-0">
-                          {tt.tgYeuCauNgan || '—'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <span className="inline-flex items-center justify-center w-6 h-4 rounded bg-blue-50 text-blue-700 text-[10px] font-bold shrink-0">
-                            XL
-                          </span>
-                          {tt.nguoiNhan ? (
-                            <span
-                              className="font-semibold text-blue-700 truncate"
-                              title={`Người xử lý: ${tt.nguoiNhan}`}
-                            >
-                              {rutGonDanhSachTenVietTat(tt.nguoiNhan) || tt.nguoiNhan}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 italic truncate">Chờ phân công</span>
-                          )}
-                        </div>
-                        {renderMocThoiGianXL(yc, tt)}
-                      </div>
-                    </div>
-
+                    {/* Icon đại diện trạng thái hiện đại, màu sắc trực quan (tinh thần như lịch công tác) */}
                     <div
-                      className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 flex-wrap"
-                      onClick={(e) => e.stopPropagation()}
+                      className={cn(
+                        'size-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs',
+                        isHoanThanh
+                          ? 'bg-emerald-100/90 border-emerald-300 text-emerald-700'
+                          : isQuaHan
+                          ? 'bg-rose-100/90 border-rose-300 text-rose-700'
+                          : isDangXuLy
+                          ? 'bg-blue-100/90 border-blue-300 text-blue-700'
+                          : 'bg-amber-100/90 border-amber-300 text-amber-700'
+                      )}
+                      title={tt.nhanTrangThai}
                     >
-                      {tt.hanhDong && (
-                        <button
-                          type="button"
-                          onClick={tt.hanhDong.onClick}
+                      {isHoanThanh ? (
+                        <Check className="size-4 stroke-[2.5]" />
+                      ) : isQuaHan ? (
+                        <AlertCircle className="size-4" />
+                      ) : isDangXuLy ? (
+                        <Sparkles className="size-4" />
+                      ) : (
+                        <Clock className="size-4" />
+                      )}
+                    </div>
+
+                    {/* Nội dung trung tâm: Metadata + Tiêu đề + Dự án */}
+                    <div className="flex-1 min-w-0">
+                      {/* Dòng 1: Badge trạng thái + Thời hạn/Hoàn thành + Avatar người phụ trách */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
                           className={cn(
-                            'h-7 px-2.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition shadow-2xs',
-                            tt.hanhDong.className
+                            'px-1.5 py-0.2 rounded text-[10px] font-bold border leading-tight',
+                            tt.cfgTrangThai.mauBadge
                           )}
                         >
-                          <tt.hanhDong.icon className="size-3.5 stroke-[2.5]" />
-                          <span>{tt.hanhDong.label}</span>
-                        </button>
-                      )}
-                      {renderNutGuiZalo(yc)}
-                      <button
-                        type="button"
-                        onClick={() => setYeuCauDangXemChiTiet(yc)}
-                        className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium inline-flex items-center gap-1 cursor-pointer transition"
+                          {tt.nhanTrangThai}
+                        </span>
+
+                        {renderMocThoiGianXL(yc, tt)}
+
+                        {tt.nguoiNhan ? (
+                          <div
+                            className="inline-flex items-center gap-1 bg-slate-100/90 pl-0.5 pr-1.5 py-0.5 rounded-full shrink-0"
+                            title={`Người xử lý: ${tt.nguoiNhan}`}
+                          >
+                            <DaiDien
+                              ten={tt.nguoiNhan}
+                              anh={nsNguoiXL?.url_anh_dai_dien}
+                              kich_thuoc="xs"
+                              className="size-4 text-[8px] shrink-0"
+                            />
+                            <span className="text-[10px] font-bold text-slate-700">
+                              {tenNguoiXLRutGon || tt.nguoiNhan}
+                            </span>
+                          </div>
+                        ) : yc.ten_nguoi_tao ? (
+                          <div
+                            className="inline-flex items-center gap-1 bg-slate-100/90 pl-0.5 pr-1.5 py-0.5 rounded-full shrink-0"
+                            title={`Người tạo: ${yc.ten_nguoi_tao}`}
+                          >
+                            <DaiDien
+                              ten={yc.ten_nguoi_tao}
+                              anh={nsNguoiTao?.url_anh_dai_dien}
+                              kich_thuoc="xs"
+                              className="size-4 text-[8px] shrink-0"
+                            />
+                            <span className="text-[10px] font-bold text-slate-700">
+                              {tenNguoiTaoRutGon || yc.ten_nguoi_tao}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Dòng 2: Tiêu đề yêu cầu chính */}
+                      <h4
+                        className={cn(
+                          'text-[13px] font-bold leading-snug mt-0.5 truncate',
+                          isHoanThanh ? 'text-slate-500 line-through font-normal' : 'text-slate-900'
+                        )}
                       >
-                        <Eye className="size-3.5 text-slate-500" />
-                        <span>Chi tiết</span>
-                      </button>
+                        {taoTenYeuCauHienThi(yc)}
+                      </h4>
+
+                      {/* Dòng 3: Tên dự án (nếu có) */}
+                      {yc.ten_du_an && (
+                        <div className="text-[10.5px] text-slate-400 truncate flex items-center gap-1 mt-0.5 font-medium">
+                          <FolderKanban className="size-3 shrink-0 text-blue-500" />
+                          <span className="truncate">{yc.ten_du_an}</span>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Mũi tên dẫn vào chi tiết */}
+                    <ChevronRight className="size-4 text-slate-300 shrink-0" />
                   </div>
                 );
               })}
