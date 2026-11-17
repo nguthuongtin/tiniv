@@ -21,7 +21,8 @@ import {
   CalendarCheck,
   BookOpen,
   TrendingUp,
-  Sparkles
+  Sparkles,
+  X
 } from 'lucide-react';
 import { cn } from '../thu_vien/utils/cn';
 import useStoreXacThuc from '../thu_vien/zustand/store_xac_thuc';
@@ -187,7 +188,7 @@ const renderDanhMuc = (
 
   return (
     <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
-      {['Tổng quan', 'Module', 'Quản trị'].map((tenNhom) => {
+      {['Tổng quan & Lịch', 'Kinh doanh & Dự án', 'Báo cáo', 'Hệ thống'].map((tenNhom) => {
         const ds = danhMucTuyChinh.filter(
           (m) => m.nhom === tenNhom && kiemTraQuyenMuc(m)
         );
@@ -203,7 +204,9 @@ const renderDanhMuc = (
                   muc.href === '/'
                     ? pathname === '/'
                     : muc.href === '/lich-cong-tac'
-                    ? pathname.startsWith('/lich-cong-tac') || pathname.startsWith('/ban-lam-viec') || pathname.startsWith('/ke-hoach')
+                    ? pathname.startsWith('/lich-cong-tac') || pathname.startsWith('/ban-lam-viec')
+                    : muc.href === '/ke-hoach'
+                    ? pathname.startsWith('/ke-hoach')
                     : muc.href === '/bao-cao'
                     ? pathname === '/bao-cao' ||
                       (pathname.startsWith('/bao-cao/') &&
@@ -324,7 +327,7 @@ const renderCuoiSidebar = (
   );
 };
 
-const renderHeaderSidebar = (nhomHienTai: string) => (
+const renderHeaderSidebar = (nhomHienTai: string, onDongMobile?: () => void) => (
   <div className="h-16 px-4 border-b border-slate-200/80 flex items-center justify-between gap-3 shrink-0 bg-white">
     <div className="flex items-center gap-2.5 min-w-0">
       <div className="size-9 rounded-[12px] overflow-hidden shadow-sm shadow-emerald-700/20 shrink-0 border border-slate-200/60">
@@ -345,6 +348,16 @@ const renderHeaderSidebar = (nhomHienTai: string) => (
         </p>
       </div>
     </div>
+    {onDongMobile && (
+      <button
+        type="button"
+        onClick={onDongMobile}
+        className="size-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
+        title="Đóng menu"
+      >
+        <X className="size-4" />
+      </button>
+    )}
   </div>
 );
 
@@ -387,9 +400,9 @@ export function SidebarMobileDrawer() {
         onClick={() => setMoMobile(false)}
         aria-hidden="true"
       />
-      <aside className="relative z-[1] w-[82%] max-w-[280px] h-full flex flex-col bg-white shadow-2xl animate-in slide-in-from-left duration-250 border-r border-slate-200/80 shrink-0 overflow-hidden">
+      <aside className="relative z-[1] w-[85%] max-w-[300px] h-full flex flex-col bg-white shadow-2xl animate-in slide-in-from-left duration-250 border-r border-slate-200/80 shrink-0 overflow-hidden">
         <div className="flex flex-col h-full min-h-0">
-          {renderHeaderSidebar(nhomHienTai)}
+          {renderHeaderSidebar(nhomHienTai, () => setMoMobile(false))}
           <div className="flex-1 overflow-y-auto min-h-0">
             {renderDanhMuc(pathname, laQuyenQuanTri, nguoiDungHienTai)}
           </div>

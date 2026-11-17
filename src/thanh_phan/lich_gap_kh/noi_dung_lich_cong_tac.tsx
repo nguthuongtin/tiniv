@@ -875,7 +875,7 @@ export function NoiDungLichCongTac({
   return (
     <Bo_Cuc_Trang khoang_cach_trong="space-y-3 sm:space-y-5">
       {/* THANH ĐIỀU HƯỚNG TAB: LỊCH LÀM VIỆC & YÊU CẦU HỖ TRỢ */}
-      <div className="rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xs flex items-center justify-between gap-3 flex-wrap">
+      <div className="hidden sm:flex rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xs items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
           <button
             type="button"
@@ -944,6 +944,7 @@ export function NoiDungLichCongTac({
         />
       ) : (
         <>
+      <div className="hidden sm:block">
       <ThanhSoLieu
         items={[
           {
@@ -1001,6 +1002,7 @@ export function NoiDungLichCongTac({
           },
         ]}
       />
+      </div>
 
 {/* Banner nhắc thông minh khi kỳ đang xem chưa có lịch nhưng có lịch ở kỳ khác */}
       {coLichNgoaiKyHienTai && lichGanNhat && (
@@ -1255,7 +1257,7 @@ export function NoiDungLichCongTac({
         </div>
 
         {/* Thanh thêm nhanh việc tại văn phòng */}
-        <div className="flex-1 max-w-xl flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+        <div className="hidden sm:flex flex-1 max-w-xl items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
           <input
             type="text"
             value={tenViecVPNhanh}
@@ -1667,7 +1669,7 @@ export function NoiDungLichCongTac({
                   </div>
                 </div>
 
-                {/* 3. Danh sách thẻ tác nghiệp ngày được chọn (dễ đọc, trực quan) */}
+                {/* 3. Danh sách tác nghiệp ngày được chọn (siêu tinh gọn trên Mobile, chỉ hiển thị tiêu đề) */}
                 {lichNgayChon.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center space-y-3">
                     <div className="size-10 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
@@ -1713,7 +1715,7 @@ export function NoiDungLichCongTac({
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
+                  <div className="space-y-1.5">
                     {lichNgayChon.map((lich) => {
                       const infoH = taoTieuDeLichHienThi(lich);
                       const isVP = lich.loai_lich === 'van_phong';
@@ -1728,22 +1730,40 @@ export function NoiDungLichCongTac({
                             setMoModal(true);
                           }}
                           className={cn(
-                            'p-3.5 rounded-2xl border transition-all cursor-pointer space-y-2 relative active:scale-[0.99]',
+                            'p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 active:scale-[0.99] select-none',
                             daXong
-                              ? 'bg-emerald-50/50 border-emerald-200/80'
+                              ? 'bg-slate-50 border-slate-200/80 opacity-70'
                               : isHoTro
-                              ? 'bg-amber-50/40 border-amber-200/70 hover:border-amber-300'
+                              ? 'bg-amber-50/50 border-amber-200/80 hover:border-amber-300'
                               : isVP
-                              ? 'bg-blue-50/40 border-blue-200/70 hover:border-blue-300'
+                              ? 'bg-blue-50/50 border-blue-200/80 hover:border-blue-300'
                               : 'bg-white border-slate-200/90 shadow-2xs hover:border-emerald-300'
                           )}
                         >
-                          {/* Hàng 1: Loại lịch, Giờ & Trạng thái */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
+                          {/* Nút tick hoàn thành 1 chạm */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleXong(lich, e)}
+                            className={cn(
+                              'size-5.5 rounded-lg flex items-center justify-center shrink-0 border transition cursor-pointer',
+                              daXong
+                                ? 'bg-emerald-600 border-emerald-600 text-white shadow-2xs'
+                                : 'bg-white border-slate-300 text-transparent hover:border-emerald-500'
+                            )}
+                            title={daXong ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'}
+                          >
+                            <Check className={cn('size-3.5 stroke-[3]', daXong ? 'text-white' : 'text-slate-300')} />
+                          </button>
+
+                          {/* Cột thông tin: Giờ + Tag loại + Tiêu đề gọn gàng */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[11px] font-bold text-slate-500 tabular-nums">
+                                {lich.gio_bat_dau} - {lich.gio_ket_thuc}
+                              </span>
                               <span
                                 className={cn(
-                                  'text-[10px] font-bold px-2 py-0.5 rounded-full border',
+                                  'text-[9.5px] font-bold px-1.5 py-0.2 rounded border',
                                   isHoTro
                                     ? 'bg-amber-100 text-amber-900 border-amber-300'
                                     : isVP
@@ -1751,97 +1771,29 @@ export function NoiDungLichCongTac({
                                     : 'bg-emerald-100 text-emerald-900 border-emerald-300'
                                 )}
                               >
-                                {isHoTro ? '⚡ Yêu cầu hỗ trợ' : isVP ? '🏢 Việc tại VP' : '🚗 Công tác ngoài'}
+                                {isHoTro ? '⚡ Hỗ trợ' : isVP ? '🏢 Việc VP' : '🚗 Công tác'}
                               </span>
-                              <span className="text-[11px] font-bold text-slate-600 tabular-nums">
-                                {lich.gio_bat_dau} - {lich.gio_ket_thuc}
-                              </span>
+                              {lich.ket_qua && (
+                                <span className="text-[9.5px] font-semibold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200">
+                                  Đã ghi KQ
+                                </span>
+                              )}
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={(e) => handleToggleXong(lich, e)}
-                              className={cn(
-                                'px-2 py-0.5 rounded-full text-[10.5px] font-bold border inline-flex items-center gap-1 transition cursor-pointer',
-                                daXong
-                                  ? 'bg-emerald-600 text-white border-emerald-600'
-                                  : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-400'
-                              )}
-                            >
-                              <CheckCircle2 className="size-3" />
-                              <span>{daXong ? 'Đã xong' : 'Hoàn thành'}</span>
-                            </button>
-                          </div>
-
-                          {/* Hàng 2: Tiêu đề việc */}
-                          <div>
+                            {/* Tiêu đề ngắn gọn, nổi bật, bấm vào để xem chi tiết/sửa */}
                             <h4
                               className={cn(
-                                'text-sm font-bold leading-snug',
-                                daXong ? 'line-through text-slate-500' : 'text-slate-900'
+                                'text-[13px] font-bold leading-snug mt-0.5 truncate',
+                                daXong ? 'line-through text-slate-400 font-normal' : 'text-slate-900'
                               )}
                             >
                               {infoH.tieuDeChinh}
                             </h4>
-                            {infoH.chiTietThem && (
-                              <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
-                                {infoH.chiTietThem}
-                              </p>
-                            )}
                           </div>
 
-                          {/* Hàng 3: Khách hàng / Dự án / Địa điểm */}
-                          {(lich.ten_khach_hang || lich.dia_diem) && (
-                            <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap pt-0.5">
-                              {lich.ten_khach_hang && (
-                                <div className="flex items-center gap-1 truncate max-w-[220px]">
-                                  <Building2 className="size-3.5 text-slate-400 shrink-0" />
-                                  <span className="truncate">{lich.ten_khach_hang}</span>
-                                </div>
-                              )}
-                              {lich.dia_diem && (
-                                <div className="flex items-center gap-1 truncate max-w-[200px]">
-                                  <MapPin className="size-3.5 text-slate-400 shrink-0" />
-                                  <span className="truncate">{lich.dia_diem}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Hàng 4: Kết quả (nếu có) & Thao tác */}
-                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
-                            <div className="flex items-center gap-1.5 truncate flex-1">
-                              {lich.ket_qua ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-md truncate font-medium">
-                                  <Check className="size-3 shrink-0" />
-                                  <span className="truncate">KQ: {lich.ket_qua}</span>
-                                </span>
-                              ) : (
-                                <span className="text-[11px] text-slate-400 italic">Chưa ghi nhận kết quả</span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setLichDangSua(lich);
-                                  setMoModal(true);
-                                }}
-                                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                title="Chỉnh sửa"
-                              >
-                                <Pencil className="size-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleXoaLich(lich.id, lich.ten_khach_hang || '')}
-                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
-                                title="Xóa lịch"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </button>
-                            </div>
+                          {/* Mũi tên nhẹ */}
+                          <div className="flex items-center shrink-0 text-slate-400">
+                            <ChevronRight className="size-4" />
                           </div>
                         </div>
                       );
@@ -2056,17 +2008,13 @@ export function NoiDungLichCongTac({
                           </p>
                         </div>
                       ) : (
-                        <div className="p-2.5 bg-slate-100/70 space-y-2">
-                          {lichNgayChon.map((lich, idxLich) => {
-                            const ns = mapNhanSu.get(lich.nguoi_phu_trach_id);
-                            const tenNsNgan = ns?.ho_va_ten
-                              ? ns.ho_va_ten.trim().split(/\s+/).slice(-2).join(' ')
-                              : 'Chưa gán';
-                            const ttObj = DANH_SACH_TRANG_THAI_LICH_GAP.find(
-                              (t) => t.key === lich.trang_thai
-                            );
+                        <div className="p-2 bg-slate-50 space-y-1.5">
+                          {lichNgayChon.map((lich) => {
+                            const infoH = taoTieuDeLichHienThi(lich);
+                            const isVP = lich.loai_lich === 'van_phong';
+                            const isHoTro = lich.id.startsWith('lich_yc_');
+                            const daXong = lich.trang_thai === 'da_hoan_thanh';
 
-                            const daHuy = lich.trang_thai === 'huy';
                             return (
                               <div
                                 key={lich.id}
@@ -2075,78 +2023,66 @@ export function NoiDungLichCongTac({
                                   setMoModal(true);
                                 }}
                                 className={cn(
-                                  'p-3.5 rounded-[22px] border transition cursor-pointer',
-                                  daHuy
-                                    ? 'bg-slate-100/90 border-slate-200 opacity-60'
-                                    : 'bg-white border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] active:scale-[0.99]'
+                                  'p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 active:scale-[0.99] select-none',
+                                  daXong
+                                    ? 'bg-slate-50 border-slate-200/80 opacity-70'
+                                    : isHoTro
+                                    ? 'bg-amber-50/50 border-amber-200/80 hover:border-amber-300'
+                                    : isVP
+                                    ? 'bg-blue-50/50 border-blue-200/80 hover:border-blue-300'
+                                    : 'bg-white border-slate-200/90 shadow-2xs hover:border-emerald-300'
                                 )}
                               >
-                                <div className="flex items-start gap-2">
-                                  <span className="text-slate-400 text-[11.5px] font-extrabold tabular-nums mt-0.5 shrink-0">
-                                    {idxLich + 1}.
-                                  </span>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-[14px] leading-snug">
-                                      {(() => {
-                                        const infoH = taoTieuDeLichHienThi(lich);
-                                        const isVP = lich.loai_lich === 'van_phong';
-                                        return (
-                                          <div className="space-y-0.5">
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                              <span className={cn('text-[9.5px] font-bold px-1.5 py-0.2 rounded', daHuy ? 'bg-slate-200 text-slate-600' : (isVP ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'))}>
-                                                {infoH.icon} {daHuy ? 'Đã hủy' : (isVP ? infoH.nhanLoai : 'Công tác')}
-                                              </span>
-                                              <span className={cn('font-bold text-[13.5px]', daHuy ? 'line-through text-slate-500' : 'text-slate-900')}>
-                                                {infoH.tieuDeChinh}
-                                              </span>
-                                            </div>
-                                            {infoH.chiTietThem && (
-                                              <div className={cn('text-[11.5px]', daHuy ? 'line-through text-slate-400' : 'text-slate-500')}>
-                                                {infoH.chiTietThem}
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })()}
-                                      {ttObj && (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
-                                          {ttObj.tieu_de}
-                                        </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleToggleXong(lich, e)}
+                                  className={cn(
+                                    'size-5.5 rounded-lg flex items-center justify-center shrink-0 border transition cursor-pointer',
+                                    daXong
+                                      ? 'bg-emerald-600 border-emerald-600 text-white shadow-2xs'
+                                      : 'bg-white border-slate-300 text-transparent hover:border-emerald-500'
+                                  )}
+                                  title={daXong ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'}
+                                >
+                                  <Check className={cn('size-3.5 stroke-[3]', daXong ? 'text-white' : 'text-slate-300')} />
+                                </button>
+
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[11px] font-bold text-slate-500 tabular-nums">
+                                      {lich.gio_bat_dau} - {lich.gio_ket_thuc}
+                                    </span>
+                                    <span
+                                      className={cn(
+                                        'text-[9.5px] font-bold px-1.5 py-0.2 rounded border',
+                                        isHoTro
+                                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                          : isVP
+                                          ? 'bg-sky-100 text-sky-900 border-sky-300'
+                                          : 'bg-emerald-100 text-emerald-900 border-emerald-300'
                                       )}
-                                    </div>
-
-                                    {(lich.dia_diem || lich.noi_dung) && (
-                                      <div className={cn('text-[12px] mt-1 line-clamp-1', daHuy ? 'line-through text-slate-400' : 'text-slate-500')}>
-                                        {lich.dia_diem ? `📍 ${lich.dia_diem}` : lich.noi_dung}
-                                      </div>
-                                    )}
-
-                                    <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-slate-100">
-                                      <span className={cn('font-mono font-extrabold text-[12px] px-2.5 py-0.5 rounded-full border tabular-nums', daHuy ? 'bg-slate-200/80 text-slate-500 border-slate-300 line-through' : 'bg-emerald-50/80 text-[#107555] border-emerald-200/60')}>
-                                        {lich.gio_bat_dau} - {lich.gio_ket_thuc}
+                                    >
+                                      {isHoTro ? '⚡ Hỗ trợ' : isVP ? '🏢 Việc VP' : '🚗 Công tác'}
+                                    </span>
+                                    {lich.ket_qua && (
+                                      <span className="text-[9.5px] font-semibold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200">
+                                        Đã ghi KQ
                                       </span>
-                                      <div className="flex items-center gap-1.5">
-                                        <div className="flex items-center gap-1 shrink-0 bg-slate-100 px-2 py-0.5 rounded-full text-[11px] font-semibold text-slate-700">
-                                          <UserRound className="size-3 text-slate-400" />
-                                          <span>{tenNsNgan}</span>
-                                        </div>
-                                        {duocXoaLichCongTac(nguoiDungHienTai, lich, mapNhanSu) && (
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              const infoH = taoTieuDeLichHienThi(lich);
-                                              void handleXoaLich(lich.id, infoH.tieuDeChinh);
-                                            }}
-                                            className="size-6 rounded-md hover:bg-rose-100 text-slate-400 hover:text-rose-600 flex items-center justify-center transition shrink-0 cursor-pointer"
-                                            title="Xóa lịch (Chỉ Trưởng phòng/BGD)"
-                                          >
-                                            <Trash2 className="size-3" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
+                                    )}
                                   </div>
+
+                                  <h4
+                                    className={cn(
+                                      'text-[13px] font-bold leading-snug mt-0.5 truncate',
+                                      daXong ? 'line-through text-slate-400 font-normal' : 'text-slate-900'
+                                    )}
+                                  >
+                                    {infoH.tieuDeChinh}
+                                  </h4>
+                                </div>
+
+                                <div className="flex items-center shrink-0 text-slate-400">
+                                  <ChevronRight className="size-4" />
                                 </div>
                               </div>
                             );
