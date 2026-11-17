@@ -1504,12 +1504,12 @@ export default function HopYeuCauPhoiHop({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {onMoModalTaoYeuCau && (
               <button
                 type="button"
                 onClick={onMoModalTaoYeuCau}
-                className="text-xs font-semibold px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition"
+                className="w-full sm:w-auto text-xs font-bold px-3.5 py-2.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition active:scale-95"
               >
                 <Sparkles className="size-3.5" />
                 <span>+ Tạo yêu cầu mới</span>

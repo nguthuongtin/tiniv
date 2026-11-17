@@ -802,7 +802,7 @@ export default function TrangBaoCaoCongViec() {
             </select>
           )}
           {coQuyenXuatFile && (
-            <>
+            <div className="hidden sm:flex items-center gap-1.5">
               <Nut
                 kieu="outline"
                 kich_thuoc="sm"
@@ -814,15 +814,16 @@ export default function TrangBaoCaoCongViec() {
               <Nut kieu="outline" kich_thuoc="sm" onClick={xuLyXuatCSV}>
                 <span>Xuất Excel</span>
               </Nut>
-            </>
+            </div>
           )}
           <Nut
             kieu="primary"
             kich_thuoc="sm"
             icon_trai={Plus}
             onClick={() => moTaoMoi()}
+            className="shrink-0"
           >
-            <span className="hidden sm:inline">Tạo báo cáo</span>
+            <span>Tạo báo cáo</span>
           </Nut>
         </div>
       </div>

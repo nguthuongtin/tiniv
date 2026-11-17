@@ -444,7 +444,7 @@ export default function TrangKhachHang() {
                 title="Xem bản đồ 102 xã phường địa bàn An Giang"
               >
                 <MapPin className="size-3.5 text-sky-600" />
-                <span>Bản đồ địa bàn</span>
+                <span className="hidden sm:inline">Bản đồ địa bàn</span>
               </Link>
               <Nut
                 kich_thuoc="sm"

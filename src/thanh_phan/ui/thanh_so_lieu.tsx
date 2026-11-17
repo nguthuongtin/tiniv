@@ -108,7 +108,7 @@ export function ThanhSoLieu({ muc, items, className }: ThanhSoLieuProps) {
       className={cn('rounded-card sm:rounded-2xl bg-nen-banner p-2.5 sm:p-3.5 shadow-nhe', className)}
     >
       <div
-        className="grid gap-1.5 sm:gap-3"
+        className="flex sm:grid gap-1.5 sm:gap-3 overflow-x-auto no-scrollbar pb-0.5 sm:pb-0"
         style={{ gridTemplateColumns: `repeat(${ds.length}, minmax(0, 1fr))` }}
       >
         {ds.map((m, idx) => {
@@ -117,7 +117,7 @@ export function ThanhSoLieu({ muc, items, className }: ThanhSoLieuProps) {
           const Icon = m.icon;
           const giaTri = m.gia_tri ?? m.so_lieu ?? 0;
           const lopKhung = cn(
-            'min-w-0 rounded-2xl border px-1 py-2 sm:p-3.5 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-3',
+            'min-w-[105px] sm:min-w-0 flex-1 shrink-0 rounded-2xl border px-2 py-2 sm:p-3.5 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-3',
             'text-center sm:text-left transition',
             m.khi_bam && 'active:scale-95 cursor-pointer',
             m.dang_chon

@@ -24,7 +24,8 @@ import {
   CalendarCheck,
   Briefcase,
   Check,
-  Trash2
+  Trash2,
+  Pencil
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -1214,7 +1215,7 @@ export function NoiDungLichCongTac({
       {/* BỘ LỌC PHÂN LOẠI & THANH THÊM NHANH VIỆC TẠI VĂN PHÒNG */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         {/* Bộ lọc loại lịch: Tất cả, Công tác ngoài, Việc tại VP */}
-        <div className="inline-flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 gap-1 text-xs">
+        <div className="grid grid-cols-3 sm:inline-flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 gap-1 text-xs">
           <button
             type="button"
             onClick={() => setLocLoaiLich('tat_ca')}
@@ -1555,28 +1556,29 @@ export function NoiDungLichCongTac({
                 </div>
               )}
 
-              {/* MOBILE: LỊCH TUẦN - Thanh chọn ngày + Timeline theo giờ của ngày đang chọn */}
+              {/* MOBILE: LỊCH TUẦN DẠNG AGENDA TƯƠNG TÁC (Tuần strip + Danh sách thẻ ngày) */}
               <div className="sm:hidden space-y-3">
-                <div className="bg-[#0e3e2d] rounded-[28px] p-4 space-y-4 shadow-[0_8px_24px_rgba(14,62,45,0.18)]">
-                  <div className="flex items-center justify-between">
+                {/* 1. Thanh chọn tuần gọn gàng */}
+                <div className="bg-[#0e3e2d] rounded-2xl p-3.5 space-y-3 shadow-md">
+                  <div className="flex items-center justify-between text-white">
                     <button
                       type="button"
                       onClick={() => chuyenTuanMobile(-1)}
                       aria-label="Tuần trước"
-                      className="size-9 rounded-full flex items-center justify-center text-white hover:bg-white/10 active:scale-95 transition cursor-pointer"
+                      className="size-8 rounded-full flex items-center justify-center text-white/80 hover:bg-white/10 active:scale-95 transition cursor-pointer"
                     >
-                      <ChevronLeft className="size-5" />
+                      <ChevronLeft className="size-4" />
                     </button>
-                    <span className="text-[15px] font-bold text-white tracking-tight">
+                    <span className="text-sm font-bold text-white tracking-tight">
                       Tháng {Number(ngayTuanHienThi.iso.slice(5, 7))}, {ngayTuanHienThi.iso.slice(0, 4)}
                     </span>
                     <button
                       type="button"
                       onClick={() => chuyenTuanMobile(1)}
                       aria-label="Tuần sau"
-                      className="size-9 rounded-full flex items-center justify-center text-white hover:bg-white/10 active:scale-95 transition cursor-pointer"
+                      className="size-8 rounded-full flex items-center justify-center text-white/80 hover:bg-white/10 active:scale-95 transition cursor-pointer"
                     >
-                      <ChevronRight className="size-5" />
+                      <ChevronRight className="size-4" />
                     </button>
                   </div>
 
@@ -1589,18 +1591,18 @@ export function NoiDungLichCongTac({
                           key={ngay.iso}
                           type="button"
                           onClick={() => setNgayChonTuan(ngay.iso)}
-                          className="flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition"
+                          className="flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition"
                         >
-                          <span className="text-[11px] font-medium text-emerald-100/60">
+                          <span className="text-[10.5px] font-medium text-emerald-200/70">
                             {idx === 6 ? 'CN' : `T${idx + 2}`}
                           </span>
                           <span
                             className={cn(
-                              'size-9 rounded-full flex items-center justify-center text-[14px] font-bold tabular-nums transition',
+                              'size-8 rounded-full flex items-center justify-center text-[13px] font-bold tabular-nums transition',
                               dangChon
-                                ? 'bg-amber-400 text-[#0e3e2d]'
+                                ? 'bg-amber-400 text-[#0e3e2d] shadow-xs'
                                 : ngay.laHomNay
-                                ? 'text-white ring-1 ring-amber-300/80'
+                                ? 'text-white ring-1 ring-amber-300/80 font-black'
                                 : 'text-white'
                             )}
                           >
@@ -1608,7 +1610,7 @@ export function NoiDungLichCongTac({
                           </span>
                           <span
                             className={cn(
-                              'size-1 rounded-full',
+                              'size-1.5 rounded-full',
                               coLich ? 'bg-amber-300' : 'bg-transparent'
                             )}
                           />
@@ -1616,165 +1618,236 @@ export function NoiDungLichCongTac({
                       );
                     })}
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleMoThemNhanh(ngayTuanHienThi.iso, '09:00')}
-                    className="w-full h-12 rounded-full bg-amber-400 hover:bg-amber-300 text-[#0e3e2d] text-[14px] font-extrabold flex items-center justify-center gap-1.5 active:scale-[0.98] transition cursor-pointer"
-                  >
-                    <Plus className="size-4 stroke-[2.8]" />
-                    Thêm lịch hẹn
-                  </button>
                 </div>
 
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-[16px] font-extrabold text-slate-900 tracking-tight">
-                    {ngayTuanHienThi.thu}, {ngayTuanHienThi.ngayThang}
-                  </h3>
-                  {lichNgayChon.length > 0 && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/70 text-[11px] font-extrabold tabular-nums">
-                      {lichNgayChon.length} lịch
+                {/* 2. Tiêu đề ngày đang chọn + 2 Nút thêm nhanh trên mobile */}
+                <div className="flex items-center justify-between gap-2 px-0.5">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                      {ngayTuanHienThi.thu}, {ngayTuanHienThi.ngayThang}
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10.5px] font-bold">
+                      {lichNgayChon.length} việc
                     </span>
-                  )}
-                </div>
+                  </div>
 
-                <div className="bg-white rounded-[24px] border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.03)] px-3 py-4">
-                  <div className="relative flex" style={{ height: (khungGio.cuoi - khungGio.dau) * CHIEU_CAO_GIO }}>
-                    <div className="w-12 shrink-0 relative">
-                      {Array.from({ length: khungGio.cuoi - khungGio.dau + 1 }, (_, i) => (
-                        <span
-                          key={i}
-                          className="absolute left-0 text-[11px] font-semibold text-slate-400 tabular-nums leading-none"
-                          style={{ top: i * CHIEU_CAO_GIO - 5 }}
-                        >
-                          {String(khungGio.dau + i).padStart(2, '0')}:00
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="relative flex-1 min-w-0">
-                      {Array.from({ length: khungGio.cuoi - khungGio.dau }, (_, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          aria-label={`Thêm lịch lúc ${String(khungGio.dau + i).padStart(2, '0')}:00`}
-                          onClick={() =>
-                            handleMoThemNhanh(
-                              ngayTuanHienThi.iso,
-                              `${String(khungGio.dau + i).padStart(2, '0')}:00`
-                            )
-                          }
-                          className="absolute inset-x-0 border-t border-slate-100 active:bg-slate-50 transition cursor-pointer"
-                          style={{ top: i * CHIEU_CAO_GIO, height: CHIEU_CAO_GIO }}
-                        />
-                      ))}
-                      <div
-                        className="absolute inset-x-0 border-t border-slate-100"
-                        style={{ top: (khungGio.cuoi - khungGio.dau) * CHIEU_CAO_GIO }}
-                      />
-
-                      {lichBoTri.map((muc) => {
-                        const { lich } = muc;
-                        const top = ((muc.batDau - khungGio.dau * 60) / 60) * CHIEU_CAO_GIO;
-                        const cao = Math.max(((muc.ketThuc - muc.batDau) / 60) * CHIEU_CAO_GIO - 4, 44);
-                        const dangDienRa =
-                          ngayTuanHienThi.iso === homNayISO &&
-                          phutHienTai >= muc.batDau &&
-                          phutHienTai < muc.ketThuc &&
-                          lich.trang_thai !== 'huy';
-                        const dsNguoi = Array.from(
-                          new Set([lich.nguoi_phu_trach_id, ...(lich.nguoi_tham_gia_ids || [])].filter(Boolean))
-                        );
-                        const rong = cao >= 92;
-
-                        return (
-                          <div
-                            key={lich.id}
-                            role="button"
-                            onClick={() => {
-                              setLichDangSua(lich);
-                              setMoModal(true);
-                            }}
-                            className={cn(
-                              'absolute z-10 rounded-2xl px-3 py-2 overflow-hidden cursor-pointer active:scale-[0.98] transition',
-                              lich.trang_thai === 'huy'
-                                ? 'bg-slate-100 opacity-60 line-through'
-                                : dangDienRa
-                                ? 'bg-[#FFEBD6]'
-                                : lich.trang_thai === 'da_hoan_thanh'
-                                ? 'bg-emerald-50 border border-emerald-100'
-                                : 'bg-white border border-slate-200 shadow-xs'
-                            )}
-                            style={{
-                              top: top + 2,
-                              height: cao,
-                              left: `calc(${(muc.lane / muc.tongLane) * 100}% + 4px)`,
-                              width: `calc(${100 / muc.tongLane}% - 6px)`
-                            }}
-                          >
-                            {(() => {
-                              const infoH = taoTieuDeLichHienThi(lich);
-                              const isVP = lich.loai_lich === 'van_phong';
-                              return (
-                                <>
-                                  <div className="flex items-center gap-1.5 mb-0.5">
-                                    <span className={cn('text-[9.5px] font-bold px-1.5 py-0.2 rounded', isVP ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800')}>
-                                      {infoH.icon} {isVP ? infoH.nhanLoai : 'Công tác'}
-                                    </span>
-                                  </div>
-                                  <div className={cn('text-[13px] font-bold leading-snug line-clamp-2', lich.trang_thai === 'huy' ? 'line-through text-slate-500' : 'text-slate-900')}>
-                                    {infoH.tieuDeChinh}
-                                  </div>
-                                  {infoH.chiTietThem && (
-                                    <div className="text-[11px] text-slate-500 truncate mt-0.5">
-                                      {infoH.chiTietThem}
-                                    </div>
-                                  )}
-                                </>
-                              );
-                            })()}
-                            <div className="text-[11px] text-slate-500 tabular-nums mt-0.5">
-                              {lich.gio_bat_dau} - {lich.gio_ket_thuc}
-                            </div>
-                            {rong && lich.dia_diem && (
-                              <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1 min-w-0">
-                                <MapPin className="size-3 shrink-0" />
-                                <span className="truncate">{lich.dia_diem}</span>
-                              </div>
-                            )}
-                            {rong && dsNguoi.length > 0 && (
-                              <div className="flex items-center mt-2">
-                                {dsNguoi.slice(0, 3).map((id, i) => (
-                                  <DaiDien
-                                    key={id}
-                                    ten={mapNhanSu.get(id)?.ho_va_ten || 'NV'}
-                                    kich_thuoc="xs"
-                                    className={cn('size-6 text-[10px] ring-2 ring-white', i > 0 && '-ml-1.5')}
-                                  />
-                                ))}
-                                {dsNguoi.length > 3 && (
-                                  <span className="ml-1.5 text-[11px] font-bold text-slate-500">
-                                    +{dsNguoi.length - 3}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-
-                      {viTriDuongHienTai !== null && (
-                        <div
-                          className="absolute inset-x-0 z-20 pointer-events-none flex items-center"
-                          style={{ top: viTriDuongHienTai }}
-                        >
-                          <span className="size-2 rounded-full border-2 border-amber-400 bg-white -ml-1 shrink-0" />
-                          <span className="h-px flex-1 bg-amber-400" />
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGiaTriMacDinhModal({
+                          ngay: ngayTuanHienThi.iso,
+                          gio_bat_dau: '08:30',
+                          loai_lich: 'van_phong'
+                        });
+                        setLichDangSua(null);
+                        setMoModal(true);
+                      }}
+                      className="h-8 px-2.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-xs font-bold inline-flex items-center gap-1 active:scale-95 transition shadow-2xs cursor-pointer"
+                    >
+                      <Briefcase className="size-3" />
+                      <span>+ Việc VP</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGiaTriMacDinhModal({
+                          ngay: ngayTuanHienThi.iso,
+                          gio_bat_dau: '09:00',
+                          loai_lich: 'cong_tac_di_chuyen'
+                        });
+                        setLichDangSua(null);
+                        setMoModal(true);
+                      }}
+                      className="h-8 px-2.5 rounded-xl bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1 active:scale-95 transition shadow-2xs cursor-pointer"
+                    >
+                      <Plus className="size-3.5" />
+                      <span>+ Công tác</span>
+                    </button>
                   </div>
                 </div>
+
+                {/* 3. Danh sách thẻ tác nghiệp ngày được chọn (dễ đọc, trực quan) */}
+                {lichNgayChon.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center space-y-3">
+                    <div className="size-10 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                      <CalendarIcon className="size-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">Chưa có lịch làm việc cho ngày này</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Nhấp nút bên dưới để tạo lịch hẹn hoặc việc tại VP</p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGiaTriMacDinhModal({
+                            ngay: ngayTuanHienThi.iso,
+                            gio_bat_dau: '09:00',
+                            loai_lich: 'cong_tac_di_chuyen'
+                          });
+                          setLichDangSua(null);
+                          setMoModal(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1 shadow-2xs cursor-pointer"
+                      >
+                        <Plus className="size-3.5" />
+                        <span>Lên lịch công tác</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGiaTriMacDinhModal({
+                            ngay: ngayTuanHienThi.iso,
+                            gio_bat_dau: '08:30',
+                            loai_lich: 'van_phong'
+                          });
+                          setLichDangSua(null);
+                          setMoModal(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <Briefcase className="size-3" />
+                        <span>Việc tại VP</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {lichNgayChon.map((lich) => {
+                      const infoH = taoTieuDeLichHienThi(lich);
+                      const isVP = lich.loai_lich === 'van_phong';
+                      const isHoTro = lich.id.startsWith('lich_yc_');
+                      const daXong = lich.trang_thai === 'da_hoan_thanh';
+
+                      return (
+                        <div
+                          key={lich.id}
+                          onClick={() => {
+                            setLichDangSua(lich);
+                            setMoModal(true);
+                          }}
+                          className={cn(
+                            'p-3.5 rounded-2xl border transition-all cursor-pointer space-y-2 relative active:scale-[0.99]',
+                            daXong
+                              ? 'bg-emerald-50/50 border-emerald-200/80'
+                              : isHoTro
+                              ? 'bg-amber-50/40 border-amber-200/70 hover:border-amber-300'
+                              : isVP
+                              ? 'bg-blue-50/40 border-blue-200/70 hover:border-blue-300'
+                              : 'bg-white border-slate-200/90 shadow-2xs hover:border-emerald-300'
+                          )}
+                        >
+                          {/* Hàng 1: Loại lịch, Giờ & Trạng thái */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={cn(
+                                  'text-[10px] font-bold px-2 py-0.5 rounded-full border',
+                                  isHoTro
+                                    ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                    : isVP
+                                    ? 'bg-sky-100 text-sky-900 border-sky-300'
+                                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                )}
+                              >
+                                {isHoTro ? '⚡ Yêu cầu hỗ trợ' : isVP ? '🏢 Việc tại VP' : '🚗 Công tác ngoài'}
+                              </span>
+                              <span className="text-[11px] font-bold text-slate-600 tabular-nums">
+                                {lich.gio_bat_dau} - {lich.gio_ket_thuc}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleXong(lich, e)}
+                              className={cn(
+                                'px-2 py-0.5 rounded-full text-[10.5px] font-bold border inline-flex items-center gap-1 transition cursor-pointer',
+                                daXong
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-400'
+                              )}
+                            >
+                              <CheckCircle2 className="size-3" />
+                              <span>{daXong ? 'Đã xong' : 'Hoàn thành'}</span>
+                            </button>
+                          </div>
+
+                          {/* Hàng 2: Tiêu đề việc */}
+                          <div>
+                            <h4
+                              className={cn(
+                                'text-sm font-bold leading-snug',
+                                daXong ? 'line-through text-slate-500' : 'text-slate-900'
+                              )}
+                            >
+                              {infoH.tieuDeChinh}
+                            </h4>
+                            {infoH.chiTietThem && (
+                              <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                                {infoH.chiTietThem}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Hàng 3: Khách hàng / Dự án / Địa điểm */}
+                          {(lich.ten_khach_hang || lich.dia_diem) && (
+                            <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap pt-0.5">
+                              {lich.ten_khach_hang && (
+                                <div className="flex items-center gap-1 truncate max-w-[220px]">
+                                  <Building2 className="size-3.5 text-slate-400 shrink-0" />
+                                  <span className="truncate">{lich.ten_khach_hang}</span>
+                                </div>
+                              )}
+                              {lich.dia_diem && (
+                                <div className="flex items-center gap-1 truncate max-w-[200px]">
+                                  <MapPin className="size-3.5 text-slate-400 shrink-0" />
+                                  <span className="truncate">{lich.dia_diem}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Hàng 4: Kết quả (nếu có) & Thao tác */}
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+                            <div className="flex items-center gap-1.5 truncate flex-1">
+                              {lich.ket_qua ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-md truncate font-medium">
+                                  <Check className="size-3 shrink-0" />
+                                  <span className="truncate">KQ: {lich.ket_qua}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 italic">Chưa ghi nhận kết quả</span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLichDangSua(lich);
+                                  setMoModal(true);
+                                }}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                title="Chỉnh sửa"
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleXoaLich(lich.id, lich.ten_khach_hang || '')}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                                title="Xóa lịch"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </>
           )}
