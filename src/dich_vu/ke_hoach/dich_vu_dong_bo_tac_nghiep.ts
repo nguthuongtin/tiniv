@@ -37,6 +37,7 @@ import { taoTienDoDuAnMoi } from '../ho_so_du_an/dich_vu_tien_do_du_an';
 import { doiGiaiDoanHoSoDuAn, layChiTietHoSoDuAn } from '../ho_so_du_an/dich_vu_ho_so_du_an';
 import { layChiTietKhachHang, capNhatKhachHang } from '../khach_hang/dich_vu_khach_hang';
 import type { GiaiDoanDuAn } from '../../thu_vien/types/du_an';
+import { layTieuDeCotLoi } from '../../thu_vien/utils/dinh_dang_bao_cao';
 import { ghiNhatKyHoatDong, thamChieuBanGhi } from '../../thu_vien/firebase/client_firebase';
 import { setDoc } from 'firebase/firestore';
 import type { YeuCauPhoiHop } from '../../thu_vien/types/yeu_cau_phoi_hop';
@@ -260,7 +261,8 @@ export const ghiNhanCheckInVaoBaoCaoNgay = async (params: {
   phongBanId?: string | null;
   ngayBaoCao: string; // YYYY-MM-DD
   duAnId?: string | null;
-  tenKhachHangDuAn: string;
+  tenKhachHangDuAn?: string;
+  tieuDeGoc?: string;
   noiDungKetQua: string;
   nguoiThucHien?: Pick<NhanSu, 'id'> | null;
 }): Promise<boolean> => {
@@ -268,11 +270,8 @@ export const ghiNhanCheckInVaoBaoCaoNgay = async (params: {
     const noiDungSach = params.noiDungKetQua.trim();
     if (!noiDungSach || !params.nhanVienId || !params.ngayBaoCao) return false;
 
-    const tieuDeNgan = params.tenKhachHangDuAn.trim();
-    const dongBaoCao =
-      tieuDeNgan && !noiDungSach.toLowerCase().includes(tieuDeNgan.toLowerCase())
-        ? `[${tieuDeNgan}] ${noiDungSach}`
-        : noiDungSach;
+    // Giữ đúng nội dung công việc chuẩn, không chèn tiền tố thừa thãi
+    const dongBaoCao = noiDungSach;
 
     // Kiểm tra báo cáo ngày hôm đó của nhân viên đã có chưa
     const { mang } = await danhSachBaoCaoCongViec({
@@ -288,22 +287,30 @@ export const ghiNhanCheckInVaoBaoCaoNgay = async (params: {
       const dsCu = [...(baoCaoHomDo.danh_sach_chi_tiet ?? [])];
       const sachLow = noiDungSach.toLowerCase();
       const dongLow = dongBaoCao.toLowerCase();
+      const tieuDeGocLow = (params.tieuDeGoc || '').trim().toLowerCase();
 
       // Tìm xem đã có dòng nào về lịch/dự án/yêu cầu này chưa
       const idxKhop = dsCu.findIndex((ct) => {
         const ctLow = ct.noi_dung.trim().toLowerCase();
         if (ctLow === sachLow || ctLow === dongLow) return true;
-        // Nếu cùng dự án/đối tượng và dòng mới là hoàn thành (✅) còn dòng cũ là dự kiến (🚗, 🏢, ⚡)
-        if (tieuDeNgan && ctLow.includes(tieuDeNgan.toLowerCase())) {
-          if (noiDungSach.startsWith('✅') && (ctLow.startsWith('🚗') || ctLow.startsWith('🏢') || ctLow.startsWith('⚡') || !ctLow.startsWith('✅'))) {
-            return true;
-          }
+
+        // Bóc tách tiêu đề cốt lõi để so khớp chính xác giữa dòng chưa xong và dòng đã xong
+        const ctCore = layTieuDeCotLoi(ct.noi_dung);
+        const dongCore = layTieuDeCotLoi(dongBaoCao);
+
+        if (ctCore && dongCore && (ctCore === dongCore || ctCore.includes(dongCore) || dongCore.includes(ctCore))) {
+          return true;
         }
+
+        if (tieuDeGocLow && (ctLow.includes(tieuDeGocLow) || ctCore.includes(tieuDeGocLow) || tieuDeGocLow.includes(ctCore))) {
+          return true;
+        }
+
         return false;
       });
 
       if (idxKhop >= 0) {
-        if (dsCu[idxKhop].noi_dung.trim().toLowerCase() === dongBaoCao.toLowerCase()) {
+        if (dsCu[idxKhop].noi_dung.trim() === dongBaoCao) {
           return true;
         }
         dsCu[idxKhop] = {
@@ -608,13 +615,20 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
     await dongBoTuDongBaoCaoTuan(keHoachDaLuu, nguoiThucHien);
 
     // Tự động ghi nhận vào Báo cáo công việc ngày (kể cả lịch dự kiến và lịch hoàn thành)
-    const loaiPrefix = lich.loai_lich === 'van_phong' ? '🏢 [Văn phòng]' : '🚗 [Công tác]';
-    const gioStr = lich.gio_bat_dau ? `[${lich.gio_bat_dau}${lich.gio_ket_thuc ? ` - ${lich.gio_ket_thuc}` : ''}] ` : '';
+    // Quy chuẩn:
+    // - Chỉ lấy nội dung công việc (không emoji 🚗, 🏢, không [Công tác], không khung giờ, không tên KH thừa thãi)
+    // - Nếu đã bấm hoàn thành và có kết quả: chỉ ghi nội dung (không có chữ HOÀN THÀNH)
+    // - Nếu chưa bấm hoàn thành: gắn tiền tố [CHƯA HOÀN THÀNH] để hiển thị chữ đỏ bên Báo cáo ngày
+    const tieuDeCongViec = (lich.tieu_de || '').trim();
     let dongBaoCaoNgay = '';
-    if (daXongLich || ketQuaLich) {
-      dongBaoCaoNgay = `✅ [Hoàn thành] ${lich.loai_lich === 'van_phong' ? 'Việc VP: ' : ''}${tenKH ? `${tenKH}: ` : ''}${ketQuaLich || lich.tieu_de}`;
+    if (daXongLich) {
+      if (ketQuaLich && ketQuaLich.toLowerCase() !== tieuDeCongViec.toLowerCase()) {
+        dongBaoCaoNgay = `${tieuDeCongViec}: ${ketQuaLich}`;
+      } else {
+        dongBaoCaoNgay = tieuDeCongViec;
+      }
     } else {
-      dongBaoCaoNgay = `${loaiPrefix} ${gioStr}${tenKH ? `${tenKH} - ` : ''}${lich.tieu_de}`;
+      dongBaoCaoNgay = `[CHƯA HOÀN THÀNH] ${tieuDeCongViec}`;
     }
 
     await ghiNhanCheckInVaoBaoCaoNgay({
@@ -623,7 +637,8 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
       phongBanId: nguoiThucHien?.phong_ban_id ?? null,
       ngayBaoCao: lich.ngay,
       duAnId: lich.du_an_id || null,
-      tenKhachHangDuAn: tenKH,
+      tenKhachHangDuAn: '',
+      tieuDeGoc: tieuDeCongViec,
       noiDungKetQua: dongBaoCaoNgay,
       nguoiThucHien: nguoiThucHien ? { id: nguoiThucHien.id } : { id: nhanVienId }
     });
@@ -764,7 +779,8 @@ export const dongBoXoaLichGapSangBaoCaoNgay = async (params: {
       const ctNoiDung = ct.noi_dung.trim().toLowerCase();
 
       // 1. Trùng khớp tiêu đề lịch
-      if (tieuDeClean && ctNoiDung.includes(tieuDeClean)) return false;
+      const ctCore = layTieuDeCotLoi(ct.noi_dung);
+      if (tieuDeClean && (ctNoiDung.includes(tieuDeClean) || ctCore.includes(tieuDeClean) || tieuDeClean.includes(ctCore))) return false;
 
       // 2. Trùng khách hàng và có dấu hiệu của lịch công tác/làm việc
       if (tenKHClean && ctNoiDung.includes(tenKHClean)) {

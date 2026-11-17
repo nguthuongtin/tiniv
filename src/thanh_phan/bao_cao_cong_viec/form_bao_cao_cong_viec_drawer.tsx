@@ -17,6 +17,9 @@ import type {
   CapNhatBaoCaoCongViecDTO,
   TaoMoiBaoCaoCongViecDTO
 } from '../../dich_vu/bao_cao_cong_viec/dich_vu_bao_cao_cong_viec';
+import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
+import { danhSachLichGapKH } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
+import { phanTichNoiDungBaoCao, layTieuDeCotLoi } from '../../thu_vien/utils/dinh_dang_bao_cao';
 import {
   Ban_Ve,
   Nut,
@@ -58,11 +61,104 @@ export default function FormBaoCaoCongViecDrawer(props: FormBaoCaoCongViecDrawer
     loi
   } = props;
 
+  const { nguoiDungHienTai } = useStoreXacThuc();
   const [ngayBaoCao, setNgayBaoCao] = useState<string>(homNay());
   const [danhSachDong, setDanhSachDong] = useState<ChiTietBaoCaoCongViec[]>([taoDongMoi()]);
   const [loiCucBo, setLoiCucBo] = useState<string | null>(null);
+  const [dangLayLich, setDangLayLich] = useState(false);
+  const [thongBaoLich, setThongBaoLich] = useState<string | null>(null);
 
   const dongCanFocusRef = useRef<number | null>(null);
+
+  // Tự động lấy việc từ Lịch làm việc theo quy chuẩn:
+  // - Nếu đã bấm hoàn thành và có kết quả: chỉ lấy nội dung (không có chữ HOÀN THÀNH)
+  // - Nếu chưa hoàn thành: gắn tiền tố [CHƯA HOÀN THÀNH]
+  const layDuLieuTuLichLamViec = async () => {
+    if (!ngayBaoCao) return;
+    setDangLayLich(true);
+    setThongBaoLich(null);
+    try {
+      const userId = dangSua?.nhan_vien_id || nguoiDungHienTai?.id;
+      const dsLich = await danhSachLichGapKH({
+        tu_ngay: ngayBaoCao,
+        den_ngay: ngayBaoCao,
+        nguoi_phu_trach_id: userId
+      });
+
+      const lichHomNay = dsLich.filter(
+        (l) =>
+          l.ngay === ngayBaoCao &&
+          (!userId || l.nguoi_phu_trach_id === userId || l.nguoi_tao_id === userId)
+      );
+
+      if (lichHomNay.length === 0) {
+        setThongBaoLich('Không có lịch làm việc trong ngày ' + ngayBaoCao);
+        setTimeout(() => setThongBaoLich(null), 3000);
+        return;
+      }
+
+      const dsDongLich: ChiTietBaoCaoCongViec[] = lichHomNay.map((lich) => {
+        const tieuDe = (lich.tieu_de || '').trim();
+        const daXong = lich.trang_thai === 'da_hoan_thanh';
+        const ketQua = (lich.ket_qua || '').trim();
+        let noiDung = '';
+        if (daXong) {
+          if (ketQua && ketQua.toLowerCase() !== tieuDe.toLowerCase()) {
+            noiDung = `${tieuDe}: ${ketQua}`;
+          } else {
+            noiDung = tieuDe;
+          }
+        } else {
+          noiDung = `[CHƯA HOÀN THÀNH] ${tieuDe}`;
+        }
+        return {
+          du_an_id: lich.du_an_id || null,
+          noi_dung: noiDung
+        };
+      });
+
+      setDanhSachDong((prev) => {
+        const copy = [...prev].filter((d) => d.noi_dung.trim().length > 0);
+        for (const dMoi of dsDongLich) {
+          const coreMoi = layTieuDeCotLoi(dMoi.noi_dung);
+          const idxDaCo = copy.findIndex((d) => {
+            const coreCu = layTieuDeCotLoi(d.noi_dung);
+            return coreCu === coreMoi || coreCu.includes(coreMoi) || coreMoi.includes(coreCu);
+          });
+          if (idxDaCo >= 0) {
+            copy[idxDaCo] = dMoi;
+          } else {
+            copy.push(dMoi);
+          }
+        }
+        return copy.length > 0 ? copy : [taoDongMoi()];
+      });
+
+      setThongBaoLich(`Đã đồng bộ ${lichHomNay.length} việc từ lịch làm việc!`);
+      setTimeout(() => setThongBaoLich(null), 3000);
+    } catch (err) {
+      console.error('Lỗi lấy lịch làm việc:', err);
+      setThongBaoLich('Lỗi kết nối khi lấy lịch làm việc');
+      setTimeout(() => setThongBaoLich(null), 3000);
+    } finally {
+      setDangLayLich(false);
+    }
+  };
+
+  const toggleTrangThaiHoanThanhDong = (index: number) => {
+    setDanhSachDong((prev) => {
+      const copy = [...prev];
+      const dong = copy[index];
+      if (!dong) return prev;
+      const info = phanTichNoiDungBaoCao(dong.noi_dung);
+      if (info.isChuaXong) {
+        copy[index] = { ...dong, noi_dung: info.noiDungSach };
+      } else {
+        copy[index] = { ...dong, noi_dung: `[CHƯA HOÀN THÀNH] ${info.noiDungSach}` };
+      }
+      return copy;
+    });
+  };
 
   // Focus vào dòng mới khi thêm dòng
   useEffect(() => {
@@ -319,51 +415,87 @@ export default function FormBaoCaoCongViecDrawer(props: FormBaoCaoCongViecDrawer
               </span>
               <div className="h-[1px] bg-slate-200 flex-1" />
             </div>
-            <span className="text-[11px] font-semibold text-slate-500 shrink-0">
-              {danhSachDong.length} công việc
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={layDuLieuTuLichLamViec}
+                disabled={dangLayLich || dangXuLy}
+                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                title="Tự động đồng bộ các công việc từ lịch làm việc trong ngày vào báo cáo"
+              >
+                <CalendarDays className="size-3.5" />
+                <span>{dangLayLich ? 'Đang lấy...' : 'Lấy từ lịch làm việc'}</span>
+              </button>
+              <span className="text-[11px] font-semibold text-slate-500">
+                {danhSachDong.length} công việc
+              </span>
+            </div>
           </div>
+          {thongBaoLich && (
+            <div className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+              {thongBaoLich}
+            </div>
+          )}
 
           <p className="text-[11px] text-slate-500 font-medium">
             Mỗi công việc nhập trên 1 dòng. Nhấn <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[10px] text-slate-700">Enter</kbd> để thêm dòng mới nhanh.
           </p>
 
           <div className="space-y-2">
-            {danhSachDong.map((dong, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 group"
-              >
-                <span className="size-7 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold inline-flex items-center justify-center shrink-0 border border-emerald-100">
-                  {index + 1}
-                </span>
-
-                <div className="flex-1 min-w-0">
-                  <input
-                    id={`f-bccv-nd-${index}`}
-                    type="text"
-                    autoComplete="off"
-                    disabled={dangXuLy}
-                    value={dong.noi_dung}
-                    onChange={(e) => capNhatNoiDungDong(index, e.target.value)}
-                    onKeyDown={(e) => xuLyKeyDown(e, index)}
-                    onPaste={(e) => xuLyPaste(e, index)}
-                    placeholder={`Nội dung công việc ${index + 1}...`}
-                    className="w-full h-10 px-3 bg-slate-50/60 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/10 transition disabled:opacity-50 font-medium"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => xoaDong(index)}
-                  disabled={dangXuLy}
-                  className="size-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 inline-flex items-center justify-center transition disabled:opacity-50 shrink-0 cursor-pointer"
-                  title="Xóa dòng"
+            {danhSachDong.map((dong, index) => {
+              const info = phanTichNoiDungBaoCao(dong.noi_dung);
+              return (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 group"
                 >
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-            ))}
+                  <span className="size-7 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold inline-flex items-center justify-center shrink-0 border border-emerald-100">
+                    {index + 1}
+                  </span>
+
+                  {info.isChuaXong && (
+                    <button
+                      type="button"
+                      onClick={() => toggleTrangThaiHoanThanhDong(index)}
+                      className="px-2 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-red-600 hover:bg-rose-100 text-[11px] font-bold shrink-0 select-none flex items-center gap-1 cursor-pointer transition"
+                      title="Chưa bấm hoàn thành bên lịch làm việc. Nhấp để chuyển sang hoàn thành"
+                    >
+                      <span className="size-1.5 rounded-full bg-red-600 animate-pulse" />
+                      CHƯA HOÀN THÀNH
+                    </button>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <input
+                      id={`f-bccv-nd-${index}`}
+                      type="text"
+                      autoComplete="off"
+                      disabled={dangXuLy}
+                      value={info.isChuaXong ? info.noiDungSach : dong.noi_dung}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const noiDungLuu = info.isChuaXong ? `[CHƯA HOÀN THÀNH] ${val}` : val;
+                        capNhatNoiDungDong(index, noiDungLuu);
+                      }}
+                      onKeyDown={(e) => xuLyKeyDown(e, index)}
+                      onPaste={(e) => xuLyPaste(e, index)}
+                      placeholder={`Nội dung công việc ${index + 1}...`}
+                      className="w-full h-10 px-3 bg-slate-50/60 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/10 transition disabled:opacity-50 font-medium"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => xoaDong(index)}
+                    disabled={dangXuLy}
+                    className="size-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 inline-flex items-center justify-center transition disabled:opacity-50 shrink-0 cursor-pointer"
+                    title="Xóa dòng"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           {/* Nút thêm dòng */}

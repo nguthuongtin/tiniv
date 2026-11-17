@@ -56,6 +56,7 @@ import {
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
 import { dongBoBaoCaoNgaySangKeHoachTuan } from '../../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import FormBaoCaoCongViecDrawer from '../../../thanh_phan/bao_cao_cong_viec/form_bao_cao_cong_viec_drawer';
+import { DinhDangNoiDungCongViec, phanTichNoiDungBaoCao } from '../../../thu_vien/utils/dinh_dang_bao_cao';
 import { Nut, Rong, Bo_Cuc_Trang, ToLichNgay, ThanhSoLieu } from '../../../thanh_phan/ui';
 
 interface ThongBaoToast {
@@ -350,7 +351,10 @@ export default function TrangBaoCaoCongViec() {
         
         const ten = (ns?.ho_va_ten || 'Nhân viên').toUpperCase();
         let noiDungGop = `${ten}:\n`;
-        noiDungGop += dsChiTiet.map((ct) => `- ${ct.noi_dung}`).join('\n');
+        noiDungGop += dsChiTiet.map((ct) => {
+          const info = phanTichNoiDungBaoCao(ct.noi_dung);
+          return info.isChuaXong ? `- [CHƯA HOÀN THÀNH] ${info.noiDungSach}` : `- ${info.noiDungSach}`;
+        }).join('\n');
         
         const cleanNoiDung = `"${noiDungGop.replace(/"/g, '""')}"`;
         rows.push([stt++, cleanNoiDung].join(','));
@@ -389,7 +393,9 @@ export default function TrangBaoCaoCongViec() {
 
       text += `${index + 1}. ${ns.ho_va_ten} ${pb ? `(${pb})` : ''}:\n`;
       dsChiTiet.forEach((ct, i) => {
-        text += `   - ${ct.noi_dung}\n`;
+        const info = phanTichNoiDungBaoCao(ct.noi_dung);
+        const dongText = info.isChuaXong ? `[CHƯA HOÀN THÀNH] ${info.noiDungSach}` : info.noiDungSach;
+        text += `   - ${dongText}\n`;
       });
       text += `\n`;
     });
@@ -411,7 +417,9 @@ export default function TrangBaoCaoCongViec() {
 
     let text = `${ns.ho_va_ten} ${pb ? `(${pb})` : ''} - Báo cáo ngày ${formatNgay(bccv.ngay_bao_cao)}:\n`;
     dsChiTiet.forEach((ct, i) => {
-      text += `${i + 1}. ${ct.noi_dung}\n`;
+      const info = phanTichNoiDungBaoCao(ct.noi_dung);
+      const dongText = info.isChuaXong ? `[CHƯA HOÀN THÀNH] ${info.noiDungSach}` : info.noiDungSach;
+      text += `${i + 1}. ${dongText}\n`;
     });
 
     navigator.clipboard.writeText(text).then(
@@ -532,7 +540,9 @@ export default function TrangBaoCaoCongViec() {
           } else {
             viecHtml = dsChiTiet.map((ct, i) => {
               const daTen = ct.du_an_id ? chonTenDuAn(ct.du_an_id) : '';
-              return `<div style="margin-bottom: 4px;"><b>${i + 1}.</b> ${ct.noi_dung}${daTen ? ` <i>[Dự án: ${daTen}]</i>` : ''}</div>`;
+              const info = phanTichNoiDungBaoCao(ct.noi_dung);
+              const prefixRed = info.isChuaXong ? '<b style="color: #dc2626;">[CHƯA HOÀN THÀNH] </b>' : '';
+              return `<div style="margin-bottom: 4px;"><b>${i + 1}.</b> ${prefixRed}${info.noiDungSach}${daTen ? ` <i>[Dự án: ${daTen}]</i>` : ''}</div>`;
             }).join('');
           }
 
@@ -986,7 +996,7 @@ export default function TrangBaoCaoCongViec() {
                                     <span className="text-slate-400 font-bold text-[11px] tabular-nums shrink-0">
                                       {idx + 1}.
                                     </span>
-                                    <span className="leading-relaxed font-medium flex-1">{ct.noi_dung}</span>
+                                    <span className="leading-relaxed font-medium flex-1"><DinhDangNoiDungCongViec noiDung={ct.noi_dung} /></span>
                                   </div>
                                 ))}
                               </div>
@@ -1312,7 +1322,7 @@ export default function TrangBaoCaoCongViec() {
                                 )}>
                                   {idx + 1}
                                 </span>
-                                <span className="leading-relaxed font-medium flex-1">{ct.noi_dung}</span>
+                                <span className="leading-relaxed font-medium flex-1"><DinhDangNoiDungCongViec noiDung={ct.noi_dung} /></span>
                               </div>
                             ))}
                           </div>
@@ -1406,7 +1416,7 @@ export default function TrangBaoCaoCongViec() {
                                   <div className="space-y-1 text-xs text-foreground/80 max-h-[90px] overflow-hidden">
                                     {dsChiTiet.slice(0, 2).map((ct, i) => (
                                       <div key={i} className="line-clamp-1 leading-snug">
-                                        • {ct.noi_dung}
+                                        • <DinhDangNoiDungCongViec noiDung={ct.noi_dung} />
                                       </div>
                                     ))}
                                     {dsChiTiet.length > 2 && (
@@ -1728,7 +1738,7 @@ export default function TrangBaoCaoCongViec() {
                           <div className="space-y-1.5 mt-3 text-xs text-foreground/85">
                             {dsChiTiet.slice(0, 3).map((ct, i) => (
                               <div key={i} className="line-clamp-2 leading-relaxed">
-                                • {ct.noi_dung}
+                                • <DinhDangNoiDungCongViec noiDung={ct.noi_dung} />
                               </div>
                             ))}
                             {dsChiTiet.length > 3 && (
