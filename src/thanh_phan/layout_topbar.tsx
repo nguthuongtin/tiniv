@@ -29,8 +29,6 @@ import {
   BarChart3,
   Settings,
   Plus,
-  UserCog,
-  LogOut,
   Sparkles,
   Bell,
   BellRing,
@@ -92,7 +90,7 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
   '/lich-cong-tac': {
     nhan: 'Lịch làm việc',
     nhan_mobile: 'Lịch làm việc',
-    mo_ta: 'Kế hoạch công tác và công việc hàng ngày',
+    mo_ta: 'Lịch công tác và làm việc hàng ngày',
     icon: Calendar,
     placeholder_tim: 'Tìm lịch hẹn...'
   },
@@ -160,15 +158,6 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     icon: BarChart3,
     nut_them: 'Tải xuất',
     placeholder_tim: 'Tìm kiếm trong báo cáo...'
-  },
-  '/ke-hoach': {
-    nhan: 'Kế hoạch Kinh doanh',
-    nhan_mobile: 'Kế hoạch',
-    mo_ta: 'Kế hoạch Tháng và Kế hoạch Tuần',
-    icon: Calendar,
-    nut_them: 'Thêm kế hoạch',
-    placeholder_tim: 'Tìm kiếm kế hoạch...',
-    event_them: 'ebms:ke_hoach:them_moi'
   },
   '/kho-tai-lieu': {
     nhan: 'Kho tài liệu',
@@ -257,7 +246,7 @@ const timThongTinTrang = (pathname: string): { thongTin: ThongTinTrang; laChiTie
 
   if (pathname.startsWith('/lich-cong-tac')) return { thongTin: MAP_TIEU_DE['/lich-cong-tac'], laChiTiet: false };
   if (pathname.startsWith('/kho-tai-lieu')) return { thongTin: MAP_TIEU_DE['/kho-tai-lieu'], laChiTiet: false };
-  if (pathname.startsWith('/ke-hoach')) return { thongTin: MAP_TIEU_DE['/ke-hoach'], laChiTiet: false };
+  if (pathname.startsWith('/ke-hoach')) return { thongTin: MAP_TIEU_DE['/lich-cong-tac'], laChiTiet: false };
   if (pathname.startsWith('/quan-tri')) return { thongTin: MAP_TIEU_DE['/quan-tri'], laChiTiet: false };
 
   return { thongTin: MAP_TIEU_DE['/'], laChiTiet: false };
@@ -266,7 +255,6 @@ const timThongTinTrang = (pathname: string): { thongTin: ThongTinTrang; laChiTie
 export default function ThanhPhanTopbar() {
   const pathname = usePathname() ?? '/';
   const { nguoiDungHienTai, thucHienDangXuat } = useStoreXacThuc();
-  const [moMenuMobile, setMoMenuMobile] = React.useState(false);
   const [moDropdownThongBao, setMoDropdownThongBao] = React.useState(false);
   const [dsYeuCau, setDsYeuCau] = React.useState<YeuCauPhoiHop[]>([]);
   const [dsNhanSu, setDsNhanSu] = React.useState<NhanSu[]>([]);
@@ -381,7 +369,7 @@ export default function ThanhPhanTopbar() {
         phatChuongThongBao();
 
         // 2. Push Notification Mobile / Web
-        phatThongBaoTrinhDuyet(tieuDe, noiDung, '/ke-hoach');
+        phatThongBaoTrinhDuyet(tieuDe, noiDung, '/lich-cong-tac');
 
         // 3. Floating In-app Toast
         setToastHienTai({
@@ -414,7 +402,7 @@ export default function ThanhPhanTopbar() {
     setQuyenThongBao(perm);
     if (perm === 'granted') {
       phatChuongThongBao();
-      phatThongBaoTrinhDuyet('Thông báo đã sẵn sàng', 'Bạn sẽ nhận thông báo khi có yêu cầu phối hợp hoặc kết quả hoàn tất.', '/ke-hoach');
+      phatThongBaoTrinhDuyet('Thông báo đã sẵn sàng', 'Bạn sẽ nhận thông báo khi có yêu cầu phối hợp hoặc kết quả hoàn tất.', '/lich-cong-tac');
     }
   };
 
@@ -449,9 +437,13 @@ export default function ThanhPhanTopbar() {
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
             <button
               type="button"
-              onClick={() => setMoMenuMobile(!moMenuMobile)}
-              className="sm:hidden inline-flex items-center justify-center size-8.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 active:scale-95 transition shrink-0"
-              aria-label="Menu"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('ebms:toggle_mobile_sidebar'));
+                }
+              }}
+              className="md:hidden inline-flex items-center justify-center size-8.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 active:scale-95 transition shrink-0 cursor-pointer"
+              aria-label="Menu điều hướng"
             >
               <Menu className="size-4" />
             </button>
@@ -531,11 +523,11 @@ export default function ThanhPhanTopbar() {
                       </span>
                     </div>
                     <Link
-                      href="/ke-hoach"
+                      href="/lich-cong-tac"
                       onClick={() => setMoDropdownThongBao(false)}
                       className="text-[11px] font-semibold text-emerald-700 hover:underline"
                     >
-                      Mở Bàn làm việc
+                      Mở Lịch làm việc
                     </Link>
                   </div>
 
@@ -629,125 +621,6 @@ export default function ThanhPhanTopbar() {
         </div>
       </header>
 
-      {/* Hamburger Menu Dropdown (One UI 9 Squircle Card trên Mobile) */}
-      {moMenuMobile && (
-        <>
-          <div 
-            className="fixed inset-0 z-40 bg-slate-900/25 backdrop-blur-xs sm:hidden" 
-            onClick={() => setMoMenuMobile(false)} 
-          />
-          <div className="fixed top-15 left-3 z-50 w-68 rounded-[26px] border border-slate-200/90 bg-white/95 backdrop-blur-2xl shadow-[0_16px_40px_rgba(15,23,42,0.16)] p-2 space-y-1 animate-in slide-in-from-top-2 fade-in duration-200 sm:hidden">
-            <Link
-              href="/ban-do-3d"
-              onClick={() => setMoMenuMobile(false)}
-              className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
-            >
-              <div className="size-9 rounded-[14px] bg-sky-500/15 text-sky-600 flex items-center justify-center shrink-0">
-                <MapPin className="size-[18px]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-bold leading-snug">Bản đồ địa bàn</div>
-                <div className="text-[11px] text-slate-400 leading-tight">102 xã/phường An Giang</div>
-              </div>
-            </Link>
-
-            <Link
-              href="/yeu-cau-ho-tro"
-              onClick={() => setMoMenuMobile(false)}
-              className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
-            >
-              <div className="size-9 rounded-[14px] bg-amber-500/15 text-amber-700 flex items-center justify-center shrink-0">
-                <Sparkles className="size-[18px]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-bold leading-snug">Yêu cầu hỗ trợ</div>
-                <div className="text-[11px] text-slate-400 leading-tight">Phối hợp liên phòng ban</div>
-              </div>
-            </Link>
-
-            <Link
-              href="/ke-hoach"
-              onClick={() => setMoMenuMobile(false)}
-              className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
-            >
-              <div className="size-9 rounded-[14px] bg-purple-500/15 text-purple-600 flex items-center justify-center shrink-0">
-                <Calendar className="size-[18px]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-bold leading-snug">Kế hoạch KD</div>
-                <div className="text-[11px] text-slate-400 leading-tight">Mục tiêu tuần & tháng</div>
-              </div>
-            </Link>
-
-            <Link
-              href="/kho-tai-lieu"
-              onClick={() => setMoMenuMobile(false)}
-              className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
-            >
-              <div className="size-9 rounded-[14px] bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
-                <BookOpen className="size-[18px]" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="font-bold leading-snug">Kho tài liệu</div>
-                <div className="text-[11px] text-slate-400 leading-tight">Biểu mẫu & Bảng giá</div>
-              </div>
-            </Link>
-
-            {(nguoiDungHienTai?.vai_tro === 'giam_doc' || nguoiDungHienTai?.vai_tro === 'quan_tri_he_thong' || nguoiDungHienTai?.vai_tro === 'truong_phong' || nguoiDungHienTai?.vai_tro === 'truong_phong_kd' || nguoiDungHienTai?.vai_tro === 'truong_phong_khth') && (
-              <Link
-                href="/nhan-su"
-                onClick={() => setMoMenuMobile(false)}
-                className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
-              >
-                <div className="size-9 rounded-[14px] bg-emerald-500/15 text-[#107555] flex items-center justify-center shrink-0">
-                  <UserCog className="size-[18px]" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold leading-snug">Nhân sự</div>
-                  <div className="text-[11px] text-slate-400 leading-tight">Đội ngũ & tài khoản</div>
-                </div>
-              </Link>
-            )}
-
-            {(nguoiDungHienTai?.vai_tro === 'giam_doc' || nguoiDungHienTai?.vai_tro === 'quan_tri_he_thong') && (
-              <Link
-                href="/quan-tri"
-                onClick={() => setMoMenuMobile(false)}
-                className="flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100/80 transition active:scale-[0.98]"
-              >
-                <div className="size-9 rounded-[14px] bg-slate-500/15 text-slate-700 flex items-center justify-center shrink-0">
-                  <Settings className="size-[18px]" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold leading-snug">Quản trị hệ thống</div>
-                  <div className="text-[11px] text-slate-400 leading-tight">Cấu hình & phân quyền</div>
-                </div>
-              </Link>
-            )}
-
-            <div className="h-px bg-slate-100 mx-2 my-1" />
-            <button
-              onClick={async () => {
-                setMoMenuMobile(false);
-                const ok = await thucHienDangXuat();
-                if (ok) window.location.href = '/dang-nhap';
-              }}
-              className="w-full flex items-center gap-3 rounded-[18px] px-3 py-2.5 text-sm text-[#FF3B30] hover:bg-red-50 transition active:scale-[0.98]"
-            >
-              <div className="size-9 rounded-[14px] bg-red-500/12 text-[#FF3B30] flex items-center justify-center shrink-0">
-                <LogOut className="size-[18px]" />
-              </div>
-              <div className="min-w-0 flex-1 text-left">
-                <div className="font-bold leading-snug">Đăng xuất</div>
-                <div className="text-[11px] text-red-500/80 leading-tight">
-                  {getTenNgan(nguoiDungHienTai?.ho_va_ten)}
-                </div>
-              </div>
-            </button>
-          </div>
-        </>
-      )}
-
       {/* Toast popup nổi góc màn hình khi có thông báo mới */}
       {toastHienTai && (
         <div className="fixed top-4 right-4 z-50 max-w-sm w-[calc(100vw-2rem)] bg-white border border-slate-200/90 rounded-2xl shadow-[0_16px_40px_rgba(15,23,42,0.18)] p-3.5 flex items-start gap-3 animate-in slide-in-from-top-3 fade-in duration-200">
@@ -767,7 +640,7 @@ export default function ThanhPhanTopbar() {
             className="flex-1 min-w-0 cursor-pointer"
             onClick={() => {
               setToastHienTai(null);
-              window.location.href = '/ke-hoach';
+              window.location.href = '/lich-cong-tac';
             }}
           >
             <div className="text-xs font-bold text-slate-900 leading-snug">

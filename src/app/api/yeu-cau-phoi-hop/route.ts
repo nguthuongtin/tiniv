@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
           dsNhanIds,
           '🔔 Yêu cầu phối hợp mới',
           `${body.ten_du_an || 'Dự án'}: ${body.noi_dung_yeu_cau}`,
-          '/ke-hoach'
+          '/yeu-cau-ho-tro'
         ).catch(() => {});
       }
     } catch (eWP) {
@@ -348,7 +348,7 @@ export async function PUT(req: NextRequest) {
             dsNS,
             '📋 Bạn được phân công nhiệm vụ',
             `${tenDuAn}: ${noiDung}`,
-            '/ke-hoach'
+            '/yeu-cau-ho-tro'
           ).catch(() => {});
         }
       } else if (body.trang_thai === 'yeu_cau_chinh_sua') {
@@ -358,7 +358,7 @@ export async function PUT(req: NextRequest) {
             dsNS,
             '⚠️ Yêu cầu cần chỉnh sửa lại',
             `${tenDuAn}: ${noiDung}`,
-            '/ke-hoach'
+            '/yeu-cau-ho-tro'
           ).catch(() => {});
         }
       } else if (body.trang_thai === 'cho_tpkd_duyet_ket_qua' || body.trang_thai === 'cho_lanh_dao_duyet') {
@@ -373,7 +373,7 @@ export async function PUT(req: NextRequest) {
                 ids,
                 '📝 Kết quả chờ duyệt nghiệm thu',
                 `${tenDuAn}: ${noiDung}`,
-                '/ke-hoach'
+                '/yeu-cau-ho-tro'
               ).catch(() => {});
             }
           })
@@ -384,7 +384,7 @@ export async function PUT(req: NextRequest) {
             [hienTai.nguoi_tao_id],
             '✅ Kết quả đã hoàn tất',
             `${tenDuAn}: Kết quả phối hợp đã được duyệt, sẵn sàng lấy.`,
-            '/ke-hoach'
+            '/yeu-cau-ho-tro'
           ).catch(() => {});
         }
       }

@@ -37,7 +37,7 @@ export function phatChuongThongBao() {
 /**
  * Phát thông báo nổi ra hệ điều hành / thanh thông báo điện thoại (Web Push & Notification API)
  */
-export function phatThongBaoTrinhDuyet(tieuDe: string, noiDung: string, duongDan: string = '/ke-hoach') {
+export function phatThongBaoTrinhDuyet(tieuDe: string, noiDung: string, duongDan: string = '/lich-cong-tac') {
   if (typeof window === 'undefined') return;
   if (!('Notification' in window)) return;
 

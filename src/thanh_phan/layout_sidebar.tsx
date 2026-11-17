@@ -37,6 +37,14 @@ interface MucSidebar {
   quyen?: string | string[];
 }
 
+const DANH_SACH_BOTTOM_HREFS = [
+  '/lich-cong-tac',
+  '/yeu-cau-ho-tro',
+  '/bao-cao-cong-viec',
+  '/ho-so-du-an',
+  '/khach-hang'
+];
+
 const DANH_MUC_SIDEBAR: MucSidebar[] = [
   { href: '/', icon: Home, nhan: 'Tổng quan', nhom: 'Tổng quan' },
   {
@@ -155,7 +163,9 @@ const useSidebarShared = () => {
 const renderDanhMuc = (
   pathname: string,
   laQuyenQuanTri: boolean,
-  nguoiDungHienTai: any
+  nguoiDungHienTai: any,
+  laMobileDrawer: boolean = false,
+  onDongMobile?: () => void
 ) => {
   const kiemTraQuyenMuc = (muc: MucSidebar): boolean => {
     if (!muc.quyen) return true;
@@ -178,6 +188,8 @@ const renderDanhMuc = (
     if (laLanhDao && m.href === '/') return false;
     // Nếu không phải lãnh đạo: ẩn trang tổng quan lãnh đạo
     if (!laLanhDao && m.href === '/tong-quan-lanh-dao') return false;
+    // Trên mobile drawer: loại bỏ 5 trang đã cố định ở thanh bottom navigation
+    if (laMobileDrawer && DANH_SACH_BOTTOM_HREFS.includes(m.href)) return false;
     return true;
   }).map((m) => {
     if (laLanhDao && m.href === '/tong-quan-lanh-dao') {
@@ -225,7 +237,7 @@ const renderDanhMuc = (
                         {children}
                       </button>
                     )
-                  : ({ children, href }: any) => <Link href={href}>{children}</Link>;
+                  : ({ children, href }: any) => <Link href={href} onClick={() => onDongMobile?.()}>{children}</Link>;
                 return (
                   <li key={muc.href}>
                     <Wrapper href={muc.href}>
@@ -274,7 +286,8 @@ const renderCuoiSidebar = (
   nguoiDungHienTai: any,
   dangXuLy: boolean,
   xuLyDangXuat: () => Promise<void>,
-  pathname?: string
+  pathname?: string,
+  onDongMobile?: () => void
 ) => {
   const tenNguoiDung = hoTenCoDau(nguoiDungHienTai?.ho_va_ten) || 'Nhân viên TiniPMS';
   const vaiTro = hienThiTenVaiTro(nguoiDungHienTai?.vai_tro);
@@ -292,6 +305,7 @@ const renderCuoiSidebar = (
       >
         <Link
           href="/tai-khoan"
+          onClick={() => onDongMobile?.()}
           className="flex items-center gap-2.5 min-w-0 flex-1 group/user p-1 rounded-xl text-left"
           title="Tài khoản cá nhân: Đổi ảnh đại diện, mật khẩu"
         >
@@ -366,7 +380,7 @@ export function SidebarDesktop() {
   return (
     <aside className="hidden md:flex w-full h-full shrink-0 flex-col bg-white border-r border-slate-200/80 overflow-hidden min-h-0">
       {renderHeaderSidebar(nhomHienTai)}
-      {renderDanhMuc(pathname, laQuyenQuanTri, nguoiDungHienTai)}
+      {renderDanhMuc(pathname, laQuyenQuanTri, nguoiDungHienTai, false)}
       {renderCuoiSidebar(nguoiDungHienTai, dangXuLy, xuLyDangXuat, pathname)}
     </aside>
   );
@@ -404,9 +418,9 @@ export function SidebarMobileDrawer() {
         <div className="flex flex-col h-full min-h-0">
           {renderHeaderSidebar(nhomHienTai, () => setMoMobile(false))}
           <div className="flex-1 overflow-y-auto min-h-0">
-            {renderDanhMuc(pathname, laQuyenQuanTri, nguoiDungHienTai)}
+            {renderDanhMuc(pathname, laQuyenQuanTri, nguoiDungHienTai, true, () => setMoMobile(false))}
           </div>
-          {renderCuoiSidebar(nguoiDungHienTai, dangXuLy, xuLyDangXuat, pathname)}
+          {renderCuoiSidebar(nguoiDungHienTai, dangXuLy, xuLyDangXuat, pathname, () => setMoMobile(false))}
         </div>
       </aside>
     </div>

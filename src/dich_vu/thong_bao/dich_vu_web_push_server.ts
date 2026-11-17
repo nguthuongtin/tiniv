@@ -28,7 +28,7 @@ export async function guiWebPushChoNhanSu(
   danhSachUserId: string[],
   tieuDe: string,
   noiDung: string,
-  urlWeb: string = '/ke-hoach'
+  urlWeb: string = '/lich-cong-tac'
 ) {
   if (!Array.isArray(danhSachUserId) || danhSachUserId.length === 0) return;
 
