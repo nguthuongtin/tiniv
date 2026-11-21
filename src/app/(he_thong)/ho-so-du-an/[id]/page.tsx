@@ -72,7 +72,9 @@ import {
   danhSachTienDoDuAn,
   taoTienDoDuAnMoi,
   capNhatTienDoDuAn,
-  xoaMemTienDoDuAn
+  xoaMemTienDoDuAn,
+  dongBoLichSangTienDoDuAn,
+  xoaDongBoLichSangTienDoDuAn
 } from '../../../../dich_vu/ho_so_du_an/dich_vu_tien_do_du_an';
 import { danhSachKhachHang } from '../../../../dich_vu/khach_hang/dich_vu_khach_hang';
 import { danhSachNguoiLienHe } from '../../../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
@@ -421,6 +423,30 @@ export default function TrangChiTietHoSoDuAn() {
     return () => unsub();
   }, [id]);
 
+  // Tự động kiểm tra và đồng bộ các lịch làm việc đã có kết quả/hoàn thành vào Nhật ký làm việc với KH
+  useEffect(() => {
+    if (!id || dsLichDA.length === 0 || dsTD.length === 0) return;
+    const dsChuaDongBo = dsLichDA.filter(
+      (l) =>
+        (Boolean(l.ket_qua?.trim()) || l.trang_thai === 'da_hoan_thanh') &&
+        !dsTD.some((td) => td.id === `td_lich_${l.id}` || (td as any).lich_gap_kh_id === l.id)
+    );
+
+    if (dsChuaDongBo.length > 0) {
+      Promise.all(
+        dsChuaDongBo.map((l) =>
+          dongBoLichSangTienDoDuAn({ lich: l, nguoiThucHienId: nguoiDungHienTai?.id })
+        )
+      )
+        .then(() => {
+          danhSachTienDoDuAn({ du_an_id: id, trang_thai_du_lieu: 'hoat_dong' }).then((res) => {
+            if (res.mang) setDsTD(res.mang);
+          });
+        })
+        .catch(() => {});
+    }
+  }, [id, dsLichDA, dsTD, nguoiDungHienTai?.id]);
+
   const xuLyLuuLichGap = async (dto: any) => {
     try {
       if (dangSuaLichGap) {
@@ -439,6 +465,7 @@ export default function TrangChiTietHoSoDuAn() {
       }
       setMoModalLichGap(false);
       setDangSuaLichGap(null);
+      await taiLai();
     } catch (err: any) {
       themToast('loi', err?.message || 'Có lỗi khi lưu lịch hẹn');
     }
@@ -450,6 +477,7 @@ export default function TrangChiTietHoSoDuAn() {
       themToast('thanh_cong', 'Đã xóa lịch hẹn khỏi dự án.');
       setMoModalLichGap(false);
       setDangSuaLichGap(null);
+      await taiLai();
     } catch (err: any) {
       themToast('loi', err?.message || 'Có lỗi khi xóa lịch hẹn');
     }

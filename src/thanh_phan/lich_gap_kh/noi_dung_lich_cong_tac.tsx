@@ -80,6 +80,10 @@ import {
   dongBoXoaLichGapSangKeHoachTuan,
   dongBoXoaLichGapSangBaoCaoNgay
 } from '../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
+import {
+  dongBoLichSangTienDoDuAn,
+  xoaDongBoLichSangTienDoDuAn
+} from '../../dich_vu/ho_so_du_an/dich_vu_tien_do_du_an';
 import { Bo_Cuc_Trang, Nut, DaiDien, ThanhSoLieu } from '../ui';
 
 type CheDoXem = 'tuan' | 'thang' | 'danh_sach';
@@ -702,6 +706,10 @@ export function NoiDungLichCongTac({
           lich: lichDaLuu,
           nguoiThucHien: nguoiDungHienTai
         });
+        void dongBoLichSangTienDoDuAn({
+          lich: lichDaLuu,
+          nguoiThucHienId: nguoiDungHienTai?.id
+        });
       }
       setMoModal(false);
       setLichDangSua(null);
@@ -789,6 +797,11 @@ export function NoiDungLichCongTac({
         nguoiThucHien: nguoiDungHienTai
       });
 
+      void dongBoLichSangTienDoDuAn({
+        lich: lichMoi,
+        nguoiThucHienId: nguoiDungHienTai?.id
+      });
+
       setModalKetQua({ mo: false, lich: null });
     } catch (err) {
       console.error('Lỗi lưu kết quả hoàn thành:', err);
@@ -822,6 +835,11 @@ export function NoiDungLichCongTac({
       void dongBoLichGapSangKeHoachTuanVaBaoCaoNgay({
         lich: lichMoi,
         nguoiThucHien: nguoiDungHienTai
+      });
+
+      void dongBoLichSangTienDoDuAn({
+        lich: lichMoi,
+        nguoiThucHienId: nguoiDungHienTai?.id
       });
 
       setModalKetQua({ mo: false, lich: null });

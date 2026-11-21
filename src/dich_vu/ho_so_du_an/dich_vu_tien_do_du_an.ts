@@ -17,6 +17,8 @@ import {
 } from 'firebase/firestore';
 import type { TienDoDuAn } from '../../thu_vien/types/du_an';
 export type { TienDoDuAn };
+import type { LichGapKH } from '../../thu_vien/types/lich_gap_kh';
+import { formatNgay } from '../../thu_vien/utils/format_ngay';
 import {
   thamChieuCollection,
   thamChieuBanGhi,
@@ -94,7 +96,8 @@ const chuyenDoiDocThanhDoiTuong = (
     ten_nguoi_chi_dao: (r.ten_nguoi_chi_dao as string | null) ?? null,
     chuc_vu_nguoi_chi_dao: (r.chuc_vu_nguoi_chi_dao as string | null) ?? null,
     ngay_chi_dao: (r.ngay_chi_dao as string | null) ?? null,
-    ngay_chinh_sua_gan_nhat: (r.ngay_chinh_sua_gan_nhat as string | null) ?? null
+    ngay_chinh_sua_gan_nhat: (r.ngay_chinh_sua_gan_nhat as string | null) ?? null,
+    lich_gap_kh_id: ((r as any).lich_gap_kh_id as string | null) ?? null
   };
 };
 
@@ -300,4 +303,125 @@ export const langNgheDSTienDoDuAn = (
     onData(sapXepVaLocThem(mang, loc));
   });
   return huyLangNghe;
+};
+
+/**
+ * Đồng bộ kết quả Lịch làm việc (công tác hoặc văn phòng) sang Tiến độ / Nhật ký làm việc với KH trong Hồ sơ Dự án
+ * Bản ghi Tiến độ được định danh duy nhất theo mã: `td_lich_${lich.id}` (Idempotent / Upsert)
+ */
+export const dongBoLichSangTienDoDuAn = async (params: {
+  lich: LichGapKH;
+  nguoiThucHienId?: string | null;
+}): Promise<TienDoDuAn | null> => {
+  const { lich, nguoiThucHienId } = params;
+  if (!lich || !lich.id) return null;
+
+  const docId = `td_lich_${lich.id}`;
+  const now = new Date().toISOString();
+
+  const coKetQua = Boolean(lich.ket_qua && lich.ket_qua.trim());
+  const daXong = lich.trang_thai === 'da_hoan_thanh';
+  const biHuyHoacXoa = Boolean(lich.da_xoa || lich.trang_thai === 'huy');
+
+  // Nếu không gắn dự án, hoặc bị xóa/hủy, hoặc không có kết quả và chưa hoàn thành:
+  // Thu hồi / ẩn bản ghi tiến độ tương ứng
+  if (!lich.du_an_id || biHuyHoacXoa || (!coKetQua && !daXong)) {
+    try {
+      const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, docId));
+      if (snap.exists() && snap.data()?.trang_thai_du_lieu !== 'da_xoa') {
+        await setDoc(
+          thamChieuBanGhi(TEN_COLLECTION, docId),
+          {
+            trang_thai_du_lieu: 'da_xoa',
+            ngay_cap_nhat: now
+          },
+          { merge: true }
+        );
+      }
+    } catch (e) {
+      console.warn('[dongBoLichSangTienDoDuAn] Lỗi gỡ tiến độ cũ:', e);
+    }
+    return null;
+  }
+
+  // Chuẩn hóa định dạng hiển thị
+  const ngayFmt = formatNgay(lich.ngay) || lich.ngay || '';
+  const nhanLoai = lich.loai_lich === 'van_phong' ? 'Tác nghiệp VP' : 'Lịch công tác';
+  const tieuDe = (lich.tieu_de || lich.ten_khach_hang || '').trim();
+  const kqText = (lich.ket_qua || '').trim();
+
+  let noiDung = `[${nhanLoai} - ${ngayFmt}]: ${tieuDe}`;
+  if (kqText) {
+    noiDung += ` — Kết quả: ${kqText}`;
+  }
+
+  const userId =
+    lich.nguoi_phu_trach_id ||
+    lich.nguoi_tao_id ||
+    nguoiThucHienId ||
+    null;
+
+  let ngayTao = now;
+  try {
+    const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, docId));
+    if (snap.exists()) {
+      const cu = snap.data();
+      if (cu.ngay_tao) ngayTao = cu.ngay_tao;
+    }
+  } catch {}
+
+  const duLieu: RawBanGhiTDDA & { lich_gap_kh_id: string } = {
+    du_an_id: lich.du_an_id,
+    tinh_hinh_hien_tai: noiDung,
+    hanh_dong_tiep_theo: null,
+    deadline_hanh_dong: null,
+    link_tai_lieu: null,
+    ten_tai_lieu: null,
+    ket_qua_thuc_hien: kqText || null,
+    trang_thai_hanh_dong: 'da_hoan_thanh',
+    nguoi_tao_id: userId,
+    nguoi_hoan_thanh_id: userId,
+    ngay_tao: ngayTao,
+    ngay_cap_nhat: now,
+    ngay_hoan_thanh: lich.ngay ? `${lich.ngay}T18:00:00.000Z` : now,
+    trang_thai_du_lieu: 'hoat_dong',
+    y_kien_chi_dao: null,
+    nguoi_chi_dao_id: null,
+    ten_nguoi_chi_dao: null,
+    chuc_vu_nguoi_chi_dao: null,
+    ngay_chi_dao: null,
+    ngay_chinh_sua_gan_nhat: null,
+    lich_gap_kh_id: lich.id
+  };
+
+  try {
+    await setDoc(thamChieuBanGhi(TEN_COLLECTION, docId), duLieu, { merge: true });
+    return chuyenDoiDocThanhDoiTuong(docId, duLieu);
+  } catch (err) {
+    console.error('[dongBoLichSangTienDoDuAn] Lỗi lưu tiến độ:', err);
+    return null;
+  }
+};
+
+export const xoaDongBoLichSangTienDoDuAn = async (
+  lichId: string,
+  nguoiXoaId?: string | null
+): Promise<void> => {
+  if (!lichId) return;
+  const docId = `td_lich_${lichId}`;
+  try {
+    const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, docId));
+    if (snap.exists()) {
+      await setDoc(
+        thamChieuBanGhi(TEN_COLLECTION, docId),
+        {
+          trang_thai_du_lieu: 'da_xoa',
+          ngay_cap_nhat: new Date().toISOString()
+        },
+        { merge: true }
+      );
+    }
+  } catch (err) {
+    console.warn('[xoaDongBoLichSangTienDoDuAn] Lỗi xóa tiến độ liên kết:', err);
+  }
 };

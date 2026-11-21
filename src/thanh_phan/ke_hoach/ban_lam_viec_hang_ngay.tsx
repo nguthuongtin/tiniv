@@ -68,7 +68,7 @@ import {
   ghiNhanCheckInVaoBaoCaoNgay
 } from '../../dich_vu/ke_hoach/dich_vu_dong_bo_tac_nghiep';
 import { taoLichGapKHMoi, capNhatLichGapKH, type TaoMoiLichGapDTO } from '../../dich_vu/lich_gap_kh/dich_vu_lich_gap_kh';
-import { taoTienDoDuAnMoi } from '../../dich_vu/ho_so_du_an/dich_vu_tien_do_du_an';
+import { taoTienDoDuAnMoi, dongBoLichSangTienDoDuAn } from '../../dich_vu/ho_so_du_an/dich_vu_tien_do_du_an';
 import useStoreXacThuc from '../../thu_vien/zustand/store_xac_thuc';
 import { cn } from '../../thu_vien/utils/cn';
 import DrawerHoSoThuGon, { type GoiYTaoLichHenNhanh } from './drawer_ho_so_thu_gon';
@@ -892,12 +892,16 @@ export default function BanLamViecHangNgay({
         });
       }
 
-      // 3. Nếu cuộc gặp thuộc dự án, tự động tạo 1 mốc tiến độ dự án
-      if (lichHenDangBaoCao.du_an_id && nvId) {
-        await taoTienDoDuAnMoi({
-          du_an_id: lichHenDangBaoCao.du_an_id,
-          tinh_hinh_hien_tai: `Kết quả cuộc gặp: ${lichHenDangBaoCao.tieu_de} — ${kqSach}`,
-          nguoi_tao_id: nvId
+      // 3. Nếu cuộc gặp thuộc dự án, tự động đồng bộ sang Tiến độ Hồ sơ Dự án
+      const lichMoi: LichGapKH = {
+        ...lichHenDangBaoCao,
+        trang_thai: 'da_hoan_thanh',
+        ket_qua: kqSach
+      };
+      if (lichMoi.du_an_id) {
+        await dongBoLichSangTienDoDuAn({
+          lich: lichMoi,
+          nguoiThucHienId: nvId
         }).catch(() => {});
       }
 

@@ -33,7 +33,11 @@ import {
   taoLichGapKHMoi,
   capNhatLichGapKH
 } from '../lich_gap_kh/dich_vu_lich_gap_kh';
-import { taoTienDoDuAnMoi } from '../ho_so_du_an/dich_vu_tien_do_du_an';
+import {
+  taoTienDoDuAnMoi,
+  dongBoLichSangTienDoDuAn,
+  xoaDongBoLichSangTienDoDuAn
+} from '../ho_so_du_an/dich_vu_tien_do_du_an';
 import { doiGiaiDoanHoSoDuAn, layChiTietHoSoDuAn } from '../ho_so_du_an/dich_vu_ho_so_du_an';
 import { layChiTietKhachHang, capNhatKhachHang } from '../khach_hang/dich_vu_khach_hang';
 import type { GiaiDoanDuAn } from '../../thu_vien/types/du_an';
@@ -643,6 +647,12 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
       nguoiThucHien: nguoiThucHien ? { id: nguoiThucHien.id } : { id: nhanVienId }
     });
 
+    // Đồng bộ kết quả vào Hồ sơ Dự án (Nhật ký làm việc với KH)
+    void dongBoLichSangTienDoDuAn({
+      lich,
+      nguoiThucHienId: nguoiThucHien?.id || nhanVienId
+    });
+
     return keHoachDaLuu;
   } catch (err) {
     console.warn('[dongBoLichGapSangKeHoachTuanVaBaoCaoNgay] Lỗi:', err);
@@ -737,6 +747,9 @@ export const dongBoXoaLichGapSangKeHoachTuan = async (params: {
       },
       nguoiThucHien ? { id: nguoiThucHien.id } : { id: userId }
     );
+
+    // Đồng bộ xóa tiến độ dự án liên kết nếu có
+    void xoaDongBoLichSangTienDoDuAn(lichId, nguoiThucHien?.id || userId);
 
     await dongBoTuDongBaoCaoTuan(keHoachDaLuu, nguoiThucHien);
     return true;

@@ -13,6 +13,10 @@ import {
 } from 'firebase/firestore';
 import type { LichGapKH, TrangThaiLichGap } from '../../thu_vien/types/lich_gap_kh';
 import {
+  dongBoLichSangTienDoDuAn,
+  xoaDongBoLichSangTienDoDuAn
+} from '../ho_so_du_an/dich_vu_tien_do_du_an';
+import {
   thamChieuCollection,
   thamChieuBanGhi,
   ghiNhatKyHoatDong
@@ -380,6 +384,13 @@ export const taoLichGapKHMoi = async (dto: TaoMoiLichGapDTO): Promise<LichGapKH>
     `Đăng ký lịch gặp KH "${dto.ten_khach_hang}" vào ${dto.gio_bat_dau} ngày ${dto.ngay}`
   );
 
+  if (dto.du_an_id && (dto.ket_qua || dto.trang_thai === 'da_hoan_thanh')) {
+    void dongBoLichSangTienDoDuAn({
+      lich: banGhiMoi,
+      nguoiThucHienId: dto.nguoi_tao_id
+    });
+  }
+
   if (dto.khach_hang_id) {
     void ghiNhatKyHoatDong(
       dto.nguoi_tao_id,
@@ -429,7 +440,13 @@ export const capNhatLichGapKH = async (
   ghiCacheLocal(dsLocal);
   xoaCacheLichGapKH();
   const banGhiCapNhat = dsLocal.find((x) => x.id === id);
-  if (banGhiCapNhat) phatSuKienCapNhat(banGhiCapNhat);
+  if (banGhiCapNhat) {
+    phatSuKienCapNhat(banGhiCapNhat);
+    void dongBoLichSangTienDoDuAn({
+      lich: banGhiCapNhat,
+      nguoiThucHienId: nguoiCapNhatId
+    });
+  }
 
   if (nguoiCapNhatId) {
     await ghiNhatKyHoatDong(
@@ -513,6 +530,9 @@ export const xoaLichGapKH = async (id: string, nguoiXoaId?: string): Promise<voi
   if (nguoiXoaId) {
     await ghiNhatKyHoatDong(nguoiXoaId, 'lich_gap_kh', 'xoa', id, 'Xóa lịch làm việc / công tác');
   }
+
+  // 5. Gỡ bỏ bản ghi tiến độ tương ứng trong Hồ sơ dự án nếu có
+  void xoaDongBoLichSangTienDoDuAn(id, nguoiXoaId);
 };
 
 // Kiểm tra trùng khung giờ trong cùng ngày

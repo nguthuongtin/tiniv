@@ -64,4 +64,5 @@ export interface TienDoDuAn {
 
   // Thời gian chỉnh sửa gần nhất
   ngay_chinh_sua_gan_nhat?: string | null;
+  lich_gap_kh_id?: string | null;
 }
