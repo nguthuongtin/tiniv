@@ -494,129 +494,8 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
     const nhanVienId = lich.nguoi_phu_trach_id || nguoiThucHien?.id;
     if (!nhanVienId || !lich.ngay) return null;
 
-    const tuanISO = layTuanFromDateISO(lich.ngay);
-    const keHoachHienTai = await layKeHoachTuan(nhanVienId, tuanISO);
-    const dsTacChien = [...(keHoachHienTai?.danh_sach_tac_chien ?? [])];
-
-    const tenKH = (lich.ten_khach_hang || lich.tieu_de || '').trim();
-    const idMucTieuLich = lich.id ? `tuan_lich_${lich.id}` : '';
-
-    const idxKhop = dsTacChien.findIndex((item) => {
-      if (idMucTieuLich && item.id === idMucTieuLich) return true;
-      if (item.hinh_thuc !== 'gap_mat') return false;
-      if (item.ngay_du_kien !== lich.ngay) return false;
-      if (item.gio_bat_dau && lich.gio_bat_dau && item.gio_bat_dau !== lich.gio_bat_dau) {
-        return false;
-      }
-      if (lich.khach_hang_id && item.khach_hang_id === lich.khach_hang_id) {
-        return true;
-      }
-      if (lich.du_an_id && item.du_an_id === lich.du_an_id) {
-        return true;
-      }
-      const tenItem = (item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an || '').trim();
-      return tenKH.length > 0 && tenItem.toLowerCase() === tenKH.toLowerCase();
-    });
-
     const daXongLich = lich.trang_thai === 'da_hoan_thanh';
     const ketQuaLich = (lich.ket_qua || '').trim();
-    const nowISO = new Date().toISOString();
-
-    if (idxKhop >= 0) {
-      const itemCu = dsTacChien[idxKhop];
-      const dsKqCu = [...(itemCu.danh_sach_ket_qua ?? [])];
-
-      if (ketQuaLich) {
-        const daCoKq = dsKqCu.some(
-          (k) => k.noi_dung.trim().toLowerCase() === ketQuaLich.toLowerCase()
-        );
-        if (!daCoKq) {
-          const nhatKyMoi: NhatKyKetQuaTuan = {
-            id: `kq_lich_${Date.now()}`,
-            ngay_ghi_nhan: lich.ngay,
-            noi_dung: ketQuaLich,
-            nguoi_ghi_id: nguoiThucHien?.id || nhanVienId,
-            ten_nguoi_ghi: nguoiThucHien?.ho_va_ten || null
-          };
-          dsKqCu.unshift(nhatKyMoi);
-        }
-      }
-
-      const dsNgayMoi = Array.from(
-        new Set([...(itemCu.cac_ngay_thuc_hien ?? []), lich.ngay])
-      ).sort();
-
-      dsTacChien[idxKhop] = {
-        ...itemCu,
-        hinh_thuc: 'gap_mat',
-        ngay_du_kien: lich.ngay,
-        cac_ngay_thuc_hien: dsNgayMoi,
-        gio_bat_dau: lich.gio_bat_dau || itemCu.gio_bat_dau || '08:30',
-        gio_ket_thuc: lich.gio_ket_thuc || itemCu.gio_ket_thuc || '10:00',
-        dia_diem_hen: lich.dia_diem || itemCu.dia_diem_hen || null,
-        da_hoan_thanh: daXongLich ? true : itemCu.da_hoan_thanh,
-        ngay_hoan_thanh: daXongLich ? itemCu.ngay_hoan_thanh || lich.ngay : itemCu.ngay_hoan_thanh,
-        ket_qua_thuc_te: ketQuaLich || itemCu.ket_qua_thuc_te || null,
-        danh_sach_ket_qua: dsKqCu,
-        ngay_cap_nhat_tien_do: nowISO
-      };
-    } else {
-      // Tự động tạo mục tiêu tác chiến tuần mới từ Lịch hẹn
-      const dsKqMoi: NhatKyKetQuaTuan[] = ketQuaLich
-        ? [
-            {
-              id: `kq_lich_${Date.now()}`,
-              ngay_ghi_nhan: lich.ngay,
-              noi_dung: ketQuaLich,
-              nguoi_ghi_id: nguoiThucHien?.id || nhanVienId,
-              ten_nguoi_ghi: nguoiThucHien?.ho_va_ten || null
-            }
-          ]
-        : [];
-
-      const itemMoi: ItemKeHoachTuan = {
-        id: `tuan_lich_${lich.id || Date.now()}`,
-        loai_hanh_dong: 'phat_sinh',
-        loai_cong_viec: 'khach_hang',
-        hinh_thuc: 'gap_mat',
-        khach_hang_id: lich.khach_hang_id || null,
-        du_an_id: lich.du_an_id || null,
-        xa_phuong: lich.dia_diem || null,
-        co_quan_doanh_nghiep: tenKH,
-        nguoi_lien_he: lich.ten_nguoi_lien_he || null,
-        ten_khach_hang_du_an: tenKH,
-        hanh_dong_tuan: lich.tieu_de || lich.noi_dung || `Gặp gỡ / Làm việc với ${tenKH}`,
-        noi_dung_tuan: lich.tieu_de || lich.noi_dung || `Gặp gỡ / Làm việc với ${tenKH}`,
-        ket_qua_mong_muon: lich.noi_dung || 'Trao đổi nắm bắt nhu cầu & thúc đẩy cơ hội',
-        dau_ra_cam_ket: lich.noi_dung || 'Trao đổi nắm bắt nhu cầu & thúc đẩy cơ hội',
-        ngay_du_kien: lich.ngay,
-        cac_ngay_thuc_hien: [lich.ngay],
-        gio_bat_dau: lich.gio_bat_dau || '08:30',
-        gio_ket_thuc: lich.gio_ket_thuc || '10:00',
-        dia_diem_hen: lich.dia_diem || null,
-        da_hoan_thanh: daXongLich,
-        ngay_hoan_thanh: daXongLich ? lich.ngay : null,
-        danh_sach_ket_qua: dsKqMoi,
-        ket_qua_thuc_te: ketQuaLich || null,
-        ngay_cap_nhat_tien_do: nowISO
-      };
-      dsTacChien.push(itemMoi);
-    }
-
-    const keHoachDaLuu = await luuKeHoachTuan(
-      {
-        id: keHoachHienTai?.id,
-        tuan: tuanISO,
-        nhan_vien_id: nhanVienId,
-        chi_nhanh_id: lich.chi_nhanh_id ?? keHoachHienTai?.chi_nhanh_id ?? nguoiThucHien?.chi_nhanh_id ?? null,
-        phong_ban_id: keHoachHienTai?.phong_ban_id ?? nguoiThucHien?.phong_ban_id ?? null,
-        danh_sach_tac_chien: dsTacChien
-      },
-      nguoiThucHien ? { id: nguoiThucHien.id } : { id: nhanVienId }
-    );
-
-    // Đồng bộ sang Báo cáo Tuần
-    await dongBoTuDongBaoCaoTuan(keHoachDaLuu, nguoiThucHien);
 
     // Tự động ghi nhận vào Báo cáo công việc ngày (kể cả lịch dự kiến và lịch hoàn thành)
     // Quy chuẩn:
@@ -653,7 +532,7 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
       nguoiThucHienId: nguoiThucHien?.id || nhanVienId
     });
 
-    return keHoachDaLuu;
+    return null;
   } catch (err) {
     console.warn('[dongBoLichGapSangKeHoachTuanVaBaoCaoNgay] Lỗi:', err);
     return null;
@@ -661,8 +540,7 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
 };
 
 /**
- * 5b. ĐỒNG BỘ XÓA LỊCH CÔNG TÁC -> KẾ HOẠCH TUẦN & BÁO CÁO TUẦN
- * Khi xóa một lịch công tác: tự động tìm và xóa mục tiêu tác chiến tương ứng bên Kế hoạch tuần.
+ * 5b. ĐỒNG BỘ XÓA LỊCH CÔNG TÁC -> TIẾN ĐỘ DỰ ÁN
  */
 export const dongBoXoaLichGapSangKeHoachTuan = async (params: {
   lichId: string;
@@ -674,84 +552,12 @@ export const dongBoXoaLichGapSangKeHoachTuan = async (params: {
   nguoiThucHien?: NguoiDungDangNhap | null;
 }): Promise<boolean> => {
   try {
-    const { lichId, nhanVienId, ngayISO, tenKhachHang, duAnId, khachHangId, nguoiThucHien } = params;
+    const { lichId, nhanVienId, nguoiThucHien } = params;
     const userId = nhanVienId || nguoiThucHien?.id;
     if (!lichId || !userId) return false;
 
-    const tuanISO = layTuanFromDateISO(ngayISO || new Date().toISOString().slice(0, 10));
-    const keHoachHienTai = await layKeHoachTuan(userId, tuanISO);
-    if (!keHoachHienTai || !keHoachHienTai.danh_sach_tac_chien?.length) {
-      return false;
-    }
-
-    const idMucTieuLich1 = `tuan_lich_${lichId}`;
-    const idMucTieuLich2 = `tuan_lich_lich_yc_${lichId.replace(/^lich_yc_/, '')}`;
-    const idMucTieuLich3 = `tuan_lich_${lichId.replace(/^lich_yc_/, '')}`;
-    const tenKHLower = (tenKhachHang || '').trim().toLowerCase();
-
-    const danhSachMoi: ItemKeHoachTuan[] = [];
-    let coThayDoi = false;
-
-    for (const item of keHoachHienTai.danh_sach_tac_chien) {
-      // 1. Trùng id mục tiêu lịch hoặc id lịch
-      const trungIdLich =
-        item.id === idMucTieuLich1 ||
-        item.id === idMucTieuLich2 ||
-        item.id === idMucTieuLich3 ||
-        (item as any).lich_gap_kh_id === lichId ||
-        (item as any).lich_gap_kh_id === lichId.replace(/^lich_yc_/, '');
-
-      if (trungIdLich) {
-        coThayDoi = true;
-        continue;
-      }
-
-      // 2. Khớp cùng ngày dự kiến và cùng Khách hàng / Dự án
-      let khopThongTin = false;
-      if (ngayISO && item.ngay_du_kien === ngayISO) {
-        if (khachHangId && item.khach_hang_id === khachHangId) khopThongTin = true;
-        else if (duAnId && item.du_an_id === duAnId) khopThongTin = true;
-        else if (tenKHLower) {
-          const tenItem = (item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an || '').trim().toLowerCase();
-          if (tenItem && tenItem === tenKHLower) khopThongTin = true;
-        }
-      }
-
-      if (khopThongTin) {
-        coThayDoi = true;
-        // Nếu là mục tiêu phát sinh từ lịch hoặc có tiền tố tuan_lich_ thì xóa bỏ hoàn toàn
-        if (item.loai_hanh_dong === 'phat_sinh' || item.id.startsWith('tuan_lich_')) {
-          continue;
-        }
-        // Nếu là mục tiêu gốc của NVKD lập ban đầu, giữ lại mục tiêu nhưng gỡ bỏ lịch hẹn để không tự tạo lại lịch
-        danhSachMoi.push({
-          ...item,
-          hinh_thuc: 'goi_dien',
-          dia_diem_hen: null,
-          da_xoa_lich: true
-        } as any);
-        continue;
-      }
-
-      danhSachMoi.push(item);
-    }
-
-    if (!coThayDoi) {
-      return false;
-    }
-
-    const keHoachDaLuu = await luuKeHoachTuan(
-      {
-        ...keHoachHienTai,
-        danh_sach_tac_chien: danhSachMoi
-      },
-      nguoiThucHien ? { id: nguoiThucHien.id } : { id: userId }
-    );
-
     // Đồng bộ xóa tiến độ dự án liên kết nếu có
-    void xoaDongBoLichSangTienDoDuAn(lichId, nguoiThucHien?.id || userId);
-
-    await dongBoTuDongBaoCaoTuan(keHoachDaLuu, nguoiThucHien);
+    void xoaDongBoLichSangTienDoDuAn(lichId, userId);
     return true;
   } catch (err) {
     console.warn('[dongBoXoaLichGapSangKeHoachTuan] Loi:', err);
@@ -761,7 +567,6 @@ export const dongBoXoaLichGapSangKeHoachTuan = async (params: {
 
 /**
  * 5c. ĐỒNG BỘ XÓA LỊCH CÔNG TÁC -> BÁO CÁO CÔNG VIỆC NGÀY
- * Khi xóa một lịch công tác/làm việc: tự động xóa dòng công việc tương ứng trong Báo cáo ngày của nhân viên.
  */
 export const dongBoXoaLichGapSangBaoCaoNgay = async (params: {
   nhanVienId: string;
@@ -846,97 +651,17 @@ export const dongBoXoaLichGapSangBaoCaoNgay = async (params: {
  * Khi NVKD lưu Báo cáo công việc ngày có gắn Dự án hoặc nội dung trùng với mục tiêu tuần:
  * -> Tự động đẩy kết quả về Kế hoạch tuần để NVKD không phải cập nhật lại.
  */
-export const dongBoBaoCaoNgaySangKeHoachTuan = async (params: {
+export const dongBoBaoCaoNgaySangKeHoachTuan = async (_params: {
   nhanVienId: string;
   ngayBaoCao: string;
   danhSachChiTiet: { du_an_id?: string | null; noi_dung: string }[];
   nguoiThucHien?: NguoiDungDangNhap | null;
 }): Promise<number> => {
-  try {
-    const { nhanVienId, ngayBaoCao, danhSachChiTiet, nguoiThucHien } = params;
-    if (!nhanVienId || !ngayBaoCao || danhSachChiTiet.length === 0) return 0;
-
-    const tuanISO = layTuanFromDateISO(ngayBaoCao);
-    const keHoach = await layKeHoachTuan(nhanVienId, tuanISO);
-    if (!keHoach || !keHoach.danh_sach_tac_chien?.length) return 0;
-
-    let soMucDaDongBo = 0;
-    const nowISO = new Date().toISOString();
-
-    const dsMoi = keHoach.danh_sach_tac_chien.map((item) => {
-      // Tìm các dòng báo cáo ngày khớp với dự án hoặc tên khách hàng/cơ quan của mục tiêu tuần
-      const tenCQ = (item.co_quan_doanh_nghiep || item.ten_khach_hang_du_an || '').trim().toLowerCase();
-      const tenDA = (item.du_an_du_kien || '').trim().toLowerCase();
-
-      const cacDongKhop = danhSachChiTiet.filter((ct) => {
-        if (item.du_an_id && ct.du_an_id && item.du_an_id === ct.du_an_id) return true;
-        const ndLower = ct.noi_dung.toLowerCase();
-        if (tenCQ.length >= 4 && ndLower.includes(tenCQ)) return true;
-        if (tenDA.length >= 4 && ndLower.includes(tenDA)) return true;
-        return false;
-      });
-
-      if (cacDongKhop.length === 0) return item;
-
-      const dsKq = [...(item.danh_sach_ket_qua ?? [])];
-      let coThemMoi = false;
-
-      for (const ct of cacDongKhop) {
-        const ndSach = ct.noi_dung.trim();
-        const daCo = dsKq.some((k) => k.noi_dung.trim().toLowerCase() === ndSach.toLowerCase());
-        if (!daCo) {
-          dsKq.unshift({
-            id: `kq_bccv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            ngay_ghi_nhan: ngayBaoCao,
-            noi_dung: ndSach,
-            nguoi_ghi_id: nguoiThucHien?.id || nhanVienId,
-            ten_nguoi_ghi: nguoiThucHien?.ho_va_ten || null
-          });
-          coThemMoi = true;
-        }
-      }
-
-      if (!coThemMoi) return item;
-      soMucDaDongBo++;
-
-      return {
-        ...item,
-        danh_sach_ket_qua: dsKq,
-        ket_qua_thuc_te: dsKq[0]?.noi_dung || item.ket_qua_thuc_te || null,
-        ngay_cap_nhat_tien_do: nowISO
-      };
-    });
-
-    if (soMucDaDongBo > 0) {
-      const keHoachDaLuu = await luuKeHoachTuan(
-        {
-          id: keHoach.id,
-          tuan: keHoach.tuan,
-          nhan_vien_id: keHoach.nhan_vien_id,
-          chi_nhanh_id: keHoach.chi_nhanh_id,
-          phong_ban_id: keHoach.phong_ban_id,
-          danh_sach_tac_chien: dsMoi
-        },
-        nguoiThucHien ? { id: nguoiThucHien.id } : { id: nhanVienId }
-      );
-      await dongBoTuDongBaoCaoTuan(keHoachDaLuu, nguoiThucHien);
-    }
-
-    return soMucDaDongBo;
-  } catch (err) {
-    console.warn('[dongBoBaoCaoNgaySangKeHoachTuan] Lỗi:', err);
-    return 0;
-  }
+  return 0;
 };
 
 /**
  * 7. SUPER-SYNC CHECK-IN 1 CHẠM (BÓP CÒ BẢN CHUẨN)
- * Khi NVKD check-in tại Kế hoạch tuần, đẩy dữ liệu về 4 đích:
- * - Về Hồ sơ Dự án (Timeline TienDoDuAn)
- * - Về Phễu Pipeline (Giai đoạn Dự án nếu NVKD đổi)
- * - Về Báo cáo công việc ngày (BaoCaoCongViec)
- * - Về Audit Log (NhatKyHoatDong)
- */
 export const superSyncCheckIn1Cham = async (params: {
   item: ItemKeHoachTuan;
   nhanVienId: string;

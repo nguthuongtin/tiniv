@@ -45,7 +45,13 @@ import type { LichGapKH } from '../../thu_vien/types/lich_gap_kh';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
 import type { SanPhamDichVu } from '../../thu_vien/types/san_pham_dich_vu';
 import type { KeHoachTuan, ItemKeHoachTuan } from '../../thu_vien/types/ke_hoach';
-import { kiemTraViecThuocNgay } from '../ke_hoach/ban_lam_viec_hang_ngay';
+
+const kiemTraViecThuocNgay = (item: any, ngayISO: string): boolean => {
+  if (!item) return false;
+  if (item.ngay_du_kien === ngayISO) return true;
+  if (Array.isArray(item.cac_ngay_thuc_hien) && item.cac_ngay_thuc_hien.includes(ngayISO)) return true;
+  return false;
+};
 import {
   phanTichTuanISO,
   dichChuyenTuanISO,
