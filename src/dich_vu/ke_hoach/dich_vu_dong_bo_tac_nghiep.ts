@@ -40,6 +40,7 @@ import {
 } from '../ho_so_du_an/dich_vu_tien_do_du_an';
 import { doiGiaiDoanHoSoDuAn, layChiTietHoSoDuAn } from '../ho_so_du_an/dich_vu_ho_so_du_an';
 import { layChiTietKhachHang, capNhatKhachHang } from '../khach_hang/dich_vu_khach_hang';
+import { layChiTietNhanSu } from '../nhan_su/dich_vu_nhan_su';
 import type { GiaiDoanDuAn } from '../../thu_vien/types/du_an';
 import { layTieuDeCotLoi } from '../../thu_vien/utils/dinh_dang_bao_cao';
 import { ghiNhatKyHoatDong, thamChieuBanGhi } from '../../thu_vien/firebase/client_firebase';
@@ -514,6 +515,7 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
       dongBaoCaoNgay = `[CHƯA HOÀN THÀNH] ${tieuDeCongViec}`;
     }
 
+    // 1. Đồng bộ cho Người chủ trì (sở hữu tiến độ & kết quả)
     await ghiNhanCheckInVaoBaoCaoNgay({
       nhanVienId,
       chiNhanhId: lich.chi_nhanh_id ?? nguoiThucHien?.chi_nhanh_id ?? null,
@@ -525,6 +527,44 @@ export const dongBoLichGapSangKeHoachTuanVaBaoCaoNgay = async (params: {
       noiDungKetQua: dongBaoCaoNgay,
       nguoiThucHien: nguoiThucHien ? { id: nguoiThucHien.id } : { id: nhanVienId }
     });
+
+    // 2. Đồng bộ cho Người hỗ trợ / Cùng tham gia (KHÔNG lặp kết quả thương mại)
+    if (Array.isArray(lich.nguoi_tham_gia_ids) && lich.nguoi_tham_gia_ids.length > 0) {
+      let tenNguoiChinh = (nguoiThucHien?.id === nhanVienId ? nguoiThucHien?.ho_va_ten : '') || '';
+      if (!tenNguoiChinh) {
+        try {
+          const nsChinh = await layChiTietNhanSu(nhanVienId);
+          tenNguoiChinh = nsChinh?.ho_va_ten || 'đồng nghiệp';
+        } catch {
+          tenNguoiChinh = 'đồng nghiệp';
+        }
+      }
+
+      for (const htId of lich.nguoi_tham_gia_ids) {
+        if (!htId || htId === nhanVienId) continue;
+
+        let dongBaoCaoHoTro = '';
+        if (daXongLich) {
+          dongBaoCaoHoTro = `[Hỗ trợ cùng ${tenNguoiChinh}] ${tieuDeCongViec} (Đã hoàn thành)`;
+        } else {
+          dongBaoCaoHoTro = `[CHƯA HOÀN THÀNH] [Hỗ trợ cùng ${tenNguoiChinh}] ${tieuDeCongViec}`;
+        }
+
+        const tieuDeGocHoTro = `[Hỗ trợ cùng ${tenNguoiChinh}] ${tieuDeCongViec}`;
+
+        await ghiNhanCheckInVaoBaoCaoNgay({
+          nhanVienId: htId,
+          chiNhanhId: lich.chi_nhanh_id ?? null,
+          phongBanId: null,
+          ngayBaoCao: lich.ngay,
+          duAnId: lich.du_an_id || null,
+          tenKhachHangDuAn: '',
+          tieuDeGoc: tieuDeGocHoTro,
+          noiDungKetQua: dongBaoCaoHoTro,
+          nguoiThucHien: nguoiThucHien ? { id: nguoiThucHien.id } : { id: htId }
+        });
+      }
+    }
 
     // Đồng bộ kết quả vào Hồ sơ Dự án (Nhật ký làm việc với KH)
     void dongBoLichSangTienDoDuAn({

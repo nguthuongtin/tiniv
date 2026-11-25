@@ -914,6 +914,20 @@ export function NoiDungLichCongTac({
           nguoiThucHien: nguoiDungHienTai
         });
       }
+      if (Array.isArray(lichCanXoa?.nguoi_tham_gia_ids)) {
+        for (const tgId of lichCanXoa.nguoi_tham_gia_ids) {
+          if (tgId && tgId !== targetUserId && (lichCanXoa?.ngay || homNayISO)) {
+            await dongBoXoaLichGapSangBaoCaoNgay({
+              nhanVienId: tgId,
+              ngayISO: lichCanXoa?.ngay || homNayISO,
+              tieuDeLich: lichCanXoa?.tieu_de || tenKH,
+              tenKhachHang: lichCanXoa?.ten_khach_hang || tenKH,
+              duAnId: lichCanXoa?.du_an_id,
+              nguoiThucHien: nguoiDungHienTai
+            });
+          }
+        }
+      }
       if (lichCanXoa?.nguoi_tao_id && lichCanXoa.nguoi_tao_id !== targetUserId && lichCanXoa.ngay) {
         await dongBoXoaLichGapSangBaoCaoNgay({
           nhanVienId: lichCanXoa.nguoi_tao_id,
@@ -1493,6 +1507,12 @@ export function NoiDungLichCongTac({
                                 const isHoTro = lich.id.startsWith('lich_yc_');
                                 const daHoanThanh = lich.trang_thai === 'da_hoan_thanh';
                                 const daHuy = lich.trang_thai === 'huy';
+                                const laNguoiDiCung = Boolean(
+                                  nguoiDungHienTai?.id &&
+                                  lich.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
+                                  Array.isArray(lich.nguoi_tham_gia_ids) &&
+                                  lich.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id)
+                                );
                                 const infoHienThi = taoTieuDeLichHienThi(lich);
 
                                 return (
@@ -1531,6 +1551,11 @@ export function NoiDungLichCongTac({
                                         <span className={cn('text-[11px] font-bold tabular-nums text-slate-500 shrink-0', daHuy && 'line-through')}>
                                           {lich.gio_bat_dau || 'Cả ngày'}
                                         </span>
+                                        {laNguoiDiCung && (
+                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
+                                            Đi cùng
+                                          </span>
+                                        )}
                                       </div>
 
                                       {/* Dấu check đưa lên góc trên phải */}
@@ -1561,7 +1586,7 @@ export function NoiDungLichCongTac({
                                         daHuy
                                           ? 'line-through text-slate-400 font-normal'
                                           : daHoanThanh
-                                          ? 'line-through text-slate-500 font-normal'
+                                          ? 'text-slate-700 font-semibold'
                                           : 'text-slate-900'
                                       )}
                                       title={infoHienThi.tieuDeChinh}
@@ -1836,7 +1861,7 @@ export function NoiDungLichCongTac({
                                   <h4
                                     className={cn(
                                       'text-[13px] font-bold leading-snug mt-0.5 truncate',
-                                      daXong ? 'line-through text-slate-400 font-normal' : 'text-slate-900'
+                                      daXong ? 'text-slate-700 font-semibold' : 'text-slate-900'
                                     )}
                                   >
                                     {infoH.tieuDeChinh}
@@ -1942,7 +1967,7 @@ export function NoiDungLichCongTac({
                                     className={cn(
                                       'px-1.5 py-1 rounded text-[11px] font-semibold truncate cursor-pointer border flex items-center justify-between gap-1',
                                       daXong
-                                        ? 'bg-slate-100 border-slate-200 text-slate-500 line-through'
+                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
                                         : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
                                     )}
                                     title={infoH.tieuDeChinh}
@@ -2159,7 +2184,7 @@ export function NoiDungLichCongTac({
                                   <h4
                                     className={cn(
                                       'text-[13px] font-bold leading-snug mt-0.5 truncate',
-                                      daXong ? 'line-through text-slate-400 font-normal' : 'text-slate-900'
+                                      daXong ? 'text-slate-700 font-semibold' : 'text-slate-900'
                                     )}
                                   >
                                     {infoH.tieuDeChinh}
@@ -2321,7 +2346,7 @@ export function NoiDungLichCongTac({
                                       daHuy
                                         ? 'line-through text-slate-400 font-normal'
                                         : daXong
-                                        ? 'line-through text-slate-500 font-normal'
+                                        ? 'text-slate-700 font-semibold'
                                         : 'text-slate-900'
                                     )}
                                   >
