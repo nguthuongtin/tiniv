@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Plus,
+  AlertCircle,
   Calendar as CalendarIcon,
   Clock,
   MapPin,
@@ -398,6 +399,7 @@ export function NoiDungLichCongTac({
   const [chiNhanhLoc, setChiNhanhLoc] = useState<string>('tat_ca');
   const [nhanSuLoc, setNhanSuLoc] = useState<string>('tat_ca');
   const [locLoaiLich, setLocLoaiLich] = useState<'tat_ca' | 'cong_tac_di_chuyen' | 'van_phong'>('tat_ca');
+  const [locTrangThaiNhanh, setLocTrangThaiNhanh] = useState<'tat_ca' | 'chua_bao_cao' | 'da_hoan_thanh' | null>(null);
   const [tenViecVPNhanh, setTenViecVPNhanh] = useState('');
   const [loaiViecVPNhanh, setLoaiViecVPNhanh] = useState<LoaiViecVanPhong>('goi_dien');
   const [dangThemNhanhVP, setDangThemNhanhVP] = useState(false);
@@ -552,9 +554,15 @@ export function NoiDungLichCongTac({
       } else if (locLoaiLich === 'cong_tac_di_chuyen') {
         if (l.loai_lich === 'van_phong') return false;
       }
+      if (locTrangThaiNhanh === 'chua_bao_cao') {
+        const laChuaBC = l.ngay < homNayISO && l.trang_thai !== 'da_hoan_thanh' && l.trang_thai !== 'huy' && l.trang_thai !== 'doi_lich';
+        if (!laChuaBC) return false;
+      } else if (locTrangThaiNhanh === 'da_hoan_thanh') {
+        if (l.trang_thai !== 'da_hoan_thanh') return false;
+      }
       return true;
     });
-  }, [dsLichTongHop, laQuanLy, nguoiDungHienTai?.id, chiNhanhLoc, nhanSuLoc, locLoaiLich, mapNhanSu]);
+  }, [dsLichTongHop, laQuanLy, nguoiDungHienTai?.id, chiNhanhLoc, nhanSuLoc, locLoaiLich, locTrangThaiNhanh, homNayISO, mapNhanSu]);
 
   // 7 ngày của tuần đang xem
   const ds7NgayTuan = useMemo(() => layDanhSach7NgayTrongTuan(ngayDangXem), [ngayDangXem]);
@@ -653,9 +661,23 @@ export function NoiDungLichCongTac({
     const daHoanThanh = dsLichLoc.filter(
       (l) => l.ngay.startsWith(thangHienTai) && l.trang_thai === 'da_hoan_thanh'
     ).length;
+    const chuaBaoCao = dsLichTongHop.filter((l) => {
+      if (!laQuanLy && nguoiDungHienTai?.id) {
+        const laChuTri = l.nguoi_phu_trach_id === nguoiDungHienTai.id;
+        const laNguoiTao = l.nguoi_tao_id === nguoiDungHienTai.id;
+        const laThamGia = Array.isArray(l.nguoi_tham_gia_ids) && l.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id);
+        if (!laChuTri && !laNguoiTao && !laThamGia) return false;
+      }
+      return (
+        l.ngay < homNayISO &&
+        l.trang_thai !== 'da_hoan_thanh' &&
+        l.trang_thai !== 'huy' &&
+        l.trang_thai !== 'doi_lich'
+      );
+    }).length;
 
-    return { lichHomNay, lichTuanNay, lichThangNay, daHoanThanh };
-  }, [dsLichLoc, ds7NgayTuan, homNayISO, ngayDangXem]);
+    return { lichHomNay, lichTuanNay, lichThangNay, daHoanThanh, chuaBaoCao };
+  }, [dsLichLoc, dsLichTongHop, ds7NgayTuan, homNayISO, ngayDangXem, laQuanLy, nguoiDungHienTai?.id]);
 
   // Chuyển tuần / tháng trước - sau
   const diChuyenThoiGian = (huong: -1 | 1) => {
@@ -1105,6 +1127,32 @@ export function NoiDungLichCongTac({
             so_lieu: thongKe.daHoanThanh,
             icon: CheckCircle2,
             mau_so: 'xanh_la',
+            dang_chon: locTrangThaiNhanh === 'da_hoan_thanh',
+            khi_bam: () => {
+              if (locTrangThaiNhanh === 'da_hoan_thanh') {
+                setLocTrangThaiNhanh(null);
+              } else {
+                setLocTrangThaiNhanh('da_hoan_thanh');
+                setCheDoXem('danh_sach');
+              }
+            },
+          },
+          {
+            id: 'chua_bao_cao',
+            nhan: 'Chưa báo cáo',
+            nhan_ngan: 'Chưa BC',
+            so_lieu: thongKe.chuaBaoCao,
+            icon: AlertCircle,
+            mau_so: 'canh_bao',
+            dang_chon: locTrangThaiNhanh === 'chua_bao_cao',
+            khi_bam: () => {
+              if (locTrangThaiNhanh === 'chua_bao_cao') {
+                setLocTrangThaiNhanh(null);
+              } else {
+                setLocTrangThaiNhanh('chua_bao_cao');
+                setCheDoXem('danh_sach');
+              }
+            },
           },
           {
             id: 'tat_ca',
@@ -1507,6 +1555,12 @@ export function NoiDungLichCongTac({
                                 const isHoTro = lich.id.startsWith('lich_yc_');
                                 const daHoanThanh = lich.trang_thai === 'da_hoan_thanh';
                                 const daHuy = lich.trang_thai === 'huy';
+                                const laDoiLich = lich.trang_thai === 'doi_lich';
+                                const laQuaHanChuaBaoCao =
+                                  lich.ngay < homNayISO &&
+                                  !daHoanThanh &&
+                                  !daHuy &&
+                                  !laDoiLich;
                                 const laNguoiDiCung = Boolean(
                                   nguoiDungHienTai?.id &&
                                   lich.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
@@ -1526,8 +1580,12 @@ export function NoiDungLichCongTac({
                                       'p-2.5 rounded-xl border transition cursor-pointer shadow-2xs group space-y-1.5 active:scale-[0.99] select-none',
                                       daHuy
                                         ? 'bg-slate-100/80 border-slate-200 opacity-60'
+                                        : laDoiLich
+                                        ? 'bg-purple-50/50 border-purple-200/80'
                                         : daHoanThanh
-                                        ? 'bg-slate-50/80 border-slate-200/90 opacity-75'
+                                        ? 'bg-emerald-50/40 border-emerald-200/90'
+                                        : laQuaHanChuaBaoCao
+                                        ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/40 shadow-xs'
                                         : 'bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-xs'
                                     )}
                                   >
@@ -1570,11 +1628,27 @@ export function NoiDungLichCongTac({
                                             'size-5 rounded-md border flex items-center justify-center transition cursor-pointer shrink-0 active:scale-95 shadow-2xs',
                                             daHoanThanh
                                               ? 'bg-emerald-600 border-emerald-600 text-white'
+                                              : laQuaHanChuaBaoCao
+                                              ? 'bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200 ring-1 ring-amber-300/60'
+                                              : laDoiLich
+                                              ? 'bg-purple-50 border-purple-200 text-purple-600'
                                               : 'bg-white border-slate-300 text-slate-300 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50/50'
                                           )}
-                                          title={daHoanThanh ? 'Đã xong (Bấm xem/sửa kết quả)' : 'Bấm để ghi kết quả / hoàn thành'}
+                                          title={
+                                            daHoanThanh
+                                              ? 'Đã xong (Bấm xem/sửa kết quả)'
+                                              : laQuaHanChuaBaoCao
+                                              ? 'Quá hạn chưa báo cáo kết quả - Bấm để ghi KQ ngay!'
+                                              : laDoiLich
+                                              ? 'Đã dời lịch hẹn'
+                                              : 'Bấm để ghi kết quả / hoàn thành'
+                                          }
                                         >
-                                          <Check className="size-3 stroke-[3]" />
+                                          {laQuaHanChuaBaoCao ? (
+                                            <AlertCircle className="size-3 stroke-[2.5]" />
+                                          ) : (
+                                            <Check className="size-3 stroke-[3]" />
+                                          )}
                                         </button>
                                       )}
                                     </div>
@@ -1611,12 +1685,20 @@ export function NoiDungLichCongTac({
                                       )}
 
                                       <div className="shrink-0 ml-auto">
-                                        {lich.ket_qua ? (
+                                        {daHoanThanh ? (
                                           <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200 truncate inline-block">
-                                            Đã ghi KQ
+                                            {lich.ket_qua ? 'Đã có KQ' : 'Đã xong'}
+                                          </span>
+                                        ) : laQuaHanChuaBaoCao ? (
+                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 animate-pulse truncate inline-block">
+                                            Chưa báo cáo
+                                          </span>
+                                        ) : laDoiLich ? (
+                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 border border-purple-200 truncate inline-block">
+                                            Đã dời lịch
                                           </span>
                                         ) : daHuy ? (
-                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700">
+                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200 truncate inline-block">
                                             Đã hủy
                                           </span>
                                         ) : null}
@@ -1799,6 +1881,9 @@ export function NoiDungLichCongTac({
                             const isVP = lich.loai_lich === 'van_phong';
                             const isHoTro = lich.id.startsWith('lich_yc_');
                             const daXong = lich.trang_thai === 'da_hoan_thanh';
+                            const daHuy = lich.trang_thai === 'huy';
+                            const laDoiLich = lich.trang_thai === 'doi_lich';
+                            const laQuaHanChuaBaoCao = lich.ngay < homNayISO && !daXong && !daHuy && !laDoiLich;
 
                             return (
                               <div
@@ -1809,8 +1894,14 @@ export function NoiDungLichCongTac({
                                 }}
                                 className={cn(
                                   'p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2.5 active:scale-[0.99] select-none',
-                                  daXong
-                                    ? 'bg-slate-50 border-slate-200/80 opacity-70'
+                                  daHuy
+                                    ? 'bg-slate-100/80 border-slate-200 opacity-60'
+                                    : laDoiLich
+                                    ? 'bg-purple-50/50 border-purple-200/80'
+                                    : daXong
+                                    ? 'bg-emerald-50/40 border-emerald-200/80'
+                                    : laQuaHanChuaBaoCao
+                                    ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/40 shadow-xs'
                                     : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
                                 )}
                               >
@@ -1846,16 +1937,23 @@ export function NoiDungLichCongTac({
                                         </span>
                                       </div>
                                     )}
-                                    {lich.ket_qua && (
-                                      <span className="text-[9.5px] font-semibold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200">
-                                        Đã ghi KQ
+                                    {daXong ? (
+                                      <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200">
+                                        {lich.ket_qua ? 'Đã có KQ' : 'Đã xong'}
                                       </span>
-                                    )}
-                                    {daXong && !lich.ket_qua && (
-                                      <span className="text-[9.5px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                                        Đã xong
+                                    ) : laQuaHanChuaBaoCao ? (
+                                      <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                                        Chưa báo cáo
                                       </span>
-                                    )}
+                                    ) : laDoiLich ? (
+                                      <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                                        Đã dời lịch
+                                      </span>
+                                    ) : daHuy ? (
+                                      <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                                        Đã hủy
+                                      </span>
+                                    ) : null}
                                   </div>
 
                                   <h4
@@ -1954,6 +2052,9 @@ export function NoiDungLichCongTac({
                                 const isVP = lich.loai_lich === 'van_phong';
                                 const isHoTro = lich.id.startsWith('lich_yc_');
                                 const daXong = lich.trang_thai === 'da_hoan_thanh';
+                                const daHuy = lich.trang_thai === 'huy';
+                                const laDoiLich = lich.trang_thai === 'doi_lich';
+                                const laQuaHanChuaBaoCao = lich.ngay < homNayISO && !daXong && !daHuy && !laDoiLich;
                                 const ns = mapNhanSu.get(lich.nguoi_phu_trach_id);
                                 const tenNVRutGon = rutGonTenNhanVienQuyChuan(ns?.ho_va_ten);
 
@@ -1966,8 +2067,14 @@ export function NoiDungLichCongTac({
                                     }}
                                     className={cn(
                                       'px-1.5 py-1 rounded text-[11px] font-semibold truncate cursor-pointer border flex items-center justify-between gap-1',
-                                      daXong
+                                      daHuy
+                                        ? 'bg-slate-100 border-slate-200 text-slate-400 line-through'
+                                        : daXong
                                         ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                        : laQuaHanChuaBaoCao
+                                        ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
+                                        : laDoiLich
+                                        ? 'bg-purple-50 border-purple-200 text-purple-800'
                                         : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
                                     )}
                                     title={infoH.tieuDeChinh}
@@ -2277,6 +2384,8 @@ export function NoiDungLichCongTac({
                           const isHoTro = lich.id.startsWith('lich_yc_');
                           const daXong = lich.trang_thai === 'da_hoan_thanh';
                           const daHuy = lich.trang_thai === 'huy';
+                          const laDoiLich = lich.trang_thai === 'doi_lich';
+                          const laQuaHanChuaBaoCao = lich.ngay < homNayISO && !daXong && !daHuy && !laDoiLich;
 
                           return (
                             <div
@@ -2289,8 +2398,12 @@ export function NoiDungLichCongTac({
                                 'p-3.5 hover:bg-slate-50/80 transition flex items-center justify-between gap-3 cursor-pointer group active:scale-[0.99] select-none',
                                 daHuy
                                   ? 'bg-slate-50/60 opacity-60'
+                                  : laDoiLich
+                                  ? 'bg-purple-50/40 text-purple-950'
                                   : daXong
-                                  ? 'bg-slate-50/60 opacity-75'
+                                  ? 'bg-emerald-50/40'
+                                  : laQuaHanChuaBaoCao
+                                  ? 'bg-amber-50/60 border-l-4 border-l-amber-500'
                                   : 'bg-white hover:bg-slate-50/80'
                               )}
                             >
@@ -2368,11 +2481,27 @@ export function NoiDungLichCongTac({
                                       'size-8 rounded-lg border flex items-center justify-center transition cursor-pointer active:scale-95 shadow-2xs',
                                       daXong
                                         ? 'bg-emerald-600 border-emerald-600 text-white'
+                                        : laQuaHanChuaBaoCao
+                                        ? 'bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200 ring-1 ring-amber-300/60'
+                                        : laDoiLich
+                                        ? 'bg-purple-50 border-purple-200 text-purple-600'
                                         : 'bg-white border-slate-300 text-slate-300 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50/50'
                                     )}
-                                    title={daXong ? 'Đã xong (Bấm xem/sửa kết quả)' : 'Bấm để ghi kết quả / hoàn thành'}
+                                    title={
+                                      daXong
+                                        ? 'Đã xong (Bấm xem/sửa kết quả)'
+                                        : laQuaHanChuaBaoCao
+                                        ? 'Quá hạn chưa báo cáo kết quả - Bấm để ghi KQ ngay!'
+                                        : laDoiLich
+                                        ? 'Đã dời lịch hẹn'
+                                        : 'Bấm để ghi kết quả / hoàn thành'
+                                    }
                                   >
-                                    <Check className="size-4.5 stroke-[3]" />
+                                    {laQuaHanChuaBaoCao ? (
+                                      <AlertCircle className="size-4.5 stroke-[2.5]" />
+                                    ) : (
+                                      <Check className="size-4.5 stroke-[3]" />
+                                    )}
                                   </button>
                                 )}
 
