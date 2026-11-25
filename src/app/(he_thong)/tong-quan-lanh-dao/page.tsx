@@ -52,7 +52,7 @@ import { formatNgay } from '../../../thu_vien/utils/format_ngay';
 import type { NhanSu, ChiNhanh, PhongBan } from '../../../thu_vien/types/nhan_su';
 import type { HoSoDuAn } from '../../../thu_vien/types/du_an';
 import type { LichGapKH } from '../../../thu_vien/types/lich_gap_kh';
-import { DANH_SACH_TRANG_THAI_LICH_GAP } from '../../../thu_vien/types/lich_gap_kh';
+import { DANH_SACH_TRANG_THAI_LICH_GAP, kiemTraLichChuaBaoCao } from '../../../thu_vien/types/lich_gap_kh';
 import type { AIDanhGiaNhanSu, MucDoDanhGiaAI, AITongKetDieuHanh } from '../../../thu_vien/types/ai_danh_gia';
 import { danhSachNhanSu } from '../../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachHoSoDuAn } from '../../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
@@ -259,14 +259,12 @@ export default function TrangTongQuanLanhDao() {
     const lichThangNay = lichHopLe.filter((l) => l.ngay.startsWith(thangISO));
     const lichDaHoanThanhThang = lichThangNay.filter((l) => l.trang_thai === 'da_hoan_thanh');
 
-    // Lịch hẹn đã đến/qua ngày làm việc nhưng CHƯA cập nhật kết quả
+    // Lịch hẹn đã đến/qua ngày làm việc nhưng CHƯA cập nhật kết quả (áp dụng mốc 20h00 mỗi ngày)
     const homNayISO = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
     const ngayMoc = ngayChon > homNayISO ? homNayISO : ngayChon;
     const lichChuaCapNhatKQ = lichHopLe.filter((l) => {
       if (l.ngay > ngayMoc) return false;
-      const chuaCoKetQua = !l.ket_qua || l.ket_qua.trim() === '';
-      const chuaXong = l.trang_thai !== 'da_hoan_thanh';
-      return chuaCoKetQua || chuaXong;
+      return kiemTraLichChuaBaoCao(l, { homNayISO });
     });
 
     // Dự án bị "nguội": tiềm năng cao nhưng > 7 ngày chưa cập nhật tiến độ

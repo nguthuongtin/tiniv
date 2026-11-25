@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminFirestore } from '../../../../thu_vien/firebase/admin_firebase';
 import type { AIDanhGiaNhanSu, CauHinhAIGemini } from '../../../../thu_vien/types/ai_danh_gia';
 import { CAU_HINH_AI_MAC_DINH } from '../../../../thu_vien/types/ai_danh_gia';
+import { kiemTraLichChuaBaoCao } from '../../../../thu_vien/types/lich_gap_kh';
 import { GoogleGenAI } from '@google/genai';
 
 export const maxDuration = 60; // Allow sufficient time for AI generation
@@ -129,9 +130,9 @@ export async function POST(req: Request) {
         .map((d) => ({ id: d.id, ...d.data() } as any))
         .filter((l) => l.trang_thai !== 'huy' && !l.da_xoa);
 
-      // Lịch hẹn đã đến/qua hạn nhưng CHƯA cập nhật kết quả
-      const dsLichChuaKQ = dsLichGap.filter(
-        (l) => l.ngay <= ngayMucTieu && (!l.ket_qua?.trim() || l.trang_thai !== 'da_hoan_thanh')
+      // Lịch hẹn đã đến/qua hạn nhưng CHƯA cập nhật kết quả (áp dụng mốc 20h00 mỗi ngày)
+      const dsLichChuaKQ = dsLichGap.filter((l) =>
+        kiemTraLichChuaBaoCao(l, { homNayISO: ngayMucTieu })
       );
 
       // Dự án bị "nguội": tiềm năng cao nhưng ngày cập nhật cách ngày mục tiêu > 7 ngày
@@ -387,8 +388,8 @@ Mỗi tiêu chí trong 9 tiêu chí trên BẮT BUỘC phải có trường:
           .map((d) => ({ id: d.id, ...d.data() } as any))
           .filter((l) => l.trang_thai !== 'huy' && !l.da_xoa);
 
-        const allLichChuaKQ = dsAllLich.filter(
-          (l) => l.ngay <= ngayMucTieu && (!l.ket_qua?.trim() || l.trang_thai !== 'da_hoan_thanh')
+        const allLichChuaKQ = dsAllLich.filter((l) =>
+          kiemTraLichChuaBaoCao(l, { homNayISO: ngayMucTieu })
         );
 
         const nhanSuCoLichChuaKQ = Array.from(

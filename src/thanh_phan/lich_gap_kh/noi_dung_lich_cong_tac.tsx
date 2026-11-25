@@ -54,8 +54,11 @@ import type {
   LoaiLichLamViec,
   LoaiViecVanPhong
 } from '../../thu_vien/types/lich_gap_kh';
-import { NHAN_LOAI_VIEC_VAN_PHONG } from '../../thu_vien/types/lich_gap_kh';
-import { DANH_SACH_TRANG_THAI_LICH_GAP } from '../../thu_vien/types/lich_gap_kh';
+import {
+  NHAN_LOAI_VIEC_VAN_PHONG,
+  DANH_SACH_TRANG_THAI_LICH_GAP,
+  kiemTraLichChuaBaoCao
+} from '../../thu_vien/types/lich_gap_kh';
 import type { KhachHang, NguoiLienHe } from '../../thu_vien/types/khach_hang';
 import type { NhanSu, ChiNhanh } from '../../thu_vien/types/nhan_su';
 import {
@@ -555,14 +558,14 @@ export function NoiDungLichCongTac({
         if (l.loai_lich === 'van_phong') return false;
       }
       if (locTrangThaiNhanh === 'chua_bao_cao') {
-        const laChuaBC = l.ngay < homNayISO && l.trang_thai !== 'da_hoan_thanh' && l.trang_thai !== 'huy' && l.trang_thai !== 'doi_lich';
+        const laChuaBC = kiemTraLichChuaBaoCao(l, { homNayISO, phutHienTai });
         if (!laChuaBC) return false;
       } else if (locTrangThaiNhanh === 'da_hoan_thanh') {
         if (l.trang_thai !== 'da_hoan_thanh') return false;
       }
       return true;
     });
-  }, [dsLichTongHop, laQuanLy, nguoiDungHienTai?.id, chiNhanhLoc, nhanSuLoc, locLoaiLich, locTrangThaiNhanh, homNayISO, mapNhanSu]);
+  }, [dsLichTongHop, laQuanLy, nguoiDungHienTai?.id, chiNhanhLoc, nhanSuLoc, locLoaiLich, locTrangThaiNhanh, homNayISO, phutHienTai, mapNhanSu]);
 
   // 7 ngày của tuần đang xem
   const ds7NgayTuan = useMemo(() => layDanhSach7NgayTrongTuan(ngayDangXem), [ngayDangXem]);
@@ -668,16 +671,11 @@ export function NoiDungLichCongTac({
         const laThamGia = Array.isArray(l.nguoi_tham_gia_ids) && l.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id);
         if (!laChuTri && !laNguoiTao && !laThamGia) return false;
       }
-      return (
-        l.ngay < homNayISO &&
-        l.trang_thai !== 'da_hoan_thanh' &&
-        l.trang_thai !== 'huy' &&
-        l.trang_thai !== 'doi_lich'
-      );
+      return kiemTraLichChuaBaoCao(l, { homNayISO, phutHienTai });
     }).length;
 
     return { lichHomNay, lichTuanNay, lichThangNay, daHoanThanh, chuaBaoCao };
-  }, [dsLichLoc, dsLichTongHop, ds7NgayTuan, homNayISO, ngayDangXem, laQuanLy, nguoiDungHienTai?.id]);
+  }, [dsLichLoc, dsLichTongHop, ds7NgayTuan, homNayISO, phutHienTai, ngayDangXem, laQuanLy, nguoiDungHienTai?.id]);
 
   // Chuyển tuần / tháng trước - sau
   const diChuyenThoiGian = (huong: -1 | 1) => {
@@ -1556,11 +1554,7 @@ export function NoiDungLichCongTac({
                                 const daHoanThanh = lich.trang_thai === 'da_hoan_thanh';
                                 const daHuy = lich.trang_thai === 'huy';
                                 const laDoiLich = lich.trang_thai === 'doi_lich';
-                                const laQuaHanChuaBaoCao =
-                                  lich.ngay < homNayISO &&
-                                  !daHoanThanh &&
-                                  !daHuy &&
-                                  !laDoiLich;
+                                const laQuaHanChuaBaoCao = kiemTraLichChuaBaoCao(lich, { homNayISO, phutHienTai });
                                 const laNguoiDiCung = Boolean(
                                   nguoiDungHienTai?.id &&
                                   lich.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
@@ -1883,7 +1877,7 @@ export function NoiDungLichCongTac({
                             const daXong = lich.trang_thai === 'da_hoan_thanh';
                             const daHuy = lich.trang_thai === 'huy';
                             const laDoiLich = lich.trang_thai === 'doi_lich';
-                            const laQuaHanChuaBaoCao = lich.ngay < homNayISO && !daXong && !daHuy && !laDoiLich;
+                            const laQuaHanChuaBaoCao = kiemTraLichChuaBaoCao(lich, { homNayISO, phutHienTai });
 
                             return (
                               <div
@@ -2054,7 +2048,7 @@ export function NoiDungLichCongTac({
                                 const daXong = lich.trang_thai === 'da_hoan_thanh';
                                 const daHuy = lich.trang_thai === 'huy';
                                 const laDoiLich = lich.trang_thai === 'doi_lich';
-                                const laQuaHanChuaBaoCao = lich.ngay < homNayISO && !daXong && !daHuy && !laDoiLich;
+                                const laQuaHanChuaBaoCao = kiemTraLichChuaBaoCao(lich, { homNayISO, phutHienTai });
                                 const ns = mapNhanSu.get(lich.nguoi_phu_trach_id);
                                 const tenNVRutGon = rutGonTenNhanVienQuyChuan(ns?.ho_va_ten);
 
@@ -2385,7 +2379,7 @@ export function NoiDungLichCongTac({
                           const daXong = lich.trang_thai === 'da_hoan_thanh';
                           const daHuy = lich.trang_thai === 'huy';
                           const laDoiLich = lich.trang_thai === 'doi_lich';
-                          const laQuaHanChuaBaoCao = lich.ngay < homNayISO && !daXong && !daHuy && !laDoiLich;
+                          const laQuaHanChuaBaoCao = kiemTraLichChuaBaoCao(lich, { homNayISO, phutHienTai });
 
                           return (
                             <div

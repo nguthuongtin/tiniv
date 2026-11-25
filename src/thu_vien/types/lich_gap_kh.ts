@@ -105,3 +105,47 @@ export const DANH_SACH_TRANG_THAI_LICH_GAP: {
     mauDot: 'bg-rose-500'
   }
 ];
+
+/**
+ * Kiểm tra xem một lịch làm việc có bị tính là "Chưa báo cáo" hay không:
+ * - Nếu đã hoàn thành ('da_hoan_thanh'), đã hủy ('huy') hoặc đã dời lịch ('doi_lich'): false.
+ * - Nếu ngày lịch ở trong quá khứ (< homNayISO): true (quá hạn chưa báo cáo).
+ * - Nếu ngày lịch là hôm nay (=== homNayISO): CHỈ TÍNH là chưa báo cáo khi đã đến hoặc sau 20h00 (>= 1200 phút).
+ * - Nếu ngày lịch ở tương lai (> homNayISO): false.
+ */
+export const kiemTraLichChuaBaoCao = (
+  lich: { ngay: string; trang_thai?: string; ket_qua?: string | null },
+  mocThoiGian?: { homNayISO?: string; phutHienTai?: number }
+): boolean => {
+  if (lich.trang_thai === 'da_hoan_thanh' || lich.trang_thai === 'huy' || lich.trang_thai === 'doi_lich') {
+    return false;
+  }
+
+  const homNayISO =
+    mocThoiGian?.homNayISO ??
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+
+  // Ngày trong quá khứ -> Quá hạn chưa báo cáo
+  if (lich.ngay < homNayISO) {
+    return true;
+  }
+
+  // Ngày hôm nay -> Chỉ tính chưa báo cáo nếu đã đến hoặc qua mốc 20h00 (20 * 60 = 1200 phút)
+  if (lich.ngay === homNayISO) {
+    let phut = mocThoiGian?.phutHienTai;
+    if (phut === undefined) {
+      const chuoi = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+      }).format(new Date());
+      const [h, m] = chuoi.split(':').map(Number);
+      phut = (h || 0) * 60 + (m || 0);
+    }
+    return phut >= 20 * 60;
+  }
+
+  return false;
+};
+
