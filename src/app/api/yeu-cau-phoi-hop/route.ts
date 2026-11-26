@@ -214,20 +214,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Gửi Web Push trực tiếp tới điện thoại lãnh đạo & trưởng phòng (kể cả khi đã tắt app)
+    // 3. Gửi Web Push trực tiếp tới toàn bộ nhân sự phòng KHTH (và lãnh đạo) khi có yêu cầu mới
     try {
-      const snapLD = await db
+      let tpKhthId: string | null = null;
+      try {
+        const cfgDoc = await db.collection('cau_hinh_he_thong').doc('quy_trinh_phoi_hop').get();
+        if (cfgDoc.exists) {
+          tpKhthId = cfgDoc.data()?.tp_khth_id || null;
+        }
+      } catch {}
+
+      const snapNS = await db
         .collection('nguoi_dung')
-        .where('vai_tro', 'in', ['giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth', 'quan_tri_he_thong'])
         .where('trang_thai_du_lieu', '==', 'hoat_dong')
         .get();
-      const dsNhanIds = snapLD.docs
-        .map((d) => d.id)
-        .filter((uid) => uid !== body.nguoi_tao_id);
+
+      const dsNhanIds: string[] = [];
+      snapNS.docs.forEach((d) => {
+        const u = d.data() || {};
+        const vaiTro = (u.vai_tro || '').toLowerCase();
+        const chucVu = (u.chuc_vu || '').toLowerCase();
+        const phongBan = (u.phong_ban || u.phong_ban_ten || u.phong_ban_id || '').toLowerCase();
+
+        const laKHTH =
+          d.id === tpKhthId ||
+          vaiTro.includes('khth') ||
+          vaiTro.includes('ke_hoach') ||
+          chucVu.includes('khth') ||
+          chucVu.includes('kế hoạch') ||
+          phongBan.includes('khth') ||
+          phongBan.includes('kế hoạch') ||
+          vaiTro === 'giam_doc' ||
+          vaiTro === 'quan_tri_he_thong';
+
+        if (laKHTH && d.id !== body.nguoi_tao_id) {
+          dsNhanIds.push(d.id);
+        }
+      });
 
       if (dsNhanIds.length > 0) {
         guiWebPushChoNhanSu(
-          dsNhanIds,
+          Array.from(new Set(dsNhanIds)),
           '🔔 Yêu cầu phối hợp mới',
           `${body.ten_du_an || 'Dự án'}: ${body.noi_dung_yeu_cau}`,
           '/yeu-cau-ho-tro'
@@ -337,53 +364,129 @@ export async function PUT(req: NextRequest) {
         `• Dự án: ${hienTai.ten_du_an || hienTai.du_an_id}\n• Trạng thái mới: ${ttMoi}${body.ghi_chu_phan_hoi ? `\n• Ghi chú: ${body.ghi_chu_phan_hoi}` : ''}`
       ).catch(() => {});
 
-      // Gửi Web Push trực tiếp tới điện thoại (kể cả khi đã đóng app/khóa màn hình)
+      // Gửi Web Push trực tiếp tới các bên liên quan theo từng bước quy trình
       const tenDuAn = hienTai.ten_du_an || 'Dự án';
       const noiDung = body.ghi_chu_phan_hoi || hienTai.noi_dung_yeu_cau || '';
 
+      // Đọc cấu hình người phê duyệt từ Firestore
+      let cfgData: any = null;
+      try {
+        const cfgDoc = await db.collection('cau_hinh_he_thong').doc('quy_trinh_phoi_hop').get();
+        if (cfgDoc.exists) cfgData = cfgDoc.data();
+      } catch {}
+
       if (body.trang_thai === 'cho_khth_thuc_hien' || body.trang_thai === 'cho_cv_khth_thuc_hien') {
+        // KHTH đã nhận việc
         const dsNS = body.danh_sach_nhan_su_thuc_hien_ids || hienTai.danh_sach_nhan_su_thuc_hien_ids || [];
-        if (Array.isArray(dsNS) && dsNS.length > 0) {
+        const dsNhan = [...(Array.isArray(dsNS) ? dsNS : [])];
+        if (hienTai.nguoi_tao_id) dsNhan.push(hienTai.nguoi_tao_id);
+
+        if (dsNhan.length > 0) {
           guiWebPushChoNhanSu(
-            dsNS,
-            '📋 Bạn được phân công nhiệm vụ',
-            `${tenDuAn}: ${noiDung}`,
+            Array.from(new Set(dsNhan)),
+            '📋 KHTH đã tiếp nhận yêu cầu',
+            `${tenDuAn}: Đang triển khai thực hiện`,
+            '/yeu-cau-ho-tro'
+          ).catch(() => {});
+        }
+      } else if (body.trang_thai === 'cho_tpkh_duyet_ket_qua') {
+        // Bước 1: Nộp kết quả cho TP KHTH duyệt L1
+        const snapTPKH = await db
+          .collection('nguoi_dung')
+          .where('trang_thai_du_lieu', '==', 'hoat_dong')
+          .get();
+        const tpkhIds: string[] = [];
+        if (cfgData?.tp_khth_id) tpkhIds.push(cfgData.tp_khth_id);
+        snapTPKH.docs.forEach((d) => {
+          const u = d.data() || {};
+          const vt = (u.vai_tro || '').toLowerCase();
+          const cv = (u.chuc_vu || '').toLowerCase();
+          if (vt === 'truong_phong_khth' || cv.includes('tp khth') || (cv.includes('trưởng phòng') && cv.includes('kế hoạch'))) {
+            tpkhIds.push(d.id);
+          }
+        });
+        if (tpkhIds.length > 0) {
+          guiWebPushChoNhanSu(
+            Array.from(new Set(tpkhIds)),
+            '📝 Chờ TP KHTH duyệt (L1)',
+            `${tenDuAn}: Nhân viên KHTH đã nộp kết quả`,
+            '/yeu-cau-ho-tro'
+          ).catch(() => {});
+        }
+      } else if (body.trang_thai === 'cho_tpkd_duyet_ket_qua') {
+        // Bước 2: TP KHTH duyệt xong -> Chờ TPKD duyệt L2
+        const snapTPKD = await db
+          .collection('nguoi_dung')
+          .where('trang_thai_du_lieu', '==', 'hoat_dong')
+          .get();
+        const tpkdIds: string[] = [];
+        if (cfgData?.tp_kd_id) tpkdIds.push(cfgData.tp_kd_id);
+        snapTPKD.docs.forEach((d) => {
+          const u = d.data() || {};
+          const vt = (u.vai_tro || '').toLowerCase();
+          const cv = (u.chuc_vu || '').toLowerCase();
+          if (vt === 'truong_phong_kd' || cv.includes('tp kd') || (cv.includes('trưởng phòng') && cv.includes('kinh doanh'))) {
+            tpkdIds.push(d.id);
+          }
+        });
+        if (tpkdIds.length > 0) {
+          guiWebPushChoNhanSu(
+            Array.from(new Set(tpkdIds)),
+            '📝 Chờ TPKD duyệt (L2)',
+            `${tenDuAn}: TP KHTH đã duyệt kết quả`,
+            '/yeu-cau-ho-tro'
+          ).catch(() => {});
+        }
+      } else if (body.trang_thai === 'cho_giam_doc_duyet' || body.trang_thai === 'cho_lanh_dao_duyet') {
+        // Bước 3: TPKD duyệt xong -> Chờ Giám Đốc phê duyệt cuối cùng
+        const snapGD = await db
+          .collection('nguoi_dung')
+          .where('trang_thai_du_lieu', '==', 'hoat_dong')
+          .get();
+        const gdIds: string[] = [];
+        if (cfgData?.giam_doc_id) gdIds.push(cfgData.giam_doc_id);
+        snapGD.docs.forEach((d) => {
+          const u = d.data() || {};
+          const vt = (u.vai_tro || '').toLowerCase();
+          if (vt === 'giam_doc') {
+            gdIds.push(d.id);
+          }
+        });
+        if (gdIds.length > 0) {
+          guiWebPushChoNhanSu(
+            Array.from(new Set(gdIds)),
+            '⭐ Chờ Giám Đốc phê duyệt cuối',
+            `${tenDuAn}: TPKD đã duyệt, chờ GĐ phê duyệt`,
+            '/yeu-cau-ho-tro'
+          ).catch(() => {});
+        }
+      } else if (body.trang_thai === 'da_hoan_thanh' || body.trang_thai === 'da_phe_duyet') {
+        // Bước 4: Giám Đốc duyệt xong -> Kết quả về thẳng người tạo + nhân sự thực hiện
+        const dsNhanHoanThanh: string[] = [];
+        if (hienTai.nguoi_tao_id) dsNhanHoanThanh.push(hienTai.nguoi_tao_id);
+        const dsNS = body.danh_sach_nhan_su_thuc_hien_ids || hienTai.danh_sach_nhan_su_thuc_hien_ids || [];
+        if (Array.isArray(dsNS)) dsNhanHoanThanh.push(...dsNS);
+
+        if (dsNhanHoanThanh.length > 0) {
+          guiWebPushChoNhanSu(
+            Array.from(new Set(dsNhanHoanThanh)),
+            '✅ Kết quả đã được Giám Đốc phê duyệt',
+            `${tenDuAn}: Yêu cầu phối hợp đã hoàn tất`,
             '/yeu-cau-ho-tro'
           ).catch(() => {});
         }
       } else if (body.trang_thai === 'yeu_cau_chinh_sua') {
+        // Bị yêu cầu chỉnh sửa ở bất kỳ vị trí nào -> Báo cho nhân sự thực hiện + người tạo
+        const dsLienQuan: string[] = [];
         const dsNS = body.danh_sach_nhan_su_thuc_hien_ids || hienTai.danh_sach_nhan_su_thuc_hien_ids || [];
-        if (Array.isArray(dsNS) && dsNS.length > 0) {
+        if (Array.isArray(dsNS)) dsLienQuan.push(...dsNS);
+        if (hienTai.nguoi_tao_id) dsLienQuan.push(hienTai.nguoi_tao_id);
+
+        if (dsLienQuan.length > 0) {
           guiWebPushChoNhanSu(
-            dsNS,
-            '⚠️ Yêu cầu cần chỉnh sửa lại',
-            `${tenDuAn}: ${noiDung}`,
-            '/yeu-cau-ho-tro'
-          ).catch(() => {});
-        }
-      } else if (body.trang_thai === 'cho_tpkd_duyet_ket_qua' || body.trang_thai === 'cho_lanh_dao_duyet') {
-        db.collection('nguoi_dung')
-          .where('vai_tro', 'in', ['giam_doc', 'truong_phong', 'truong_phong_kd', 'truong_phong_khth', 'quan_tri_he_thong'])
-          .where('trang_thai_du_lieu', '==', 'hoat_dong')
-          .get()
-          .then((snap) => {
-            const ids = snap.docs.map((d) => d.id);
-            if (ids.length > 0) {
-              guiWebPushChoNhanSu(
-                ids,
-                '📝 Kết quả chờ duyệt nghiệm thu',
-                `${tenDuAn}: ${noiDung}`,
-                '/yeu-cau-ho-tro'
-              ).catch(() => {});
-            }
-          })
-          .catch(() => {});
-      } else if (body.trang_thai === 'da_phe_duyet') {
-        if (hienTai.nguoi_tao_id) {
-          guiWebPushChoNhanSu(
-            [hienTai.nguoi_tao_id],
-            '✅ Kết quả đã hoàn tất',
-            `${tenDuAn}: Kết quả phối hợp đã được duyệt, sẵn sàng lấy.`,
+            Array.from(new Set(dsLienQuan)),
+            '⚠️ Yêu cầu phối hợp cần chỉnh sửa',
+            `${tenDuAn}: ${noiDung || 'Vui lòng kiểm tra và hiệu chỉnh lại kết quả'}`,
             '/yeu-cau-ho-tro'
           ).catch(() => {});
         }

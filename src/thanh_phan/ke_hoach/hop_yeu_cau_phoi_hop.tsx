@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Sparkles,
   Check,
@@ -28,6 +28,7 @@ import {
   CalendarDays,
   ArrowRight,
   ShieldAlert,
+  ShieldCheck,
   FileCheck2,
   Eye,
   Plus,
@@ -69,13 +70,19 @@ import {
 } from '../../dich_vu/yeu_cau_phoi_hop/dich_vu_yeu_cau_phoi_hop';
 import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import { danhSachPhongBan } from '../../dich_vu/co_cau_to_chuc/dich_vu_phong_ban';
+import {
+  layCauHinhQuyTrinhPhoiHop,
+  langNgheCauHinhQuyTrinh,
+  type CauHinhQuyTrinhPhoiHop
+} from '../../dich_vu/cau_hinh/dich_vu_cau_hinh_quy_trinh_phoi_hop';
 
 type TabYeuCau =
+  | 'can_toi_xu_ly'
   | 'dang_chay'
-  | 'cho_tpkd'
-  | 'cho_tpkh'
+  | 'cho_khth_nhan'
   | 'khth_dang_lam'
-  | 'cho_sale'
+  | 'cho_duyet'
+  | 'can_chinh_sua'
   | 'da_hoan_thanh'
   | 'tat_ca';
 
@@ -96,9 +103,17 @@ export default function HopYeuCauPhoiHop({
   onMoChiTietDuAn,
   onMoModalTaoYeuCau
 }: Props) {
-  const [tabHienTai, setTabHienTai] = useState<TabYeuCau>('dang_chay');
+  const [tabHienTai, setTabHienTai] = useState<TabYeuCau>('can_toi_xu_ly');
   const [tuKhoaTim, setTuKhoaTim] = useState('');
   const [trangHienTai, setTrangHienTai] = useState(1);
+  const [cauHinhQuyTrinh, setCauHinhQuyTrinh] = useState<CauHinhQuyTrinhPhoiHop | null>(null);
+
+  useEffect(() => {
+    const unsub = langNgheCauHinhQuyTrinh((cfg) => {
+      setCauHinhQuyTrinh(cfg);
+    });
+    return () => unsub();
+  }, []);
   const SO_MUC_MOI_TRANG = 15;
   const [yeuCauDangXemLichSu, setYeuCauDangXemLichSu] = useState<YeuCauPhoiHop | null>(null);
   const [yeuCauDangXemChiTiet, setYeuCauDangXemChiTiet] = useState<YeuCauPhoiHop | null>(null);
@@ -325,12 +340,24 @@ export default function HopYeuCauPhoiHop({
     );
   }, [userPhongBanId, mapTenPhongBan, userChucVu]);
 
-  // Phân quyền theo chức vụ:
-  // - laTPKD: Trưởng phòng Kinh doanh
-  const laTPKD = coQuyenAdmin || vaiTro === 'truong_phong_kd' || (vaiTro === 'truong_phong' && isKDDepartment);
+  // Phân quyền theo cấu hình quản trị hệ thống hoặc chức vụ:
+  const laTPKD =
+    (cauHinhQuyTrinh?.tp_kd_id && cauHinhQuyTrinh.tp_kd_id === userId) ||
+    coQuyenAdmin ||
+    vaiTro === 'truong_phong_kd' ||
+    (vaiTro === 'truong_phong' && isKDDepartment);
 
-  // - laTPKH: Trưởng phòng KHTH
-  const laTPKH = coQuyenAdmin || vaiTro === 'truong_phong_khth' || (vaiTro === 'truong_phong' && isKHTHDepartment);
+  const laTPKH =
+    (cauHinhQuyTrinh?.tp_khth_id && cauHinhQuyTrinh.tp_khth_id === userId) ||
+    coQuyenAdmin ||
+    vaiTro === 'truong_phong_khth' ||
+    (vaiTro === 'truong_phong' && isKHTHDepartment);
+
+  const laGiamDoc =
+    (cauHinhQuyTrinh?.giam_doc_id && cauHinhQuyTrinh.giam_doc_id === userId) ||
+    coQuyenAdmin ||
+    vaiTro === 'giam_doc' ||
+    vaiTro.includes('giam_doc');
 
   // Kiểm tra yêu cầu có phải do user hiện tại tạo hay không
   const laNguoiTaoCuaYeuCau = (yc: YeuCauPhoiHop) => {
@@ -354,7 +381,7 @@ export default function HopYeuCauPhoiHop({
   };
 
   // Quản lý hoặc Ban giám đốc: Toàn quyền xem, điều phối & duyệt
-  const laQuanLyHoacAdmin = coQuyenAdmin || laTPKD || laTPKH;
+  const laQuanLyHoacAdmin = coQuyenAdmin || laTPKD || laTPKH || laGiamDoc;
 
   const kiemTraDuocGiaoDichDanh = (yc: YeuCauPhoiHop): boolean => {
     const tenHienTai = nguoiDungHienTai?.ho_va_ten?.trim().toLowerCase();
@@ -383,7 +410,7 @@ export default function HopYeuCauPhoiHop({
     const tatCa = danhSachYeuCau
       .filter((x) => x.trang_thai_du_lieu !== 'da_xoa')
       .map((x) => ({ ...x, trang_thai: chuanHoaTrangThaiYeuCau(x.trang_thai) }));
-    if (!userId || laQuanLyHoacAdmin) {
+    if (!userId || laQuanLyHoacAdmin || isKHTHDepartment) {
       return tatCa;
     }
 
@@ -410,58 +437,132 @@ export default function HopYeuCauPhoiHop({
     nguoiDungHienTai?.email
   ]);
 
+  // Hàm kiểm tra yêu cầu có đang chờ chính người dùng hiện tại xử lý hay không
+  const kiemTraCanToiXuLy = useCallback(
+    (yc: YeuCauPhoiHop): boolean => {
+      if (yc.trang_thai === 'da_hoan_thanh') return false;
+
+      const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
+      const duocGiao = kiemTraDuocGiaoDichDanh(yc);
+
+      // 1. Chờ KHTH nhận việc: Tất cả nhân sự phòng KHTH (hoặc TP KHTH / Admin)
+      if (
+        (yc.trang_thai === 'cho_khth_tiep_nhan' ||
+          yc.trang_thai === 'cho_tpkh_tiep_nhan' ||
+          yc.trang_thai === 'cho_tpkd_duyet') &&
+        (isKHTHDepartment || laTPKH || coQuyenAdmin)
+      ) {
+        return true;
+      }
+
+      // 2. KHTH đang thực hiện: Nhân sự được phân công nhận việc (hoặc Admin)
+      if (
+        (yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') &&
+        (duocGiao || coQuyenAdmin)
+      ) {
+        return true;
+      }
+
+      // 3. Chờ TP KHTH duyệt Lần 1: Chỉ TP KHTH (hoặc Admin)
+      if (yc.trang_thai === 'cho_tpkh_duyet_ket_qua' && (laTPKH || coQuyenAdmin)) {
+        return true;
+      }
+
+      // 4. Chờ TPKD duyệt Lần 2: Chỉ TPKD (hoặc Admin)
+      if (
+        (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') &&
+        (laTPKD || coQuyenAdmin)
+      ) {
+        return true;
+      }
+
+      // 5. Chờ Giám Đốc duyệt cuối: Chỉ Giám Đốc (hoặc Admin)
+      if (yc.trang_thai === 'cho_giam_doc_duyet' && (laGiamDoc || coQuyenAdmin)) {
+        return true;
+      }
+
+      // 6. Cần chỉnh sửa: Người tạo hoặc Chuyên viên KHTH phụ trách
+      if (
+        yc.trang_thai === 'yeu_cau_chinh_sua' &&
+        (laNguoiTao || duocGiao || isKHTHDepartment || coQuyenAdmin)
+      ) {
+        return true;
+      }
+
+      return false;
+    },
+    [isKHTHDepartment, laTPKH, laTPKD, laGiamDoc, coQuyenAdmin, userId, nguoiDungHienTai]
+  );
+
   // Đếm số lượng badge cho từng tab
   const thongKeTabs = useMemo(() => {
+    let canToiXuLy = 0;
     let dangChay = 0;
-    let choTPKD = 0;
-    let choTPKH = 0;
+    let choKhthNhan = 0;
     let khthDangLam = 0;
-    let choSale = 0;
+    let choDuyet = 0;
+    let canChinhSua = 0;
     let daHoanThanh = 0;
 
     for (const yc of dsNguon) {
-      if (yc.trang_thai === 'da_hoan_thanh') {
+      if (kiemTraCanToiXuLy(yc)) {
+        canToiXuLy++;
+      }
+
+      if (yc.trang_thai === 'da_hoan_thanh' || yc.trang_thai === 'da_phe_duyet') {
         daHoanThanh++;
       } else {
         dangChay++;
       }
 
-      if (yc.trang_thai === 'cho_tpkd_duyet' || yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') {
-        choTPKD++;
-      }
-      if (yc.trang_thai === 'cho_tpkh_tiep_nhan' || yc.trang_thai === 'cho_tpkh_duyet_ket_qua') {
-        choTPKH++;
-      }
-      if (yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') {
+      if (
+        yc.trang_thai === 'cho_khth_tiep_nhan' ||
+        yc.trang_thai === 'cho_tpkh_tiep_nhan' ||
+        yc.trang_thai === 'cho_tpkd_duyet'
+      ) {
+        choKhthNhan++;
+      } else if (
+        yc.trang_thai === 'cho_cv_khth_thuc_hien' ||
+        yc.trang_thai === 'cho_khth_thuc_hien'
+      ) {
         khthDangLam++;
-      }
-      if (yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet' || yc.trang_thai === 'yeu_cau_chinh_sua') {
-        choSale++;
+      } else if (
+        yc.trang_thai === 'cho_tpkh_duyet_ket_qua' ||
+        yc.trang_thai === 'cho_tpkd_duyet_ket_qua' ||
+        yc.trang_thai === 'cho_lanh_dao_duyet' ||
+        yc.trang_thai === 'cho_giam_doc_duyet' ||
+        yc.trang_thai === 'cho_sale_nghiem_thu'
+      ) {
+        choDuyet++;
+      } else if (yc.trang_thai === 'yeu_cau_chinh_sua') {
+        canChinhSua++;
       }
     }
 
     return {
+      can_toi_xu_ly: canToiXuLy,
       dang_chay: dangChay,
-      cho_tpkd: choTPKD,
-      cho_tpkh: choTPKH,
+      cho_khth_nhan: choKhthNhan,
       khth_dang_lam: khthDangLam,
-      cho_sale: choSale,
+      cho_duyet: choDuyet,
+      can_chinh_sua: canChinhSua,
       da_hoan_thanh: daHoanThanh,
       tat_ca: dsNguon.length
     };
-  }, [dsNguon]);
+  }, [dsNguon, kiemTraCanToiXuLy]);
 
   // Lọc theo Tab đang chọn
   const dsTheoTab = useMemo(() => {
-    if (tabHienTai === 'dang_chay') return dsNguon.filter((yc) => yc.trang_thai !== 'da_hoan_thanh');
-    if (tabHienTai === 'cho_tpkd') {
-      return dsNguon.filter(
-        (yc) => yc.trang_thai === 'cho_tpkd_duyet' || yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet'
-      );
+    if (tabHienTai === 'can_toi_xu_ly') return dsNguon.filter(kiemTraCanToiXuLy);
+    if (tabHienTai === 'dang_chay') {
+      return dsNguon.filter((yc) => yc.trang_thai !== 'da_hoan_thanh' && yc.trang_thai !== 'da_phe_duyet');
     }
-    if (tabHienTai === 'cho_tpkh') {
+    if (tabHienTai === 'cho_khth_nhan') {
       return dsNguon.filter(
-        (yc) => yc.trang_thai === 'cho_tpkh_tiep_nhan' || yc.trang_thai === 'cho_tpkh_duyet_ket_qua'
+        (yc) =>
+          yc.trang_thai === 'cho_khth_tiep_nhan' ||
+          yc.trang_thai === 'cho_tpkh_tiep_nhan' ||
+          yc.trang_thai === 'cho_tpkd_duyet'
       );
     }
     if (tabHienTai === 'khth_dang_lam') {
@@ -469,19 +570,24 @@ export default function HopYeuCauPhoiHop({
         (yc) => yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien'
       );
     }
-    if (tabHienTai === 'cho_sale') {
+    if (tabHienTai === 'cho_duyet') {
       return dsNguon.filter(
         (yc) =>
-          yc.trang_thai === 'cho_sale_nghiem_thu' ||
-          yc.trang_thai === 'da_phe_duyet' ||
-          yc.trang_thai === 'yeu_cau_chinh_sua'
+          yc.trang_thai === 'cho_tpkh_duyet_ket_qua' ||
+          yc.trang_thai === 'cho_tpkd_duyet_ket_qua' ||
+          yc.trang_thai === 'cho_lanh_dao_duyet' ||
+          yc.trang_thai === 'cho_giam_doc_duyet' ||
+          yc.trang_thai === 'cho_sale_nghiem_thu'
       );
     }
+    if (tabHienTai === 'can_chinh_sua') {
+      return dsNguon.filter((yc) => yc.trang_thai === 'yeu_cau_chinh_sua');
+    }
     if (tabHienTai === 'da_hoan_thanh') {
-      return dsNguon.filter((yc) => yc.trang_thai === 'da_hoan_thanh');
+      return dsNguon.filter((yc) => yc.trang_thai === 'da_hoan_thanh' || yc.trang_thai === 'da_phe_duyet');
     }
     return dsNguon;
-  }, [dsNguon, tabHienTai]);
+  }, [dsNguon, tabHienTai, kiemTraCanToiXuLy]);
 
   // Lọc theo từ khóa tìm kiếm
   const dsSauLoc = useMemo(() => {
@@ -730,13 +836,33 @@ export default function HopYeuCauPhoiHop({
     }
   };
 
-  // BƯỚC 4: TPKH Duyệt KQ của CV & Chuyển TPKD
+  // NHÂN VIÊN KHTH: Bấm nhận yêu cầu trực tiếp
+  const handleNhanYeuCauKHTH = async (yc: YeuCauPhoiHop) => {
+    try {
+      const tenHienTai = nguoiDungHienTai?.ho_va_ten || 'Chuyên viên KHTH';
+      const res = await chuyenBuocYeuCauPhoiHop({
+        yeuCauId: yc.id,
+        trangThaiMoi: 'cho_cv_khth_thuc_hien',
+        nguoiNhanMoiId: userId,
+        tenNguoiNhanMoi: tenHienTai,
+        chucVuNguoiNhanMoi: (nguoiDungHienTai as any)?.chuc_vu || 'Chuyên viên KHTH',
+        danhSachNhanSuThucHien: [{ id: userId, ho_va_ten: tenHienTai }],
+        ghiChu: `${tenHienTai} đã bấm nhận yêu cầu thực hiện`,
+        nguoiThucHien: nguoiDungHienTai
+      });
+      if (res && onCapNhatYeuCau) onCapNhatYeuCau(res);
+    } catch {
+      alert('Có lỗi khi nhận yêu cầu.');
+    }
+  };
+
+  // BƯỚC 3: TP KHTH Duyệt Lần 1 & Chuyển TPKD
   const handleTPKHDuyetKetQua = async (yc: YeuCauPhoiHop) => {
     try {
       const res = await chuyenBuocYeuCauPhoiHop({
         yeuCauId: yc.id,
         trangThaiMoi: 'cho_tpkd_duyet_ket_qua',
-        ghiChu: 'TPKH đã kiểm tra đạt yêu cầu & chuyển TPKD phê duyệt',
+        ghiChu: `TP KHTH (${nguoiDungHienTai?.ho_va_ten || 'Trưởng phòng'}) đã duyệt kết quả Lần 1 & chuyển TPKD phê duyệt`,
         nguoiThucHien: nguoiDungHienTai
       });
       if (res && onCapNhatYeuCau) onCapNhatYeuCau(res);
@@ -745,13 +871,13 @@ export default function HopYeuCauPhoiHop({
     }
   };
 
-  // BƯỚC 5: TPKD Phê duyệt kết quả & Chuyển Sale
+  // BƯỚC 4: TPKD Duyệt Lần 2 & Chuyển Giám Đốc
   const handleTPKDDuyetKetQua = async (yc: YeuCauPhoiHop) => {
     try {
       const res = await chuyenBuocYeuCauPhoiHop({
         yeuCauId: yc.id,
-        trangThaiMoi: 'cho_sale_nghiem_thu',
-        ghiChu: 'TPKD đã duyệt kết quả và chuyển Sale nghiệm thu',
+        trangThaiMoi: 'cho_giam_doc_duyet',
+        ghiChu: `TPKD (${nguoiDungHienTai?.ho_va_ten || 'Trưởng phòng KD'}) đã duyệt kết quả Lần 2 & chuyển Giám Đốc phê duyệt cuối`,
         nguoiThucHien: nguoiDungHienTai
       });
       if (res && onCapNhatYeuCau) onCapNhatYeuCau(res);
@@ -760,13 +886,28 @@ export default function HopYeuCauPhoiHop({
     }
   };
 
-  // BƯỚC 6: Sale Nghiệm thu & Hoàn tất
+  // BƯỚC 5: Giám Đốc Phê duyệt cuối cùng & Trả kết quả về Người tạo
+  const handleGiamDocDuyetKetQua = async (yc: YeuCauPhoiHop) => {
+    try {
+      const res = await chuyenBuocYeuCauPhoiHop({
+        yeuCauId: yc.id,
+        trangThaiMoi: 'da_hoan_thanh',
+        ghiChu: `Giám Đốc (${nguoiDungHienTai?.ho_va_ten || 'Ban Giám Đốc'}) đã phê duyệt hoàn tất, kết quả trả về Người tạo YC`,
+        nguoiThucHien: nguoiDungHienTai
+      });
+      if (res && onCapNhatYeuCau) onCapNhatYeuCau(res);
+    } catch {
+      alert('Có lỗi khi phê duyệt hoàn tất.');
+    }
+  };
+
+  // BƯỚC 6: Sale Nghiệm thu & Hoàn tất (nếu có)
   const handleSaleNghiemThuHoanTat = async (yc: YeuCauPhoiHop) => {
     try {
       const res = await chuyenBuocYeuCauPhoiHop({
         yeuCauId: yc.id,
         trangThaiMoi: 'da_hoan_thanh',
-        ghiChu: 'Sale đã nghiệm thu đạt yêu cầu & hoàn tất quy trình',
+        ghiChu: 'Người tạo đã xác nhận đạt yêu cầu & hoàn tất quy trình',
         nguoiThucHien: nguoiDungHienTai
       });
       if (res && onCapNhatYeuCau) onCapNhatYeuCau(res);
@@ -958,7 +1099,7 @@ export default function HopYeuCauPhoiHop({
     }
   };
 
-  // Danh sách các tab hiển thị
+  // Danh sách các tab hiển thị khoa học, định hướng hành động rõ ràng
   const danhSachTabs: {
     key: TabYeuCau;
     nhan: string;
@@ -966,34 +1107,40 @@ export default function HopYeuCauPhoiHop({
     badgeColor?: string;
   }[] = [
     {
+      key: 'can_toi_xu_ly',
+      nhan: '⚡ Cần tôi xử lý',
+      count: thongKeTabs.can_toi_xu_ly,
+      badgeColor: 'bg-rose-600 text-white animate-pulse'
+    },
+    {
       key: 'dang_chay',
-      nhan: 'Đang chạy',
+      nhan: 'Đang thực hiện',
       count: thongKeTabs.dang_chay,
       badgeColor: 'bg-blue-600 text-white'
     },
     {
-      key: 'cho_tpkd',
-      nhan: 'Chờ duyệt',
-      count: thongKeTabs.cho_tpkd,
+      key: 'cho_khth_nhan',
+      nhan: '1. Chờ KHTH nhận',
+      count: thongKeTabs.cho_khth_nhan,
       badgeColor: 'bg-amber-100 text-amber-800'
     },
     {
-      key: 'cho_tpkh',
-      nhan: 'Chờ điều phối',
-      count: thongKeTabs.cho_tpkh,
-      badgeColor: 'bg-indigo-100 text-indigo-800'
-    },
-    {
       key: 'khth_dang_lam',
-      nhan: 'Đang xử lý',
+      nhan: '2. KHTH đang làm',
       count: thongKeTabs.khth_dang_lam,
       badgeColor: 'bg-sky-100 text-sky-800'
     },
     {
-      key: 'cho_sale',
-      nhan: 'Chờ nghiệm thu',
-      count: thongKeTabs.cho_sale,
-      badgeColor: 'bg-teal-100 text-teal-800'
+      key: 'cho_duyet',
+      nhan: '3. Chờ duyệt',
+      count: thongKeTabs.cho_duyet,
+      badgeColor: 'bg-purple-100 text-purple-800'
+    },
+    {
+      key: 'can_chinh_sua',
+      nhan: 'Cần sửa lại',
+      count: thongKeTabs.can_chinh_sua,
+      badgeColor: 'bg-rose-100 text-rose-800'
     },
     {
       key: 'da_hoan_thanh',
@@ -1021,35 +1168,28 @@ export default function HopYeuCauPhoiHop({
       tenTPKH: tenTPKHMacDinh
     });
 
-    if (yc.trang_thai === 'cho_tpkd_duyet') {
-      buocHienTai = 2;
-    } else if (yc.trang_thai === 'cho_tpkh_tiep_nhan') {
-      buocHienTai = 3;
+    if (yc.trang_thai === 'cho_khth_tiep_nhan' || yc.trang_thai === 'cho_tpkh_tiep_nhan' || yc.trang_thai === 'cho_tpkd_duyet') {
+      buocHienTai = 1;
     } else if (yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') {
-      buocHienTai = 3;
+      buocHienTai = 2;
     } else if (yc.trang_thai === 'cho_tpkh_duyet_ket_qua') {
-      buocHienTai = 4;
+      buocHienTai = 3;
     } else if (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') {
       buocHienTai = 4;
-    } else if (yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet') {
+    } else if (yc.trang_thai === 'cho_giam_doc_duyet') {
       buocHienTai = 5;
-    } else if (yc.trang_thai === 'da_hoan_thanh') {
+    } else if (yc.trang_thai === 'da_hoan_thanh' || yc.trang_thai === 'da_phe_duyet' || yc.trang_thai === 'cho_sale_nghiem_thu') {
       buocHienTai = 6;
     } else if (yc.trang_thai === 'yeu_cau_chinh_sua') {
-      buocHienTai = 1;
+      buocHienTai = 2;
     }
 
     const dsCacBuoc = [
-      { so: 1, ten: 'Khởi tạo', nguoiPhuTrach: tenTaoRutGon || 'Người tạo' },
-      { so: 2, ten: 'Duyệt chuyển', nguoiPhuTrach: tenTPKDRutGon || 'Tiếp nhận' },
-      { so: 3, ten: 'Thực hiện', nguoiPhuTrach: tenCVRutGon || tenTPKHRutGon || 'Xử lý' },
-      {
-        so: 4,
-        ten: 'Duyệt KQ',
-        nguoiPhuTrach:
-          [tenTPKHRutGon, tenTPKDRutGon].filter(Boolean).join(' ➔ ') || 'Kiểm duyệt'
-      },
-      { so: 5, ten: 'Nghiệm thu', nguoiPhuTrach: tenTaoRutGon || 'Nghiệm thu' }
+      { so: 1, ten: 'Gửi KHTH', nguoiPhuTrach: tenTaoRutGon || 'Người tạo' },
+      { so: 2, ten: 'KHTH làm', nguoiPhuTrach: tenCVRutGon || 'Chuyên viên' },
+      { so: 3, ten: 'TP KHTH', nguoiPhuTrach: tenTPKHRutGon || 'Duyệt L1' },
+      { so: 4, ten: 'TPKD', nguoiPhuTrach: tenTPKDRutGon || 'Duyệt L2' },
+      { so: 5, ten: 'Giám Đốc', nguoiPhuTrach: 'Duyệt cuối' }
     ];
 
     return (
@@ -1106,25 +1246,23 @@ export default function HopYeuCauPhoiHop({
   const layHanhDongNhanh = (yc: YeuCauPhoiHop) => {
     const laNguoiTao = laNguoiTaoCuaYeuCau(yc);
     const duocGiaoDichDanh = kiemTraDuocGiaoDichDanh(yc);
-    const coQuyenNopKetQua = duocGiaoDichDanh || laTPKH || coQuyenAdmin;
+    const coQuyenNopKetQua = duocGiaoDichDanh || isKHTHDepartment || laTPKH || coQuyenAdmin;
     const daCoLinkKetQua = layDanhSachLinkKetQua(yc).length > 0;
-    const choCVKhiChuaChuyenTPKH =
-      yc.trang_thai === 'cho_tpkh_tiep_nhan' &&
-      duocGiaoDichDanh &&
-      !laTPKH &&
-      !coQuyenAdmin &&
-      !laNguoiTao &&
-      !(yc.ghi_chu_phan_hoi || '').startsWith('TPKD yêu cầu TPKH');
 
-    if (yc.trang_thai === 'cho_tpkd_duyet') {
-      if (laTPKD || coQuyenAdmin) {
+    // 1. Chờ KHTH nhận việc
+    if (
+      yc.trang_thai === 'cho_khth_tiep_nhan' ||
+      yc.trang_thai === 'cho_tpkh_tiep_nhan' ||
+      yc.trang_thai === 'cho_tpkd_duyet'
+    ) {
+      if (isKHTHDepartment || laTPKH || coQuyenAdmin) {
         return {
-          label: 'Duyệt & Chuyển',
-          icon: UserCheck,
-          className: 'bg-blue-600 hover:bg-blue-700 text-white',
+          label: '⚡ Nhận việc',
+          icon: CheckCircle2,
+          className: 'bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-2xs',
           onClick: (e: React.MouseEvent) => {
             e.stopPropagation();
-            moModalTPKDChuyen(yc);
+            void handleNhanYeuCauKHTH(yc);
           }
         };
       }
@@ -1141,35 +1279,73 @@ export default function HopYeuCauPhoiHop({
       }
     }
 
-    if (yc.trang_thai === 'yeu_cau_chinh_sua' && (laNguoiTao || coQuyenAdmin)) {
+    // 2. KHTH đang thực hiện
+    if (
+      yc.trang_thai === 'cho_cv_khth_thuc_hien' ||
+      yc.trang_thai === 'cho_khth_thuc_hien'
+    ) {
+      if (coQuyenNopKetQua) {
+        return {
+          label: daCoLinkKetQua ? 'Nộp lại KQ' : 'Nộp kết quả',
+          icon: Send,
+          className: 'bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-2xs',
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            moModalNopDrive(yc);
+          }
+        };
+      }
+    }
+
+    // 3. Chờ TP KHTH duyệt Lần 1
+    if (yc.trang_thai === 'cho_tpkh_duyet_ket_qua' && (laTPKH || coQuyenAdmin)) {
       return {
-        label: 'Sửa & Gửi lại',
-        icon: Pencil,
-        className: 'bg-amber-600 hover:bg-amber-700 text-white',
+        label: 'Duyệt L1 ➔ TPKD',
+        icon: Check,
+        className: 'bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-2xs',
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
-          batDauSua(yc);
+          handleTPKHDuyetKetQua(yc);
         }
       };
     }
 
-    if (yc.trang_thai === 'cho_tpkh_tiep_nhan') {
-      if (laTPKH || coQuyenAdmin) {
+    // 4. Chờ TPKD duyệt Lần 2
+    if (
+      (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') &&
+      (laTPKD || coQuyenAdmin)
+    ) {
+      return {
+        label: 'Duyệt L2 ➔ Giám Đốc',
+        icon: Check,
+        className: 'bg-purple-600 hover:bg-purple-700 text-white font-bold shadow-2xs',
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          handleTPKDDuyetKetQua(yc);
+        }
+      };
+    }
+
+    // 5. Chờ Giám Đốc duyệt Cuối cùng
+    if (yc.trang_thai === 'cho_giam_doc_duyet' && (laGiamDoc || coQuyenAdmin)) {
+      return {
+        label: 'Phê duyệt (Hoàn tất)',
+        icon: ShieldCheck,
+        className: 'bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-2xs',
+        onClick: (e: React.MouseEvent) => {
+          e.stopPropagation();
+          handleGiamDocDuyetKetQua(yc);
+        }
+      };
+    }
+
+    // 6. Cần chỉnh sửa
+    if (yc.trang_thai === 'yeu_cau_chinh_sua') {
+      if (coQuyenNopKetQua) {
         return {
-          label: 'Giao việc',
-          icon: Users,
-          className: 'bg-blue-600 hover:bg-blue-700 text-white',
-          onClick: (e: React.MouseEvent) => {
-            e.stopPropagation();
-            moModalTiepNhanTPKH(yc, 'giao_cv');
-          }
-        };
-      }
-      if (choCVKhiChuaChuyenTPKH) {
-        return {
-          label: daCoLinkKetQua ? 'Nộp lại KQ' : 'Nộp kết quả',
+          label: 'Nộp lại kết quả',
           icon: Send,
-          className: 'bg-teal-600 hover:bg-teal-700 text-white',
+          className: 'bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-2xs',
           onClick: (e: React.MouseEvent) => {
             e.stopPropagation();
             moModalNopDrive(yc);
@@ -1178,9 +1354,9 @@ export default function HopYeuCauPhoiHop({
       }
       if (laNguoiTao) {
         return {
-          label: 'Sửa yêu cầu',
+          label: 'Sửa & Gửi lại',
           icon: Pencil,
-          className: 'bg-amber-50 border border-amber-300 text-amber-800 hover:bg-amber-100',
+          className: 'bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-2xs',
           onClick: (e: React.MouseEvent) => {
             e.stopPropagation();
             batDauSua(yc);
@@ -1189,64 +1365,8 @@ export default function HopYeuCauPhoiHop({
       }
     }
 
-    if (
-      (yc.trang_thai === 'cho_cv_khth_thuc_hien' || yc.trang_thai === 'cho_khth_thuc_hien') &&
-      coQuyenNopKetQua
-    ) {
-      return {
-        label: daCoLinkKetQua ? 'Nộp lại KQ' : 'Nộp kết quả',
-        icon: Send,
-        className: 'bg-teal-600 hover:bg-teal-700 text-white',
-        onClick: (e: React.MouseEvent) => {
-          e.stopPropagation();
-          moModalNopDrive(yc);
-        }
-      };
-    }
-
-    if (yc.trang_thai === 'cho_tpkh_duyet_ket_qua' && (laTPKH || coQuyenAdmin)) {
-      return {
-        label: 'Duyệt KQ',
-        icon: Check,
-        className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-        onClick: (e: React.MouseEvent) => {
-          e.stopPropagation();
-          handleTPKHDuyetKetQua(yc);
-        }
-      };
-    }
-
-    if (
-      (yc.trang_thai === 'cho_tpkd_duyet_ket_qua' || yc.trang_thai === 'cho_lanh_dao_duyet') &&
-      (laTPKD || coQuyenAdmin)
-    ) {
-      return {
-        label: 'Duyệt bàn giao',
-        icon: Check,
-        className: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-        onClick: (e: React.MouseEvent) => {
-          e.stopPropagation();
-          handleTPKDDuyetKetQua(yc);
-        }
-      };
-    }
-
-    if (
-      (yc.trang_thai === 'cho_sale_nghiem_thu' || yc.trang_thai === 'da_phe_duyet') &&
-      (laNguoiTao || laTPKD || coQuyenAdmin)
-    ) {
-      return {
-        label: 'Nghiệm thu',
-        icon: Check,
-        className: 'bg-indigo-600 hover:bg-indigo-700 text-white',
-        onClick: (e: React.MouseEvent) => {
-          e.stopPropagation();
-          handleSaleNghiemThuHoanTat(yc);
-        }
-      };
-    }
-
-    if (yc.trang_thai === 'da_hoan_thanh' && (laNguoiTao || laTPKD || coQuyenAdmin)) {
+    // 7. Đã hoàn thành
+    if (yc.trang_thai === 'da_hoan_thanh' && (laNguoiTao || coQuyenAdmin)) {
       return {
         label: 'Yêu cầu lại',
         icon: RotateCcw,
@@ -1256,9 +1376,7 @@ export default function HopYeuCauPhoiHop({
           moModalYeuCauSua(yc, 'sale_yeu_cau_lai');
         }
       };
-    }
-
-    return null;
+    }    return null;
   };
 
   const homNayISO = new Intl.DateTimeFormat('en-CA').format(new Date());
@@ -1530,8 +1648,31 @@ export default function HopYeuCauPhoiHop({
           )}
         </div>
 
-        {/* Header Mobile: Thống kê 3 thẻ nhanh (Đang chạy, Cần xử lý, Hoàn thành) trung tính, không dùng màu */}
+        {/* Header Mobile: Thống kê 3 thẻ nhanh (Cần tôi xử lý, Đang thực hiện, Hoàn thành) */}
         <div className="sm:hidden grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setTabHienTai('can_toi_xu_ly');
+              setTrangHienTai(1);
+            }}
+            className={cn(
+              'p-2.5 rounded-2xl border text-center transition active:scale-95 cursor-pointer',
+              tabHienTai === 'can_toi_xu_ly'
+                ? 'bg-rose-700 text-white border-rose-700 shadow-xs'
+                : thongKeTabs.can_toi_xu_ly > 0
+                ? 'bg-rose-50 border-rose-300 text-rose-800'
+                : 'bg-white border-slate-200/90 text-slate-800 hover:bg-slate-50'
+            )}
+          >
+            <div className="text-base font-black tabular-nums leading-none">
+              {thongKeTabs.can_toi_xu_ly}
+            </div>
+            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'can_toi_xu_ly' ? 'text-rose-100' : 'text-rose-700')}>
+              Cần xử lý
+            </div>
+          </button>
+
           <button
             type="button"
             onClick={() => {
@@ -1550,27 +1691,6 @@ export default function HopYeuCauPhoiHop({
             </div>
             <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'dang_chay' ? 'text-slate-300' : 'text-slate-500')}>
               Đang chạy
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setTabHienTai('cho_tpkd');
-              setTrangHienTai(1);
-            }}
-            className={cn(
-              'p-2.5 rounded-2xl border text-center transition active:scale-95 cursor-pointer',
-              tabHienTai === 'cho_tpkd' || tabHienTai === 'cho_tpkh' || tabHienTai === 'khth_dang_lam' || tabHienTai === 'cho_sale'
-                ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                : 'bg-white border-slate-200/90 text-slate-800 hover:bg-slate-50'
-            )}
-          >
-            <div className="text-base font-black tabular-nums leading-none">
-              {thongKeTabs.cho_tpkd + thongKeTabs.cho_tpkh + thongKeTabs.khth_dang_lam + thongKeTabs.cho_sale}
-            </div>
-            <div className={cn('text-[10.5px] font-bold mt-1 leading-none', tabHienTai === 'cho_tpkd' || tabHienTai === 'cho_tpkh' || tabHienTai === 'khth_dang_lam' || tabHienTai === 'cho_sale' ? 'text-slate-300' : 'text-slate-500')}>
-              Cần xử lý
             </div>
           </button>
 
@@ -1681,7 +1801,9 @@ export default function HopYeuCauPhoiHop({
         {dsHienThi.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
             <p>
-              {tabHienTai === 'tat_ca'
+              {tabHienTai === 'can_toi_xu_ly'
+                ? 'Tuyệt vời! Hiện tại bạn không có yêu cầu nào đang chờ xử lý.'
+                : tabHienTai === 'tat_ca'
                 ? 'Không có yêu cầu phối hợp nào.'
                 : `Không có yêu cầu nào ở mục "${danhSachTabs.find((t) => t.key === tabHienTai)?.nhan}".`}
             </p>

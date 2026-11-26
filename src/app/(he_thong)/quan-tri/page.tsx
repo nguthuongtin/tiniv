@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   MapPin,
-  Sparkles
+  Sparkles,
+  GitMerge
 } from 'lucide-react';
 import { cn } from '../../../thu_vien/utils/cn';
 import { useStoreXacThuc } from '../../../thu_vien/zustand/store_xac_thuc';
@@ -88,6 +89,7 @@ import BangGiaiDoanPipeline from '../../../thanh_phan/quan_tri/bang_giai_doan_pi
 import BangSanPhamDichVu from '../../../thanh_phan/quan_tri/bang_san_pham_dich_vu';
 import BangDiaGioiHanhChinh from '../../../thanh_phan/quan_tri/bang_dia_gioi_hanh_chinh';
 import BangCauHinhAI from '../../../thanh_phan/quan_tri/bang_cau_hinh_ai';
+import BangCauHinhQuyTrinhPhoiHop from '../../../thanh_phan/quan_tri/bang_cau_hinh_quy_trinh_phoi_hop';
 
 type TabQuanTri =
   | 'chi_nhanh'
@@ -98,7 +100,8 @@ type TabQuanTri =
   | 'giai_doan'
   | 'san_pham'
   | 'dia_gioi'
-  | 'cau_hinh_ai';
+  | 'cau_hinh_ai'
+  | 'quy_trinh_phoi_hop';
 
 interface ToastItem {
   id: number;
@@ -125,6 +128,7 @@ const NHOM_DIEU_HUONG = [
   {
     nhom: 'Quy trình & Nghiệp vụ',
     cacTab: [
+      { key: 'quy_trinh_phoi_hop' as TabQuanTri, nhan: 'Quy trình phối hợp', icon: GitMerge },
       { key: 'giai_doan' as TabQuanTri, nhan: 'Giai đoạn Pipeline', icon: Settings },
       { key: 'san_pham' as TabQuanTri, nhan: 'Sản phẩm & Dịch vụ', icon: Package2 },
       { key: 'dia_gioi' as TabQuanTri, nhan: 'Địa giới hành chính', icon: MapPin }
@@ -529,6 +533,8 @@ export default function TrangQuanTri() {
           )}
 
           {tabHienTai === 'cau_hinh_ai' && <BangCauHinhAI />}
+
+          {tabHienTai === 'quy_trinh_phoi_hop' && <BangCauHinhQuyTrinhPhoiHop />}
         </div>
       </div>
 

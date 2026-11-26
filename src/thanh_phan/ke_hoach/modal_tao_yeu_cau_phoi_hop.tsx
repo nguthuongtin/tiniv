@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Send, Link2, Calendar, FolderKanban, Loader2, Sparkles, Search, Check, CheckCircle2, ChevronDown, User, Plus, Trash2 } from 'lucide-react';
+import { X, Send, Link2, Calendar, FolderKanban, Loader2, Sparkles, Search, Check, CheckCircle2, ChevronDown, User, Users, Plus, Trash2 } from 'lucide-react';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
 import { danhSachNhanSu } from '../../dich_vu/nhan_su/dich_vu_nhan_su';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
@@ -180,9 +180,10 @@ export default function ModalTaoYeuCauPhoiHop({
           danh_sach_link_dau_vao: chuanHoaDanhSachLink(dsLinkDrive),
           han_hoan_thanh: hanXong || null,
           nguoi_nhan_id: nguoiNhanChon?.id || null,
-          ten_nguoi_nhan: nguoiNhanChon?.ho_va_ten || null,
-          chuc_vu_nguoi_nhan: nguoiNhanChon?.chuc_vu || null,
-          vai_tro_nguoi_nhan: nguoiNhanChon?.vai_tro || null
+          ten_nguoi_nhan: nguoiNhanChon?.ho_va_ten || 'Phòng Kế hoạch Tổng hợp',
+          chuc_vu_nguoi_nhan: nguoiNhanChon?.chuc_vu || 'KHTH',
+          vai_tro_nguoi_nhan: nguoiNhanChon?.vai_tro || null,
+          trang_thai_ban_dau: 'cho_khth_tiep_nhan'
         },
         userHieuLuc
       );
@@ -444,126 +445,25 @@ export default function ModalTaoYeuCauPhoiHop({
             />
           </div>
 
-          {/* Gửi đích danh cho nhân sự */}
-          <div className="space-y-1.5 relative">
+          {/* Nơi tiếp nhận: Gửi thẳng phòng Kế hoạch Tổng hợp */}
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <User className="size-3.5 text-primary" />
-                <span>Gửi đích danh cho *</span>
+                <Users className="size-3.5 text-primary" />
+                <span>Nơi tiếp nhận yêu cầu</span>
               </label>
-              {(() => {
-                const ttDuKien = xacDinhTrangThaiBanDauYeuCau({
-                  vai_tro_nguoi_nhan: nguoiNhanChon?.vai_tro,
-                  chuc_vu_nguoi_nhan: nguoiNhanChon?.chuc_vu
-                });
-                const cfgDuKien = NHAN_TRANG_THAI_YEU_CAU[ttDuKien];
-                const nhanDuKien = layNhanTrangThaiDichDanh(
-                  {
-                    trang_thai: ttDuKien,
-                    ten_nguoi_tao: userHieuLuc?.ho_va_ten || null,
-                    ten_nguoi_nhan: nguoiNhanChon?.ho_va_ten || null,
-                    chuc_vu_nguoi_nhan: nguoiNhanChon?.chuc_vu || null,
-                    danh_sach_ten_nhan_su_thuc_hien:
-                      ttDuKien === 'cho_cv_khth_thuc_hien' && nguoiNhanChon?.ho_va_ten
-                        ? [nguoiNhanChon.ho_va_ten]
-                        : []
-                  },
-                  {
-                    tenTPKD: tenTPKDMacDinh,
-                    tenTPKH: tenTPKHMacDinh
-                  }
-                );
-                return (
-                  <span
-                    className={cn(
-                      'px-2 py-0.5 rounded-full text-[10.5px] font-semibold border',
-                      cfgDuKien.mauBadge
-                    )}
-                  >
-                    {nhanDuKien}
-                  </span>
-                );
-              })()}
+              <span className="px-2 py-0.5 rounded-full text-[10.5px] font-semibold border bg-amber-50 text-amber-700 border-amber-200">
+                1. Chờ KHTH nhận
+              </span>
             </div>
-
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setMoDropdownNguoiNhan(!moDropdownNguoiNhan)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50/80 flex items-center justify-between gap-2 text-xs font-medium text-left transition cursor-pointer"
-              >
-                {nguoiNhanChon ? (
-                  <div className="flex items-center gap-2 truncate">
-                    <div className="size-6 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-[10px] shrink-0">
-                      {nguoiNhanChon.ho_va_ten.slice(0, 2).toUpperCase()}
-                    </div>
-                    <span className="truncate font-semibold text-slate-900">{nguoiNhanChon.ho_va_ten}</span>
-                    {nguoiNhanChon.chuc_vu && (
-                      <span className="text-[11px] text-slate-400 truncate">({nguoiNhanChon.chuc_vu})</span>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-slate-400">Chọn người tiếp nhận...</span>
-                )}
-                <ChevronDown className="size-3.5 text-slate-400 shrink-0" />
-              </button>
-
-              {moDropdownNguoiNhan && (
-                <>
-                  <div
-                    className="fixed inset-0 z-30"
-                    onClick={() => setMoDropdownNguoiNhan(false)}
-                  />
-                  <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl flex flex-col">
-                    <div className="p-2 border-b border-slate-100 bg-slate-50">
-                      <div className="relative">
-                        <Search className="size-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                        <input
-                          type="text"
-                          value={tuKhoaNguoiNhan}
-                          onChange={(e) => setTuKhoaNguoiNhan(e.target.value)}
-                          placeholder="Tìm theo tên hoặc chức vụ..."
-                          className="w-full h-8 pl-8 pr-2.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-primary"
-                          autoFocus
-                        />
-                      </div>
-                    </div>
-                    <div className="overflow-y-auto max-h-44 divide-y divide-slate-100">
-                      {dsNhanSuLoc.length === 0 ? (
-                        <div className="p-3 text-center text-xs text-slate-500 italic">
-                          Không tìm thấy nhân sự
-                        </div>
-                      ) : (
-                        dsNhanSuLoc.map((ns) => (
-                          <div
-                            key={ns.id}
-                            onClick={() => {
-                              setNguoiNhanId(ns.id);
-                              setMoDropdownNguoiNhan(false);
-                            }}
-                            className="p-2.5 hover:bg-slate-50 cursor-pointer transition text-xs flex items-center justify-between gap-2"
-                          >
-                            <div className="min-w-0 flex-1 flex items-center gap-2">
-                              <div className="size-6 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-[10px] shrink-0">
-                                {ns.ho_va_ten.slice(0, 2).toUpperCase()}
-                              </div>
-                              <div className="truncate">
-                                <span className="font-semibold text-slate-900 block truncate">{ns.ho_va_ten}</span>
-                                {ns.chuc_vu && (
-                                  <span className="text-[10.5px] text-slate-500 block truncate">{ns.chuc_vu}</span>
-                                )}
-                              </div>
-                            </div>
-                            {nguoiNhanId === ns.id && (
-                              <Check className="size-3.5 text-primary shrink-0" />
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs text-slate-600 space-y-1">
+              <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                <span>Phòng Kế hoạch Tổng hợp (KHTH)</span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Yêu cầu sẽ được chuyển đến tất cả nhân viên phòng KHTH. Nhân viên chuyên trách sẽ trực tiếp bấm nhận việc để triển khai.
+              </p>
             </div>
           </div>
 

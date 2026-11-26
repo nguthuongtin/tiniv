@@ -1,16 +1,18 @@
 export type TrangThaiYeuCauPhoiHop =
-  | 'cho_tpkd_duyet' // 1. Chờ TPKD duyệt & chuyển KHTH
-  | 'cho_tpkh_tiep_nhan' // 2. Chờ TPKH tiếp nhận (Tự làm hoặc Giao CV)
-  | 'cho_cv_khth_thuc_hien' // 3. CV KHTH đang thực hiện
-  | 'cho_tpkh_duyet_ket_qua' // 4. Chờ TPKH duyệt kết quả của CV
-  | 'cho_tpkd_duyet_ket_qua' // 5. Chờ TPKD duyệt kết quả
-  | 'cho_sale_nghiem_thu' // 6. Chờ Sale nghiệm thu kết quả
-  | 'da_hoan_thanh' // 7. Đã hoàn thành toàn bộ quy trình
+  | 'cho_khth_tiep_nhan' // 1. Mới tạo, đến thẳng phòng KHTH (chờ NV KHTH bấm nhận việc)
+  | 'cho_cv_khth_thuc_hien' // 2. NV KHTH đang thực hiện hồ sơ
+  | 'cho_tpkh_duyet_ket_qua' // 3. NV nộp kết quả, chờ TP KHTH duyệt L1
+  | 'cho_tpkd_duyet_ket_qua' // 4. TP KHTH duyệt xong, chờ TPKD duyệt L2
+  | 'cho_giam_doc_duyet' // 5. TPKD duyệt xong, chờ Giám Đốc duyệt cuối
+  | 'da_hoan_thanh' // 6. Giám Đốc duyệt xong, kết quả trả thẳng về người tạo
+  | 'yeu_cau_chinh_sua' // Cần chỉnh sửa lại
   // Tương thích dữ liệu cũ
-  | 'cho_khth_thuc_hien' // Tương đương cho_cv_khth_thuc_hien
-  | 'cho_lanh_dao_duyet' // Tương đương cho_tpkd_duyet_ket_qua
-  | 'da_phe_duyet' // Tương đương cho_sale_nghiem_thu
-  | 'yeu_cau_chinh_sua'; // Cần chỉnh sửa lại
+  | 'cho_tpkd_duyet'
+  | 'cho_tpkh_tiep_nhan'
+  | 'cho_khth_thuc_hien'
+  | 'cho_lanh_dao_duyet'
+  | 'cho_sale_nghiem_thu'
+  | 'da_phe_duyet';
 
 export interface NhatKyXuLyYeuCau {
   id: string;
@@ -69,67 +71,81 @@ export const NHAN_TRANG_THAI_YEU_CAU: Record<
   TrangThaiYeuCauPhoiHop,
   { label: string; mauBadge: string; textClass: string; moTa: string; buocSo: number }
 > = {
-  cho_tpkd_duyet: {
-    label: 'Chờ TPKD duyệt',
-    mauBadge: 'bg-amber-50 text-amber-800 border-amber-200',
-    textClass: 'text-amber-800',
-    moTa: 'Đang chờ Trưởng phòng Kinh doanh xem xét & chuyển KHTH',
+  cho_khth_tiep_nhan: {
+    label: 'Chờ KHTH nhận',
+    mauBadge: 'bg-blue-50 text-blue-800 border-blue-200',
+    textClass: 'text-blue-800',
+    moTa: 'Đã gửi đến phòng KHTH, chờ nhân viên bấm nhận việc',
     buocSo: 1
   },
   cho_tpkh_tiep_nhan: {
-    label: 'Chờ TPKH điều phối',
+    label: 'Chờ KHTH nhận',
     mauBadge: 'bg-blue-50 text-blue-800 border-blue-200',
     textClass: 'text-blue-800',
-    moTa: 'Đang ở Trưởng phòng KHTH (Tự thực hiện hoặc Giao CV)',
-    buocSo: 2
+    moTa: 'Đã gửi đến phòng KHTH, chờ nhân viên bấm nhận việc',
+    buocSo: 1
+  },
+  cho_tpkd_duyet: {
+    label: 'Chờ KHTH nhận',
+    mauBadge: 'bg-blue-50 text-blue-800 border-blue-200',
+    textClass: 'text-blue-800',
+    moTa: 'Đã gửi đến phòng KHTH, chờ nhân viên bấm nhận việc',
+    buocSo: 1
   },
   cho_cv_khth_thuc_hien: {
-    label: 'CV KHTH đang xử lý',
+    label: 'KHTH đang làm',
     mauBadge: 'bg-sky-50 text-sky-800 border-sky-200',
     textClass: 'text-sky-800',
     moTa: 'Chuyên viên KHTH đang thực hiện hồ sơ',
-    buocSo: 3
+    buocSo: 2
   },
   cho_khth_thuc_hien: {
-    label: 'CV KHTH đang xử lý',
+    label: 'KHTH đang làm',
     mauBadge: 'bg-sky-50 text-sky-800 border-sky-200',
     textClass: 'text-sky-800',
     moTa: 'Chuyên viên KHTH đang thực hiện hồ sơ',
-    buocSo: 3
+    buocSo: 2
   },
   cho_tpkh_duyet_ket_qua: {
-    label: 'Chờ TPKH duyệt KQ',
+    label: 'Chờ TP KHTH duyệt (L1)',
     mauBadge: 'bg-indigo-50 text-indigo-800 border-indigo-200',
     textClass: 'text-indigo-800',
-    moTa: 'CV KHTH đã nộp, đang chờ TPKH kiểm tra kết quả',
-    buocSo: 4
+    moTa: 'CV KHTH đã nộp, chờ Trưởng phòng KHTH duyệt Lần 1',
+    buocSo: 3
   },
   cho_tpkd_duyet_ket_qua: {
-    label: 'Chờ TPKD duyệt KQ',
+    label: 'Chờ TPKD duyệt (L2)',
     mauBadge: 'bg-purple-50 text-purple-800 border-purple-200',
     textClass: 'text-purple-800',
-    moTa: 'KHTH đã gửi kết quả, đang chờ TPKD phê duyệt bàn giao',
-    buocSo: 5
+    moTa: 'TP KHTH đã duyệt, chờ Trưởng phòng Kinh doanh duyệt Lần 2',
+    buocSo: 4
   },
   cho_lanh_dao_duyet: {
-    label: 'Chờ TPKD duyệt KQ',
+    label: 'Chờ TPKD duyệt (L2)',
     mauBadge: 'bg-purple-50 text-purple-800 border-purple-200',
     textClass: 'text-purple-800',
-    moTa: 'KHTH đã gửi kết quả, đang chờ TPKD phê duyệt bàn giao',
+    moTa: 'TP KHTH đã duyệt, chờ Trưởng phòng Kinh doanh duyệt Lần 2',
+    buocSo: 4
+  },
+  cho_giam_doc_duyet: {
+    label: 'Chờ Giám Đốc duyệt',
+    mauBadge: 'bg-amber-50 text-amber-900 border-amber-300 ring-1 ring-amber-300/40',
+    textClass: 'text-amber-900',
+    moTa: 'TPKD đã duyệt, chờ Ban Giám Đốc phê duyệt cuối cùng',
     buocSo: 5
   },
   cho_sale_nghiem_thu: {
-    label: 'Chờ Sale nghiệm thu',
-    mauBadge: 'bg-teal-50 text-teal-800 border-teal-200',
-    textClass: 'text-teal-800',
-    moTa: 'Đã có kết quả duyệt, chờ Sale nghiệm thu hoàn tất',
+    label: 'Đã hoàn thành',
+    mauBadge: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    textClass: 'text-emerald-800',
+    moTa: 'Đã hoàn tất quy trình phối hợp',
     buocSo: 6
   },
   da_phe_duyet: {
-    label: 'Chờ Sale nghiệm thu',
-    mauBadge: 'bg-teal-50 text-teal-800 border-teal-200',
-    textClass: 'text-teal-800',
-    moTa: 'Đã có kết quả duyệt, chờ Sale nghiệm thu',
+    label: 'Đã hoàn thành',
+    mauBadge: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    textClass: 'text-emerald-800',
+    moTa: 'Đã hoàn tất quy trình phối hợp',
     buocSo: 6
   },
   yeu_cau_chinh_sua: {
@@ -137,14 +153,14 @@ export const NHAN_TRANG_THAI_YEU_CAU: Record<
     mauBadge: 'bg-rose-50 text-rose-800 border-rose-200',
     textClass: 'text-rose-800',
     moTa: 'Yêu cầu rà soát và chỉnh sửa lại',
-    buocSo: 1
+    buocSo: 2
   },
   da_hoan_thanh: {
     label: 'Đã hoàn thành',
     mauBadge: 'bg-emerald-50 text-emerald-800 border-emerald-200',
     textClass: 'text-emerald-800',
-    moTa: 'Đã hoàn tất quy trình phối hợp',
-    buocSo: 7
+    moTa: 'Giám Đốc đã duyệt, hoàn tất bàn giao kết quả',
+    buocSo: 6
   }
 };
 
@@ -162,12 +178,13 @@ export function chuanHoaTrangThaiYeuCau(trangThai?: string | null): TrangThaiYeu
   const s = (trangThai || '').trim();
   if (s === 'hoan_thanh' || s === 'da_hoan_thanh') return 'da_hoan_thanh';
   if (s === 'can_chinh_sua' || s === 'yeu_cau_chinh_sua') return 'yeu_cau_chinh_sua';
+  if (s === 'cho_giam_doc_duyet') return 'cho_giam_doc_duyet';
   if (s === 'cho_lanh_dao_duyet' || s === 'cho_tpkd_duyet_ket_qua') return 'cho_tpkd_duyet_ket_qua';
-  if (s === 'da_phe_duyet' || s === 'cho_sale_nghiem_thu') return 'cho_sale_nghiem_thu';
+  if (s === 'da_phe_duyet' || s === 'cho_sale_nghiem_thu') return 'da_hoan_thanh';
   if (s === 'cho_khth_thuc_hien' || s === 'cho_cv_khth_thuc_hien') return 'cho_cv_khth_thuc_hien';
   if (s === 'cho_tpkh_duyet_ket_qua') return 'cho_tpkh_duyet_ket_qua';
-  if (s === 'cho_tpkh_tiep_nhan') return 'cho_tpkh_tiep_nhan';
-  return 'cho_tpkd_duyet';
+  if (s === 'cho_tpkh_tiep_nhan' || s === 'cho_khth_tiep_nhan' || s === 'cho_tpkd_duyet') return 'cho_khth_tiep_nhan';
+  return 'cho_khth_tiep_nhan';
 }
 
 export function xacDinhTrangThaiBanDauYeuCau(params: {
@@ -177,48 +194,8 @@ export function xacDinhTrangThaiBanDauYeuCau(params: {
 }): TrangThaiYeuCauPhoiHop {
   if (params.trang_thai_ban_dau) return chuanHoaTrangThaiYeuCau(params.trang_thai_ban_dau);
 
-  const vt = (params.vai_tro_nguoi_nhan || '').toLowerCase().trim();
-  const cv = (params.chuc_vu_nguoi_nhan || '').toLowerCase().trim();
-
-  if (
-    vt === 'truong_phong_khth' ||
-    (vt === 'truong_phong' && (cv.includes('khth') || cv.includes('kế hoạch') || cv.includes('tổng hợp'))) ||
-    cv.includes('tp khth') ||
-    cv.includes('tp kh') ||
-    cv.includes('trưởng phòng khth') ||
-    cv.includes('trưởng phòng kế hoạch') ||
-    (cv.includes('trưởng phòng') && (cv.includes('kế hoạch') || cv.includes('tổng hợp')))
-  ) {
-    return 'cho_tpkh_tiep_nhan';
-  }
-
-  if (
-    vt === 'truong_phong_kd' ||
-    vt === 'giam_doc' ||
-    vt === 'quan_tri_he_thong' ||
-    vt === 'admin' ||
-    (vt === 'truong_phong' && (cv.includes('kinh doanh') || cv.includes('kd') || cv.includes('sales'))) ||
-    cv.includes('tpkd') ||
-    cv.includes('tp kd') ||
-    cv.includes('trưởng phòng kinh doanh') ||
-    cv.includes('giám đốc')
-  ) {
-    return 'cho_tpkd_duyet';
-  }
-
-  if (
-    vt === 'nhan_vien_khth' ||
-    vt === 'nhan_vien_ky_thuat' ||
-    cv.includes('khth') ||
-    cv.includes('kế hoạch') ||
-    cv.includes('tổng hợp') ||
-    cv.includes('kỹ thuật') ||
-    cv.includes('chuyên viên')
-  ) {
-    return 'cho_cv_khth_thuc_hien';
-  }
-
-  return 'cho_tpkd_duyet';
+  // Mặc định quy trình mới: Yêu cầu tạo mới sẽ đến thẳng phòng KHTH
+  return 'cho_khth_tiep_nhan';
 }
 
 export function chuanHoaDanhSachLink(
@@ -405,13 +382,10 @@ export function layNhanTrangThaiDichDanh(
     (tenNhan && !laChucVuCV && !laTPKDHoacGD(undefined, yc.chuc_vu_nguoi_nhan) ? tenNhan : null);
 
   switch (tt) {
+    case 'cho_khth_tiep_nhan':
+    case 'cho_tpkh_tiep_nhan':
     case 'cho_tpkd_duyet':
-      return tenTPKD ? `Chờ ${rutGonTenVietTat(tenTPKD)} duyệt` : 'Chờ duyệt yêu cầu';
-    case 'cho_tpkh_tiep_nhan': {
-      const nguoiDieuPhoi =
-        (tenNhan && laChucVuTPKH ? tenNhan : null) || tenTPKH;
-      return nguoiDieuPhoi ? `Chờ ${rutGonTenVietTat(nguoiDieuPhoi)} điều phối` : 'Chờ điều phối';
-    }
+      return 'Chờ KHTH nhận việc';
     case 'cho_cv_khth_thuc_hien':
     case 'cho_khth_thuc_hien': {
       const dsCV = (yc.danh_sach_ten_nhan_su_thuc_hien || [])
@@ -423,20 +397,22 @@ export function layNhanTrangThaiDichDanh(
           : tenNhan && !laTPKDHoacGD(undefined, yc.chuc_vu_nguoi_nhan)
             ? rutGonTenVietTat(tenNhan)
             : null;
-      return nguoiLam ? `${nguoiLam} đang xử lý` : 'Đang xử lý';
+      return nguoiLam ? `${nguoiLam} đang làm` : 'KHTH đang làm';
     }
     case 'cho_tpkh_duyet_ket_qua':
-      return tenTPKH ? `Chờ ${rutGonTenVietTat(tenTPKH)} duyệt KQ` : 'Chờ duyệt kết quả';
+      return tenTPKH ? `Chờ ${rutGonTenVietTat(tenTPKH)} duyệt L1` : 'Chờ TP KHTH duyệt L1';
     case 'cho_tpkd_duyet_ket_qua':
     case 'cho_lanh_dao_duyet': {
       const nguoiDuyetKQ = tenTPKDTuLog || options?.tenTPKD?.trim() || tenTPKD;
-      return nguoiDuyetKQ ? `Chờ ${rutGonTenVietTat(nguoiDuyetKQ)} duyệt KQ` : 'Chờ duyệt bàn giao';
+      return nguoiDuyetKQ ? `Chờ ${rutGonTenVietTat(nguoiDuyetKQ)} duyệt L2` : 'Chờ TPKD duyệt L2';
     }
+    case 'cho_giam_doc_duyet':
+      return 'Chờ Giám Đốc duyệt';
     case 'cho_sale_nghiem_thu':
     case 'da_phe_duyet':
-      return tenTao ? `Chờ ${rutGonTenVietTat(tenTao)} nghiệm thu` : 'Chờ nghiệm thu';
+      return 'Đã hoàn thành';
     case 'yeu_cau_chinh_sua':
-      return tenTao ? `Chờ ${rutGonTenVietTat(tenTao)} chỉnh sửa` : 'Chờ chỉnh sửa';
+      return 'Cần chỉnh sửa';
     case 'da_hoan_thanh':
       return 'Đã hoàn thành';
     default:
