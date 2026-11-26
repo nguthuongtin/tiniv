@@ -1026,59 +1026,13 @@ export const dongBoYeuCauPhoiHopSangLichVaBaoCaoNgay = async (params: {
     const ngayLich =
       yeuCau.han_hoan_thanh ||
       (yeuCau.ngay_tao ? yeuCau.ngay_tao.slice(0, 10) : new Date().toISOString().slice(0, 10));
-    const tieuDeLich = `⚡ [Hỗ trợ] ${yeuCau.ten_du_an || 'Dự án'}: ${yeuCau.noi_dung_yeu_cau}`;
-    const docId = `lich_yc_${yeuCau.id}`;
     const daXong = yeuCau.trang_thai === 'da_hoan_thanh';
-    const now = new Date().toISOString();
 
-    const nguoiThamGia = Array.from(
-      new Set([
-        yeuCau.nguoi_tao_id,
-        ...(yeuCau.nguoi_nhan_id ? [yeuCau.nguoi_nhan_id] : []),
-        ...(yeuCau.danh_sach_nhan_su_thuc_hien_ids || [])
-      ])
-    ).filter(Boolean);
+    // LƯU Ý QUAN TRỌNG: Không tự động đưa yêu cầu phối hợp (KHTH) vào Lịch làm việc/công tác (lich_gap_kh).
+    // Lịch làm việc chỉ tập trung vào bộ phận kinh doanh.
+    // Tại đây chỉ đồng bộ ghi nhận vào Báo cáo công việc ngày nếu cần thiết:
 
-    const lichPayload: any = {
-      id: docId,
-      tieu_de: tieuDeLich,
-      ngay: ngayLich,
-      gio_bat_dau: '09:00',
-      gio_ket_thuc: '11:00',
-      dia_diem: 'Văn phòng / Phối hợp nội bộ',
-      loai_lich: 'van_phong',
-      loai_viec_van_phong: 'khac',
-      du_an_id: yeuCau.du_an_id || null,
-      khach_hang_id: yeuCau.khach_hang_id || null,
-      ten_khach_hang: yeuCau.ten_khach_hang || yeuCau.ten_du_an || null,
-      nguoi_phu_trach_id: yeuCau.nguoi_nhan_id || yeuCau.nguoi_tao_id,
-      nguoi_thuc_hien_id: yeuCau.nguoi_nhan_id || yeuCau.nguoi_tao_id,
-      nguoi_tao_id: yeuCau.nguoi_tao_id,
-      nguoi_tham_gia_ids: nguoiThamGia,
-      trang_thai: daXong ? 'da_hoan_thanh' : 'sap_toi',
-      noi_dung: yeuCau.noi_dung_yeu_cau,
-      ket_qua: yeuCau.ghi_chu_phan_hoi || (daXong ? 'Đã hoàn thành phối hợp' : null),
-      ngay_tao: yeuCau.ngay_tao || now,
-      ngay_cap_nhat: now,
-      da_xoa: false
-    };
-
-    // 1. Lưu vào lich_gap_kh (Firestore)
-    try {
-      await setDoc(thamChieuBanGhi('lich_gap_kh', docId), lichPayload, { merge: true });
-    } catch {
-      try {
-        await setDoc(thamChieuBanGhi('cong_viec', docId), lichPayload, { merge: true });
-      } catch {}
-    }
-
-    // 2. Đồng bộ vào Kế hoạch tuần & Báo cáo tuần
-    await dongBoLichGapSangKeHoachTuanVaBaoCaoNgay({
-      lich: lichPayload as LichGapKH,
-      nguoiThucHien: nguoiThucHien as any
-    });
-
-    // 3. Ghi nhận vào Báo cáo công việc ngày cho người tạo yêu cầu
+    // 1. Ghi nhận vào Báo cáo công việc ngày cho người tạo yêu cầu
     const dongBaoCaoTao = daXong
       ? `✅ [Hoàn tất hỗ trợ] ${yeuCau.ten_du_an}: ${yeuCau.noi_dung_yeu_cau}`
       : `⚡ [Yêu cầu hỗ trợ] ${yeuCau.ten_du_an}: ${yeuCau.noi_dung_yeu_cau}`;
