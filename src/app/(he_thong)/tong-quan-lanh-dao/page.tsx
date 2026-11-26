@@ -167,10 +167,17 @@ const nhanDienNhomSanPham = (
 const NHAN_GIAI_DOAN_CHUAN: Record<string, { label: string; mauBadge: string }> = {
   moi_tao: { label: 'Mới tạo', mauBadge: 'bg-slate-100 text-slate-700 border-slate-200' },
   tiep_can: { label: 'Tiếp cận', mauBadge: 'bg-blue-50 text-blue-700 border-blue-200' },
+  khao_sat: { label: 'Khảo sát', mauBadge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
   len_giai_phap: { label: 'Lên giải pháp', mauBadge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-  bao_gia: { label: 'Báo giá & Tờ trình', mauBadge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-  dam_phan: { label: 'Đàm phán & Xin vốn', mauBadge: 'bg-purple-50 text-purple-700 border-purple-200' },
+  bao_gia: { label: 'Báo giá', mauBadge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  co_chu_truong: { label: 'Có chủ trương', mauBadge: 'bg-sky-50 text-sky-700 border-sky-200' },
+  dam_phan: { label: 'Đàm phán', mauBadge: 'bg-purple-50 text-purple-700 border-purple-200' },
   ky_hop_dong: { label: 'Ký hợp đồng', mauBadge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  tt_dot_1: { label: 'TT đợt 1', mauBadge: 'bg-teal-50 text-teal-700 border-teal-200' },
+  trien_khai: { label: 'Triển khai', mauBadge: 'bg-teal-50 text-teal-700 border-teal-200' },
+  nghiem_thu: { label: 'Nghiệm thu', mauBadge: 'bg-green-50 text-green-700 border-green-200' },
+  hoan_thanh: { label: 'Hoàn thành', mauBadge: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  hoan_thanh_tt_dot_2: { label: 'Hoàn thành', mauBadge: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
   da_hoan_thanh: { label: 'Đã hoàn thành', mauBadge: 'bg-emerald-100 text-emerald-800 border-emerald-300' }
 };
 
@@ -650,12 +657,12 @@ export default function TrangTongQuanLanhDao() {
           </div>
         </div>
 
-        {/* 4. Nút thắt cần KHTH & Lãnh đạo hỗ trợ */}
+        {/* 4. Dự án chờ KHTH lên phương án & báo giá */}
         <div
           onClick={() =>
             setDuAnModal({
               mo: true,
-              tieuDe: `Dự án đang chờ Lên giải pháp & Báo giá / Tờ trình`,
+              tieuDe: `Dự án đang chờ Lên giải pháp & Báo giá`,
               danhSachDuAn: thongKeLanhDao.duAnChoGiaiPhapBaoGia
             })
           }
@@ -674,7 +681,12 @@ export default function TrangTongQuanLanhDao() {
             <span className="text-xs font-normal text-slate-400">dự án</span>
           </div>
           <div className="text-xs text-slate-500 font-medium truncate">
-            Cần đẩy nhanh tờ trình để xã xin vốn
+            Giá trị:{' '}
+            <strong className="text-slate-800">
+              {DINH_DANG_TIEN_NGAN_GON(
+                thongKeLanhDao.duAnChoGiaiPhapBaoGia.reduce((s, d) => s + (Number(d.gia_tri_du_kien) || 0), 0)
+              )}
+            </strong>
           </div>
         </div>
       </div>
