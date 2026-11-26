@@ -536,10 +536,31 @@ export async function DELETE(req: NextRequest) {
 
     const dataYC = docSnap.data() || {};
 
-    // RÀNG BUỘC BẢO MẬT: Chỉ người tạo mới được quyền xóa yêu cầu đó
-    if (nguoiXoaId && dataYC.nguoi_tao_id && dataYC.nguoi_tao_id !== nguoiXoaId) {
+    // KIỂM TRA QUYỀN: Người tạo HOẶC Quản trị hệ thống / Ban Giám đốc đều có quyền xóa bất kỳ yêu cầu nào
+    let duocPhepXoa = false;
+    if (!nguoiXoaId || nguoiXoaId === dataYC.nguoi_tao_id) {
+      duocPhepXoa = true;
+    } else {
+      const userDoc = await db.collection('nguoi_dung').doc(nguoiXoaId).get();
+      if (userDoc.exists) {
+        const uData = userDoc.data() || {};
+        const vaiTro = (uData.vai_tro || '').toLowerCase();
+        const chucVu = (uData.chuc_vu || '').toLowerCase();
+        if (
+          vaiTro === 'quan_tri_he_thong' ||
+          vaiTro === 'giam_doc' ||
+          vaiTro.includes('admin') ||
+          chucVu.includes('giám đốc') ||
+          chucVu.includes('quản trị')
+        ) {
+          duocPhepXoa = true;
+        }
+      }
+    }
+
+    if (!duocPhepXoa) {
       return NextResponse.json(
-        { thanh_cong: false, thong_diep: 'Chỉ người tạo yêu cầu mới có quyền xóa yêu cầu này.' },
+        { thanh_cong: false, thong_diep: 'Bạn không có quyền xóa yêu cầu này. Chỉ người tạo hoặc Admin/Giám đốc mới có quyền.' },
         { status: 403 }
       );
     }

@@ -1089,8 +1089,11 @@ export default function HopYeuCauPhoiHop({
     if (!yeuCauDangXoa) return;
     setDangXoa(true);
     try {
-      const ok = await xoaYeuCauPhoiHop(yeuCauDangXoa.id, nguoiDungHienTai);
-      if (ok && onXoaYeuCau) onXoaYeuCau(yeuCauDangXoa.id);
+      const xoaId = yeuCauDangXoa.id;
+      const ok = await xoaYeuCauPhoiHop(xoaId, nguoiDungHienTai);
+      if (ok && onXoaYeuCau) {
+        onXoaYeuCau(xoaId);
+      }
       setYeuCauDangXoa(null);
     } catch {
       alert('Có lỗi khi xóa yêu cầu.');
@@ -1939,6 +1942,16 @@ export default function HopYeuCauPhoiHop({
                             >
                               <Eye className="size-3.5 text-slate-500" />
                             </button>
+                            {(coQuyenAdmin || laNguoiTaoCuaYeuCau(yc)) && (
+                              <button
+                                type="button"
+                                onClick={() => setYeuCauDangXoa(yc)}
+                                className="h-7 w-7 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-800 inline-flex items-center justify-center cursor-pointer transition shadow-2xs shrink-0"
+                                title={coQuyenAdmin ? "Xóa yêu cầu (Admin)" : "Xóa yêu cầu"}
+                              >
+                                <Trash2 className="size-3.5 text-rose-600" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -2059,6 +2072,20 @@ export default function HopYeuCauPhoiHop({
                       </div>
                     </div>
 
+                    {/* Nút xóa nhanh cho Admin trên Mobile */}
+                    {(coQuyenAdmin || laNguoiTaoCuaYeuCau(yc)) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setYeuCauDangXoa(yc);
+                        }}
+                        className="size-7 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 inline-flex items-center justify-center cursor-pointer transition shrink-0"
+                        title="Xóa yêu cầu"
+                      >
+                        <Trash2 className="size-3.5 text-rose-600" />
+                      </button>
+                    )}
                     {/* Mũi tên dẫn vào xem chi tiết */}
                     <ChevronRight className="size-4 text-slate-300 shrink-0" />
                   </div>
@@ -2453,23 +2480,21 @@ export default function HopYeuCauPhoiHop({
                           <span>Sửa</span>
                         </button>
                       )}
-                      {laNguoiTao &&
-                        (ycChiTietHienTai.trang_thai === 'cho_tpkd_duyet' ||
-                          ycChiTietHienTai.trang_thai === 'cho_tpkh_tiep_nhan' ||
-                          ycChiTietHienTai.trang_thai === 'yeu_cau_chinh_sua') && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const yc = ycChiTietHienTai;
-                              setYeuCauDangXemChiTiet(null);
-                              setYeuCauDangXoa(yc);
-                            }}
-                            className="h-8 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-medium text-xs inline-flex items-center gap-1 cursor-pointer transition"
-                          >
-                            <Trash2 className="size-3.5 text-rose-600" />
-                            <span>Xóa</span>
-                          </button>
-                        )}
+                      {(coQuyenAdmin || laNguoiTao) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const yc = ycChiTietHienTai;
+                            setYeuCauDangXemChiTiet(null);
+                            setYeuCauDangXoa(yc);
+                          }}
+                          className="h-8 px-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 font-medium text-xs inline-flex items-center gap-1.5 cursor-pointer transition"
+                          title={coQuyenAdmin ? "Xóa yêu cầu (Quyền Admin)" : "Xóa yêu cầu"}
+                        >
+                          <Trash2 className="size-3.5 text-rose-600" />
+                          <span>Xóa yêu cầu</span>
+                        </button>
+                      )}
                     </>
                   );
                 })()}
