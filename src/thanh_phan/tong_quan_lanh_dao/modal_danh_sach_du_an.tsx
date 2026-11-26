@@ -24,19 +24,14 @@ const NHAN_MUC_DO_TIEM_NANG: Record<string, { label: string; bg: string; text: s
 };
 
 const NHAN_GIAI_DOAN: Record<string, { label: string; bg: string; text: string }> = {
-  moi_tao: { label: 'Mới tạo', bg: 'bg-slate-50 border-slate-200', text: 'text-slate-700' },
-  tiep_can: { label: 'Tiếp cận', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700' },
-  len_giai_phap: { label: 'Lên giải pháp', bg: 'bg-cyan-50 border-cyan-200', text: 'text-cyan-700' },
-  khao_sat: { label: 'Khảo sát', bg: 'bg-cyan-50 border-cyan-200', text: 'text-cyan-700' },
-  bao_gia: { label: 'Báo giá', bg: 'bg-indigo-50 border-indigo-200', text: 'text-indigo-700' },
-  co_chu_truong: { label: 'Có chủ trương', bg: 'bg-sky-50 border-sky-200', text: 'text-sky-700' },
-  dam_phan: { label: 'Đàm phán', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-700' },
-  ky_hop_dong: { label: 'Ký hợp đồng', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
-  tt_dot_1: { label: 'TT đợt 1', bg: 'bg-teal-50 border-teal-200', text: 'text-teal-700' },
-  trien_khai: { label: 'Triển khai', bg: 'bg-teal-50 border-teal-200', text: 'text-teal-700' },
-  nghiem_thu: { label: 'Nghiệm thu', bg: 'bg-green-50 border-green-200', text: 'text-green-700' },
-  hoan_thanh: { label: 'Hoàn thành', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
-  hoan_thanh_tt_dot_2: { label: 'Hoàn thành', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' }
+  tiep_can: { label: '1. Tiếp cận', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700' },
+  bao_gia: { label: '2. Báo giá', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700' },
+  co_chu_truong: { label: '3. Có chủ trương', bg: 'bg-sky-50 border-sky-200', text: 'text-sky-700' },
+  ky_hop_dong: { label: '4. Ký HĐ', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
+  tt_dot_1: { label: '5. TT đợt 1', bg: 'bg-teal-50 border-teal-200', text: 'text-teal-700' },
+  trien_khai: { label: '6. Triển khai', bg: 'bg-teal-50 border-teal-200', text: 'text-teal-700' },
+  hoan_thanh_tt_dot_2: { label: '7. Hoàn thành & TT đợt 2', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
+  tam_dung_huy: { label: 'Tạm dừng / Hủy', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700' }
 };
 
 export default function ModalDanhSachDuAn({

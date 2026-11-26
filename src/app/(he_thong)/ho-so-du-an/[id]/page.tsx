@@ -94,7 +94,7 @@ import {
   TEN_MODULE_NHAT_KY,
   TEN_HANH_DONG_NHAT_KY
 } from '../../../../dich_vu/nhat_ky_hoat_dong/dich_vu_nhat_ky_hoat_dong';
-import { layDanhSachGiaiDoan } from '../../../../thu_vien/cau_hinh/giai_doan_du_an';
+import { layDanhSachGiaiDoan, chuanHoaGiaiDoan } from '../../../../thu_vien/cau_hinh/giai_doan_du_an';
 import { duocXemHoSoDuAn, duocXemKhachHang, coQuyen, laQuanLyCapCaoHoacTruongPhong } from '../../../../thu_vien/phan_quyen/kiem_tra_quyen';
 import useStoreXacThuc from '../../../../thu_vien/zustand/store_xac_thuc';
 import { ModalLyDoHuyDuAn } from '../../../../thanh_phan/ho_so_du_an/modal_ly_do_huy_du_an';
@@ -1327,9 +1327,10 @@ export default function TrangChiTietHoSoDuAn() {
               { key: 'trien_khai', stt: 6, label: 'Triển khai' },
               { key: 'hoan_thanh_tt_dot_2', stt: 7, label: 'Hoàn thành & TT đợt 2' }
             ].map((step, idx, arr) => {
-              const currentIdx = arr.findIndex((x) => x.key === hda?.giai_doan);
+              const gdHienTai = chuanHoaGiaiDoan(hda?.giai_doan);
+              const currentIdx = arr.findIndex((x) => x.key === gdHienTai);
               const isPast = currentIdx >= 0 && idx < currentIdx;
-              const isCurrent = hda?.giai_doan === step.key;
+              const isCurrent = gdHienTai === step.key;
 
               return (
                 <div

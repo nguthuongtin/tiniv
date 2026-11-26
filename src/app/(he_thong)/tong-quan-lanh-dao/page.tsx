@@ -165,20 +165,14 @@ const nhanDienNhomSanPham = (
 };
 
 const NHAN_GIAI_DOAN_CHUAN: Record<string, { label: string; mauBadge: string }> = {
-  moi_tao: { label: 'Mới tạo', mauBadge: 'bg-slate-100 text-slate-700 border-slate-200' },
-  tiep_can: { label: 'Tiếp cận', mauBadge: 'bg-blue-50 text-blue-700 border-blue-200' },
-  khao_sat: { label: 'Khảo sát', mauBadge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-  len_giai_phap: { label: 'Lên giải pháp', mauBadge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-  bao_gia: { label: 'Báo giá', mauBadge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-  co_chu_truong: { label: 'Có chủ trương', mauBadge: 'bg-sky-50 text-sky-700 border-sky-200' },
-  dam_phan: { label: 'Đàm phán', mauBadge: 'bg-purple-50 text-purple-700 border-purple-200' },
-  ky_hop_dong: { label: 'Ký hợp đồng', mauBadge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  tt_dot_1: { label: 'TT đợt 1', mauBadge: 'bg-teal-50 text-teal-700 border-teal-200' },
-  trien_khai: { label: 'Triển khai', mauBadge: 'bg-teal-50 text-teal-700 border-teal-200' },
-  nghiem_thu: { label: 'Nghiệm thu', mauBadge: 'bg-green-50 text-green-700 border-green-200' },
-  hoan_thanh: { label: 'Hoàn thành', mauBadge: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-  hoan_thanh_tt_dot_2: { label: 'Hoàn thành', mauBadge: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-  da_hoan_thanh: { label: 'Đã hoàn thành', mauBadge: 'bg-emerald-100 text-emerald-800 border-emerald-300' }
+  tiep_can: { label: '1. Tiếp cận', mauBadge: 'bg-blue-50 text-blue-700 border-blue-200' },
+  bao_gia: { label: '2. Báo giá', mauBadge: 'bg-amber-50 text-amber-700 border-amber-200' },
+  co_chu_truong: { label: '3. Có chủ trương', mauBadge: 'bg-sky-50 text-sky-700 border-sky-200' },
+  ky_hop_dong: { label: '4. Ký HĐ', mauBadge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  tt_dot_1: { label: '5. TT đợt 1', mauBadge: 'bg-teal-50 text-teal-700 border-teal-200' },
+  trien_khai: { label: '6. Triển khai', mauBadge: 'bg-teal-50 text-teal-700 border-teal-200' },
+  hoan_thanh_tt_dot_2: { label: '7. Hoàn thành & TT đợt 2', mauBadge: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  tam_dung_huy: { label: 'Tạm dừng / Hủy', mauBadge: 'bg-rose-50 text-rose-700 border-rose-200' }
 };
 
 const NHAN_TIEM_NANG_CHUAN: Record<string, { label: string; mauBadge: string }> = {
@@ -348,8 +342,13 @@ export default function TrangTongQuanLanhDao() {
     const tongTienThucVe = dsDuAnBoLoc.reduce((sum, da) => sum + (Number(da.tien_ve_thuc_te) || 0), 0);
 
     const duAnTiemNangCao = dsDuAnBoLoc.filter((da) => ['cao', 'rat_cao'].includes(da.muc_do_tiem_nang));
-    const duAnSapKyHD = dsDuAnBoLoc.filter((da) => ['dam_phan', 'bao_gia', 'ky_hop_dong'].includes(da.giai_doan));
-    const duAnChoGiaiPhapBaoGia = dsDuAnBoLoc.filter((da) => ['len_giai_phap', 'bao_gia'].includes(da.giai_doan));
+    const duAnTiepCan = dsDuAnBoLoc.filter((da) => da.giai_doan === 'tiep_can');
+    const duAnBaoGia = dsDuAnBoLoc.filter((da) => da.giai_doan === 'bao_gia');
+    const duAnCoChuTruong = dsDuAnBoLoc.filter((da) => da.giai_doan === 'co_chu_truong');
+    const duAnKyHD = dsDuAnBoLoc.filter((da) => da.giai_doan === 'ky_hop_dong');
+    const duAnTTDot1 = dsDuAnBoLoc.filter((da) => da.giai_doan === 'tt_dot_1');
+    const duAnTrienKhai = dsDuAnBoLoc.filter((da) => da.giai_doan === 'trien_khai');
+    const duAnHoanThanh = dsDuAnBoLoc.filter((da) => da.giai_doan === 'hoan_thanh_tt_dot_2');
     const duAnDaKyHD = dsDuAnBoLoc.filter((da) => (Number(da.gia_tri_hop_dong) || 0) > 0 || da.giai_doan === 'ky_hop_dong');
 
     // Dự án trọng điểm quy mô lớn >= 1.5 tỷ
@@ -402,8 +401,13 @@ export default function TrangTongQuanLanhDao() {
       tongHopDongDaKy,
       tongTienThucVe,
       duAnTiemNangCao,
-      duAnSapKyHD,
-      duAnChoGiaiPhapBaoGia,
+      duAnTiepCan,
+      duAnBaoGia,
+      duAnCoChuTruong,
+      duAnKyHD,
+      duAnTTDot1,
+      duAnTrienKhai,
+      duAnHoanThanh,
       duAnDaKyHD,
       duAnTrongDiem,
       thongKeTheoDiaBan,
@@ -629,64 +633,143 @@ export default function TrangTongQuanLanhDao() {
           </div>
         </div>
 
-        {/* 3. Đã ký hợp đồng & Tiền về thực tế */}
+        {/* 3. Giai đoạn 2 • Báo giá */}
         <div
           onClick={() =>
             setDuAnModal({
               mo: true,
-              tieuDe: `Dự án Đã ký hợp đồng & Dòng tiền thực về`,
-              danhSachDuAn: thongKeLanhDao.duAnDaKyHD
+              tieuDe: `Dự án Giai đoạn 2 • Báo giá (${thongKeLanhDao.duAnBaoGia.length} DA)`,
+              danhSachDuAn: thongKeLanhDao.duAnBaoGia
             })
           }
-          className="p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-white hover:border-blue-300 hover:shadow-xs transition cursor-pointer select-none space-y-2 group"
-          title="Nhấp để xem danh sách dự án đã ký hợp đồng"
+          className="p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-white hover:border-amber-300 hover:shadow-xs transition cursor-pointer select-none space-y-2 group"
+          title="Nhấp để xem danh sách dự án đang gửi Báo giá"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-              <FileCheck className="size-4 text-blue-600" />
-              <span>Hợp đồng đã ký</span>
+              <FileCheck className="size-4 text-amber-600" />
+              <span>Giai đoạn 2 • Báo giá</span>
             </span>
-            <ArrowUpRight className="size-4 text-slate-300 group-hover:text-blue-600 transition" />
+            <ArrowUpRight className="size-4 text-slate-300 group-hover:text-amber-600 transition" />
           </div>
-          <div className="text-xl sm:text-2xl font-black font-mono text-blue-800">
-            {dangTai ? '...' : DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongHopDongDaKy)}
-          </div>
-          <div className="text-xs text-slate-500 font-medium">
-            Tiền thực về:{' '}
-            <strong className="text-emerald-700">{DINH_DANG_TIEN_NGAN_GON(thongKeLanhDao.tongTienThucVe)}</strong>
-          </div>
-        </div>
-
-        {/* 4. Dự án chờ KHTH lên phương án & báo giá */}
-        <div
-          onClick={() =>
-            setDuAnModal({
-              mo: true,
-              tieuDe: `Dự án đang chờ Lên giải pháp & Báo giá`,
-              danhSachDuAn: thongKeLanhDao.duAnChoGiaiPhapBaoGia
-            })
-          }
-          className="p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-white hover:border-purple-300 hover:shadow-xs transition cursor-pointer select-none space-y-2 group"
-          title="Nhấp để xem các dự án đang ở bước Lên phương án và Báo giá"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
-              <Target className="size-4 text-purple-600" />
-              <span>Chờ giải pháp & Báo giá</span>
-            </span>
-            <ArrowUpRight className="size-4 text-slate-300 group-hover:text-purple-600 transition" />
-          </div>
-          <div className="text-xl sm:text-2xl font-black font-mono text-purple-800 flex items-center gap-2">
-            <span>{dangTai ? '...' : thongKeLanhDao.duAnChoGiaiPhapBaoGia.length}</span>
+          <div className="text-xl sm:text-2xl font-black font-mono text-amber-700 flex items-center gap-2">
+            <span>{dangTai ? '...' : thongKeLanhDao.duAnBaoGia.length}</span>
             <span className="text-xs font-normal text-slate-400">dự án</span>
           </div>
           <div className="text-xs text-slate-500 font-medium truncate">
             Giá trị:{' '}
             <strong className="text-slate-800">
               {DINH_DANG_TIEN_NGAN_GON(
-                thongKeLanhDao.duAnChoGiaiPhapBaoGia.reduce((s, d) => s + (Number(d.gia_tri_du_kien) || 0), 0)
+                thongKeLanhDao.duAnBaoGia.reduce((s, d) => s + (Number(d.gia_tri_du_kien) || 0), 0)
               )}
             </strong>
+          </div>
+        </div>
+
+        {/* 4. Giai đoạn 1 • Tiếp cận */}
+        <div
+          onClick={() =>
+            setDuAnModal({
+              mo: true,
+              tieuDe: `Dự án Giai đoạn 1 • Tiếp cận (${thongKeLanhDao.duAnTiepCan.length} DA)`,
+              danhSachDuAn: thongKeLanhDao.duAnTiepCan
+            })
+          }
+          className="p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-white hover:border-blue-300 hover:shadow-xs transition cursor-pointer select-none space-y-2 group"
+          title="Nhấp để xem các dự án đang ở bước Tiếp cận địa bàn"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5">
+              <Target className="size-4 text-blue-600" />
+              <span>Giai đoạn 1 • Tiếp cận</span>
+            </span>
+            <ArrowUpRight className="size-4 text-slate-300 group-hover:text-blue-600 transition" />
+          </div>
+          <div className="text-xl sm:text-2xl font-black font-mono text-blue-800 flex items-center gap-2">
+            <span>{dangTai ? '...' : thongKeLanhDao.duAnTiepCan.length}</span>
+            <span className="text-xs font-normal text-slate-400">dự án</span>
+          </div>
+          <div className="text-xs text-slate-500 font-medium truncate">
+            Giá trị:{' '}
+            <strong className="text-slate-800">
+              {DINH_DANG_TIEN_NGAN_GON(
+                thongKeLanhDao.duAnTiepCan.reduce((s, d) => s + (Number(d.gia_tri_du_kien) || 0), 0)
+              )}
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2.5 THANH TIẾN ĐỘ 7 BƯỚC ĐƯỜNG ỐNG DỰ ÁN (SLIDE STEPPER 7 BƯỚC CHUẨN)     */}
+      {/* ========================================================================= */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-2xs">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Layers className="size-4 text-primary" />
+            <span>Tiến độ 7 bước đường ống dự án</span>
+          </span>
+          <span className="text-xs text-slate-400 font-medium">
+            {thongKeLanhDao.tongDuAn} dự án đang theo dõi
+          </span>
+        </div>
+        <div className="overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth">
+          <div className="flex items-center min-w-[760px] justify-between px-1">
+            {[
+              { stt: 1, key: 'tiep_can', label: 'Tiếp cận', ds: thongKeLanhDao.duAnTiepCan },
+              { stt: 2, key: 'bao_gia', label: 'Báo giá', ds: thongKeLanhDao.duAnBaoGia },
+              { stt: 3, key: 'co_chu_truong', label: 'Có chủ trương', ds: thongKeLanhDao.duAnCoChuTruong },
+              { stt: 4, key: 'ky_hop_dong', label: 'Ký HĐ', ds: thongKeLanhDao.duAnKyHD },
+              { stt: 5, key: 'tt_dot_1', label: 'TT đợt 1', ds: thongKeLanhDao.duAnTTDot1 },
+              { stt: 6, key: 'trien_khai', label: 'Triển khai', ds: thongKeLanhDao.duAnTrienKhai },
+              { stt: 7, key: 'hoan_thanh_tt_dot_2', label: 'Hoàn thành & TT đợt 2', ds: thongKeLanhDao.duAnHoanThanh }
+            ].map((step, idx) => {
+              const coDuAn = step.ds.length > 0;
+              const tongTien = step.ds.reduce((sum, d) => sum + (Number(d.gia_tri_du_kien) || 0), 0);
+              return (
+                <div
+                  key={step.key}
+                  className="flex-1 flex items-center min-w-0 first:flex-none"
+                >
+                  {idx > 0 && (
+                    <div className={cn('h-0.5 flex-1 mx-1.5 transition-colors', coDuAn ? 'bg-primary' : 'bg-slate-200')} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (coDuAn) {
+                        setDuAnModal({
+                          mo: true,
+                          tieuDe: `Dự án bước ${step.stt} • ${step.label} (${step.ds.length} DA)`,
+                          danhSachDuAn: step.ds
+                        });
+                      }
+                    }}
+                    className={cn(
+                      'flex flex-col items-center gap-1 px-1.5 py-1 group shrink-0 transition select-none',
+                      coDuAn ? 'cursor-pointer active:scale-95' : 'cursor-default opacity-60'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'size-7 rounded-full flex items-center justify-center font-bold text-xs border transition-all',
+                        coDuAn
+                          ? 'bg-primary text-primary-foreground border-primary shadow-xs font-black'
+                          : 'bg-slate-50 text-slate-400 border-slate-200'
+                      )}
+                    >
+                      {step.stt}
+                    </div>
+                    <span className={cn('text-xs font-semibold whitespace-nowrap', coDuAn ? 'text-slate-900 font-bold' : 'text-slate-400')}>
+                      {step.label}
+                    </span>
+                    <span className={cn('text-[11px] font-mono px-1.5 py-0.2 rounded-full font-bold', coDuAn ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400')}>
+                      {step.ds.length} DA {coDuAn && `• ${DINH_DANG_TIEN_NGAN_GON(tongTien)}`}
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
