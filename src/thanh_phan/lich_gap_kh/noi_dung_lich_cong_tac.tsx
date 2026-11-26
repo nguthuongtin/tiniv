@@ -247,8 +247,9 @@ const layDanhSach7NgayTrongTuan = (ngayGocISO: string): { iso: string; thu: stri
   const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const monday = new Date(y, m - 1, d + diffToMonday);
 
-  const TEN_THU = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
-  return Array.from({ length: 7 }, (_, idx) => {
+  // Bỏ ngày Chủ Nhật cho lưới lịch rộng rãi, chỉ làm việc Thứ 2 -> Thứ 7
+  const TEN_THU = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+  return Array.from({ length: 6 }, (_, idx) => {
     const cur = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + idx);
     const iso = chuyenDateSangISO(cur);
     return {
@@ -486,6 +487,46 @@ export function NoiDungLichCongTac({
       unsubYC();
     };
   }, [taiDanhMuc, nguoiDungHienTai?.id]);
+
+  // Danh sách nhân sự SALE đã lọc sạch, loại trừ trùng lặp và loại bỏ các vị trí không thuộc kinh doanh
+  const dsNhanSuSale = useMemo(() => {
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+    const list: NhanSu[] = [];
+    const cvLoaiTru = ['kế toán', 'ke toan', 'hành chính', 'hanh chinh', 'it', 'kỹ thuật', 'ky thuat', 'tạp vụ', 'bảo vệ'];
+
+    for (const ns of dsNhanSu) {
+      if (!ns || !ns.id || ns.trang_thai_du_lieu === 'da_xoa' || ns.trang_thai === false) continue;
+      const tenChuan = (ns.ho_va_ten || '').trim().toLowerCase();
+      if (!tenChuan) continue;
+
+      // Chống trùng lặp theo ID và theo họ tên
+      if (seenIds.has(ns.id) || seenNames.has(tenChuan)) continue;
+
+      const vt = (ns.vai_tro || '').toLowerCase();
+      const cv = (ns.chuc_vu || '').toLowerCase();
+      const pb = (ns.phong_ban_id || '').toLowerCase();
+
+      const biLoaiTru = cvLoaiTru.some((k) => cv.includes(k));
+      if (biLoaiTru) continue;
+
+      const laSale =
+        vt === 'nhan_vien_kinh_doanh' ||
+        vt === 'truong_phong_kd' ||
+        cv.includes('kinh doanh') ||
+        cv.includes('sale') ||
+        pb.includes('kd') ||
+        pb.includes('kinh_doanh');
+
+      if (laSale) {
+        seenIds.add(ns.id);
+        seenNames.add(tenChuan);
+        list.push(ns);
+      }
+    }
+
+    return list.sort((a, b) => (a.ho_va_ten || '').localeCompare(b.ho_va_ten || '', 'vi'));
+  }, [dsNhanSu]);
 
   const mapNhanSu = useMemo(() => {
     const m = new Map<string, NhanSu>();
@@ -1270,8 +1311,8 @@ export function NoiDungLichCongTac({
                 onChange={(e) => setNhanSuLoc(e.target.value)}
                 className="text-xs font-semibold px-3 py-2 rounded-full sm:rounded-xl border border-slate-200 bg-slate-50/70 focus:outline-hidden focus:bg-white min-w-0 truncate sm:max-w-[170px]"
               >
-                <option value="tat_ca">Tất cả nhân sự</option>
-                {dsNhanSu.map((ns) => (
+                <option value="tat_ca">Tất cả nhân viên Sale</option>
+                {dsNhanSuSale.map((ns) => (
                   <option key={ns.id} value={ns.id}>
                     {ns.ho_va_ten}
                   </option>
@@ -1366,48 +1407,54 @@ export function NoiDungLichCongTac({
         </div>
       </div>
 
-      {/* BỘ LỌC PHÂN LOẠI & THANH THÊM NHANH VIỆC TẠI VĂN PHÒNG */}
+      {/* BỘ LỌC ICON NHÂN VIÊN SALE & THANH THÊM NHANH VIỆC TẠI VĂN PHÒNG */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        {/* Bộ lọc: Tất cả | Lịch chủ trì | Lịch đi hỗ trợ */}
-        <div className="grid grid-cols-3 sm:inline-flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 gap-1 text-xs">
+        {/* Bộ lọc icon/avatar các nhân viên Sale (chống trùng lặp, bỏ chức vụ khác) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar select-none">
           <button
             type="button"
-            onClick={() => setLocVaiTroLich('tat_ca')}
+            onClick={() => setNhanSuLoc('tat_ca')}
             className={cn(
-              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer text-center',
-              locVaiTroLich === 'tat_ca'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-500 hover:text-slate-800'
+              'h-9 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs',
+              nhanSuLoc === 'tat_ca'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
             )}
           >
-            Tất cả
+            <Users className="size-3.5" />
+            <span>Tất cả Sale</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setLocVaiTroLich('chu_tri')}
-            className={cn(
-              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center justify-center gap-1.5',
-              locVaiTroLich === 'chu_tri'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-500 hover:text-slate-800'
-            )}
-          >
-            <Briefcase className="size-3.5 text-slate-600 shrink-0" />
-            <span>Lịch chủ trì</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setLocVaiTroLich('ho_tro')}
-            className={cn(
-              'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center justify-center gap-1.5',
-              locVaiTroLich === 'ho_tro'
-                ? 'bg-indigo-600 text-white shadow-2xs'
-                : 'text-indigo-700 hover:text-indigo-900 hover:bg-indigo-50/50'
-            )}
-          >
-            <Users className="size-3.5 shrink-0" />
-            <span>Đi hỗ trợ</span>
-          </button>
+
+          {dsNhanSuSale.map((ns) => {
+            const dangChon = nhanSuLoc === ns.id;
+            const tenRutGon = rutGonTenNhanVienQuyChuan(ns.ho_va_ten);
+
+            return (
+              <button
+                key={ns.id}
+                type="button"
+                onClick={() => setNhanSuLoc(dangChon ? 'tat_ca' : ns.id)}
+                className={cn(
+                  'h-9 pl-1.5 pr-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs',
+                  dangChon
+                    ? 'bg-emerald-700 text-white shadow-xs ring-2 ring-emerald-500/20'
+                    : 'bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                )}
+                title={ns.ho_va_ten}
+              >
+                <DaiDien
+                  ten={ns.ho_va_ten}
+                  anh={ns.url_anh_dai_dien}
+                  kich_thuoc="xs"
+                  className={cn(
+                    'size-6 text-[10px] ring-0 shrink-0',
+                    dangChon ? 'text-emerald-900 bg-white font-black' : ''
+                  )}
+                />
+                <span className="truncate max-w-[120px]">{tenRutGon}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Thanh thêm nhanh việc tại văn phòng */}
@@ -1460,7 +1507,7 @@ export function NoiDungLichCongTac({
               {cheDoXem === 'tuan' && (
                 <div className="hidden sm:block bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
                   <div className="overflow-x-auto">
-                    <div className="min-w-[980px] grid grid-cols-7 divide-x divide-slate-200/80">
+                    <div className="min-w-[840px] grid grid-cols-6 divide-x divide-slate-200/80">
                       {ds7NgayTuan.map((cotNgay) => {
                         const lichTrongNgay = dsLichLoc.filter((l) => l.ngay === cotNgay.iso);
 
@@ -1469,29 +1516,38 @@ export function NoiDungLichCongTac({
                             key={cotNgay.iso}
                             className={cn(
                               'flex flex-col min-h-[480px]',
-                              cotNgay.laHomNay ? 'bg-emerald-50/20' : 'bg-white'
+                              cotNgay.laHomNay ? 'bg-blue-50/20 ring-1 ring-blue-500/20' : 'bg-white'
                             )}
                           >
-                            {/* Header Thứ & Ngày */}
+                            {/* Header Thứ & Ngày - Làm nổi bật hôm nay rõ nét */}
                             <div
                               className={cn(
-                                'p-3 border-b border-slate-200/80 flex items-center justify-between',
-                                cotNgay.laHomNay ? 'bg-emerald-50/70' : 'bg-slate-50/70'
+                                'p-3 border-b flex items-center justify-between transition-colors',
+                                cotNgay.laHomNay
+                                  ? 'bg-blue-600 text-white shadow-md border-blue-700 ring-2 ring-blue-600/30'
+                                  : 'bg-slate-50/70 border-slate-200/80'
                               )}
                             >
                               <div>
-                                <div
-                                  className={cn(
-                                    'text-[11px] font-bold uppercase tracking-wider',
-                                    cotNgay.laHomNay ? 'text-emerald-700' : 'text-slate-500'
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className={cn(
+                                      'text-[11px] font-black uppercase tracking-wider',
+                                      cotNgay.laHomNay ? 'text-white' : 'text-slate-500'
+                                    )}
+                                  >
+                                    {cotNgay.thu}
+                                  </span>
+                                  {cotNgay.laHomNay && (
+                                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wide bg-white text-blue-700 shadow-2xs">
+                                      Hôm nay
+                                    </span>
                                   )}
-                                >
-                                  {cotNgay.thu}
                                 </div>
                                 <div
                                   className={cn(
-                                    'text-sm font-black mt-0.5 tabular-nums',
-                                    cotNgay.laHomNay ? 'text-emerald-800' : 'text-slate-800'
+                                    'text-base font-black mt-0.5 tabular-nums',
+                                    cotNgay.laHomNay ? 'text-white' : 'text-slate-800'
                                   )}
                                 >
                                   {cotNgay.ngayThang}
@@ -1510,7 +1566,12 @@ export function NoiDungLichCongTac({
                                     setLichDangSua(null);
                                     setMoModal(true);
                                   }}
-                                  className="size-6.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 flex items-center justify-center transition cursor-pointer shadow-2xs"
+                                  className={cn(
+                                    'size-6.5 rounded-lg flex items-center justify-center transition cursor-pointer shadow-2xs',
+                                    cotNgay.laHomNay
+                                      ? 'bg-white/20 text-white hover:bg-white/30 border border-white/30'
+                                      : 'bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100'
+                                  )}
                                   title="Thêm việc tại văn phòng"
                                 >
                                   <Briefcase className="size-3" />
@@ -1526,7 +1587,12 @@ export function NoiDungLichCongTac({
                                     setLichDangSua(null);
                                     setMoModal(true);
                                   }}
-                                  className="size-6.5 rounded-lg bg-white border border-slate-200/80 text-slate-500 hover:text-emerald-700 hover:border-emerald-300 flex items-center justify-center transition cursor-pointer shadow-2xs"
+                                  className={cn(
+                                    'size-6.5 rounded-lg flex items-center justify-center transition cursor-pointer shadow-2xs',
+                                    cotNgay.laHomNay
+                                      ? 'bg-white text-blue-700 hover:bg-blue-50 font-bold border border-white/40 shadow-xs'
+                                      : 'bg-white border border-slate-200/80 text-slate-500 hover:text-emerald-700 hover:border-emerald-300'
+                                  )}
                                   title="Thêm lịch công tác ngoài"
                                 >
                                   <Plus className="size-3" />
@@ -1547,7 +1613,7 @@ export function NoiDungLichCongTac({
                                 const tenCacBanHoTro = dsHoTroIds
                                   .map((id) => rutGonTenNhanVienQuyChuan(mapNhanSu.get(id)?.ho_va_ten))
                                   .filter(Boolean)
-                                  .join(', ');
+                                  .join(' & ');
                                 const daHoanThanh = lich.trang_thai === 'da_hoan_thanh';
                                 const daHuy = lich.trang_thai === 'huy';
                                 const laDoiLich = lich.trang_thai === 'doi_lich';
@@ -1576,22 +1642,35 @@ export function NoiDungLichCongTac({
                                         : 'bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-xs'
                                     )}
                                   >
-                                    {/* Dòng 1: Dấu hiệu HỖ TRỢ nổi bật + Giờ & Checkbox hoàn thành */}
+                                    {/* Dòng 1: Trạng thái lịch (thay thế vị trí thời gian) & Nút hoàn thành */}
                                     <div className="flex items-center justify-between gap-1">
                                       <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                                        {laLichDiHoTro && (
-                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wide bg-indigo-600 text-white shadow-xs shrink-0">
-                                            <Users className="size-3 stroke-[2.5]" />
-                                            <span>ĐI HỖ TRỢ</span>
+                                        {daHuy ? (
+                                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200 shrink-0">
+                                            Đã hủy
+                                          </span>
+                                        ) : laDoiLich ? (
+                                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
+                                            Dời lịch
+                                          </span>
+                                        ) : daHoanThanh ? (
+                                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                                            Đã có kết quả
+                                          </span>
+                                        ) : laQuaHanChuaBaoCao ? (
+                                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 animate-pulse shrink-0">
+                                            Chưa báo cáo
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80 shrink-0">
+                                            Đang thực hiện
                                           </span>
                                         )}
 
-                                        <span className={cn('text-[11px] font-bold tabular-nums text-slate-600 shrink-0', daHuy && 'line-through')}>
-                                          {lich.gio_bat_dau || 'Cả ngày'}
-                                        </span>
-                                        {laLichDiHoTro && chuTriNS && (
-                                          <span className="text-[10px] font-bold text-indigo-700 truncate max-w-[120px]" title={`Chủ trì: ${chuTriNS.ho_va_ten}`}>
-                                            (Chủ trì: {tenChuTriRutGon})
+                                        {laLichDiHoTro && (
+                                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide bg-indigo-600 text-white shadow-2xs shrink-0">
+                                            <Users className="size-2.5 stroke-[2.5]" />
+                                            <span>Đi hỗ trợ</span>
                                           </span>
                                         )}
                                       </div>
@@ -1633,7 +1712,7 @@ export function NoiDungLichCongTac({
                                       )}
                                     </div>
 
-                                    {/* Dòng 2: Tiêu đề công việc - tinh gọn, nổi bật, bỏ hết chú thích rườm rà */}
+                                    {/* Dòng 2: Tiêu đề công việc */}
                                     <h4
                                       className={cn(
                                         'text-[12px] font-bold leading-snug line-clamp-2',
@@ -1648,51 +1727,28 @@ export function NoiDungLichCongTac({
                                       {infoHienThi.tieuDeChinh}
                                     </h4>
 
-                                    {/* Dòng 3 (chỗ icon check cũ): Avatar và tên nhân viên to nhẹ lên + Huy hiệu KQ */}
-                                    <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-slate-100">
-                                      <div className="inline-flex items-center gap-1.5 min-w-0 flex-wrap">
-                                        {chuTriNS && (
-                                          <div className="inline-flex items-center gap-1.5 min-w-0" title={`Chủ trì: ${chuTriNS.ho_va_ten}`}>
-                                            <DaiDien
-                                              ten={chuTriNS.ho_va_ten}
-                                              anh={chuTriNS.url_anh_dai_dien}
-                                              kich_thuoc="xs"
-                                              className="size-5 text-[9px] shrink-0"
-                                            />
-                                            <span className="text-[11px] font-bold text-slate-800 truncate">
-                                              {laLichDiHoTro ? `Chủ trì: ${tenChuTriRutGon}` : tenChuTriRutGon}
-                                            </span>
-                                          </div>
-                                        )}
-                                        {!laLichDiHoTro && coNguoiHoTro && (
-                                          <span
-                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80 shrink-0"
-                                            title={`Đi hỗ trợ cùng: ${tenCacBanHoTro}`}
-                                          >
-                                            <Users className="size-3 text-indigo-600" />
-                                            <span>+{dsHoTroIds.length} hỗ trợ</span>
+                                    {/* Dòng 3: Avatar Chủ trì & Tên chủ trì (in đậm) + Tên các bạn hỗ trợ */}
+                                    <div className="flex items-center gap-1.5 pt-1 border-t border-slate-100 text-[11px] leading-tight">
+                                      {chuTriNS && (
+                                        <DaiDien
+                                          ten={chuTriNS.ho_va_ten}
+                                          anh={chuTriNS.url_anh_dai_dien}
+                                          kich_thuoc="xs"
+                                          className="size-5 text-[9px] shrink-0"
+                                        />
+                                      )}
+                                      <div
+                                        className="min-w-0 truncate"
+                                        title={`Chủ trì: ${chuTriNS?.ho_va_ten || ''}${coNguoiHoTro ? ` | Hỗ trợ: ${tenCacBanHoTro}` : ''}`}
+                                      >
+                                        <span className="font-black text-slate-900">
+                                          {tenChuTriRutGon}
+                                        </span>
+                                        {coNguoiHoTro && (
+                                          <span className="text-slate-600 font-medium">
+                                            {' '}+ {tenCacBanHoTro}
                                           </span>
                                         )}
-                                      </div>
-
-                                      <div className="shrink-0 ml-auto">
-                                        {daHoanThanh ? (
-                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200 truncate inline-block">
-                                            {lich.ket_qua ? 'Đã có KQ' : 'Đã xong'}
-                                          </span>
-                                        ) : laQuaHanChuaBaoCao ? (
-                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 animate-pulse truncate inline-block">
-                                            Chưa báo cáo
-                                          </span>
-                                        ) : laDoiLich ? (
-                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 border border-purple-200 truncate inline-block">
-                                            Đã dời lịch
-                                          </span>
-                                        ) : daHuy ? (
-                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200 truncate inline-block">
-                                            Đã hủy
-                                          </span>
-                                        ) : null}
                                       </div>
                                     </div>
                                   </div>
@@ -1733,7 +1789,7 @@ export function NoiDungLichCongTac({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-7 gap-1">
+                  <div className="grid grid-cols-6 gap-1">
                     {ds7NgayTuan.map((ngay, idx) => {
                       const dangChon = ngay.iso === ngayTuanHienThi.iso;
                       const coLich = dsLichLoc.some((l) => l.ngay === ngay.iso);
