@@ -682,7 +682,7 @@ export function NoiDungLichCongTac({
   // Thống kê tổng quan
   const thongKe = useMemo(() => {
     const dauTuan = ds7NgayTuan[0]?.iso || homNayISO;
-    const cuoiTuan = ds7NgayTuan[6]?.iso || homNayISO;
+    const cuoiTuan = ds7NgayTuan[ds7NgayTuan.length - 1]?.iso || homNayISO;
     const thangHienTai = ngayDangXem.slice(0, 7);
 
     const lichHomNay = dsLichLoc.filter((l) => l.ngay === homNayISO && l.trang_thai !== 'huy').length;
@@ -726,8 +726,8 @@ export function NoiDungLichCongTac({
       return `Tháng ${m}, ${y}`;
     }
     const d1 = ds7NgayTuan[0];
-    const d7 = ds7NgayTuan[6];
-    return `${d1.ngayThang} – ${d7.ngayThang}/${y}`;
+    const dCuoi = ds7NgayTuan[ds7NgayTuan.length - 1];
+    return `${d1?.ngayThang || ''} – ${dCuoi?.ngayThang || ''}/${y}`;
   }, [ngayDangXem, cheDoXem, ds7NgayTuan]);
 
   // Mở modal thêm nhanh vào ngày + giờ cụ thể
@@ -1024,7 +1024,7 @@ export function NoiDungLichCongTac({
         ? dsLichLoc
         : dsLichLoc.filter((l) => {
             const dauTuan = ds7NgayTuan[0]?.iso || homNayISO;
-            const cuoiTuan = ds7NgayTuan[6]?.iso || homNayISO;
+            const cuoiTuan = ds7NgayTuan[ds7NgayTuan.length - 1]?.iso || homNayISO;
             const thangHienTai = ngayDangXem.slice(0, 7);
             if (cheDoXem === 'thang') return l.ngay.startsWith(thangHienTai);
             return l.ngay >= dauTuan && l.ngay <= cuoiTuan;
