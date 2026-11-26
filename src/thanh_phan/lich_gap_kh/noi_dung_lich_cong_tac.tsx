@@ -1407,89 +1407,52 @@ export function NoiDungLichCongTac({
         </div>
       </div>
 
-      {/* BỘ LỌC ICON NHÂN VIÊN SALE & THANH THÊM NHANH VIỆC TẠI VĂN PHÒNG */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        {/* Bộ lọc icon/avatar các nhân viên Sale (chống trùng lặp, bỏ chức vụ khác) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar select-none">
-          <button
-            type="button"
-            onClick={() => setNhanSuLoc('tat_ca')}
-            className={cn(
-              'h-9 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs',
-              nhanSuLoc === 'tat_ca'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-            )}
-          >
-            <Users className="size-3.5" />
-            <span>Tất cả Sale</span>
-          </button>
+      {/* BỘ LỌC ICON NHÂN VIÊN SALE */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar select-none">
+        <button
+          type="button"
+          onClick={() => setNhanSuLoc('tat_ca')}
+          className={cn(
+            'h-9 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs',
+            nhanSuLoc === 'tat_ca'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+          )}
+        >
+          <Users className="size-3.5" />
+          <span>Tất cả Sale</span>
+        </button>
 
-          {dsNhanSuSale.map((ns) => {
-            const dangChon = nhanSuLoc === ns.id;
-            const tenRutGon = rutGonTenNhanVienQuyChuan(ns.ho_va_ten);
+        {dsNhanSuSale.map((ns) => {
+          const dangChon = nhanSuLoc === ns.id;
+          const tenRutGon = rutGonTenNhanVienQuyChuan(ns.ho_va_ten);
 
-            return (
-              <button
-                key={ns.id}
-                type="button"
-                onClick={() => setNhanSuLoc(dangChon ? 'tat_ca' : ns.id)}
+          return (
+            <button
+              key={ns.id}
+              type="button"
+              onClick={() => setNhanSuLoc(dangChon ? 'tat_ca' : ns.id)}
+              className={cn(
+                'h-9 pl-1.5 pr-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs',
+                dangChon
+                  ? 'bg-emerald-700 text-white shadow-xs ring-2 ring-emerald-500/20'
+                  : 'bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+              )}
+              title={ns.ho_va_ten}
+            >
+              <DaiDien
+                ten={ns.ho_va_ten}
+                anh={ns.url_anh_dai_dien}
+                kich_thuoc="xs"
                 className={cn(
-                  'h-9 pl-1.5 pr-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs',
-                  dangChon
-                    ? 'bg-emerald-700 text-white shadow-xs ring-2 ring-emerald-500/20'
-                    : 'bg-white border border-slate-200/90 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                  'size-6 text-[10px] ring-0 shrink-0',
+                  dangChon ? 'text-emerald-900 bg-white font-black' : ''
                 )}
-                title={ns.ho_va_ten}
-              >
-                <DaiDien
-                  ten={ns.ho_va_ten}
-                  anh={ns.url_anh_dai_dien}
-                  kich_thuoc="xs"
-                  className={cn(
-                    'size-6 text-[10px] ring-0 shrink-0',
-                    dangChon ? 'text-emerald-900 bg-white font-black' : ''
-                  )}
-                />
-                <span className="truncate max-w-[120px]">{tenRutGon}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Thanh thêm nhanh việc tại văn phòng */}
-        <div className="hidden sm:flex flex-1 max-w-xl items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
-          <input
-            type="text"
-            value={tenViecVPNhanh}
-            onChange={(e) => setTenViecVPNhanh(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void handleThemNhanhViecVP();
-            }}
-            placeholder="Gõ việc tại VP (VD: Gọi điện khách hàng, gửi báo giá...)"
-            className="flex-1 h-8 px-2.5 text-xs text-slate-900 placeholder:text-slate-400 bg-transparent focus:outline-none"
-          />
-          <select
-            value={loaiViecVPNhanh}
-            onChange={(e) => setLoaiViecVPNhanh(e.target.value as LoaiViecVanPhong)}
-            className="h-8 px-2 text-[11px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer focus:outline-none"
-          >
-            {(['goi_dien', 'gui_bao_gia', 'soan_hop_dong', 'cham_soc', 'hop_noi_bo', 'khac'] as LoaiViecVanPhong[]).map((k) => (
-              <option key={k} value={k}>
-                {NHAN_LOAI_VIEC_VAN_PHONG[k]}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => void handleThemNhanhViecVP()}
-            disabled={dangThemNhanhVP || !tenViecVPNhanh.trim()}
-            className="h-8 px-3 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-xs font-bold inline-flex items-center gap-1 transition cursor-pointer shrink-0"
-          >
-            <Plus className="size-3.5" />
-            <span>Thêm</span>
-          </button>
-        </div>
+              />
+              <span className="truncate max-w-[120px]">{tenRutGon}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* 4. NỘI DUNG LỊCH */}
@@ -1514,32 +1477,22 @@ export function NoiDungLichCongTac({
                         return (
                           <div
                             key={cotNgay.iso}
-                            className={cn(
-                              'flex flex-col min-h-[480px]',
-                              cotNgay.laHomNay ? 'bg-blue-50/20 ring-1 ring-blue-500/20' : 'bg-white'
-                            )}
+                            className="flex flex-col min-h-[480px] bg-white"
                           >
-                            {/* Header Thứ & Ngày - Làm nổi bật hôm nay rõ nét */}
-                            <div
-                              className={cn(
-                                'p-3 border-b flex items-center justify-between transition-colors',
-                                cotNgay.laHomNay
-                                  ? 'bg-blue-600 text-white shadow-md border-blue-700 ring-2 ring-blue-600/30'
-                                  : 'bg-slate-50/70 border-slate-200/80'
-                              )}
-                            >
+                            {/* Header Thứ & Ngày */}
+                            <div className="p-3 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/70">
                               <div>
                                 <div className="flex items-center gap-1.5">
                                   <span
                                     className={cn(
-                                      'text-[11px] font-black uppercase tracking-wider',
-                                      cotNgay.laHomNay ? 'text-white' : 'text-slate-500'
+                                      'text-[11px] font-bold uppercase tracking-wider',
+                                      cotNgay.laHomNay ? 'text-blue-700' : 'text-slate-500'
                                     )}
                                   >
                                     {cotNgay.thu}
                                   </span>
                                   {cotNgay.laHomNay && (
-                                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wide bg-white text-blue-700 shadow-2xs">
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide bg-blue-600 text-white shadow-xs">
                                       Hôm nay
                                     </span>
                                   )}
@@ -1547,57 +1500,29 @@ export function NoiDungLichCongTac({
                                 <div
                                   className={cn(
                                     'text-base font-black mt-0.5 tabular-nums',
-                                    cotNgay.laHomNay ? 'text-white' : 'text-slate-800'
+                                    cotNgay.laHomNay ? 'text-blue-700' : 'text-slate-800'
                                   )}
                                 >
                                   {cotNgay.ngayThang}
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setGiaTriMacDinhModal({
-                                      ngay: cotNgay.iso,
-                                      gio_bat_dau: '08:30',
-                                      loai_lich: 'van_phong'
-                                    });
-                                    setLichDangSua(null);
-                                    setMoModal(true);
-                                  }}
-                                  className={cn(
-                                    'size-6.5 rounded-lg flex items-center justify-center transition cursor-pointer shadow-2xs',
-                                    cotNgay.laHomNay
-                                      ? 'bg-white/20 text-white hover:bg-white/30 border border-white/30'
-                                      : 'bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100'
-                                  )}
-                                  title="Thêm việc tại văn phòng"
-                                >
-                                  <Briefcase className="size-3" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setGiaTriMacDinhModal({
-                                      ngay: cotNgay.iso,
-                                      gio_bat_dau: '09:00',
-                                      loai_lich: 'cong_tac_di_chuyen'
-                                    });
-                                    setLichDangSua(null);
-                                    setMoModal(true);
-                                  }}
-                                  className={cn(
-                                    'size-6.5 rounded-lg flex items-center justify-center transition cursor-pointer shadow-2xs',
-                                    cotNgay.laHomNay
-                                      ? 'bg-white text-blue-700 hover:bg-blue-50 font-bold border border-white/40 shadow-xs'
-                                      : 'bg-white border border-slate-200/80 text-slate-500 hover:text-emerald-700 hover:border-emerald-300'
-                                  )}
-                                  title="Thêm lịch công tác ngoài"
-                                >
-                                  <Plus className="size-3" />
-                                </button>
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setGiaTriMacDinhModal({
+                                    ngay: cotNgay.iso,
+                                    gio_bat_dau: '09:00',
+                                    loai_lich: 'cong_tac_di_chuyen'
+                                  });
+                                  setLichDangSua(null);
+                                  setMoModal(true);
+                                }}
+                                className="size-7 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-emerald-700 hover:border-emerald-300 hover:bg-slate-50 flex items-center justify-center transition cursor-pointer shadow-2xs"
+                                title="Thêm lịch làm việc"
+                              >
+                                <Plus className="size-4 stroke-[2.5]" />
+                              </button>
                             </div>
 
                             {/* Danh sách thẻ sự kiện trong ngày (Desktop: Tinh gọn như Mobile) */}
