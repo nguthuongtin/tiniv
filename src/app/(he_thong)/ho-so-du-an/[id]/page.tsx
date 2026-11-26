@@ -113,6 +113,7 @@ import {
   DANH_SACH_TRANG_THAI_LICH_GAP
 } from '../../../../thu_vien/types/lich_gap_kh';
 import FormLichGapModal from '../../../../thanh_phan/lich_gap_kh/form_lich_gap_modal';
+import { BanNhatKyVaTimelineDuAn } from '../../../../thanh_phan/ho_so_du_an/ban_nhat_ky_va_timeline_du_an';
 import { NHAN_TRANG_THAI_YEU_CAU } from '../../../../thu_vien/types/yeu_cau_phoi_hop';
 import { formatNgay } from '../../../../thu_vien/utils/format_ngay';
 import { formatTien, dinhDangSoPhanNgan, giaiMaSoPhanNgan } from '../../../../thu_vien/utils/format_tien';
@@ -133,8 +134,7 @@ import {
 type TenTab = 'tien_do' | 'nhat_ky_noi_bo' | 'tai_lieu' | 'thong_tin';
 
 const DS_TAB: { key: TenTab; nhan: string; bieuTuong: any; dem?: number }[] = [
-  { key: 'tien_do', nhan: 'Nhật ký làm việc với KH', bieuTuong: Activity },
-  { key: 'nhat_ky_noi_bo', nhan: 'Nhật ký nội bộ', bieuTuong: Users },
+  { key: 'tien_do', nhan: 'Nhật ký & Dòng thời gian', bieuTuong: Activity },
   { key: 'tai_lieu', nhan: 'Kho tài liệu', bieuTuong: Paperclip },
   { key: 'thong_tin', nhan: 'Thông tin dự án', bieuTuong: FolderKanban }
 ];
@@ -307,7 +307,9 @@ export default function TrangChiTietHoSoDuAn() {
           hanh_dong_tiep_theo: null,
           deadline_hanh_dong: null,
           link_tai_lieu: urlFileChoTienDo,
-          nguoi_tao_id: nguoiDungHienTai?.id ?? null
+          ten_tai_lieu: f ? f.ten_file.trim() : null,
+          nguoi_tao_id: nguoiDungHienTai?.id ?? null,
+          loai_nhat_ky: (params as any).loai_nhat_ky ?? 'khach_hang'
         },
         hda?.ten_du_an ?? null
       );
@@ -423,18 +425,25 @@ export default function TrangChiTietHoSoDuAn() {
     return () => unsub();
   }, [id]);
 
-  // Tự động kiểm tra và đồng bộ các lịch làm việc đã có kết quả/hoàn thành vào Nhật ký làm việc với KH
+  // Tự động kiểm tra và đồng bộ các lịch làm việc đã có kết quả/hoàn thành vào Tiến độ dự án
   useEffect(() => {
-    if (!id || dsLichDA.length === 0 || dsTD.length === 0) return;
-    const dsChuaDongBo = dsLichDA.filter(
-      (l) =>
-        (Boolean(l.ket_qua?.trim()) || l.trang_thai === 'da_hoan_thanh') &&
-        !dsTD.some((td) => td.id === `td_lich_${l.id}` || (td as any).lich_gap_kh_id === l.id)
-    );
+    if (!id || dsLichDA.length === 0) return;
+    const dsCanDongBo = dsLichDA.filter((l) => {
+      const coKQ = Boolean(l.ket_qua?.trim()) || l.trang_thai === 'da_hoan_thanh';
+      const td = dsTD.find((x) => x.id === `td_lich_${l.id}` || (x as any).lich_gap_kh_id === l.id);
 
-    if (dsChuaDongBo.length > 0) {
+      if (coKQ && !td) return true;
+      if (coKQ && td) {
+        const kqLich = (l.ket_qua || '').trim();
+        const kqTD = (td.ket_qua_thuc_hien || '').trim();
+        if (kqLich !== kqTD) return true;
+      }
+      return false;
+    });
+
+    if (dsCanDongBo.length > 0) {
       Promise.all(
-        dsChuaDongBo.map((l) =>
+        dsCanDongBo.map((l) =>
           dongBoLichSangTienDoDuAn({ lich: l, nguoiThucHienId: nguoiDungHienTai?.id })
         )
       )
@@ -451,9 +460,11 @@ export default function TrangChiTietHoSoDuAn() {
     try {
       if (dangSuaLichGap) {
         await capNhatLichGapKH(dangSuaLichGap.id, dto, nguoiDungHienTai?.id);
+        const lichMoi = { ...dangSuaLichGap, ...dto, du_an_id: id } as LichGapKH;
+        void dongBoLichSangTienDoDuAn({ lich: lichMoi, nguoiThucHienId: nguoiDungHienTai?.id });
         themToast('thanh_cong', 'Đã cập nhật lịch hẹn thành công!');
       } else {
-        await taoLichGapKHMoi({
+        const banGhiMoi = await taoLichGapKHMoi({
           ...dto,
           du_an_id: id,
           khach_hang_id: dto.khach_hang_id || hda?.khach_hang_id || null,
@@ -461,6 +472,9 @@ export default function TrangChiTietHoSoDuAn() {
           nguoi_phu_trach_id: dto.nguoi_phu_trach_id || nguoiDungHienTai?.id || '',
           nguoi_tao_id: nguoiDungHienTai?.id || ''
         });
+        if (banGhiMoi) {
+          void dongBoLichSangTienDoDuAn({ lich: banGhiMoi, nguoiThucHienId: nguoiDungHienTai?.id });
+        }
         themToast('thanh_cong', 'Đã lên lịch hẹn cho dự án thành công!');
       }
       setMoModalLichGap(false);
@@ -792,14 +806,18 @@ export default function TrangChiTietHoSoDuAn() {
     });
   }, [dsTDKemCanhBao]);
 
+  const tongSoHoatDong = useMemo(() => {
+    const tdThuCong = dsTD.filter((td) => !td.id.startsWith('td_lich_') && !(td as any).lich_gap_kh_id).length;
+    return dsLichDA.length + dsYeuCauDA.length + tdThuCong;
+  }, [dsLichDA.length, dsYeuCauDA.length, dsTD]);
+
   const tabs = useMemo(() => {
     return DS_TAB.map((t) => {
-      if (t.key === 'tien_do') return { ...t, dem: dsTDKhachHang.length };
-      if (t.key === 'nhat_ky_noi_bo') return { ...t, dem: dsYeuCauDA.length + dsLichDA.length + dsTDNoiBo.length };
+      if (t.key === 'tien_do') return { ...t, dem: tongSoHoatDong };
       if (t.key === 'tai_lieu') return { ...t, dem: dsTL.length };
       return t;
     });
-  }, [dsTDKhachHang.length, dsYeuCauDA.length, dsLichDA.length, dsTDNoiBo.length, dsTL.length]);
+  }, [tongSoHoatDong, dsTL.length]);
 
   const CAC_GIAI_DOAN_OPT: Array<{ value: GiaiDoanDuAn | string; nhan: string }> = [
     { value: 'tiep_can', nhan: '1. Tiếp cận' },
@@ -1497,31 +1515,22 @@ export default function TrangChiTietHoSoDuAn() {
 
               <div className="p-5 sm:p-6">
                 <NoiDungTab gia_tri="tien_do">
-                  <BanNhatKyVaTienDo
-                    dsTD={dsTDKhachHang}
+                  <BanNhatKyVaTimelineDuAn
+                    duAnId={id || ""}
+                    tenDuAn={hda?.ten_du_an}
+                    dsTD={dsTD}
+                    dsLich={dsLichDA}
+                    dsYeuCau={dsYeuCauDA}
+                    dsNS={dsNS}
+                    dsPhongBan={dsPhongBan}
+                    nguoiDungHienTai={nguoiDungHienTai}
+                    laQuanLyHoacGiamDoc={laQuanLyHoacGiamDoc}
                     dangTai={dangTai}
                     err={errTai}
-                    dsNS={dsNS}
-                    onTao={xuLyThemCapNhatTongHop}
+                    onTaoGhiNhan={xuLyThemCapNhatTongHop}
                     onXoaTD={xuLyXoaTienDo}
                     onSuaTD={xuLySuaTienDo}
                     onChiDaoTD={xuLyChiDaoTienDo}
-                    nguoiDungHienTai={nguoiDungHienTai}
-                    laQuanLyHoacGiamDoc={laQuanLyHoacGiamDoc}
-                    moForm={moFormTienDo}
-                    onToggleForm={setMoFormTienDo}
-                  />
-                </NoiDungTab>
-                <NoiDungTab gia_tri="nhat_ky_noi_bo">
-                  <BanNhatKyNoiBo
-                    duAnId={id || ""}
-                    tenDuAn={hda?.ten_du_an}
-                    dsYeuCau={dsYeuCauDA}
-                    dsTDNoiBo={dsTDNoiBo}
-                    dsLich={dsLichDA}
-                    dsNK={dsNK}
-                    nguoiDungHienTai={nguoiDungHienTai}
-                    onMoModalTaoYeuCau={() => setMoModalTaoYeuCau(true)}
                     onMoModalTaoLich={() => {
                       setDangSuaLichGap(null);
                       setMoModalLichGap(true);
@@ -1530,6 +1539,7 @@ export default function TrangChiTietHoSoDuAn() {
                       setDangSuaLichGap(l);
                       setMoModalLichGap(true);
                     }}
+                    onMoModalTaoYeuCau={() => setMoModalTaoYeuCau(true)}
                     onCapNhatYeuCau={(yc) => {
                       setDsYeuCauDA((prev) => [yc, ...prev.filter((x) => x.id !== yc.id)]);
                     }}
@@ -2752,1126 +2762,6 @@ const LOAI_LINK_TL: Record<string, { nhan: string; mau: 'success' | 'danger' | '
   youtube: { nhan: 'YouTube', mau: 'danger', icon: FileVideo },
   link_khac: { nhan: 'Liên kết', mau: 'primary', icon: ExternalLink }
 };
-
-function BanNhatKyNoiBo(props: {
-  duAnId: string | null;
-  tenDuAn?: string;
-  dsYeuCau: YeuCauPhoiHop[];
-  dsLich: LichGapKH[];
-  dsTDNoiBo: (TienDoDuAn & { canh_bao: 'sap_den' | 'qua_han' | null })[];
-  dsNK: NhatKyHoatDong[];
-  nguoiDungHienTai?: NguoiDungDangNhap | null;
-  onMoModalTaoYeuCau: () => void;
-  onMoModalTaoLich: () => void;
-  onSuaLich: (lich: LichGapKH) => void;
-  onCapNhatYeuCau: (yc: YeuCauPhoiHop) => void;
-  onXoaYeuCau: (id: string) => void;
-}) {
-  const {
-    duAnId,
-    tenDuAn,
-    dsYeuCau,
-    dsLich,
-    dsTDNoiBo,
-    dsNK,
-    nguoiDungHienTai,
-    onMoModalTaoYeuCau,
-    onMoModalTaoLich,
-    onSuaLich,
-    onCapNhatYeuCau,
-    onXoaYeuCau
-  } = props;
-
-  const [tabCon, setTabCon] = useState<'yeu_cau' | 'tien_do_noi_bo' | 'lich_hen' | 'tong_hop'>('yeu_cau');
-
-  const dsLichSapXep = useMemo(() => {
-    return [...dsLich].sort((a, b) => (b.ngay + (b.gio_bat_dau || '')).localeCompare(a.ngay + (a.gio_bat_dau || '')));
-  }, [dsLich]);
-
-  const dsSuKienTongHop = useMemo(() => {
-    const list: {
-      id: string;
-      loai: 'yeu_cau' | 'lich_hen' | 'nhat_ky';
-      tieu_de: string;
-      mo_ta: string;
-      nguoi_thuc_hien: string;
-      thoi_gian: string;
-      badge?: string;
-      badgeColor?: string;
-    }[] = [];
-
-    // 1. Mốc tiến độ nội bộ [KHTH nộp kết quả], [Đã duyệt kết quả], Gửi yêu cầu...
-    dsTDNoiBo.forEach((td) => {
-      list.push({
-        id: `td_${td.id}`,
-        loai: 'nhat_ky',
-        tieu_de: td.tinh_hinh_hien_tai || 'Tiến độ nội bộ',
-        mo_ta: [td.hanh_dong_tiep_theo, td.ket_qua_thuc_hien].filter(Boolean).join(' - ') || '',
-        nguoi_thuc_hien: 'Tác nghiệp nội bộ',
-        thoi_gian: td.ngay_tao || td.ngay_cap_nhat || '',
-        badge: td.trang_thai_hanh_dong === 'da_hoan_thanh' ? 'Đã hoàn tất' : 'Đang xử lý',
-        badgeColor: td.trang_thai_hanh_dong === 'da_hoan_thanh' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'
-      });
-    });
-
-    // 2. Yêu cầu phối hợp phòng ban
-    dsYeuCau.forEach((yc) => {
-      const cfg = NHAN_TRANG_THAI_YEU_CAU[yc.trang_thai];
-      list.push({
-        id: `yc_${yc.id}`,
-        loai: 'yeu_cau',
-        tieu_de: `Yêu cầu phối hợp: ${yc.noi_dung_yeu_cau?.slice(0, 70) || ''}`,
-        mo_ta: yc.noi_dung_yeu_cau,
-        nguoi_thuc_hien: yc.ten_nguoi_tao || 'Nhân sự',
-        thoi_gian: yc.ngay_tao || '',
-        badge: cfg?.label || yc.trang_thai,
-        badgeColor: cfg?.mauBadge
-      });
-    });
-
-    dsLich.forEach((l) => {
-      const cfg = DANH_SACH_TRANG_THAI_LICH_GAP.find((x) => x.key === l.trang_thai);
-      list.push({
-        id: `lh_${l.id}`,
-        loai: 'lich_hen',
-        tieu_de: `Lịch công tác: ${l.tieu_de}`,
-        mo_ta: [l.noi_dung, l.dia_diem ? `Địa điểm: ${l.dia_diem}` : null].filter(Boolean).join(' - '),
-        nguoi_thuc_hien: l.ten_khach_hang || 'Công tác',
-        thoi_gian: `${l.ngay}T${l.gio_bat_dau || '00:00'}:00`,
-        badge: cfg?.tieu_de || l.trang_thai,
-        badgeColor: cfg?.mauBadge
-      });
-    });
-
-    dsNK.forEach((nk) => {
-      list.push({
-        id: `nk_${nk.id}`,
-        loai: 'nhat_ky',
-        tieu_de: nk.hanh_dong || 'Cập nhật nội bộ',
-        mo_ta: nk.noi_dung || '',
-        nguoi_thuc_hien: (nk as any).ten_nguoi_dung || nk.nguoi_dung_id || 'Hệ thống',
-        thoi_gian: nk.thoi_gian || '',
-        badge: 'Hoạt động',
-        badgeColor: 'bg-slate-100 text-slate-700 border-slate-200'
-      });
-    });
-
-    return list.sort((a, b) => (b.thoi_gian || '').localeCompare(a.thoi_gian || ''));
-  }, [dsYeuCau, dsLich, dsNK]);
-
-  return (
-    <div className="space-y-4">
-      {/* 1. Thanh tiêu đề & nút tác vụ nhanh */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
-        <div>
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Users className="size-4 text-blue-600" />
-            Nhật ký tác nghiệp & Tương tác nội bộ
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Lưu giữ toàn bộ yêu cầu phối hợp phòng ban, lịch hẹn công tác và trao đổi nội bộ cho dự án.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <Nut
-            kieu="outline"
-            kich_thuoc="sm"
-            icon_trai={CalendarDays}
-            onClick={onMoModalTaoLich}
-            className="whitespace-nowrap font-medium"
-          >
-            + Lên lịch hẹn
-          </Nut>
-          <Nut
-            kieu="primary"
-            kich_thuoc="sm"
-            icon_trai={Sparkles}
-            onClick={onMoModalTaoYeuCau}
-            className="whitespace-nowrap font-medium bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            + Tạo yêu cầu
-          </Nut>
-        </div>
-      </div>
-
-      {/* 2. Sub-tab filter pills */}
-      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100/80 w-fit text-xs font-semibold">
-        <button
-          type="button"
-          onClick={() => setTabCon('yeu_cau')}
-          className={cn(
-            'px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5',
-            tabCon === 'yeu_cau'
-              ? 'bg-white text-blue-700 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          )}
-        >
-          <span>Yêu cầu phối hợp</span>
-          {dsYeuCau.length > 0 && (
-            <span className={cn('px-1.5 py-0.2 rounded-full text-[10.5px]', tabCon === 'yeu_cau' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700')}>
-              {dsYeuCau.length}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setTabCon('tien_do_noi_bo')}
-          className={cn(
-            'px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5',
-            tabCon === 'tien_do_noi_bo'
-              ? 'bg-white text-indigo-700 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          )}
-        >
-          <span>Tiến độ nội bộ</span>
-          {dsTDNoiBo.length > 0 && (
-            <span className={cn('px-1.5 py-0.2 rounded-full text-[10.5px]', tabCon === 'tien_do_noi_bo' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-700')}>
-              {dsTDNoiBo.length}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setTabCon('lich_hen')}
-          className={cn(
-            'px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5',
-            tabCon === 'lich_hen'
-              ? 'bg-white text-emerald-700 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          )}
-        >
-          <span>Lịch hẹn & Công tác</span>
-          {dsLich.length > 0 && (
-            <span className={cn('px-1.5 py-0.2 rounded-full text-[10.5px]', tabCon === 'lich_hen' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700')}>
-              {dsLich.length}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setTabCon('tong_hop')}
-          className={cn(
-            'px-3 py-1.5 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5',
-            tabCon === 'tong_hop'
-              ? 'bg-white text-slate-900 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          )}
-        >
-          <span>Dòng thời gian</span>
-          <span className={cn('px-1.5 py-0.2 rounded-full text-[10.5px]', tabCon === 'tong_hop' ? 'bg-slate-200 text-slate-900' : 'bg-slate-200 text-slate-700')}>
-            {dsSuKienTongHop.length}
-          </span>
-        </button>
-      </div>
-
-      {/* 3. Nội dung tương ứng */}
-      {tabCon === 'yeu_cau' && (
-        <div className="space-y-3">
-          <HopYeuCauPhoiHop
-            danhSachYeuCau={dsYeuCau}
-            nguoiDungHienTai={nguoiDungHienTai}
-            onCapNhatYeuCau={onCapNhatYeuCau}
-            onXoaYeuCau={onXoaYeuCau}
-            onMoModalTaoYeuCau={onMoModalTaoYeuCau}
-          />
-        </div>
-      )}
-
-      {tabCon === 'tien_do_noi_bo' && (
-        <div className="space-y-3">
-          {dsTDNoiBo.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-              Chưa có mốc tiến độ tác nghiệp nội bộ nào.
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {dsTDNoiBo.map((td) => (
-                <div
-                  key={td.id}
-                  className="rounded-xl border border-slate-200/90 bg-white p-3.5 space-y-2 shadow-2xs hover:border-slate-300 transition"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="font-bold text-xs text-slate-900 leading-snug">
-                      {td.tinh_hinh_hien_tai}
-                    </div>
-                    <span
-                      className={cn(
-                        'px-2 py-0.5 rounded-full text-[10.5px] font-semibold border shrink-0',
-                        td.trang_thai_hanh_dong === 'da_hoan_thanh'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-blue-50 text-blue-700 border-blue-200'
-                      )}
-                    >
-                      {td.trang_thai_hanh_dong === 'da_hoan_thanh' ? 'Đã hoàn tất' : 'Đang xử lý'}
-                    </span>
-                  </div>
-
-                  {td.hanh_dong_tiep_theo && (
-                    <p className="text-xs text-slate-600">
-                      <span className="font-semibold text-slate-700">Hành động tiếp theo:</span> {td.hanh_dong_tiep_theo}
-                    </p>
-                  )}
-
-                  {td.ket_qua_thuc_hien && (
-                    <p className="text-xs text-slate-600">
-                      <span className="font-semibold text-slate-700">Ghi chú kết quả:</span> {td.ket_qua_thuc_hien}
-                    </p>
-                  )}
-
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-100 flex-wrap gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="size-3 text-slate-400" />
-                      <span>Thời gian: {formatNgay(td.ngay_tao || td.ngay_cap_nhat)}</span>
-                      {td.deadline_hanh_dong && (
-                        <>
-                          <span className="text-slate-300">•</span>
-                          <span className="text-amber-700 font-medium">Hạn: {formatNgay(td.deadline_hanh_dong)}</span>
-                        </>
-                      )}
-                    </div>
-
-                    {td.link_tai_lieu && (
-                      <a
-                        href={td.link_tai_lieu}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-blue-600 hover:underline font-semibold"
-                      >
-                        <ExternalLink className="size-3" />
-                        <span>{td.ten_tai_lieu || 'Xem file đính kèm'}</span>
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {tabCon === 'lich_hen' && (
-        <div className="space-y-3">
-          {dsLichSapXep.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
-              <CalendarDays className="size-8 text-slate-300 mx-auto" />
-              <p>Chưa có lịch hẹn hay lịch công tác nào được lên cho dự án này.</p>
-              <button
-                type="button"
-                onClick={onMoModalTaoLich}
-                className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer block mx-auto not-italic"
-              >
-                + Bấm để lên lịch hẹn / công tác đầu tiên
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Bảng trên Desktop */}
-              <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wider select-none">
-                      <th className="py-3 px-3.5 w-[150px]">Ngày & Giờ</th>
-                      <th className="py-3 px-3.5 min-w-[240px]">Tiêu đề & Nội dung</th>
-                      <th className="py-3 px-3.5 w-[160px]">Người phụ trách</th>
-                      <th className="py-3 px-3.5 w-[180px]">Địa điểm</th>
-                      <th className="py-3 px-3.5 w-[120px]">Trạng thái</th>
-                      <th className="py-3 px-3.5 w-[100px] text-right">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {dsLichSapXep.map((l) => {
-                      const cfgTT = DANH_SACH_TRANG_THAI_LICH_GAP.find((x) => x.key === l.trang_thai) || {
-                        key: l.trang_thai,
-                        tieu_de: l.trang_thai,
-                        mauBadge: 'bg-slate-100 text-slate-600 border-slate-200'
-                      };
-
-                      return (
-                        <tr
-                          key={l.id}
-                          onClick={() => onSuaLich(l)}
-                          className="hover:bg-blue-50/40 transition-colors cursor-pointer group"
-                        >
-                          <td className="py-3 px-3.5 align-middle whitespace-nowrap">
-                            <div className="font-semibold text-slate-900">{formatNgay(l.ngay)}</div>
-                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
-                              {l.gio_bat_dau} - {l.gio_ket_thuc}
-                            </div>
-                          </td>
-                          <td className="py-3 px-3.5 align-middle">
-                            <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                              {l.tieu_de}
-                            </div>
-                            {l.noi_dung && (
-                              <p className="text-slate-600 line-clamp-1 text-[11.5px] mt-0.5">
-                                {l.noi_dung}
-                              </p>
-                            )}
-                          </td>
-                          <td className="py-3 px-3.5 align-middle text-slate-800 font-medium whitespace-nowrap">
-                            {l.ten_nguoi_lien_he || l.ten_khach_hang || '—'}
-                          </td>
-                          <td className="py-3 px-3.5 align-middle text-slate-600 text-[11.5px]">
-                            {l.dia_diem || '—'}
-                          </td>
-                          <td className="py-3 px-3.5 align-middle whitespace-nowrap">
-                            <span className={cn('px-2.5 py-1 rounded-full text-[11px] font-semibold border', cfgTT.mauBadge)}>
-                              {cfgTT.tieu_de}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3.5 align-middle text-right whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSuaLich(l);
-                              }}
-                              className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium inline-flex items-center gap-1 cursor-pointer transition shadow-2xs"
-                            >
-                              <Pencil className="size-3 text-slate-500" />
-                              <span>Sửa</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Thẻ Mobile */}
-              <div className="md:hidden space-y-2.5">
-                {dsLichSapXep.map((l) => {
-                  const cfgTT = DANH_SACH_TRANG_THAI_LICH_GAP.find((x) => x.key === l.trang_thai) || {
-                    key: l.trang_thai,
-                    tieu_de: l.trang_thai,
-                    mauBadge: 'bg-slate-100 text-slate-600 border-slate-200'
-                  };
-
-                  return (
-                    <div
-                      key={l.id}
-                      onClick={() => onSuaLich(l)}
-                      className="rounded-xl border border-slate-200 bg-white p-3 space-y-2 shadow-2xs hover:border-slate-300 transition cursor-pointer"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="font-bold text-xs text-slate-900">{l.tieu_de}</div>
-                        <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0', cfgTT.mauBadge)}>
-                          {cfgTT.tieu_de}
-                        </span>
-                      </div>
-                      {l.noi_dung && <p className="text-xs text-slate-600 line-clamp-2">{l.noi_dung}</p>}
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-100">
-                        <span>{formatNgay(l.ngay)} • {l.gio_bat_dau} - {l.gio_ket_thuc}</span>
-                        {l.dia_diem && <span className="truncate max-w-[140px]">{l.dia_diem}</span>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {tabCon === 'tong_hop' && (
-        <div className="space-y-3">
-          {dsSuKienTongHop.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-500 italic bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-              Chưa có dữ liệu tương tác nội bộ nào.
-            </div>
-          ) : (
-            <div className="space-y-2.5 relative pl-4 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-              {dsSuKienTongHop.map((sk) => (
-                <div key={sk.id} className="relative flex items-start gap-3 text-xs bg-white p-3 rounded-xl border border-slate-200/80 shadow-2xs">
-                  <div className="absolute -left-[21px] top-3.5 size-2.5 rounded-full bg-blue-600 ring-4 ring-white" />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="font-bold text-slate-900">{sk.tieu_de}</span>
-                      <span className="text-[10.5px] text-slate-400 font-mono">
-                        {sk.thoi_gian?.slice(0, 16).replace('T', ' ')}
-                      </span>
-                    </div>
-                    {sk.mo_ta && (
-                      <p className="text-slate-600 line-clamp-2 text-[11.5px] leading-relaxed">
-                        {sk.mo_ta}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 text-[11px] text-slate-500 flex-wrap">
-                      <span>Người ghi nhận: <strong className="text-slate-800">{sk.nguoi_thuc_hien}</strong></span>
-                      {sk.badge && (
-                        <span className={cn('px-2 py-0.2 rounded-full text-[10px] font-semibold border', sk.badgeColor)}>
-                          {sk.badge}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BanNhatKyVaTienDo(props: {
-  dsTD: (TienDoDuAn & { canh_bao: 'sap_den' | 'qua_han' | null })[];
-  dangTai: boolean;
-  err: string | null;
-  dsNS: NhanSu[];
-  onTao: (params: {
-    noi_dung: string;
-    file?: { ten_file: string; url_file: string; loai_file: string; ghi_chu?: string } | null;
-  }) => Promise<void>;
-  onXoaTD: (td: TienDoDuAn) => void;
-  onSuaTD?: (
-    tdId: string,
-    params: {
-      tinh_hinh_hien_tai: string;
-      link_tai_lieu?: string | null;
-      ten_tai_lieu?: string | null;
-    }
-  ) => Promise<void>;
-  onChiDaoTD?: (tdId: string, noiDungChiDao: string) => Promise<void>;
-  nguoiDungHienTai?: any;
-  laQuanLyHoacGiamDoc?: boolean;
-  moForm?: boolean;
-  onToggleForm?: (mo: boolean) => void;
-}) {
-  const {
-    dsTD,
-    dangTai,
-    err,
-    dsNS,
-    onTao,
-    onXoaTD,
-    onSuaTD,
-    onChiDaoTD,
-    nguoiDungHienTai,
-    laQuanLyHoacGiamDoc
-  } = props;
-
-  const isControlled = props.moForm !== undefined;
-  const [moFormInternal, setMoFormInternal] = useState(false);
-  const moForm = isControlled ? Boolean(props.moForm) : moFormInternal;
-  const capNhatMoForm = (val: boolean) => {
-    if (props.onToggleForm) {
-      props.onToggleForm(val);
-    }
-    setMoFormInternal(val);
-  };
-
-  // State chỉnh sửa tiến độ (Edit mode)
-  const [dangSuaTDId, setDangSuaTDId] = useState<string | null>(null);
-  const [tinhHinhSua, setTinhHinhSua] = useState('');
-  const [linkTaiLieuSua, setLinkTaiLieuSua] = useState('');
-  const [tenTaiLieuSua, setTenTaiLieuSua] = useState('');
-  const [dangLuuSua, setDangLuuSua] = useState(false);
-  const [loiSua, setLoiSua] = useState<string | null>(null);
-
-  // State ý kiến chỉ đạo của cấp trên
-  const [dangChiDaoTDId, setDangChiDaoTDId] = useState<string | null>(null);
-  const [noiDungChiDao, setNoiDungChiDao] = useState('');
-  const [dangLuuChiDao, setDangLuuChiDao] = useState(false);
-
-  const xuLyBatDauSua = (td: TienDoDuAn) => {
-    setDangSuaTDId(td.id);
-    setTinhHinhSua(td.tinh_hinh_hien_tai || '');
-    setLinkTaiLieuSua(td.link_tai_lieu || '');
-    setTenTaiLieuSua(td.ten_tai_lieu || '');
-    setLoiSua(null);
-  };
-
-  const xuLyLuuSua = async (tdId: string) => {
-    setLoiSua(null);
-    const th = tinhHinhSua.trim();
-    const lk = linkTaiLieuSua.trim();
-    const ttl = tenTaiLieuSua.trim();
-
-    if (!th && !lk) {
-      setLoiSua('Vui lòng nhập nội dung tiến độ hoặc link tài liệu.');
-      return;
-    }
-
-    if (lk) {
-      try {
-        new URL(lk);
-      } catch {
-        setLoiSua('Đường dẫn link tài liệu không hợp lệ (phải bắt đầu bằng https:// hoặc http://)');
-        return;
-      }
-    }
-
-    setDangLuuSua(true);
-    try {
-      if (onSuaTD) {
-        await onSuaTD(tdId, {
-          tinh_hinh_hien_tai: th,
-          link_tai_lieu: lk || null,
-          ten_tai_lieu: ttl || null
-        });
-      }
-      setDangSuaTDId(null);
-    } catch (e: any) {
-      setLoiSua(e?.message || 'Có lỗi khi cập nhật tiến độ');
-    } finally {
-      setDangLuuSua(false);
-    }
-  };
-
-  const xuLyHuySua = () => {
-    setDangSuaTDId(null);
-    setLoiSua(null);
-  };
-
-  const xuLyBatDauChiDao = (td: TienDoDuAn) => {
-    setDangChiDaoTDId(td.id);
-    setNoiDungChiDao(td.y_kien_chi_dao || '');
-  };
-
-  const xuLyLuuChiDao = async (tdId: string) => {
-    setDangLuuChiDao(true);
-    try {
-      if (onChiDaoTD) {
-        await onChiDaoTD(tdId, noiDungChiDao.trim());
-      }
-      setDangChiDaoTDId(null);
-    } catch {} finally {
-      setDangLuuChiDao(false);
-    }
-  };
-
-  const xuLyXoaChiDao = async (tdId: string) => {
-    if (confirm('Bạn có chắc muốn xóa ý kiến chỉ đạo này?')) {
-      if (onChiDaoTD) {
-        await onChiDaoTD(tdId, '');
-      }
-    }
-  };
-
-  const [noiDung, setNoiDung] = useState('');
-  const [kemFile, setKemFile] = useState(false);
-  const [tenFile, setTenFile] = useState('');
-  const [urlFile, setUrlFile] = useState('');
-  const [loaiFile, setLoaiFile] = useState<'google_drive' | 'youtube' | 'link_khac'>('google_drive');
-  const [ghiChuFile, setGhiChuFile] = useState('');
-  const [dangXuLy, setDangXuLy] = useState(false);
-  const [loiForm, setLoiForm] = useState<string | null>(null);
-
-  const xuLyLuu = async () => {
-    setLoiForm(null);
-    const nd = noiDung.trim();
-    const tf = tenFile.trim();
-    const uf = urlFile.trim();
-
-    if (!nd && !tf && !uf) {
-      setLoiForm('Vui lòng nhập nội dung tiến độ hoặc điền thông tin tài liệu đính kèm.');
-      return;
-    }
-
-    if (kemFile || tf || uf) {
-      if (!tf || !uf) {
-        setLoiForm('Vui lòng điền đủ: Tên tài liệu và Đường dẫn URL.');
-        return;
-      }
-      try {
-        new URL(uf);
-      } catch {
-        setLoiForm('Đường dẫn URL tài liệu không hợp lệ (phải bắt đầu bằng https:// hoặc http://)');
-        return;
-      }
-    }
-
-    setDangXuLy(true);
-    try {
-      await onTao({
-        noi_dung: nd,
-        file: (kemFile || (tf && uf)) ? {
-          ten_file: tf,
-          url_file: uf,
-          loai_file: loaiFile,
-          ghi_chu: ghiChuFile.trim() || undefined
-        } : null
-      });
-
-      // Reset form
-      setNoiDung('');
-      setKemFile(false);
-      setTenFile('');
-      setUrlFile('');
-      setGhiChuFile('');
-      capNhatMoForm(false);
-    } catch (e: any) {
-      setLoiForm(e?.message ?? 'Lưu cập nhật thất bại');
-    } finally {
-      setDangXuLy(false);
-    }
-  };
-
-  return (
-    <div className="space-y-5">
-      {/* 1. Header Bar & Nút Thao tác */}
-      <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
-        <div>
-          <div>
-            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <Activity className="size-4 text-[#107555]" />
-              Nhật ký làm việc với khách hàng
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Chỉ cập nhật kết quả tiếp xúc, làm việc, đàm phán và tiến độ triển khai với Khách hàng. Các tương tác nội bộ xem tại mục "Nhật ký nội bộ".
-            </p>
-          </div>
-        </div>
-        <Nut
-          kieu={moForm ? 'outline' : 'primary'}
-          kich_thuoc="sm"
-          icon_trai={moForm ? X : Plus}
-          onClick={() => capNhatMoForm(!moForm)}
-          className="whitespace-nowrap font-medium"
-        >
-          {moForm ? 'Đóng form' : '+ Cập nhật nhật ký KH'}
-        </Nut>
-      </div>
-
-      {/* 2. Form Cập nhật tiến độ & đính kèm tài liệu nhanh */}
-      {(moForm || dsTD.length === 0) && (
-        <div id="form-cap-nhat-tien-do" className="rounded-[var(--radius-card)] border border-primary/30 bg-primary/5 p-4 sm:p-5 shadow-sm space-y-4 animate-in fade-in duration-200 scroll-mt-24">
-          <div className="flex items-center justify-between border-b border-primary/20 pb-2.5">
-            <div className="flex items-center gap-2">
-              <div className="size-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0">
-                <Send className="size-3.5" />
-              </div>
-              <div className="text-sm font-bold text-foreground">
-                Ghi nhận kết quả làm việc với khách hàng
-              </div>
-            </div>
-            {dsTD.length > 0 && (
-              <button
-                type="button"
-                onClick={() => capNhatMoForm(false)}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground transition cursor-pointer"
-              >
-                <X className="size-4" />
-              </button>
-            )}
-          </div>
-
-          <div className="space-y-3.5">
-            {/* Nội dung tiến độ */}
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1 block">
-                Nội dung làm việc / Kết quả trao đổi với khách hàng <span className="text-destructive">*</span>
-              </label>
-              <textarea
-                value={noiDung}
-                onChange={(e) => setNoiDung(e.target.value)}
-                rows={3}
-                className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 resize-y min-h-[75px]"
-              />
-            </div>
-
-            {/* Nút bật/tắt đính kèm tài liệu */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setKemFile((v) => !v)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer',
-                  kemFile
-                    ? 'bg-primary/15 border-primary/30 text-primary'
-                    : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-                )}
-              >
-                <Paperclip className="size-3.5" />
-                <span>{kemFile ? 'Đang bật đính kèm tài liệu' : '+ Đính kèm tài liệu / Link URL'}</span>
-              </button>
-            </div>
-
-            {/* Khối nhập tài liệu đính kèm (nếu bật) */}
-            {kemFile && (
-              <div className="p-3.5 rounded-xl border border-border bg-background/80 space-y-3 animate-in fade-in duration-150">
-                <div className="text-xs font-bold text-foreground flex items-center gap-1.5 border-b border-border/60 pb-2">
-                  <ExternalLink className="size-3.5 text-primary" /> Thông tin tài liệu đính kèm
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11.5px] font-semibold text-foreground mb-1 block">
-                      Tên tài liệu <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={tenFile}
-                      onChange={(e) => setTenFile(e.target.value)}
-                      className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11.5px] font-semibold text-foreground mb-1 block">
-                      Đường dẫn URL <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      type="url"
-                      value={urlFile}
-                      onChange={(e) => setUrlFile(e.target.value)}
-                      className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11.5px] font-semibold text-foreground mb-1 block">
-                      Loại liên kết
-                    </label>
-                    <select
-                      value={loaiFile}
-                      onChange={(e) => setLoaiFile(e.target.value as any)}
-                      className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
-                    >
-                      <option value="google_drive">Google Drive</option>
-                      <option value="youtube">YouTube</option>
-                      <option value="link_khac">Liên kết ngoài (Web / Cloud)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[11.5px] font-semibold text-foreground mb-1 block">
-                      Ghi chú thêm (tùy chọn)
-                    </label>
-                    <input
-                      type="text"
-                      value={ghiChuFile}
-                      onChange={(e) => setGhiChuFile(e.target.value)}
-                      className="w-full rounded-[var(--radius-input)] border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary/60"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Thông báo lỗi và Nút submit */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-              <div>
-                {loiForm && (
-                  <div className="text-xs font-semibold text-destructive flex items-center gap-1.5">
-                    <AlertTriangle className="size-3.5 shrink-0" /> {loiForm}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                {dsTD.length > 0 && (
-                  <Nut kieu="outline" kich_thuoc="sm" onClick={() => capNhatMoForm(false)}>
-                    Hủy
-                  </Nut>
-                )}
-                <Nut
-                  kieu="primary"
-                  kich_thuoc="sm"
-                  disabled={dangXuLy}
-                  onClick={xuLyLuu}
-                  icon_trai={dangXuLy ? Loader2 : Send}
-                  className="font-bold"
-                >
-                  {dangXuLy ? 'Đang lưu...' : 'Lưu tiến độ'}
-                </Nut>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Danh sách tiến độ */}
-      <div className="space-y-3">
-        {dangTai ? (
-          <SkeletonList so={3} cotDoc={false} />
-        ) : err ? (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm p-4 font-semibold">
-            Lỗi tải: {err}
-          </div>
-        ) : dsTD.length === 0 ? (
-          <Rong
-            kieu="mac_dinh"
-            icon_tuy_chinh={TrendingUp}
-            nhan_tuy_chinh="Chưa có nhật ký làm việc với khách hàng nào"
-            nhan_phu_tuy_chinh="Nhấn '+ Cập nhật nhật ký KH' hoặc cập nhật trực tiếp từ Bàn làm việc hàng ngày."
-            hanh_dong={
-              <Nut kieu="primary" kich_thuoc="sm" icon_trai={Plus} onClick={() => capNhatMoForm(true)}>
-                Thêm nhật ký đầu tiên
-              </Nut>
-            }
-          />
-        ) : (
-          <div className="space-y-3">
-            {dsTD.map((td, i) => {
-              const nguoiTao = td.nguoi_tao_id
-                ? dsNS.find((x) => x.id === td.nguoi_tao_id) ?? null
-                : null;
-
-              return (
-                <div
-                  key={td.id}
-                  className={cn(
-                    'group relative rounded-2xl border bg-white p-3.5 sm:p-4.5 transition-all duration-200 space-y-2.5',
-                    i === 0
-                      ? 'border-emerald-200/90 shadow-[0_2px_12px_rgba(16,117,85,0.06)] ring-1 ring-emerald-500/10'
-                      : 'border-slate-200/80 hover:border-slate-300 shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
-                  )}
-                >
-                  {/* Header: Avatar, Tên, Thời gian & Nút Xóa */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <DaiDien
-                        ten={nguoiTao?.ho_va_ten ?? 'Nhân sự'}
-                        anh={nguoiTao?.url_anh_dai_dien}
-                        kich_thuoc="sm"
-                        className="size-8 sm:size-8.5 rounded-full shrink-0 ring-1 ring-slate-200/80"
-                      />
-                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                        <span className="text-[13.5px] sm:text-sm font-bold text-slate-900 truncate">
-                          {nguoiTao?.ho_va_ten ?? 'Nhân sự'}
-                        </span>
-                        <span className="text-slate-300">·</span>
-                        <span className="text-[11.5px] sm:text-xs text-slate-500 font-medium tabular-nums shrink-0">
-                          {formatNgay(td.ngay_tao, 'DD/MM/YYYY')} <span className="text-slate-400 font-normal">lúc</span> {formatNgay(td.ngay_tao, 'HH:mm')}
-                        </span>
-                        {i === 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-[#107555] font-bold text-[10.5px] border border-emerald-200 shrink-0">
-                            <Sparkles className="size-2.5" /> Mới nhất
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Nút Sửa & Xóa */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        title="Chỉnh sửa nội dung hoặc link tài liệu"
-                        onClick={() => xuLyBatDauSua(td)}
-                        className="size-7 rounded-lg text-slate-400 hover:text-[#107555] hover:bg-emerald-50 flex items-center justify-center transition opacity-70 group-hover:opacity-100 cursor-pointer"
-                      >
-                        <Pencil className="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Xóa ghi nhận này"
-                        onClick={() => onXoaTD(td)}
-                        className="size-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition opacity-70 group-hover:opacity-100 shrink-0 cursor-pointer"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Khi đang ở chế độ chỉnh sửa inline */}
-                  {dangSuaTDId === td.id ? (
-                    <div className="pl-10 sm:pl-11 pr-1 space-y-3 pt-1">
-                      <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-[#107555] flex items-center gap-1.5">
-                            <Pencil className="size-3.5" /> Chỉnh sửa tiến độ & tài liệu
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              disabled={dangLuuSua}
-                              onClick={() => xuLyLuuSua(td.id)}
-                              className="h-7 px-3 rounded-lg bg-[#107555] text-white hover:bg-[#0d6146] text-xs font-bold inline-flex items-center gap-1 shadow-xs transition cursor-pointer"
-                            >
-                              {dangLuuSua ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
-                              <span>Lưu</span>
-                            </button>
-                            <button
-                              type="button"
-                              disabled={dangLuuSua}
-                              onClick={xuLyHuySua}
-                              className="h-7 px-2.5 rounded-lg bg-slate-200/80 hover:bg-slate-300 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer"
-                            >
-                              <X className="size-3" /> Hủy
-                            </button>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                            Nội dung tiến độ / công việc <span className="text-destructive">*</span>
-                          </label>
-                          <textarea
-                            value={tinhHinhSua}
-                            onChange={(e) => setTinhHinhSua(e.target.value)}
-                            rows={3}
-                            className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                          />
-                        </div>
-
-                        <div className="grid sm:grid-cols-2 gap-2.5">
-                          <div>
-                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                              Đường dẫn link tài liệu (URL)
-                            </label>
-                            <input
-                              type="url"
-                              value={linkTaiLieuSua}
-                              onChange={(e) => setLinkTaiLieuSua(e.target.value)}
-                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                              Tên tài liệu hiển thị
-                            </label>
-                            <input
-                              type="text"
-                              value={tenTaiLieuSua}
-                              onChange={(e) => setTenTaiLieuSua(e.target.value)}
-                              className="w-full h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                            />
-                          </div>
-                        </div>
-
-                        {loiSua && (
-                          <div className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
-                            <AlertTriangle className="size-3.5" /> {loiSua}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    /* Nội dung Tiến độ hiển thị tự nhiên */
-                    <div className="pl-10 sm:pl-11 pr-1 space-y-2">
-                      <p className="text-[13.5px] sm:text-[14px] text-slate-800 leading-relaxed whitespace-pre-wrap font-normal">
-                        {td.tinh_hinh_hien_tai}
-                      </p>
-
-                      {td.ngay_chinh_sua_gan_nhat && (
-                        <span className="text-[11px] text-slate-400 italic font-normal block">
-                          (Đã chỉnh sửa lúc {formatNgay(td.ngay_chinh_sua_gan_nhat, 'DD/MM/YYYY HH:mm')})
-                        </span>
-                      )}
-
-                      {td.link_tai_lieu && (
-                        <div className="pt-0.5">
-                          <a
-                            href={td.link_tai_lieu}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/90 hover:bg-emerald-50 text-slate-700 hover:text-[#107555] text-xs font-semibold border border-slate-200/70 transition shadow-2xs group/link"
-                          >
-                            <ExternalLink className="size-3 text-slate-400 group-hover/link:text-[#107555] transition-colors" />
-                            <span>{td.ten_tai_lieu || 'Mở tài liệu đính kèm'}</span>
-                          </a>
-                        </div>
-                      )}
-
-                      {/* Ý kiến phản hồi / trao đổi / chỉ đạo */}
-                      {td.y_kien_chi_dao && (
-                        <div className="mt-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1">
-                          <div className="flex items-center justify-between">
-                            <div className="font-bold text-amber-900 flex items-center gap-1.5 text-[11.5px]">
-                              <MessageSquareQuote className="size-3.5 text-amber-600 shrink-0" />
-                              <span>
-                                Ý kiến phản hồi từ {td.ten_nguoi_chi_dao || 'Nhân sự'}
-                                {td.chuc_vu_nguoi_chi_dao ? ` (${td.chuc_vu_nguoi_chi_dao})` : ''}:
-                              </span>
-                            </div>
-                            {(laQuanLyHoacGiamDoc || (!!td.nguoi_chi_dao_id && td.nguoi_chi_dao_id === nguoiDungHienTai?.id)) && (
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => xuLyBatDauChiDao(td)}
-                                  className="text-[10.5px] font-bold text-amber-800 hover:underline cursor-pointer"
-                                >
-                                  Sửa
-                                </button>
-                                <span className="text-amber-300">·</span>
-                                <button
-                                  type="button"
-                                  onClick={() => xuLyXoaChiDao(td.id)}
-                                  className="text-[10.5px] font-bold text-rose-600 hover:underline cursor-pointer"
-                                >
-                                  Xóa
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          <div className="text-slate-800 font-medium pl-5 text-[12px] leading-relaxed">
-                            {td.y_kien_chi_dao}
-                          </div>
-                          {td.ngay_chi_dao && (
-                            <div className="text-[10px] text-slate-400 pl-5 font-mono">
-                              Ngày phản hồi: {formatNgay(td.ngay_chi_dao, 'DD/MM/YYYY')}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Form nhập/sửa ý kiến phản hồi */}
-                      {dangChiDaoTDId === td.id ? (
-                        <div className="mt-2.5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2.5 animate-in fade-in duration-150">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-amber-900 text-xs flex items-center gap-1.5">
-                              <MessageSquareQuote className="size-3.5 text-amber-600" />
-                              Ý kiến phản hồi & Phối hợp
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                disabled={dangLuuChiDao}
-                                onClick={() => xuLyLuuChiDao(td.id)}
-                                className="h-6.5 px-2.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold inline-flex items-center gap-1 transition cursor-pointer"
-                              >
-                                {dangLuuChiDao ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
-                                <span>Lưu ý kiến</span>
-                              </button>
-                              <button
-                                type="button"
-                                disabled={dangLuuChiDao}
-                                onClick={() => setDangChiDaoTDId(null)}
-                                className="h-6.5 px-2 rounded-md bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
-                              >
-                                <X className="size-3" /> Hủy
-                              </button>
-                            </div>
-                          </div>
-                          <textarea
-                            rows={2}
-                            value={noiDungChiDao}
-                            onChange={(e) => setNoiDungChiDao(e.target.value)}
-                            className="w-full rounded-lg border border-amber-500/40 bg-white p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                          />
-                        </div>
-                      ) : (
-                        /* Nút thêm ý kiến phản hồi (cho phép mọi nhân sự có quyền xem dự án) */
-                        !td.y_kien_chi_dao && (
-                          <div className="pt-1">
-                            <button
-                              type="button"
-                              onClick={() => xuLyBatDauChiDao(td)}
-                              className="text-[11.5px] text-amber-700 hover:text-amber-800 font-semibold inline-flex items-center gap-1 transition cursor-pointer"
-                            >
-                              <MessageSquareQuote className="size-3" /> + Thêm ý kiến phản hồi / trao đổi
-                            </button>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function BanKhoTaiLieu(props: {
   dsTL: TaiLieuDuAn[];

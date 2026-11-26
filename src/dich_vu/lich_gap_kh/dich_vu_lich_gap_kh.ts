@@ -3,6 +3,7 @@
 import {
   addDoc,
   deleteDoc,
+  getDoc,
   getDocs,
   setDoc,
   query,
@@ -439,7 +440,15 @@ export const capNhatLichGapKH = async (
   const dsLocal = docCacheLocal().map((x) => (x.id === id ? { ...x, ...patch } : x));
   ghiCacheLocal(dsLocal);
   xoaCacheLichGapKH();
-  const banGhiCapNhat = dsLocal.find((x) => x.id === id);
+  let banGhiCapNhat = dsLocal.find((x) => x.id === id);
+  if (!banGhiCapNhat) {
+    try {
+      const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, id));
+      if (snap.exists()) {
+        banGhiCapNhat = { id: snap.id, ...snap.data(), ...patch } as LichGapKH;
+      }
+    } catch {}
+  }
   if (banGhiCapNhat) {
     phatSuKienCapNhat(banGhiCapNhat);
     void dongBoLichSangTienDoDuAn({

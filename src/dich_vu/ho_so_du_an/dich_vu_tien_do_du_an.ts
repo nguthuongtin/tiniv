@@ -45,6 +45,7 @@ export interface TaoMoiTienDoDuAnDTO {
   ten_tai_lieu?: string | null;
   trang_thai_hanh_dong?: TienDoDuAn['trang_thai_hanh_dong'];
   nguoi_tao_id?: string | null;
+  loai_nhat_ky?: 'khach_hang' | 'noi_bo' | null;
 }
 
 export interface CapNhatTienDoDuAnDTO {
@@ -64,6 +65,7 @@ export interface CapNhatTienDoDuAnDTO {
   chuc_vu_nguoi_chi_dao?: string | null;
   ngay_chi_dao?: string | null;
   ngay_chinh_sua_gan_nhat?: string | null;
+  loai_nhat_ky?: 'khach_hang' | 'noi_bo' | null;
 }
 
 type RawBanGhiTDDA = Omit<TienDoDuAn, 'id'>;
@@ -97,7 +99,8 @@ const chuyenDoiDocThanhDoiTuong = (
     chuc_vu_nguoi_chi_dao: (r.chuc_vu_nguoi_chi_dao as string | null) ?? null,
     ngay_chi_dao: (r.ngay_chi_dao as string | null) ?? null,
     ngay_chinh_sua_gan_nhat: (r.ngay_chinh_sua_gan_nhat as string | null) ?? null,
-    lich_gap_kh_id: ((r as any).lich_gap_kh_id as string | null) ?? null
+    lich_gap_kh_id: ((r as any).lich_gap_kh_id as string | null) ?? null,
+    loai_nhat_ky: ((r as any).loai_nhat_ky as 'khach_hang' | 'noi_bo' | null) ?? null
   };
 };
 
@@ -178,7 +181,8 @@ export const taoTienDoDuAnMoi = async (
     ten_nguoi_chi_dao: null,
     chuc_vu_nguoi_chi_dao: null,
     ngay_chi_dao: null,
-    ngay_chinh_sua_gan_nhat: null
+    ngay_chinh_sua_gan_nhat: null,
+    loai_nhat_ky: dto.loai_nhat_ky ?? 'khach_hang'
   };
   const snap = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieu as any);
   const ketQua = chuyenDoiDocThanhDoiTuong(snap.id, duLieu);
@@ -391,7 +395,8 @@ export const dongBoLichSangTienDoDuAn = async (params: {
     chuc_vu_nguoi_chi_dao: null,
     ngay_chi_dao: null,
     ngay_chinh_sua_gan_nhat: null,
-    lich_gap_kh_id: lich.id
+    lich_gap_kh_id: lich.id,
+    loai_nhat_ky: lich.loai_viec_vp === 'hop_noi_bo' ? 'noi_bo' : 'khach_hang'
   };
 
   try {
