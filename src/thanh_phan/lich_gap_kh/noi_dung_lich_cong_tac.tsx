@@ -401,7 +401,7 @@ export function NoiDungLichCongTac({
   }, []);
   const [chiNhanhLoc, setChiNhanhLoc] = useState<string>('tat_ca');
   const [nhanSuLoc, setNhanSuLoc] = useState<string>('tat_ca');
-  const [locLoaiLich, setLocLoaiLich] = useState<'tat_ca' | 'cong_tac_di_chuyen' | 'van_phong'>('tat_ca');
+  const [locVaiTroLich, setLocVaiTroLich] = useState<'tat_ca' | 'chu_tri' | 'ho_tro'>('tat_ca');
   const [locTrangThaiNhanh, setLocTrangThaiNhanh] = useState<'tat_ca' | 'chua_bao_cao' | 'da_hoan_thanh' | null>(null);
   const [tenViecVPNhanh, setTenViecVPNhanh] = useState('');
   const [loaiViecVPNhanh, setLoaiViecVPNhanh] = useState<LoaiViecVanPhong>('goi_dien');
@@ -552,10 +552,30 @@ export function NoiDungLichCongTac({
         const laThamGia = l.nguoi_tham_gia_ids?.includes(nhanSuLoc);
         if (!laChuTri && !laThamGia) return false;
       }
-      if (locLoaiLich === 'van_phong') {
-        if (l.loai_lich !== 'van_phong') return false;
-      } else if (locLoaiLich === 'cong_tac_di_chuyen') {
-        if (l.loai_lich === 'van_phong') return false;
+      if (locVaiTroLich === 'ho_tro') {
+        const laHT =
+          (nguoiDungHienTai?.id &&
+            l.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
+            Array.isArray(l.nguoi_tham_gia_ids) &&
+            l.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id)) ||
+          (nhanSuLoc !== 'tat_ca' &&
+            l.nguoi_phu_trach_id !== nhanSuLoc &&
+            Array.isArray(l.nguoi_tham_gia_ids) &&
+            l.nguoi_tham_gia_ids.includes(nhanSuLoc)) ||
+          l.id.startsWith('lich_yc_');
+        if (!laHT) return false;
+      } else if (locVaiTroLich === 'chu_tri') {
+        const laHT =
+          (nguoiDungHienTai?.id &&
+            l.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
+            Array.isArray(l.nguoi_tham_gia_ids) &&
+            l.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id)) ||
+          (nhanSuLoc !== 'tat_ca' &&
+            l.nguoi_phu_trach_id !== nhanSuLoc &&
+            Array.isArray(l.nguoi_tham_gia_ids) &&
+            l.nguoi_tham_gia_ids.includes(nhanSuLoc)) ||
+          l.id.startsWith('lich_yc_');
+        if (laHT) return false;
       }
       if (locTrangThaiNhanh === 'chua_bao_cao') {
         const laChuaBC = kiemTraLichChuaBaoCao(l, { homNayISO, phutHienTai });
@@ -565,7 +585,7 @@ export function NoiDungLichCongTac({
       }
       return true;
     });
-  }, [dsLichTongHop, laQuanLy, nguoiDungHienTai?.id, chiNhanhLoc, nhanSuLoc, locLoaiLich, locTrangThaiNhanh, homNayISO, phutHienTai, mapNhanSu]);
+  }, [dsLichTongHop, laQuanLy, nguoiDungHienTai?.id, chiNhanhLoc, nhanSuLoc, locVaiTroLich, locTrangThaiNhanh, homNayISO, phutHienTai, mapNhanSu]);
 
   // 7 ngày của tuần đang xem
   const ds7NgayTuan = useMemo(() => layDanhSach7NgayTrongTuan(ngayDangXem), [ngayDangXem]);
@@ -1378,14 +1398,14 @@ export function NoiDungLichCongTac({
 
       {/* BỘ LỌC PHÂN LOẠI & THANH THÊM NHANH VIỆC TẠI VĂN PHÒNG */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        {/* Bộ lọc loại lịch: Tất cả, Công tác ngoài, Việc tại VP */}
+        {/* Bộ lọc: Tất cả | Lịch chủ trì | Lịch đi hỗ trợ */}
         <div className="grid grid-cols-3 sm:inline-flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 gap-1 text-xs">
           <button
             type="button"
-            onClick={() => setLocLoaiLich('tat_ca')}
+            onClick={() => setLocVaiTroLich('tat_ca')}
             className={cn(
               'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer text-center',
-              locLoaiLich === 'tat_ca'
+              locVaiTroLich === 'tat_ca'
                 ? 'bg-white text-slate-900 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
             )}
@@ -1394,29 +1414,29 @@ export function NoiDungLichCongTac({
           </button>
           <button
             type="button"
-            onClick={() => setLocLoaiLich('cong_tac_di_chuyen')}
+            onClick={() => setLocVaiTroLich('chu_tri')}
             className={cn(
               'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center justify-center gap-1.5',
-              locLoaiLich === 'cong_tac_di_chuyen'
-                ? 'bg-white text-emerald-800 shadow-2xs'
+              locVaiTroLich === 'chu_tri'
+                ? 'bg-white text-slate-900 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-800'
             )}
           >
-            <Car className="size-3.5 text-slate-600 shrink-0" />
-            <span>Công tác</span>
+            <Briefcase className="size-3.5 text-slate-600 shrink-0" />
+            <span>Lịch chủ trì</span>
           </button>
           <button
             type="button"
-            onClick={() => setLocLoaiLich('van_phong')}
+            onClick={() => setLocVaiTroLich('ho_tro')}
             className={cn(
               'px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center justify-center gap-1.5',
-              locLoaiLich === 'van_phong'
-                ? 'bg-white text-blue-800 shadow-2xs'
-                : 'text-slate-500 hover:text-slate-800'
+              locVaiTroLich === 'ho_tro'
+                ? 'bg-indigo-600 text-white shadow-2xs'
+                : 'text-indigo-700 hover:text-indigo-900 hover:bg-indigo-50/50'
             )}
           >
-            <Building2 className="size-3.5 text-slate-600 shrink-0" />
-            <span>Tại VP</span>
+            <Users className="size-3.5 shrink-0" />
+            <span>Đi hỗ trợ</span>
           </button>
         </div>
 
@@ -1549,18 +1569,22 @@ export function NoiDungLichCongTac({
                               {lichTrongNgay.map((lich) => {
                                 const ns = mapNhanSu.get(lich.nguoi_phu_trach_id);
                                 const tenNVRutGon = rutGonTenNhanVienQuyChuan(ns?.ho_va_ten);
-                                const isVP = lich.loai_lich === 'van_phong';
                                 const isHoTro = lich.id.startsWith('lich_yc_');
                                 const daHoanThanh = lich.trang_thai === 'da_hoan_thanh';
                                 const daHuy = lich.trang_thai === 'huy';
                                 const laDoiLich = lich.trang_thai === 'doi_lich';
                                 const laQuaHanChuaBaoCao = kiemTraLichChuaBaoCao(lich, { homNayISO, phutHienTai });
                                 const laNguoiDiCung = Boolean(
-                                  nguoiDungHienTai?.id &&
-                                  lich.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
-                                  Array.isArray(lich.nguoi_tham_gia_ids) &&
-                                  lich.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id)
+                                  (nguoiDungHienTai?.id &&
+                                    lich.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
+                                    Array.isArray(lich.nguoi_tham_gia_ids) &&
+                                    lich.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id)) ||
+                                  (nhanSuLoc !== 'tat_ca' &&
+                                    lich.nguoi_phu_trach_id !== nhanSuLoc &&
+                                    Array.isArray(lich.nguoi_tham_gia_ids) &&
+                                    lich.nguoi_tham_gia_ids.includes(nhanSuLoc))
                                 );
+                                const laLichHoTro = laNguoiDiCung || isHoTro;
                                 const infoHienThi = taoTieuDeLichHienThi(lich);
 
                                 return (
@@ -1580,32 +1604,27 @@ export function NoiDungLichCongTac({
                                         ? 'bg-emerald-50/40 border-emerald-200/90'
                                         : laQuaHanChuaBaoCao
                                         ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/40 shadow-xs'
+                                        : laLichHoTro
+                                        ? 'bg-indigo-50/50 border-indigo-200/90 border-l-4 border-l-indigo-600 shadow-xs'
                                         : 'bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-xs'
                                     )}
                                   >
-                                    {/* Dòng 1: Icon phân loại + Giờ (trái) & Dấu check hoàn thành (góc trên phải) */}
+                                    {/* Dòng 1: Dấu hiệu HỖ TRỢ nổi bật + Giờ & Checkbox hoàn thành */}
                                     <div className="flex items-center justify-between gap-1">
-                                      <div className="flex items-center gap-1.5 min-w-0">
-                                        {/* Icon loại lịch: Xanh lá (Công tác), Đỏ (Tại VP), Hổ phách (Hỗ trợ) */}
-                                        <div
-                                          className="size-5 rounded flex items-center justify-center shrink-0 border bg-slate-100 border-slate-200 text-slate-700"
-                                          title={isHoTro ? 'Yêu cầu hỗ trợ' : isVP ? 'Việc tại VP' : 'Công tác ngoài'}
-                                        >
-                                          {isHoTro ? (
-                                            <Sparkles className="size-2.5" />
-                                          ) : isVP ? (
-                                            <Building2 className="size-2.5" />
-                                          ) : (
-                                            <Car className="size-2.5" />
-                                          )}
-                                        </div>
+                                      <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                                        {laLichHoTro && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wide bg-indigo-600 text-white shadow-xs shrink-0">
+                                            <Users className="size-3 stroke-[2.5]" />
+                                            <span>{laNguoiDiCung ? 'ĐI HỖ TRỢ' : 'Y/C HỖ TRỢ'}</span>
+                                          </span>
+                                        )}
 
-                                        <span className={cn('text-[11px] font-bold tabular-nums text-slate-500 shrink-0', daHuy && 'line-through')}>
+                                        <span className={cn('text-[11px] font-bold tabular-nums text-slate-600 shrink-0', daHuy && 'line-through')}>
                                           {lich.gio_bat_dau || 'Cả ngày'}
                                         </span>
-                                        {laNguoiDiCung && (
-                                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200 shrink-0">
-                                            Đi cùng
+                                        {laNguoiDiCung && ns && (
+                                          <span className="text-[10px] font-bold text-indigo-700 truncate max-w-[110px]" title={`Chủ trì: ${ns.ho_va_ten}`}>
+                                            (Cùng {tenNVRutGon})
                                           </span>
                                         )}
                                       </div>
@@ -1872,12 +1891,22 @@ export function NoiDungLichCongTac({
                             const ns = mapNhanSu.get(lich.nguoi_phu_trach_id);
                             const tenNVRutGon = rutGonTenNhanVienQuyChuan(ns?.ho_va_ten);
                             const infoH = taoTieuDeLichHienThi(lich);
-                            const isVP = lich.loai_lich === 'van_phong';
                             const isHoTro = lich.id.startsWith('lich_yc_');
                             const daXong = lich.trang_thai === 'da_hoan_thanh';
                             const daHuy = lich.trang_thai === 'huy';
                             const laDoiLich = lich.trang_thai === 'doi_lich';
                             const laQuaHanChuaBaoCao = kiemTraLichChuaBaoCao(lich, { homNayISO, phutHienTai });
+                            const laNguoiDiCung = Boolean(
+                              (nguoiDungHienTai?.id &&
+                                lich.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
+                                Array.isArray(lich.nguoi_tham_gia_ids) &&
+                                lich.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id)) ||
+                              (nhanSuLoc !== 'tat_ca' &&
+                                lich.nguoi_phu_trach_id !== nhanSuLoc &&
+                                Array.isArray(lich.nguoi_tham_gia_ids) &&
+                                lich.nguoi_tham_gia_ids.includes(nhanSuLoc))
+                            );
+                            const laLichHoTro = laNguoiDiCung || isHoTro;
 
                             return (
                               <div
@@ -1896,25 +1925,38 @@ export function NoiDungLichCongTac({
                                     ? 'bg-emerald-50/40 border-emerald-200/80'
                                     : laQuaHanChuaBaoCao
                                     ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/40 shadow-xs'
+                                    : laLichHoTro
+                                    ? 'bg-indigo-50/40 border-l-4 border-l-indigo-600 border-indigo-200 shadow-xs'
                                     : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
                                 )}
                               >
-                                {/* Icon loại lịch hiện đại: Xanh lá (Công tác), Đỏ (Việc tại VP), Hổ phách (Hỗ trợ) */}
+                                {/* Dấu hiệu Icon: Hỗ trợ rõ ràng thay vì icon VP/Công tác */}
                                 <div
-                                  className="size-7 rounded-lg flex items-center justify-center shrink-0 border shadow-2xs bg-slate-100 border-slate-200 text-slate-700"
-                                  title={isHoTro ? 'Yêu cầu hỗ trợ' : isVP ? 'Việc tại VP' : 'Công tác ngoài'}
+                                  className={cn(
+                                    'size-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs',
+                                    laLichHoTro
+                                      ? 'bg-indigo-600 border-indigo-600 text-white'
+                                      : 'bg-slate-100 border-slate-200 text-slate-600'
+                                  )}
+                                  title={laNguoiDiCung ? `Đi hỗ trợ cùng ${ns?.ho_va_ten || 'chủ trì'}` : isHoTro ? 'Yêu cầu hỗ trợ' : 'Lịch công tác'}
                                 >
-                                  {isHoTro ? (
-                                    <Sparkles className="size-3.5" />
-                                  ) : isVP ? (
-                                    <Building2 className="size-3.5" />
+                                  {laNguoiDiCung ? (
+                                    <Users className="size-4 stroke-[2.5]" />
+                                  ) : isHoTro ? (
+                                    <Sparkles className="size-4 stroke-[2.5]" />
                                   ) : (
-                                    <Car className="size-3.5" />
+                                    <Clock className="size-4" />
                                   )}
                                 </div>
 
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-1.5 flex-wrap">
+                                    {laLichHoTro && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wide bg-indigo-600 text-white shadow-xs shrink-0">
+                                        <Users className="size-3 stroke-[2.5]" />
+                                        <span>{laNguoiDiCung ? 'ĐI HỖ TRỢ' : 'Y/C HỖ TRỢ'}</span>
+                                      </span>
+                                    )}
                                     <span className="text-[11px] font-bold text-slate-500 tabular-nums">
                                       {lich.gio_bat_dau} - {lich.gio_ket_thuc}
                                     </span>
@@ -2043,12 +2085,22 @@ export function NoiDungLichCongTac({
                             <div className="space-y-1 mt-0.5">
                               {lichNgay.slice(0, 3).map((lich) => {
                                 const infoH = taoTieuDeLichHienThi(lich);
-                                const isVP = lich.loai_lich === 'van_phong';
                                 const isHoTro = lich.id.startsWith('lich_yc_');
                                 const daXong = lich.trang_thai === 'da_hoan_thanh';
                                 const daHuy = lich.trang_thai === 'huy';
                                 const laDoiLich = lich.trang_thai === 'doi_lich';
                                 const laQuaHanChuaBaoCao = kiemTraLichChuaBaoCao(lich, { homNayISO, phutHienTai });
+                                const laNguoiDiCung = Boolean(
+                                  (nguoiDungHienTai?.id &&
+                                    lich.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
+                                    Array.isArray(lich.nguoi_tham_gia_ids) &&
+                                    lich.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id)) ||
+                                  (nhanSuLoc !== 'tat_ca' &&
+                                    lich.nguoi_phu_trach_id !== nhanSuLoc &&
+                                    Array.isArray(lich.nguoi_tham_gia_ids) &&
+                                    lich.nguoi_tham_gia_ids.includes(nhanSuLoc))
+                                );
+                                const laLichHoTro = laNguoiDiCung || isHoTro;
                                 const ns = mapNhanSu.get(lich.nguoi_phu_trach_id);
                                 const tenNVRutGon = rutGonTenNhanVienQuyChuan(ns?.ho_va_ten);
 
@@ -2069,17 +2121,17 @@ export function NoiDungLichCongTac({
                                         ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
                                         : laDoiLich
                                         ? 'bg-purple-50 border-purple-200 text-purple-800'
+                                        : laLichHoTro
+                                        ? 'bg-indigo-50 border-indigo-300 text-indigo-950 font-bold border-l-2 border-l-indigo-600'
                                         : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
                                     )}
                                     title={infoH.tieuDeChinh}
                                   >
                                     <div className="flex items-center gap-1 truncate min-w-0">
-                                      {isHoTro ? (
-                                        <Sparkles className="size-3 text-amber-600 shrink-0" />
-                                      ) : isVP ? (
-                                        <Building2 className="size-3 text-rose-600 shrink-0" />
-                                      ) : (
-                                        <Car className="size-3 text-emerald-600 shrink-0" />
+                                      {laLichHoTro && (
+                                        <span className="px-1 py-0.2 rounded text-[9.5px] font-black bg-indigo-600 text-white shrink-0">
+                                          H.TRỢ
+                                        </span>
                                       )}
                                       <span className="font-extrabold text-[10px] tabular-nums shrink-0">{lich.gio_bat_dau}</span>
                                       <span className="truncate">{infoH.tieuDeChinh}</span>
@@ -2228,9 +2280,19 @@ export function NoiDungLichCongTac({
                       const ns = mapNhanSu.get(lich.nguoi_phu_trach_id);
                       const tenNVRutGon = rutGonTenNhanVienQuyChuan(ns?.ho_va_ten);
                       const infoH = taoTieuDeLichHienThi(lich);
-                      const isVP = lich.loai_lich === 'van_phong';
                       const isHoTro = lich.id.startsWith('lich_yc_');
                       const daXong = lich.trang_thai === 'da_hoan_thanh';
+                      const laNguoiDiCung = Boolean(
+                        (nguoiDungHienTai?.id &&
+                          lich.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
+                          Array.isArray(lich.nguoi_tham_gia_ids) &&
+                          lich.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id)) ||
+                        (nhanSuLoc !== 'tat_ca' &&
+                          lich.nguoi_phu_trach_id !== nhanSuLoc &&
+                          Array.isArray(lich.nguoi_tham_gia_ids) &&
+                          lich.nguoi_tham_gia_ids.includes(nhanSuLoc))
+                      );
+                      const laLichHoTro = laNguoiDiCung || isHoTro;
 
                             return (
                               <div
@@ -2243,20 +2305,26 @@ export function NoiDungLichCongTac({
                                   'p-2.5 rounded-xl border transition-all cursor-pointer flex items-center gap-2.5 active:scale-[0.99] select-none',
                                   daXong
                                     ? 'bg-slate-50 border-slate-200/80 opacity-70'
+                                    : laLichHoTro
+                                    ? 'bg-indigo-50/40 border-l-4 border-l-indigo-600 border-indigo-200 shadow-xs'
                                     : 'bg-white border-slate-200/90 shadow-2xs hover:border-slate-300'
                                 )}
                               >
-                                {/* Icon loại lịch hiện đại */}
+                                {/* Dấu hiệu Hỗ trợ */}
                                 <div
-                                  className="size-7 rounded-lg flex items-center justify-center shrink-0 border shadow-2xs bg-slate-100 border-slate-200 text-slate-700"
-                                  title={isHoTro ? 'Yêu cầu hỗ trợ' : isVP ? 'Việc tại VP' : 'Công tác ngoài'}
+                                  className={cn(
+                                    'size-7 rounded-lg flex items-center justify-center shrink-0 border shadow-2xs',
+                                    laLichHoTro
+                                      ? 'bg-indigo-600 border-indigo-600 text-white'
+                                      : 'bg-slate-100 border-slate-200 text-slate-600'
+                                  )}
                                 >
-                                  {isHoTro ? (
-                                    <Sparkles className="size-3.5" />
-                                  ) : isVP ? (
-                                    <Building2 className="size-3.5" />
+                                  {laNguoiDiCung ? (
+                                    <Users className="size-3.5 stroke-[2.5]" />
+                                  ) : isHoTro ? (
+                                    <Sparkles className="size-3.5 stroke-[2.5]" />
                                   ) : (
-                                    <Car className="size-3.5" />
+                                    <Clock className="size-3.5" />
                                   )}
                                 </div>
 
@@ -2374,12 +2442,22 @@ export function NoiDungLichCongTac({
                           const ns = mapNhanSu.get(lich.nguoi_phu_trach_id);
                           const tenNVRutGon = rutGonTenNhanVienQuyChuan(ns?.ho_va_ten);
                           const infoH = taoTieuDeLichHienThi(lich);
-                          const isVP = lich.loai_lich === 'van_phong';
                           const isHoTro = lich.id.startsWith('lich_yc_');
                           const daXong = lich.trang_thai === 'da_hoan_thanh';
                           const daHuy = lich.trang_thai === 'huy';
                           const laDoiLich = lich.trang_thai === 'doi_lich';
                           const laQuaHanChuaBaoCao = kiemTraLichChuaBaoCao(lich, { homNayISO, phutHienTai });
+                          const laNguoiDiCung = Boolean(
+                            (nguoiDungHienTai?.id &&
+                              lich.nguoi_phu_trach_id !== nguoiDungHienTai.id &&
+                              Array.isArray(lich.nguoi_tham_gia_ids) &&
+                              lich.nguoi_tham_gia_ids.includes(nguoiDungHienTai.id)) ||
+                            (nhanSuLoc !== 'tat_ca' &&
+                              lich.nguoi_phu_trach_id !== nhanSuLoc &&
+                              Array.isArray(lich.nguoi_tham_gia_ids) &&
+                              lich.nguoi_tham_gia_ids.includes(nhanSuLoc))
+                          );
+                          const laLichHoTro = laNguoiDiCung || isHoTro;
 
                           return (
                             <div
@@ -2398,27 +2476,40 @@ export function NoiDungLichCongTac({
                                   ? 'bg-emerald-50/40'
                                   : laQuaHanChuaBaoCao
                                   ? 'bg-amber-50/60 border-l-4 border-l-amber-500'
+                                  : laLichHoTro
+                                  ? 'bg-indigo-50/40 border-l-4 border-l-indigo-600 border-indigo-200'
                                   : 'bg-white hover:bg-slate-50/80'
                               )}
                             >
                               <div className="flex items-center gap-3 min-w-0">
-                                {/* Icon phân loại: Xanh lá (Công tác), Đỏ (Việc tại VP), Hổ phách (Hỗ trợ) */}
+                                {/* Dấu hiệu Icon: Hỗ trợ rõ ràng thay vì icon VP/Công tác */}
                                 <div
-                                  className="size-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs bg-slate-100 border-slate-200 text-slate-700"
-                                  title={isHoTro ? 'Yêu cầu hỗ trợ' : isVP ? 'Việc tại VP' : 'Công tác ngoài'}
+                                  className={cn(
+                                    'size-8 rounded-xl flex items-center justify-center shrink-0 border shadow-2xs',
+                                    laLichHoTro
+                                      ? 'bg-indigo-600 border-indigo-600 text-white'
+                                      : 'bg-slate-100 border-slate-200 text-slate-600'
+                                  )}
+                                  title={laNguoiDiCung ? `Đi hỗ trợ cùng ${ns?.ho_va_ten || 'chủ trì'}` : isHoTro ? 'Yêu cầu hỗ trợ' : 'Lịch công tác'}
                                 >
-                                  {isHoTro ? (
-                                    <Sparkles className="size-4" />
-                                  ) : isVP ? (
-                                    <Building2 className="size-4" />
+                                  {laNguoiDiCung ? (
+                                    <Users className="size-4 stroke-[2.5]" />
+                                  ) : isHoTro ? (
+                                    <Sparkles className="size-4 stroke-[2.5]" />
                                   ) : (
-                                    <Car className="size-4" />
+                                    <Clock className="size-4" />
                                   )}
                                 </div>
 
-                                {/* Thông tin chính: Giờ + Avatar + Tên NV quy chuẩn (vd: T. Linh) + Trạng thái KQ + Tiêu đề */}
+                                {/* Thông tin chính: Giờ + Avatar + Tên NV quy chuẩn + Badge Hỗ trợ + Trạng thái KQ + Tiêu đề */}
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
+                                    {laLichHoTro && (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-black uppercase tracking-wide bg-indigo-600 text-white shadow-xs">
+                                        <Users className="size-3.5 stroke-[2.5]" />
+                                        <span>{laNguoiDiCung ? 'ĐI HỖ TRỢ' : 'Y/C HỖ TRỢ'}</span>
+                                      </span>
+                                    )}
                                     <span className={cn('text-xs font-bold tabular-nums text-slate-500', daHuy && 'line-through')}>
                                       {lich.gio_bat_dau} - {lich.gio_ket_thuc}
                                     </span>
