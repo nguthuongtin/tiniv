@@ -24,10 +24,12 @@ const NHAN_MUC_DO_TIEM_NANG: Record<string, { label: string; bg: string; text: s
 };
 
 const NHAN_GIAI_DOAN: Record<string, { label: string; bg: string; text: string }> = {
+  moi_tao: { label: 'Mới tạo', bg: 'bg-slate-50 border-slate-200', text: 'text-slate-700' },
   tiep_can: { label: 'Tiếp cận', bg: 'bg-blue-50 border-blue-200', text: 'text-blue-700' },
+  len_giai_phap: { label: 'Lên giải pháp', bg: 'bg-cyan-50 border-cyan-200', text: 'text-cyan-700' },
   khao_sat: { label: 'Khảo sát', bg: 'bg-cyan-50 border-cyan-200', text: 'text-cyan-700' },
-  bao_gia: { label: 'Báo giá', bg: 'bg-indigo-50 border-indigo-200', text: 'text-indigo-700' },
-  dam_phan: { label: 'Đàm phán', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-700' },
+  bao_gia: { label: 'Báo giá & Tờ trình', bg: 'bg-indigo-50 border-indigo-200', text: 'text-indigo-700' },
+  dam_phan: { label: 'Đàm phán & Xin vốn', bg: 'bg-purple-50 border-purple-200', text: 'text-purple-700' },
   ky_hop_dong: { label: 'Ký hợp đồng', bg: 'bg-emerald-50 border-emerald-200', text: 'text-emerald-700' },
   trien_khai: { label: 'Triển khai', bg: 'bg-teal-50 border-teal-200', text: 'text-teal-700' },
   nghiem_thu: { label: 'Nghiệm thu', bg: 'bg-green-50 border-green-200', text: 'text-green-700' }
