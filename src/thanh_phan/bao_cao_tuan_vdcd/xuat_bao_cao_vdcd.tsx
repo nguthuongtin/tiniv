@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useMemo } from 'react';
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import {
   FileSpreadsheet,
   FileText,
@@ -139,6 +139,7 @@ export async function xuatExcelBaoCaoTuanVDCD(
   lichTuanToi: (LichGapKH & { ten_nhan_vien?: string })[] = [],
   dsDuAnTiemNangChon: DuAnTiemNangTongHopExport[] = []
 ): Promise<void> {
+  const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
   const infoTuan = phanTichTuanISO(baoCao.tuan);
   const infoTuanTruoc = phanTichTuanISO(dichChuyenTuanISO(baoCao.tuan, -1));

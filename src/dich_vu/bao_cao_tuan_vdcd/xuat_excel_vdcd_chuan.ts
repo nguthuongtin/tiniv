@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import type { BaoCaoTuanVDCD } from '../../thu_vien/types/bao_cao_tuan_vdcd';
 import type { LichGapKH } from '../../thu_vien/types/lich_gap_kh';
 
@@ -651,6 +651,7 @@ function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanV
 export async function taoFileExcelBaoCaoTuanVDCD(
   duLieu: DuLieuBaoCaoTuanVDCDChuan
 ): Promise<Blob> {
+  const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Hệ thống Quản lý Kinh doanh VDCD';
   wb.lastModifiedBy = duLieu.nhanVien.ho_va_ten;
@@ -687,6 +688,7 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     danhSachDuAnTrongDiemChiNhanh = []
   } = params;
 
+  const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Hệ thống Quản trị Kinh doanh VDCD';
   wb.created = new Date();

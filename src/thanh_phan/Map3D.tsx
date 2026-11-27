@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { DANH_SACH_XA_TRUNG_TEN, rutGonTen } from '@/thu_vien/utils/map3d_helpers';
+export { DANH_SACH_XA_TRUNG_TEN, rutGonTen };
 import {
   FolderKanban,
   Users,
@@ -80,17 +82,6 @@ interface MapProps {
   nguoiDungHienTai?: { id: string; ho_va_ten?: string | null; vai_tro?: string | null } | null;
 }
 
-// Danh sách 33 tên xã bị trùng lặp trên 5 tỉnh Miền Tây
-export const DANH_SACH_XA_TRUNG_TEN = new Set([
-  'an bình', 'bình phú', 'châu thành', 'long bình', 'long hưng',
-  'tân hòa', 'tân long', 'tân phú', 'tân thành', 'tân thạnh',
-  'thạnh phú', 'thới sơn', 'trường xuân', 'vĩnh bình', 'đông hải',
-  'hòa bình', 'hòa thuận', 'hưng mỹ', 'mỹ thuận', 'phong thạnh',
-  'phú tân', 'phước long', 'tân an', 'khánh bình', 'long điền',
-  'long phú', 'nhơn mỹ', 'phú hữu', 'vĩnh hậu', 'vĩnh trạch',
-  'tân lộc', 'vĩnh lợi', 'vĩnh phước'
-]);
-
 // Màu badge phân biệt trực quan từng Tỉnh thành
 export const PROVINCE_BADGE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'An Giang': { bg: 'bg-blue-950/80', text: 'text-blue-300', border: 'border-blue-700/60' },
@@ -123,22 +114,6 @@ export function layMauSale(name: string): string {
   }
   const idx = Math.abs(hash) % DEFAULT_COLOR_PALETTE.length;
   return DEFAULT_COLOR_PALETTE[idx];
-}
-
-// Hàm rút ngắn tên nhân viên gọn gàng (1 - 2 từ cuối)
-export function rutGonTen(hoVaTen: string): string {
-  if (!hoVaTen) return '';
-  const parts = hoVaTen.trim().split(/\s+/);
-  if (parts.length <= 1) return hoVaTen;
-  const last = parts[parts.length - 1];
-  const secondLast = parts[parts.length - 2];
-  if (['em', 'bé', 'anh', 'con'].includes(last.toLowerCase())) {
-    return `${secondLast} ${last}`;
-  }
-  if (!['thị', 'văn', 'đình', 'hữu', 'ngọc', 'thanh'].includes(secondLast.toLowerCase())) {
-    return `${secondLast} ${last}`;
-  }
-  return last;
 }
 
 export const PROVINCES_LIST = [

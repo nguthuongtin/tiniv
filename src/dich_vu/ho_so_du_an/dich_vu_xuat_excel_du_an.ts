@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import type { HoSoDuAn, TienDoDuAn } from '../../thu_vien/types/du_an';
 import type { KhachHang } from '../../thu_vien/types/khach_hang';
 import type { NhanSu, ChiNhanh } from '../../thu_vien/types/nhan_su';
@@ -119,6 +119,7 @@ export const xuatExcelBaoCaoDuAn = async ({
     mapTienDo.set(td.du_an_id, arr);
   }
 
+  const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('BÁO CÁO TUẦN - THÁNG', {
     pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1 }

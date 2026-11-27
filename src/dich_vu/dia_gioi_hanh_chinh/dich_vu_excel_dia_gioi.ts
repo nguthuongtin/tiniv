@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import { phanLoaiXaPhuong } from './dich_vu_dia_gioi_hanh_chinh';
 
 export interface HangDiaGioiExcel {
@@ -19,6 +19,7 @@ export const docFileExcelDiaGioi = async (file: File): Promise<HangDiaGioiExcel[
   }
 
   const arrayBuffer = await file.arrayBuffer();
+  const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(arrayBuffer);
 
@@ -166,6 +167,7 @@ const parseCsvDiaGioi = (csvText: string): HangDiaGioiExcel[] => {
  * Tạo và tải xuống file Excel mẫu chuẩn
  */
 export const xuatFileMauExcelDiaGioi = async (): Promise<void> => {
+  const ExcelJS = (await import('exceljs')).default;
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('DiaGioiHanhChinh');
 

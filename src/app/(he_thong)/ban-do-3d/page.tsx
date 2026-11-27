@@ -1,7 +1,18 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import Map3D, { CommuneCRMData, rutGonTen, DANH_SACH_XA_TRUNG_TEN } from '@/thanh_phan/Map3D';
+import dynamic from 'next/dynamic';
+import type { CommuneCRMData } from '@/thanh_phan/Map3D';
+import { DANH_SACH_XA_TRUNG_TEN, rutGonTen } from '@/thu_vien/utils/map3d_helpers';
+
+const Map3D = dynamic(() => import('@/thanh_phan/Map3D'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-slate-950/80 text-slate-300 text-xs font-semibold">
+      Đang tải bản đồ 3D...
+    </div>
+  ),
+});
 import {
   danhSachKhachHang,
   capNhatKhachHang,

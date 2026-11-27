@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   allowedDevOrigins: ['192.168.*.*', '10.*.*.*', '172.*.*.*'],
   outputFileTracingRoot: path.join(__dirname),
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'dayjs'],
+  },
   async headers() {
     return [
       {
