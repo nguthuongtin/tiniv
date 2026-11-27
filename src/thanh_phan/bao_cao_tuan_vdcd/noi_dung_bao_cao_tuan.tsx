@@ -18,7 +18,6 @@ import {
   RefreshCw,
   Save,
   Send,
-  Settings2,
   Trash2,
   UserCheck,
   Users,
@@ -224,13 +223,11 @@ export default function NoiDungBaoCaoTuan() {
     ghiChu: string;
   }>({ mo: false, baoCao: null, ghiChu: '' });
 
-  const [modalKPI, setModalKPI] = useState<{
+  const [modalChiTietChiNhanh, setModalChiTietChiNhanh] = useState<{
     mo: boolean;
-    kpiThangKy: number;
-    kpiThangVe: number;
-    kpiNamKy: number;
-    kpiNamVe: number;
-  }>({ mo: false, kpiThangKy: 0, kpiThangVe: 0, kpiNamKy: 0, kpiNamVe: 0 });
+    tieuDe: string;
+    dongChiTiet: { ten: string; mucTieu: number; thucTe: number; laTien?: boolean }[];
+  }>({ mo: false, tieuDe: '', dongChiTiet: [] });
 
   const [modalDrillDown, setModalDrillDown] = useState<{
     mo: boolean;
@@ -1532,273 +1529,218 @@ export default function NoiDungBaoCaoTuan() {
         </div>
       ) : tabChinh === 'quan_ly' && laQuanLy ? (
         /* ================================================================= */
-        /* TAB QUẢN LÝ: DUYỆT LỊCH TUẦN TEAM & XUẤT FILE TỔNG CHI NHÁNH      */
+        /* TAB QUẢN LÝ: TỔNG HỢP CHI NHÁNH & PHÊ DUYỆT ĐỘI NGŨ              */
         /* ================================================================= */
         <div className="space-y-5">
-          {/* Card Tổng hợp Chi nhánh */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-sm font-extrabold text-slate-900 uppercase">
-                  Báo cáo Tổng hợp {baoCaoTongChiNhanh.ten_chi_nhanh} — {infoTuan.nhanTieuDe}
-                </h2>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setModalKPI({
-                      mo: true,
-                      kpiThangKy: kpiCauHinh?.kpi_thang_ky_ket || baoCaoTongChiNhanh.kpi_thang_ky_ket,
-                      kpiThangVe: kpiCauHinh?.kpi_thang_tien_ve || baoCaoTongChiNhanh.kpi_thang_tien_ve,
-                      kpiNamKy: kpiCauHinh?.kpi_nam_ky_ket || baoCaoTongChiNhanh.kpi_nam_ky_ket,
-                      kpiNamVe: kpiCauHinh?.kpi_nam_tien_ve || baoCaoTongChiNhanh.kpi_nam_tien_ve
-                    })
-                  }
-                  className="h-9 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Settings2 className="size-3.5" />
-                  <span>Cấu hình KPI</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => xuatExcelBaoCaoTuanVDCD(baoCaoTongChiNhanh, lichTuanToiToanTeam, dsDuAnTiemNangChiNhanh)}
-                  className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <FileSpreadsheet className="size-4" />
-                  <span>Xuất Excel Tổng</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={xuLyXuatExcelToanBoSale}
-                  className="h-9 px-3.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
-                  title="Xuất 1 file Excel gồm Sheet 1 Tổng quan Chi nhánh và mỗi Sale 1 sheet riêng biệt"
-                >
-                  <FileSpreadsheet className="size-4 text-emerald-700" />
-                  <span>Xuất Excel Đội ngũ (Mỗi Sale 1 Sheet)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setModalSlide({
-                      mo: true,
-                      baoCao: baoCaoTongChiNhanh,
-                      lichTuanToi: lichTuanToiToanTeam,
-                      tieuDePhu: `Tổng hợp ${danhSachBaoCaoTeam.length} Chuyên viên Kinh doanh`
-                    })
-                  }
-                  className="h-9 px-4 rounded-xl bg-[#D11317] hover:bg-red-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Printer className="size-4" />
-                  <span>Xem Slide &amp; Xuất PDF Tổng</span>
-                </button>
-              </div>
-            </div>
+          {/* Phần 1: Tổng quan Chi nhánh (Kết quả Tuần báo cáo + Cam kết Tuần tới) */}
+          {(() => {
+            const tongKQ = danhSachBaoCaoTeam.reduce(
+              (acc, x) => {
+                const k = x.baoCao.kpi_tuan_qua;
+                acc.kmTT += Number(k?.khach_moi_thuc_te ?? x.baoCao.thuc_hien_tiep_can_tuan_nay ?? 0);
+                acc.kmMT += Number(k?.khach_moi_muc_tieu ?? 0);
+                acc.bgTT += Number(k?.bao_gia_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.bao_gia ?? 0);
+                acc.bgMT += Number(k?.bao_gia_muc_tieu ?? 0);
+                acc.daTT += Number(k?.du_an_lam_viec_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.dang_tiep_can ?? 0);
+                acc.daMT += Number(k?.du_an_lam_viec_muc_tieu ?? 0);
+                acc.hdTT += Number(k?.hop_dong_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.hop_dong ?? 0);
+                acc.hdMT += Number(k?.hop_dong_muc_tieu ?? 0);
+                acc.dsTT += Number(k?.doanh_so_thuc_te ?? x.baoCao.dt_tuan_ky_ket ?? 0);
+                acc.dsMT += Number(k?.doanh_so_muc_tieu ?? 0);
+                const ck = x.baoCao.cam_ket_tuan_toi;
+                acc.ckKM += Number(ck?.khach_moi?.target ?? 0);
+                acc.ckBG += Number(ck?.bao_gia?.target ?? 0);
+                acc.ckDA += Number(ck?.du_an_lam_viec?.target ?? 0);
+                acc.ckHD += Number(ck?.hop_dong?.target ?? 0);
+                acc.ckDS += Number(ck?.doanh_so?.target ?? 0);
+                return acc;
+              },
+              { kmTT: 0, kmMT: 0, bgTT: 0, bgMT: 0, daTT: 0, daMT: 0, hdTT: 0, hdMT: 0, dsTT: 0, dsMT: 0, ckKM: 0, ckBG: 0, ckDA: 0, ckHD: 0, ckDS: 0 }
+            );
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {(() => {
-                const pctThangKy =
-                  baoCaoTongChiNhanh.kpi_thang_ky_ket > 0
-                    ? Math.min(100, Math.round((baoCaoTongChiNhanh.mtd_ky_ket / baoCaoTongChiNhanh.kpi_thang_ky_ket) * 100))
-                    : 0;
-                const pctThangVe =
-                  baoCaoTongChiNhanh.kpi_thang_tien_ve > 0
-                    ? Math.min(100, Math.round((baoCaoTongChiNhanh.mtd_tien_ve / baoCaoTongChiNhanh.kpi_thang_tien_ve) * 100))
-                    : 0;
-                const tt = baoCaoTongChiNhanh.tinh_trang_tuan_nay;
-                const pctBaoGia =
-                  tt.tong_tiep_can > 0
-                    ? Math.round(((tt.bao_gia + tt.hop_dong) / tt.tong_tiep_can) * 100)
-                    : 0;
-                const soDaGui = danhSachBaoCaoTeam.filter(
-                  (x) => x.baoCao.trang_thai === 'cho_duyet' || x.baoCao.trang_thai === 'da_duyet'
-                ).length;
-                const pctGui =
-                  danhSachBaoCaoTeam.length > 0
-                    ? Math.round((soDaGui / danhSachBaoCaoTeam.length) * 100)
-                    : 0;
+            const soDaNop = danhSachBaoCaoTeam.filter((x) => x.baoCao.trang_thai !== 'nhap').length;
 
-                return (
-                  <>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                        <span>DT Ký kết tuần</span>
-                        {baoCaoTongChiNhanh.kpi_thang_ky_ket > 0 && (
-                          <span className="text-blue-700 font-bold tabular-nums">{pctThangKy}% KPI tháng</span>
-                        )}
-                      </div>
-                      <div className="text-lg font-extrabold text-slate-900 tabular-nums">
-                        {fmtSo(baoCaoTongChiNhanh.dt_tuan_ky_ket)}
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-                        <div className="h-full bg-blue-600 rounded-full" style={{ width: `${pctThangKy}%` }} />
-                      </div>
-                      <div className="text-[11px] text-slate-500 tabular-nums">
-                        Tháng: <span className="font-semibold text-slate-700">{fmtSo(baoCaoTongChiNhanh.mtd_ky_ket)}</span>
-                      </div>
+            const moDrillDownChiSo = (
+              tieuDe: string,
+              picker: (b: BaoCaoTuanVDCD) => { mucTieu: number; thucTe: number },
+              laTien = false
+            ) => {
+              setModalChiTietChiNhanh({
+                mo: true,
+                tieuDe,
+                dongChiTiet: danhSachBaoCaoTeam.map((x) => ({
+                  ten: x.nv.ho_va_ten,
+                  ...picker(x.baoCao),
+                  laTien
+                }))
+              });
+            };
+
+            return (
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <h2 className="text-sm font-extrabold text-slate-900 uppercase">
+                      Tổng hợp {baoCaoTongChiNhanh.ten_chi_nhanh || 'Chi nhánh'}
+                    </h2>
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      Báo cáo <b className="text-slate-800">{infoTuan.nhanTieuDe} ({infoTuan.khoangNgayNhan})</b> → Kế hoạch <b className="text-blue-700">{infoTuanToi.nhanTieuDe} ({infoTuanToi.khoangNgayNhan})</b>
                     </div>
-
-                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                        <span>DT Tiền về tuần</span>
-                        {baoCaoTongChiNhanh.kpi_thang_tien_ve > 0 && (
-                          <span className="text-emerald-700 font-bold tabular-nums">{pctThangVe}% KPI tháng</span>
-                        )}
-                      </div>
-                      <div className="text-lg font-extrabold text-emerald-700 tabular-nums">
-                        {fmtSo(baoCaoTongChiNhanh.dt_tuan_tien_ve)}
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-                        <div className="h-full bg-emerald-600 rounded-full" style={{ width: `${pctThangVe}%` }} />
-                      </div>
-                      <div className="text-[11px] text-slate-500 tabular-nums">
-                        Tháng: <span className="font-semibold text-slate-700">{fmtSo(baoCaoTongChiNhanh.mtd_tien_ve)}</span>
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                        <span>Phễu Tiếp cận toàn đội</span>
-                        <span className="text-indigo-700 font-bold tabular-nums">{pctBaoGia}% lên BG/HĐ</span>
-                      </div>
-                      <div className="text-lg font-extrabold text-blue-700 tabular-nums">
-                        {tt.tong_tiep_can} dự án
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold tabular-nums flex-wrap">
-                        <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
-                          Báo giá: {tt.bao_gia}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          HĐ: {tt.hop_dong}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                        <span>Nộp tuần &amp; Lịch tuần tới</span>
-                        <span className="text-slate-700 font-bold tabular-nums">{pctGui}%</span>
-                      </div>
-                      <div className="text-lg font-extrabold text-slate-900 tabular-nums">
-                        {soDaGui}/{danhSachBaoCaoTeam.length} Chuyên viên KD đã nộp
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-                        <div className="h-full bg-slate-800 rounded-full" style={{ width: `${pctGui}%` }} />
-                      </div>
-                      <div className="text-[11px] text-slate-500 tabular-nums">
-                        Lịch tuần tới: <span className="font-semibold text-slate-800">{lichTuanToiToanTeam.length} buổi</span>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* KHỐI DỰ ÁN TRỌNG ĐIỂM TIỀM NĂNG CAO TOÀN CHI NHÁNH */}
-          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
-            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center shrink-0">
-                  II
-                </span>
-                <div>
+                  </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 uppercase tracking-wider">
-                      Dự án trọng điểm đang bám sát toàn Chi nhánh (Tiềm năng cao)
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                      {dsDuAnTiemNangChiNhanh.length} dự án
+                    <button
+                      type="button"
+                      onClick={xuLyXuatExcelToanBoSale}
+                      className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <FileSpreadsheet className="size-4" />
+                      <span>Xuất Excel Tổng hợp</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setModalSlide({
+                          mo: true,
+                          baoCao: baoCaoTongChiNhanh,
+                          lichTuanToi: lichTuanToiToanTeam,
+                          tieuDePhu: `Tổng hợp ${danhSachBaoCaoTeam.length} Chuyên viên Kinh doanh`
+                        })
+                      }
+                      className="h-9 px-4 rounded-xl bg-[#D11317] hover:bg-red-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Printer className="size-4" />
+                      <span>Xem Slide &amp; PDF</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Hàng 1: Kết quả thực hiện tuần báo cáo (5 chỉ số + tiến độ nộp) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <span>Kết quả {infoTuan.nhanTieuDe}</span>
+                    <span className="text-slate-700 normal-case">
+                      Đã nộp: <b>{soDaNop}/{danhSachBaoCaoTeam.length}</b> nhân sự
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500">
-                    Căn cứ vào danh sách dự án tiềm năng (Rất cao &gt; Cao) nhân viên đưa vào kế hoạch tuần
-                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                    {[
+                      {
+                        label: 'KH mới tiếp cận',
+                        tt: tongKQ.kmTT,
+                        mt: tongKQ.kmMT,
+                        cls: 'text-blue-700',
+                        onClick: () =>
+                          moDrillDownChiSo(`KH mới tiếp cận — ${infoTuan.nhanTieuDe}`, (b) => ({
+                            mucTieu: Number(b.kpi_tuan_qua?.khach_moi_muc_tieu ?? 0),
+                            thucTe: Number(b.kpi_tuan_qua?.khach_moi_thuc_te ?? b.thuc_hien_tiep_can_tuan_nay ?? 0)
+                          }))
+                      },
+                      {
+                        label: 'Báo giá đã gửi',
+                        tt: tongKQ.bgTT,
+                        mt: tongKQ.bgMT,
+                        cls: 'text-amber-700',
+                        onClick: () =>
+                          moDrillDownChiSo(`Báo giá đã gửi — ${infoTuan.nhanTieuDe}`, (b) => ({
+                            mucTieu: Number(b.kpi_tuan_qua?.bao_gia_muc_tieu ?? 0),
+                            thucTe: Number(b.kpi_tuan_qua?.bao_gia_thuc_te ?? b.tinh_trang_tuan_nay?.bao_gia ?? 0)
+                          }))
+                      },
+                      {
+                        label: 'Dự án làm việc',
+                        tt: tongKQ.daTT,
+                        mt: tongKQ.daMT,
+                        cls: 'text-indigo-700',
+                        onClick: () =>
+                          moDrillDownChiSo(`Dự án làm việc — ${infoTuan.nhanTieuDe}`, (b) => ({
+                            mucTieu: Number(b.kpi_tuan_qua?.du_an_lam_viec_muc_tieu ?? 0),
+                            thucTe: Number(b.kpi_tuan_qua?.du_an_lam_viec_thuc_te ?? b.tinh_trang_tuan_nay?.dang_tiep_can ?? 0)
+                          }))
+                      },
+                      {
+                        label: 'Hợp đồng ký kết',
+                        tt: tongKQ.hdTT,
+                        mt: tongKQ.hdMT,
+                        cls: 'text-purple-700',
+                        onClick: () =>
+                          moDrillDownChiSo(`Hợp đồng ký kết — ${infoTuan.nhanTieuDe}`, (b) => ({
+                            mucTieu: Number(b.kpi_tuan_qua?.hop_dong_muc_tieu ?? 0),
+                            thucTe: Number(b.kpi_tuan_qua?.hop_dong_thuc_te ?? b.tinh_trang_tuan_nay?.hop_dong ?? 0)
+                          }))
+                      },
+                      {
+                        label: 'Doanh số ký mới',
+                        tt: tongKQ.dsTT,
+                        mt: tongKQ.dsMT,
+                        laTien: true,
+                        cls: 'text-emerald-700',
+                        onClick: () =>
+                          moDrillDownChiSo(
+                            `Doanh số ký mới — ${infoTuan.nhanTieuDe}`,
+                            (b) => ({
+                              mucTieu: Number(b.kpi_tuan_qua?.doanh_so_muc_tieu ?? 0),
+                              thucTe: Number(b.kpi_tuan_qua?.doanh_so_thuc_te ?? b.dt_tuan_ky_ket ?? 0)
+                            }),
+                            true
+                          )
+                      }
+                    ].map((card) => (
+                      <button
+                        key={card.label}
+                        type="button"
+                        onClick={card.onClick}
+                        className="rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-blue-50/40 hover:border-blue-300 p-3 text-left transition cursor-pointer"
+                      >
+                        <div className="text-[11px] font-semibold text-slate-500">{card.label}</div>
+                        <div className={cn('text-base font-extrabold tabular-nums mt-1', card.cls)}>
+                          {fmtSo(card.tt)}
+                        </div>
+                        <div className="text-[11px] text-slate-500 tabular-nums mt-0.5">
+                          Mục tiêu: <span className="font-semibold text-slate-700">{fmtSo(card.mt)}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Hàng 2: Cam kết tuần tới của Chi nhánh */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap text-xs">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Cam kết {infoTuanToi.nhanTieuDe}:
+                  </span>
+                  <div className="flex items-center gap-3 flex-wrap tabular-nums">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold">
+                      KH mới: <b className="text-blue-700">{tongKQ.ckKM}</b>
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold">
+                      Báo giá: <b className="text-amber-700">{tongKQ.ckBG}</b>
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold">
+                      Dự án: <b className="text-indigo-700">{tongKQ.ckDA}</b>
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold">
+                      Hợp đồng: <b className="text-purple-700">{tongKQ.ckHD}</b>
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 font-semibold">
+                      Doanh số: <b className="text-emerald-700">{fmtSo(tongKQ.ckDS)}</b>
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-semibold">
+                      Lịch tuần tới: <b>{lichTuanToiToanTeam.length} buổi</b>
+                    </span>
+                  </div>
                 </div>
               </div>
+            );
+          })()}
 
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                <span className="text-slate-500 font-medium">Tổng giá trị deal bám sát:</span>
-                <span className="text-primary font-black tabular-nums">
-                  {fmtSo(dsDuAnTiemNangChiNhanh.reduce((s, d) => s + (d.giaTriDeal || 0), 0))}
-                </span>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
-                    <th className="py-2.5 px-3 text-center w-12">STT</th>
-                    <th className="py-2.5 px-4">Tên dự án &amp; Khách hàng / CĐT</th>
-                    <th className="py-2.5 px-3 w-40">Nhân sự phụ trách</th>
-                    <th className="py-2.5 px-3 w-40">Người liên hệ &amp; SĐT</th>
-                    <th className="py-2.5 px-3 w-36 text-right">Giá trị Deal / HĐ</th>
-                    <th className="py-2.5 px-3 w-36">Giai đoạn</th>
-                    <th className="py-2.5 px-3 w-32 text-center">Tiềm năng</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {dsDuAnTiemNangChiNhanh.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-6 text-center text-slate-500 text-xs">
-                        Chưa có dự án tiềm năng cao nào được đưa vào kế hoạch tuần này.
-                      </td>
-                    </tr>
-                  ) : (
-                    dsDuAnTiemNangChiNhanh.map((d, idx) => {
-                      const cfgTN = BANG_TIEM_NANG_DU_AN[d.mucDoTiemNang || ''] || BANG_TIEM_NANG_DU_AN.cao;
-                      return (
-                        <tr key={d.id} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="py-2.5 px-3 text-center font-bold text-slate-500">
-                            {idx + 1}
-                          </td>
-                          <td className="py-2.5 px-4">
-                            <div className="font-extrabold text-slate-900">{d.tenDuAn}</div>
-                            {d.tenKhachHang && (
-                              <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
-                                <Building2 className="size-3 text-slate-400 shrink-0" />
-                                <span>CĐT: {d.tenKhachHang}</span>
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <span className="font-bold text-blue-700">{d.tenNhanVienPhuTrach}</span>
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <div className="font-medium text-slate-800">{d.nguoiLienHe}</div>
-                            {d.soDienThoai && (
-                              <div className="text-[11px] text-slate-500">{d.soDienThoai}</div>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 tabular-nums">
-                            {fmtSo(d.giaTriDeal)}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                              {d.tenGiaiDoan}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
-                            <span className={cn('px-2.5 py-0.5 rounded-full text-[10.5px] font-bold border', cfgTN.badgeCls)}>
-                              {cfgTN.nhan}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Bảng Duyệt lịch & Báo cáo tuần từng nhân viên */}
+          {/* KHỐI I: BẢNG PHÊ DUYỆT & ĐỐI SOÁT ĐỘI NGŨ */}
           <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
             <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase">
-                <Users className="size-4 text-blue-600" />
-                <span>Danh sách nhân sự &amp; Duyệt lịch tuần</span>
+              <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800 uppercase">
+                <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center shrink-0">
+                  I
+                </span>
+                <span>Phê duyệt &amp; Đối soát đội ngũ</span>
               </div>
             </div>
 
@@ -1806,19 +1748,113 @@ export default function NoiDungBaoCaoTuan() {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
-                    <th className="py-3 px-4 min-w-[180px]">Nhân sự</th>
-                    <th className="py-3 px-3 w-[125px]">Trạng thái</th>
-                    <th className="py-3 px-3 w-[150px] text-right">DT Tuần (Ký / Về)</th>
-                    <th className="py-3 px-3 w-[110px] text-center">Tiếp cận</th>
-                    <th className="py-3 px-3 w-[150px] text-center">DA Tiềm năng</th>
-                    <th className="py-3 px-3 w-[130px] text-center">Lịch tuần tới</th>
+                    <th className="py-3 px-4 min-w-[170px]">Nhân sự</th>
+                    <th className="py-3 px-3 w-[135px]">Trạng thái</th>
+                    <th className="py-3 px-3 min-w-[200px]">KQ {infoTuan.nhanTieuDe} (KH / BG / HĐ / DS)</th>
+                    <th className="py-3 px-3 min-w-[160px]">Cam kết {infoTuanToi.nhanTieuDe}</th>
+                    <th className="py-3 px-3 w-[130px] text-center">DA trọng điểm</th>
+                    <th className="py-3 px-3 w-[110px] text-center">Lịch tuần tới</th>
                     <th className="py-3 px-4 w-[1%] whitespace-nowrap text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
+                  {tpKinhDoanh && (() => {
+                    const bcTP = dsBaoCaoTuan.find((b) => b.nhan_vien_id === tpKinhDoanh.id);
+                    const stTP = NHAN_TRANG_THAI[bcTP?.trang_thai || 'nhap'];
+                    const dh = bcTP?.dinh_huong_dieu_hanh_tuan_toi;
+                    const lichTP = dsLichGap.filter(
+                      (l) =>
+                        !l.da_xoa &&
+                        l.trang_thai !== 'huy' &&
+                        l.ngay >= infoTuanToi.ngayBatDau &&
+                        l.ngay <= infoTuanToi.ngayKetThuc &&
+                        (l.nguoi_phu_trach_id === tpKinhDoanh.id || l.nguoi_tao_id === tpKinhDoanh.id)
+                    );
+                    return (
+                      <tr className="bg-amber-50/30 hover:bg-amber-50/50">
+                        <td className="py-3 px-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNhanVienDangXemId(tpKinhDoanh.id);
+                              setTabChinh('ca_nhan');
+                            }}
+                            className="font-bold text-slate-900 hover:text-blue-700 cursor-pointer text-left"
+                          >
+                            {tpKinhDoanh.ho_va_ten}
+                          </button>
+                          <div className="text-[11px] text-amber-700 font-semibold">Trưởng phòng KD</div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={cn('px-2.5 py-0.5 rounded-full text-[11px] font-semibold border', stTP.cls)}>
+                            {stTP.label}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-[11px] text-slate-600">
+                          {bcTP?.danh_gia_tuan_qua ? 'Đã có báo cáo điều hành' : 'Chưa lập báo cáo'}
+                        </td>
+                        <td className="py-3 px-3 text-[11px] tabular-nums text-slate-700">
+                          {dh?.muc_tieu_doanh_thu_phong
+                            ? `Phòng: ${fmtSo(dh.muc_tieu_doanh_thu_phong)} (${dh.so_hop_dong_du_kien || 0} HĐ)`
+                            : '—'}
+                        </td>
+                        <td className="py-3 px-3 text-center text-slate-400 text-[11px]">—</td>
+                        <td className="py-3 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setModalXemLichNV({ mo: true, nhanSu: tpKinhDoanh, lich: lichTP })}
+                            className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold cursor-pointer"
+                          >
+                            {lichTP.length} lịch
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
+                          {bcTP && (
+                            <div className="inline-flex items-center gap-1.5">
+                              {bcTP.trang_thai === 'cho_giam_doc_duyet' && laNguoiDuyetCap2 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDuyetTuan(bcTP, 'da_duyet')}
+                                  className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Check className="size-3.5" />
+                                  <span>Duyệt cuối</span>
+                                </button>
+                              )}
+                              {(bcTP.trang_thai === 'cho_giam_doc_duyet' ||
+                                (bcTP.trang_thai === 'da_duyet' && laNguoiDuyetCap2)) && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setModalYeuCauSua({
+                                      mo: true,
+                                      baoCao: bcTP,
+                                      ghiChu: bcTP.ghi_chu_quan_ly || ''
+                                    })
+                                  }
+                                  className="h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <MessageSquareWarning className="size-3.5" />
+                                  <span>{bcTP.trang_thai === 'da_duyet' ? 'Mở khóa' : 'Yêu cầu sửa'}</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })()}
+
                   {danhSachBaoCaoTeam.map(({ nv, baoCao, daGui, lichToi, dsDATiemNang }) => {
                     const st = NHAN_TRANG_THAI[baoCao.trang_thai];
                     const tongGiaTriDA = dsDATiemNang.reduce((s, d) => s + (d.gia_tri_hop_dong || d.gia_tri_du_kien || 0), 0);
+                    const k = baoCao.kpi_tuan_qua;
+                    const ck = baoCao.cam_ket_tuan_toi;
+                    const kmTT = Number(k?.khach_moi_thuc_te ?? baoCao.thuc_hien_tiep_can_tuan_nay ?? 0);
+                    const bgTT = Number(k?.bao_gia_thuc_te ?? baoCao.tinh_trang_tuan_nay?.bao_gia ?? 0);
+                    const hdTT = Number(k?.hop_dong_thuc_te ?? baoCao.tinh_trang_tuan_nay?.hop_dong ?? 0);
+                    const dsTT = Number(k?.doanh_so_thuc_te ?? baoCao.dt_tuan_ky_ket ?? 0);
+
                     return (
                       <tr key={nv.id} className="hover:bg-slate-50/60">
                         <td className="py-3 px-4">
@@ -1833,7 +1869,7 @@ export default function NoiDungBaoCaoTuan() {
                             {nv.ho_va_ten}
                           </button>
                           <div className="text-[11px] text-slate-500">
-                            {daGui ? 'Đã lưu dữ liệu tuần' : 'Số liệu tự động từ CRM'}
+                            {daGui ? 'Đã lưu dữ liệu tuần' : 'Chưa lập báo cáo'}
                           </div>
                         </td>
                         <td className="py-3 px-3">
@@ -1849,12 +1885,19 @@ export default function NoiDungBaoCaoTuan() {
                             </div>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right tabular-nums">
-                          <div className="font-semibold text-slate-900">{fmtSo(baoCao.dt_tuan_ky_ket)}</div>
-                          <div className="text-[11px] text-emerald-700">{fmtSo(baoCao.dt_tuan_tien_ve)}</div>
+                        <td className="py-3 px-3 tabular-nums">
+                          <div className="text-[11px] text-slate-700 font-semibold">
+                            {kmTT} KH · {bgTT} BG · {hdTT} HĐ
+                          </div>
+                          <div className="text-[11px] font-bold text-emerald-700">{fmtSo(dsTT)} đ</div>
                         </td>
-                        <td className="py-3 px-3 text-center font-semibold">
-                          {baoCao.tinh_trang_tuan_nay.tong_tiep_can} DA
+                        <td className="py-3 px-3 tabular-nums">
+                          <div className="text-[11px] text-slate-600">
+                            {ck?.khach_moi?.target ?? 0} KH · {ck?.bao_gia?.target ?? 0} BG · {ck?.hop_dong?.target ?? 0} HĐ
+                          </div>
+                          <div className="text-[11px] font-bold text-blue-700">
+                            {fmtSo(ck?.doanh_so?.target ?? 0)} đ
+                          </div>
                         </td>
                         <td className="py-3 px-3 text-center">
                           {dsDATiemNang.length > 0 ? (
@@ -1884,7 +1927,7 @@ export default function NoiDungBaoCaoTuan() {
                             onClick={() => setModalXemLichNV({ mo: true, nhanSu: nv, lich: lichToi })}
                             className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold cursor-pointer"
                           >
-                            {lichToi.length} lịch hẹn
+                            {lichToi.length} lịch
                           </button>
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
@@ -1954,6 +1997,94 @@ export default function NoiDungBaoCaoTuan() {
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* KHỐI II: DỰ ÁN TRỌNG ĐIỂM TOÀN CHI NHÁNH */}
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="size-6 rounded-lg bg-red-600 text-white text-xs font-black flex items-center justify-center shrink-0">
+                  II
+                </span>
+                <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+                  Dự án trọng điểm {infoTuanToi.nhanTieuDe} ({dsDuAnTiemNangChiNhanh.length})
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <span className="text-slate-500 font-medium">Tổng giá trị deal:</span>
+                <span className="text-primary font-black tabular-nums">
+                  {fmtSo(dsDuAnTiemNangChiNhanh.reduce((s, d) => s + (d.giaTriDeal || 0), 0))}
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
+                    <th className="py-2.5 px-3 text-center w-12">STT</th>
+                    <th className="py-2.5 px-4">Tên dự án &amp; Khách hàng / CĐT</th>
+                    <th className="py-2.5 px-3 w-40">Nhân sự phụ trách</th>
+                    <th className="py-2.5 px-3 w-40">Người liên hệ &amp; SĐT</th>
+                    <th className="py-2.5 px-3 w-36 text-right">Giá trị Deal / HĐ</th>
+                    <th className="py-2.5 px-3 w-36">Giai đoạn</th>
+                    <th className="py-2.5 px-3 w-32 text-center">Tiềm năng</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {dsDuAnTiemNangChiNhanh.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-6 text-center text-slate-500 text-xs">
+                        Chưa có dự án tiềm năng cao nào được đưa vào kế hoạch tuần.
+                      </td>
+                    </tr>
+                  ) : (
+                    dsDuAnTiemNangChiNhanh.map((d, idx) => {
+                      const cfgTN = BANG_TIEM_NANG_DU_AN[d.mucDoTiemNang || ''] || BANG_TIEM_NANG_DU_AN.cao;
+                      return (
+                        <tr key={d.id} className="hover:bg-slate-50/60 transition-colors">
+                          <td className="py-2.5 px-3 text-center font-bold text-slate-500">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5 px-4">
+                            <div className="font-extrabold text-slate-900">{d.tenDuAn}</div>
+                            {d.tenKhachHang && (
+                              <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                <Building2 className="size-3 text-slate-400 shrink-0" />
+                                <span>CĐT: {d.tenKhachHang}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-bold text-blue-700">{d.tenNhanVienPhuTrach}</span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-medium text-slate-800">{d.nguoiLienHe}</div>
+                            {d.soDienThoai && (
+                              <div className="text-[11px] text-slate-500">{d.soDienThoai}</div>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 tabular-nums">
+                            {fmtSo(d.giaTriDeal)}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                              {d.tenGiaiDoan}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={cn('px-2.5 py-0.5 rounded-full text-[10.5px] font-bold border', cfgTN.badgeCls)}>
+                              {cfgTN.nhan}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -2449,84 +2580,45 @@ export default function NoiDungBaoCaoTuan() {
         </div>
       )}
 
-      {/* MODAL CẤU HÌNH KPI CHI NHÁNH */}
-      {modalKPI.mo && (
+      {/* MODAL DRILL-DOWN CHỈ SỐ CHI NHÁNH */}
+      {modalChiTietChiNhanh.mo && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const scope =
-                chiNhanhLocId !== 'tat_ca'
-                  ? chiNhanhLocId
-                  : nguoiDungHienTai?.chi_nhanh_id || 'toan_cong_ty';
-              const saved = await luuCauHinhKPIBaoCaoTuan({
-                pham_vi_id: scope,
-                kpi_thang_ky_ket: modalKPI.kpiThangKy,
-                kpi_thang_tien_ve: modalKPI.kpiThangVe,
-                kpi_nam_ky_ket: modalKPI.kpiNamKy,
-                kpi_nam_tien_ve: modalKPI.kpiNamVe
-              });
-              setKpiCauHinh(saved);
-              setModalKPI((p) => ({ ...p, mo: false }));
-              hienThongBao('Đã lưu mục tiêu KPI.');
-            }}
-            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl space-y-3 text-xs"
-          >
-            <h3 className="text-sm font-bold text-slate-900">Mục tiêu KPI Doanh thu</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="space-y-1">
-                <span className="font-semibold text-slate-700">KPI Tháng (Ký kết)</span>
-                <input
-                  type="number"
-                  value={modalKPI.kpiThangKy || ''}
-                  onChange={(e) => setModalKPI((p) => ({ ...p, kpiThangKy: Number(e.target.value || 0) }))}
-                  className="w-full h-8.5 px-2.5 rounded-lg border border-slate-200 text-right tabular-nums"
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="font-semibold text-slate-700">KPI Tháng (Tiền về)</span>
-                <input
-                  type="number"
-                  value={modalKPI.kpiThangVe || ''}
-                  onChange={(e) => setModalKPI((p) => ({ ...p, kpiThangVe: Number(e.target.value || 0) }))}
-                  className="w-full h-8.5 px-2.5 rounded-lg border border-slate-200 text-right tabular-nums"
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="font-semibold text-slate-700">KPI Năm (Ký kết)</span>
-                <input
-                  type="number"
-                  value={modalKPI.kpiNamKy || ''}
-                  onChange={(e) => setModalKPI((p) => ({ ...p, kpiNamKy: Number(e.target.value || 0) }))}
-                  className="w-full h-8.5 px-2.5 rounded-lg border border-slate-200 text-right tabular-nums"
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="font-semibold text-slate-700">KPI Năm (Tiền về)</span>
-                <input
-                  type="number"
-                  value={modalKPI.kpiNamVe || ''}
-                  onChange={(e) => setModalKPI((p) => ({ ...p, kpiNamVe: Number(e.target.value || 0) }))}
-                  className="w-full h-8.5 px-2.5 rounded-lg border border-slate-200 text-right tabular-nums"
-                />
-              </label>
-            </div>
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <h3 className="text-sm font-bold text-slate-900">{modalChiTietChiNhanh.tieuDe}</h3>
               <button
                 type="button"
-                onClick={() => setModalKPI((p) => ({ ...p, mo: false }))}
-                className="h-8.5 px-3 rounded-xl border border-slate-200 cursor-pointer"
+                onClick={() => setModalChiTietChiNhanh({ mo: false, tieuDe: '', dongChiTiet: [] })}
+                className="p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
               >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                className="h-8.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold cursor-pointer"
-              >
-                Lưu KPI
+                <X className="size-4" />
               </button>
             </div>
-          </form>
+            <div className="overflow-x-auto border border-slate-100 rounded-xl">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
+                    <th className="py-2.5 px-3">Nhân sự</th>
+                    <th className="py-2.5 px-3 text-right">Mục tiêu</th>
+                    <th className="py-2.5 px-3 text-right">Thực tế</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {modalChiTietChiNhanh.dongChiTiet.map((r) => (
+                    <tr key={r.ten}>
+                      <td className="py-2 px-3 font-semibold text-slate-900">{r.ten}</td>
+                      <td className="py-2 px-3 text-right font-mono text-slate-500 tabular-nums">
+                        {fmtSo(r.mucTieu)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-bold text-blue-700 tabular-nums">
+                        {fmtSo(r.thucTe)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
