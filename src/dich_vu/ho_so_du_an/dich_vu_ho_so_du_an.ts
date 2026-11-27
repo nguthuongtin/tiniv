@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
   addDoc,
@@ -92,7 +92,7 @@ const chuyenDoiDocThanhDoiTuong = (
 const sapXepVaLocThem = (mang: HoSoDuAn[], loc?: DieuKienLocHoSoDuAn): HoSoDuAn[] => {
   const tuKhoaLower = loc?.tuKhoa?.trim().toLowerCase() ?? '';
   return mang.filter((hda) => {
-    // Lọc theo trạng thái xóa mềm / hoạt động
+    // Lá»c theo tráº¡ng thÃ¡i xÃ³a má»m / hoáº¡t Ä‘á»™ng
     if (loc?.trang_thai === 'da_xoa') {
       if (hda.trang_thai !== 'da_xoa') return false;
     } else if (loc?.trang_thai === 'hoat_dong' || !loc?.trang_thai) {
@@ -127,29 +127,9 @@ const sapXepVaLocThem = (mang: HoSoDuAn[], loc?: DieuKienLocHoSoDuAn): HoSoDuAn[
   });
 };
 
-const LOCAL_STORAGE_HDA_KEY = 'ebms_hda_cache_v1';
-
-const docCacheLocalHDA = (): HoSoDuAn[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_HDA_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-const ghiCacheLocalHDA = (item: HoSoDuAn) => {
-  if (typeof window === 'undefined') return;
-  try {
-    const list = docCacheLocalHDA().filter((x) => x.id !== item.id);
-    localStorage.setItem(LOCAL_STORAGE_HDA_KEY, JSON.stringify([item, ...list]));
-  } catch {}
-};
-
 let _rawCacheHDA: { mang: HoSoDuAn[]; ts: number } | null = null;
 let _dangTaiHDAPromise: Promise<HoSoDuAn[]> | null = null;
-const CACHE_TTL_HDA = 10 * 60 * 1000; // 10 phút
+const CACHE_TTL_HDA = 10 * 60 * 1000; // 10 phÃºt
 
 export const layCacheHoSoDuAnDongBo = (
   loc?: DieuKienLocHoSoDuAn
@@ -202,27 +182,23 @@ export const layChiTietHoSoDuAn = async (id: string): Promise<HoSoDuAn | null> =
     const cached = _rawCacheHDA.mang.find((x) => x.id === id);
     if (cached) return cached;
   }
-  const localList = docCacheLocalHDA();
-  const localFound = localList.find((x) => x.id === id);
-
   try {
     const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, id));
-    if (!snap.exists()) return localFound || null;
+    if (!snap.exists()) return null;
     const hda = chuyenDoiDocThanhDoiTuong(snap.id, snap.data());
     if (_rawCacheHDA) {
       const idx = _rawCacheHDA.mang.findIndex((x) => x.id === id);
       if (idx >= 0) _rawCacheHDA.mang[idx] = hda;
       else _rawCacheHDA.mang.unshift(hda);
     }
-    ghiCacheLocalHDA(hda);
     return hda;
   } catch (err) {
-    console.warn('[layChiTietHoSoDuAn] Lỗi getDoc kết nối Firestore, dùng cache:', err);
+    console.warn('[layChiTietHoSoDuAn] Lá»—i getDoc káº¿t ná»‘i Firestore, dÃ¹ng cache:', err);
     if (_rawCacheHDA) {
       const c = _rawCacheHDA.mang.find((x) => x.id === id);
       if (c) return c;
     }
-    return localFound || null;
+    return null;
   }
 };
 
@@ -263,16 +239,16 @@ export const taoHoSoDuAnMoi = async (
   nguoiThucHien: NguoiThucHienDTO | null | undefined
 ): Promise<HoSoDuAn> => {
   if (!dto.ten_du_an || !dto.ten_du_an.trim()) {
-    throw new Error('Tên dự án không được để trống.');
+    throw new Error('TÃªn dá»± Ã¡n khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
   }
   if (!dto.khach_hang_id || !dto.khach_hang_id.trim()) {
-    throw new Error('Vui lòng chọn khách hàng.');
+    throw new Error('Vui lÃ²ng chá»n khÃ¡ch hÃ ng.');
   }
   if (!dto.gia_tri_du_kien || Number(dto.gia_tri_du_kien) <= 0) {
-    throw new Error('Giá trị dự kiến phải lớn hơn 0.');
+    throw new Error('GiÃ¡ trá»‹ dá»± kiáº¿n pháº£i lá»›n hÆ¡n 0.');
   }
   if (!dto.san_pham_khac_mo_ta || !dto.san_pham_khac_mo_ta.trim()) {
-    throw new Error('Vui lòng nhập hoặc chọn sản phẩm / dịch vụ.');
+    throw new Error('Vui lÃ²ng nháº­p hoáº·c chá»n sáº£n pháº©m / dá»‹ch vá»¥.');
   }
   const now = new Date().toISOString();
   const idNguoiThucHien = nguoiThucHien?.id ?? null;
@@ -372,10 +348,9 @@ export const capNhatHoSoDuAn = async (
   try {
     await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
   } catch (err) {
-    console.warn('[capNhatHoSoDuAn] Không thể kết nối Firestore backend, lưu local cache:', err);
+    console.warn('[capNhatHoSoDuAn] KhÃ´ng thá»ƒ káº¿t ná»‘i Firestore backend, lÆ°u local cache:', err);
   }
   const moi = { ...hienTai, ...patchRaw } as HoSoDuAn;
-  ghiCacheLocalHDA(moi);
   if (_rawCacheHDA) {
     const idx = _rawCacheHDA.mang.findIndex((x) => x.id === moi.id);
     const mangMoi = [..._rawCacheHDA.mang];
@@ -385,26 +360,26 @@ export const capNhatHoSoDuAn = async (
   }
   const cacThayDoi: string[] = [];
   if (dto.ten_du_an && dto.ten_du_an.trim().toUpperCase() !== hienTai.ten_du_an) {
-    cacThayDoi.push(`Đổi tên: "${hienTai.ten_du_an}" ➔ "${moi.ten_du_an}"`);
+    cacThayDoi.push(`Äá»•i tÃªn: "${hienTai.ten_du_an}" âž” "${moi.ten_du_an}"`);
   }
   if (dto.gia_tri_du_kien !== undefined && dto.gia_tri_du_kien !== hienTai.gia_tri_du_kien) {
-    cacThayDoi.push(`Giá trị dự kiến: ${dto.gia_tri_du_kien.toLocaleString('vi-VN')} đ`);
+    cacThayDoi.push(`GiÃ¡ trá»‹ dá»± kiáº¿n: ${dto.gia_tri_du_kien.toLocaleString('vi-VN')} Ä‘`);
   }
   if (dto.gia_tri_hop_dong !== undefined && dto.gia_tri_hop_dong !== hienTai.gia_tri_hop_dong) {
-    cacThayDoi.push(`Giá trị hợp đồng: ${dto.gia_tri_hop_dong.toLocaleString('vi-VN')} đ`);
+    cacThayDoi.push(`GiÃ¡ trá»‹ há»£p Ä‘á»“ng: ${dto.gia_tri_hop_dong.toLocaleString('vi-VN')} Ä‘`);
   }
   if (dto.nguoi_phu_trach_id !== undefined && (dto.nguoi_phu_trach_id || null) !== (hienTai.nguoi_phu_trach_id || null)) {
-    cacThayDoi.push(`Đổi người phụ trách`);
+    cacThayDoi.push(`Äá»•i ngÆ°á»i phá»¥ trÃ¡ch`);
   }
   if (dto.muc_do_tiem_nang !== undefined && dto.muc_do_tiem_nang !== hienTai.muc_do_tiem_nang) {
-    cacThayDoi.push(`Mức tiềm năng: ${dto.muc_do_tiem_nang}`);
+    cacThayDoi.push(`Má»©c tiá»m nÄƒng: ${dto.muc_do_tiem_nang}`);
   }
   if (dto.mo_ta !== undefined && (dto.mo_ta || null) !== (hienTai.mo_ta || null)) {
-    cacThayDoi.push(`Cập nhật mô tả`);
+    cacThayDoi.push(`Cáº­p nháº­t mÃ´ táº£`);
   }
 
   if (cacThayDoi.length > 0) {
-    const noiDungLog = `Cập nhật dự án: ${cacThayDoi.join(', ')}`;
+    const noiDungLog = `Cáº­p nháº­t dá»± Ã¡n: ${cacThayDoi.join(', ')}`;
     void ghiNhatKyHoatDong(
       nguoiThucHien?.id,
       'ho_so_du_an',
@@ -412,14 +387,14 @@ export const capNhatHoSoDuAn = async (
       moi.id,
       noiDungLog
     );
-    // Nếu dự án gắn với khách hàng, đồng bộ dòng sự kiện này vào lịch sử của khách hàng
+    // Náº¿u dá»± Ã¡n gáº¯n vá»›i khÃ¡ch hÃ ng, Ä‘á»“ng bá»™ dÃ²ng sá»± kiá»‡n nÃ y vÃ o lá»‹ch sá»­ cá»§a khÃ¡ch hÃ ng
     if (moi.khach_hang_id) {
       void ghiNhatKyHoatDong(
         nguoiThucHien?.id,
         'khach_hang',
         'cap_nhat',
         moi.khach_hang_id,
-        `Dự án [${moi.ten_du_an}]: ${cacThayDoi.join(', ')}`
+        `Dá»± Ã¡n [${moi.ten_du_an}]: ${cacThayDoi.join(', ')}`
       );
     }
   }
@@ -433,7 +408,7 @@ export const doiTrangThaiHoSoDuAn = async (
 ): Promise<HoSoDuAn> => {
   const ketQua = await capNhatHoSoDuAn({ id, trang_thai: trang_thai_moi }, nguoiThucHien);
 
-  // Cascade soft-delete khi xóa dự án
+  // Cascade soft-delete khi xÃ³a dá»± Ã¡n
   if (trang_thai_moi === 'da_xoa') {
     try {
       // Cascade soft-delete tien_do_du_an
@@ -449,7 +424,7 @@ export const doiTrangThaiHoSoDuAn = async (
 
       await Promise.allSettled(capNhatTienDo);
     } catch (loiCascade) {
-      console.error('Lỗi khi cascade soft-delete dữ liệu tiến độ của dự án:', loiCascade);
+      console.error('Lá»—i khi cascade soft-delete dá»¯ liá»‡u tiáº¿n Ä‘á»™ cá»§a dá»± Ã¡n:', loiCascade);
     }
   } else if (trang_thai_moi === 'hoat_dong') {
     try {
@@ -466,7 +441,7 @@ export const doiTrangThaiHoSoDuAn = async (
 
       await Promise.allSettled(capNhatTienDo);
     } catch (loiCascade) {
-      console.error('Lỗi khi cascade restore dữ liệu tiến độ của dự án:', loiCascade);
+      console.error('Lá»—i khi cascade restore dá»¯ liá»‡u tiáº¿n Ä‘á»™ cá»§a dá»± Ã¡n:', loiCascade);
     }
   }
 
@@ -500,7 +475,7 @@ export const doiGiaiDoanHoSoDuAn = async (
 ): Promise<HoSoDuAn> => {
   if (giai_doan_moi === 'huy') {
     if (!thongTinThatBai?.ly_do_that_bai || !thongTinThatBai.ly_do_that_bai.trim()) {
-      throw new Error('Vui lòng chọn lý do thất bại khi hủy dự án.');
+      throw new Error('Vui lÃ²ng chá»n lÃ½ do tháº¥t báº¡i khi há»§y dá»± Ã¡n.');
     }
   }
 
@@ -515,8 +490,8 @@ export const doiGiaiDoanHoSoDuAn = async (
   }
 
   const res = await capNhatHoSoDuAn(payload, nguoiThucHien);
-  const noiDungLog = `Chuyển giai đoạn dự án "${res.ten_du_an}" sang "${giai_doan_moi}"${
-    giai_doan_moi === 'huy' && thongTinThatBai?.ly_do_that_bai ? ` (Lý do: ${thongTinThatBai.ly_do_that_bai})` : ''
+  const noiDungLog = `Chuyá»ƒn giai Ä‘oáº¡n dá»± Ã¡n "${res.ten_du_an}" sang "${giai_doan_moi}"${
+    giai_doan_moi === 'huy' && thongTinThatBai?.ly_do_that_bai ? ` (LÃ½ do: ${thongTinThatBai.ly_do_that_bai})` : ''
   }`;
   await ghiNhatKyHoatDong(
     nguoiThucHien?.id,
@@ -531,7 +506,7 @@ export const doiGiaiDoanHoSoDuAn = async (
       'khach_hang',
       'cap_nhat',
       res.khach_hang_id,
-      `Dự án [${res.ten_du_an}]: ${noiDungLog}`
+      `Dá»± Ã¡n [${res.ten_du_an}]: ${noiDungLog}`
     );
   }
   return res;
