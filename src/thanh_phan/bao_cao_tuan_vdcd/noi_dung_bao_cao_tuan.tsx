@@ -1380,12 +1380,12 @@ export default function NoiDungBaoCaoTuan() {
             >
               <ChevronLeft className="size-4" />
             </button>
-            <div className="px-2.5 text-center">
+            <div className="px-3 text-center">
               <div className="text-xs font-extrabold text-slate-900 uppercase">
-                {infoTuan.nhanTieuDe}
+                Báo cáo {infoTuan.nhanTieuDe} ({infoTuan.khoangNgayNhan})
               </div>
-              <div className="text-[11px] text-slate-500 font-medium">
-                {infoTuan.khoangNgayNhan}/{infoTuan.nam}
+              <div className="text-[11px] text-blue-700 font-semibold">
+                Kế hoạch {infoTuanToi.nhanTieuDe} ({infoTuanToi.khoangNgayNhan})
               </div>
             </div>
             <button
