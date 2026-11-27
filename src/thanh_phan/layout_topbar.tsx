@@ -26,7 +26,6 @@ import {
   Users,
   FileText,
   Calendar,
-  BarChart3,
   Settings,
   Plus,
   Sparkles,
@@ -150,14 +149,6 @@ const MAP_TIEU_DE: Record<string, ThongTinTrang> = {
     nut_them: 'Thêm nhân viên',
     placeholder_tim: 'Tìm kiếm tên, mã NV, email, SĐT...',
     event_them: 'ebms:nhan_su:them_moi'
-  },
-  '/bao-cao': {
-    nhan: 'Báo cáo & Thống kê',
-    nhan_mobile: 'Thống kê',
-    mo_ta: 'Bảng điều khiển tổng hợp số liệu và biểu đồ',
-    icon: BarChart3,
-    nut_them: 'Tải xuất',
-    placeholder_tim: 'Tìm kiếm trong báo cáo...'
   },
   '/kho-tai-lieu': {
     nhan: 'Kho tài liệu',
@@ -415,7 +406,7 @@ export default function ThanhPhanTopbar() {
     if (thongTin.event_them) {
       window.dispatchEvent(new CustomEvent(thongTin.event_them));
     } else if (pathname === '/') {
-      window.location.href = '/bao-cao';
+      window.location.href = '/bao-cao-tuan';
     }
   };
 

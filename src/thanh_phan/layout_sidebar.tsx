@@ -14,7 +14,6 @@ import {
   Shield,
   MapPin,
   Users,
-  BarChart3,
   Settings2,
   CalendarRange,
   CalendarCheck,
@@ -62,7 +61,6 @@ const DANH_MUC_SIDEBAR: MucSidebar[] = [
   { href: '/ban-do-3d', icon: MapPin, nhan: 'Bản đồ địa bàn', nhom: 'Module' },
   { href: '/kho-tai-lieu', icon: BookOpen, nhan: 'Kho tài liệu', nhom: 'Module' },
   { href: '/nhan-su', icon: Users, nhan: 'Nhân sự', nhom: 'Module', quyen: ['nhan_su.xem', 'nhan_su.quan_ly'] },
-  { href: '/bao-cao', icon: BarChart3, nhan: 'Báo cáo & Thống kê', nhom: 'Quản trị', quyen: 'bao_cao.xem' },
   { href: '/quan-tri', icon: Settings2, nhan: 'Quản trị hệ thống', nhom: 'Quản trị', quyen: 'he_thong.quan_tri' }
 ];
 
@@ -138,7 +136,6 @@ const useSidebarShared = () => {
     if (pathname.startsWith('/lich-cong-tac') || pathname.startsWith('/ban-lam-viec') || pathname.startsWith('/ke-hoach')) return 'Lịch làm việc';
     if (pathname.startsWith('/bao-cao-tuan')) return 'Báo cáo tuần';
     if (pathname.startsWith('/bao-cao-cong-viec')) return 'Báo cáo công việc';
-    if (pathname.startsWith('/bao-cao')) return 'Báo cáo & Thống kê';
     if (pathname.startsWith('/khach-hang')) return 'Khách hàng';
     if (pathname.startsWith('/ho-so-du-an')) return 'Hồ sơ dự án';
     if (pathname.startsWith('/nhan-su')) return 'Nhân sự';
@@ -218,10 +215,6 @@ const renderDanhMuc = (
                     ? pathname.startsWith('/lich-cong-tac') || pathname.startsWith('/ban-lam-viec')
                     : muc.href === '/ke-hoach'
                     ? pathname.startsWith('/ke-hoach')
-                    : muc.href === '/bao-cao'
-                    ? pathname === '/bao-cao' ||
-                      (pathname.startsWith('/bao-cao/') &&
-                        !pathname.startsWith('/bao-cao-cong-viec'))
                     : pathname.startsWith(muc.href);
                 const khoa_muc_doan = (muc as any).soon && !laQuyenQuanTri;
                 const Wrapper: any = (muc as any).soon
