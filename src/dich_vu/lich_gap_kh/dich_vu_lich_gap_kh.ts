@@ -26,34 +26,9 @@ import {
 const TEN_COLLECTION = 'lich_gap_kh' as const;
 const COLLECTION_FALLBACK = 'cong_viec' as const;
 const LOAI_BAN_GHI_LICH = 'lich_gap_kh' as const;
-const CACHE_KEYS = [
-  'ebms_lich_gap_kh_cache_v3',
-  'ebms_lich_gap_kh_cache_v2',
-  'ebms_lich_gap_kh_cache_v1',
-  'ebms_lich_gap_kh_cache'
-];
-const DA_XOA_KEYS = 'ebms_lich_gap_kh_da_xoa_ids';
-
-const layDanhSachIdDaXoa = (): Set<string> => {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = localStorage.getItem(DA_XOA_KEYS);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? arr : []);
-  } catch {
-    return new Set();
-  }
-};
-
-const ghiNhanIdDaXoa = (id: string) => {
-  if (typeof window === 'undefined' || !id) return;
-  try {
-    const set = layDanhSachIdDaXoa();
-    set.add(id);
-    localStorage.setItem(DA_XOA_KEYS, JSON.stringify(Array.from(set).slice(-500)));
-  } catch {}
-};
+const _idDaXoaTrongPhien = new Set<string>();
+const layDanhSachIdDaXoa = (): Set<string> => _idDaXoaTrongPhien;
+const ghiNhanIdDaXoa = (id: string) => { if (id) _idDaXoaTrongPhien.add(id); };
 const GIOI_HAN_MAC_DINH = 500;
 
 export interface DieuKienLocLichGap {
@@ -72,33 +47,8 @@ let _cacheDanhSachLich: { data: LichGapKH[]; time: number } | null = null;
 let _suDungFallbackCongViec = false;
 const CACHE_TTL_MS = 15_000;
 
-const docCacheLocal = (): LichGapKH[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    for (const key of CACHE_KEYS) {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        try {
-          const list = JSON.parse(raw);
-          if (Array.isArray(list) && list.length > 0) return list;
-        } catch {}
-      }
-    }
-    return [];
-  } catch {
-    return [];
-  }
-};
-
-const ghiCacheLocal = (ds: LichGapKH[]) => {
-  if (typeof window === 'undefined') return;
-  try {
-    const raw = JSON.stringify(ds);
-    CACHE_KEYS.forEach((k) => localStorage.setItem(k, raw));
-  } catch {
-    // ignore
-  }
-};
+const docCacheLocal = (): LichGapKH[] => _cacheDanhSachLich?.data ?? [];
+const ghiCacheLocal = (ds: LichGapKH[]) => { _cacheDanhSachLich = { data: ds, time: Date.now() }; };
 
 const phatSuKienCapNhat = (lich?: LichGapKH) => {
   if (typeof window !== 'undefined') {

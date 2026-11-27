@@ -172,27 +172,6 @@ const chuyenDoiDocThanhDoiTuong = (id: string, raw: DocumentData | RawBanGhi | u
   };
 };
 
-const layTuLocalStorage = (): ChucVu[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const luuVaoLocalStorage = (mang: ChucVu[]): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mang));
-  } catch (e) {
-    console.warn('[dich_vu_chuc_vu] luuVaoLocalStorage failed:', e);
-  }
-};
-
 const thongBaoCapNhat = () => {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('ebms:chuc_vu:cap_nhat'));
@@ -238,40 +217,20 @@ export const danhSachChucVu = async (dk: DieuKienLocChucVu = {}): Promise<KetQua
 
   try {
     const snap = await getDocs(query(thamChieuCollection(TEN_COLLECTION), ...taoDieuKien(full)));
-    const mangFirestore = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
-    
-    // Gộp với local storage (tránh mất các bản ghi vừa tạo nếu Firestore indexing có độ trễ)
-    const local = layTuLocalStorage();
-    const map = new Map<string, ChucVu>();
-    
-    // Đưa local vào trước
-    local.forEach((item) => map.set(item.id, item));
-    // Firestore ghi đè lên local nếu cùng id
-    mangFirestore.forEach((item) => map.set(item.id, item));
-    
-    danhSachTong = Array.from(map.values());
+    danhSachTong = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
 
-    // Nếu cả firestore lẫn local đều trống, khởi tạo danh sách chức vụ mặc định
     if (danhSachTong.length === 0) {
       danhSachTong = CAC_CHUC_VU_MAC_DINH.map((item, idx) => ({
         ...item,
         id: `chuc_vu_mac_dinh_${idx + 1}`
       }));
-      // Tự động lưu ngầm vào local storage
-      luuVaoLocalStorage(danhSachTong);
-    } else {
-      luuVaoLocalStorage(danhSachTong);
     }
   } catch (err) {
-    console.warn('[dich_vu_chuc_vu] danhSachChucVu getDocs error, using localStorage fallback:', err);
-    danhSachTong = layTuLocalStorage();
-    if (danhSachTong.length === 0) {
-      danhSachTong = CAC_CHUC_VU_MAC_DINH.map((item, idx) => ({
-        ...item,
-        id: `chuc_vu_mac_dinh_${idx + 1}`
-      }));
-      luuVaoLocalStorage(danhSachTong);
-    }
+    console.warn('[dich_vu_chuc_vu] danhSachChucVu getDocs error, using default list:', err);
+    danhSachTong = CAC_CHUC_VU_MAC_DINH.map((item, idx) => ({
+      ...item,
+      id: `chuc_vu_mac_dinh_${idx + 1}`
+    }));
   }
 
   const mang = sortTrongBoNho(danhSachTong);
@@ -289,8 +248,7 @@ export const layChiTietChucVu = async (id: string): Promise<ChucVu | null> => {
   } catch (e) {
     console.warn('[dich_vu_chuc_vu] layChiTietChucVu Firestore error:', e);
   }
-  const local = layTuLocalStorage();
-  return local.find((x) => x.id === id) ?? null;
+  return null;
 };
 
 export const taoChucVuMoi = async (
@@ -313,31 +271,19 @@ export const taoChucVuMoi = async (
     trang_thai_du_lieu: dto.trang_thai_du_lieu ?? 'hoat_dong'
   });
 
-  let moi: ChucVu;
+  const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
+  const moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
   try {
-    const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
-    moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
-    try {
-      await ghiNhatKyHoatDong(
-        idNguoiThucHien,
-        TEN_COLLECTION,
-        'tao_moi',
-        moi.id,
-        `Tạo chức vụ "${moi.ten_chuc_vu}"`
-      );
-    } catch { /* Bỏ qua nếu nhật ký không ghi được */ }
-  } catch (err) {
-    console.warn('[dich_vu_chuc_vu] taoChucVuMoi Firestore fallback:', err);
-    const mockId = `cv_${Date.now()}`;
-    moi = chuyenDoiDocThanhDoiTuong(mockId, duLieuRaw);
-  }
+    await ghiNhatKyHoatDong(
+      idNguoiThucHien,
+      TEN_COLLECTION,
+      'tao_moi',
+      moi.id,
+      `Tạo chức vụ "${moi.ten_chuc_vu}"`
+    );
+  } catch { /* Bỏ qua nếu nhật ký không ghi được */ }
 
-  // Cập nhật ngay lập tức vào LocalStorage để UI nhận ngay
-  const dsHienTai = layTuLocalStorage();
-  const dsMoi = [moi, ...dsHienTai.filter((x) => x.id !== moi.id)];
-  luuVaoLocalStorage(dsMoi);
   thongBaoCapNhat();
-
   return moi;
 };
 
@@ -361,30 +307,18 @@ export const capNhatChucVu = async (
   patchRaw.ngay_cap_nhat = now;
   const cleanPatch = loaiBoUndefined(patchRaw);
 
+  await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), cleanPatch as any, { merge: true });
   try {
-    await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), cleanPatch as any, { merge: true });
-    try {
-      await ghiNhatKyHoatDong(
-        nguoiThucHien?.id,
-        TEN_COLLECTION,
-        'cap_nhat',
-        dto.id,
-        `Cập nhật chức vụ "${cleanPatch.ten_chuc_vu || hienTai?.ten_chuc_vu || dto.id}"`
-      );
-    } catch { /* Bỏ qua nhật ký */ }
-  } catch (err) {
-    console.warn('[dich_vu_chuc_vu] capNhatChucVu Firestore fallback:', err);
-  }
+    await ghiNhatKyHoatDong(
+      nguoiThucHien?.id,
+      TEN_COLLECTION,
+      'cap_nhat',
+      dto.id,
+      `Cập nhật chức vụ "${cleanPatch.ten_chuc_vu || hienTai?.ten_chuc_vu || dto.id}"`
+    );
+  } catch { /* Bỏ qua nhật ký */ }
 
   const moi = { ...(hienTai || {}), ...cleanPatch, id: dto.id } as ChucVu;
-
-  // Cập nhật LocalStorage
-  const dsHienTai = layTuLocalStorage();
-  const dsMoi = dsHienTai.map((x) => (x.id === dto.id ? moi : x));
-  if (!dsMoi.some((x) => x.id === dto.id)) {
-    dsMoi.push(moi);
-  }
-  luuVaoLocalStorage(dsMoi);
   thongBaoCapNhat();
 
   return moi;
@@ -415,11 +349,13 @@ export const langNgheThayDoiDanhSachChucVu = (
     q,
     (snap) => {
       const mangChuaSort = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
-      const local = layTuLocalStorage();
-      const map = new Map<string, ChucVu>();
-      local.forEach((item) => map.set(item.id, item));
-      mangChuaSort.forEach((item) => map.set(item.id, item));
-      const danhSachTong = Array.from(map.values());
+      const danhSachTong =
+        mangChuaSort.length > 0
+          ? mangChuaSort
+          : CAC_CHUC_VU_MAC_DINH.map((item, idx) => ({
+              ...item,
+              id: `chuc_vu_mac_dinh_${idx + 1}`
+            }));
 
       const mang = sortTrongBoNho(danhSachTong);
       const daLocTheoDieuKien = locTheoDieuKienBoNho(mang, full);
@@ -428,9 +364,11 @@ export const langNgheThayDoiDanhSachChucVu = (
     },
     (err) => {
       console.warn('[dich_vu_chuc_vu] onSnapshot error:', err);
-      // Fallback khi onSnapshot gặp lỗi mạng/rules
-      const local = layTuLocalStorage();
-      const mang = sortTrongBoNho(local);
+      const macDinh = CAC_CHUC_VU_MAC_DINH.map((item, idx) => ({
+        ...item,
+        id: `chuc_vu_mac_dinh_${idx + 1}`
+      }));
+      const mang = sortTrongBoNho(macDinh);
       const daLocTheoDieuKien = locTheoDieuKienBoNho(mang, full);
       const daLoc = locTheoTuKhoa(daLocTheoDieuKien, full.tuKhoa);
       callback(daLoc);

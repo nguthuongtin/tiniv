@@ -94,27 +94,6 @@ const chuyenDoiDocThanhDoiTuong = (id: string, raw: DocumentData | RawBanGhi | u
   };
 };
 
-const layTuLocalStorage = (): VaiTro[] => {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const luuVaoLocalStorage = (mang: VaiTro[]): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mang));
-  } catch (e) {
-    console.warn('[dich_vu_vai_tro] luuVaoLocalStorage failed:', e);
-  }
-};
-
 const thongBaoCapNhat = () => {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('ebms:vai_tro:cap_nhat'));
@@ -179,32 +158,20 @@ export const danhSachVaiTro = async (dk: DieuKienLocVaiTro = {}): Promise<KetQua
   try {
     const snap = await getDocs(query(thamChieuCollection(TEN_COLLECTION), ...taoDieuKien(full)));
     const mangFirestore = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
-    
-    const local = layTuLocalStorage();
     const uniqueMap = new Map<string, VaiTro>();
-    
-    // 1. Nạp từ local trước
-    local.forEach((item) => {
-      const converted = chuyenDoiDocThanhDoiTuong(item.id, item);
-      uniqueMap.set(converted.id, converted);
-    });
+    mangFirestore.forEach((item) => uniqueMap.set(item.id, item));
 
-    // 2. Firestore là nguồn thật sự (source of truth), ghi đè local
-    mangFirestore.forEach((item) => {
-      uniqueMap.set(item.id, item);
-    });
-
-    // 3. Đảm bảo toàn bộ vai trò chuẩn hệ thống luôn có mặt
     const stdRoles = khoiTaoVaiTroChuan();
     stdRoles.forEach((std) => {
-      const coSan = uniqueMap.get(std.id) || (std.ma_vai_tro && Array.from(uniqueMap.values()).find((x) => x.ma_vai_tro === std.ma_vai_tro));
+      const coSan =
+        uniqueMap.get(std.id) ||
+        (std.ma_vai_tro && Array.from(uniqueMap.values()).find((x) => x.ma_vai_tro === std.ma_vai_tro));
       if (!coSan) {
         uniqueMap.set(std.id, std);
       }
     });
 
     danhSachTong = Array.from(uniqueMap.values());
-    luuVaoLocalStorage(danhSachTong);
   } catch (err) {
     console.warn('[dich_vu_vai_tro] danhSachVaiTro getDocs error, trying API fallback:', err);
     let daLayDuocTuApi = false;
@@ -215,7 +182,6 @@ export const danhSachVaiTro = async (dk: DieuKienLocVaiTro = {}): Promise<KetQua
           const json = await res.json();
           if (json.thanh_cong && Array.isArray(json.mang) && json.mang.length > 0) {
             danhSachTong = json.mang;
-            luuVaoLocalStorage(danhSachTong);
             daLayDuocTuApi = true;
           }
         }
@@ -225,19 +191,7 @@ export const danhSachVaiTro = async (dk: DieuKienLocVaiTro = {}): Promise<KetQua
     }
 
     if (!daLayDuocTuApi) {
-      danhSachTong = layTuLocalStorage();
-      if (danhSachTong.length === 0) {
-        danhSachTong = khoiTaoVaiTroChuan();
-        luuVaoLocalStorage(danhSachTong);
-      } else {
-        const stdRoles = khoiTaoVaiTroChuan();
-        stdRoles.forEach((std) => {
-          if (!danhSachTong.some((x) => x.id === std.id || (std.ma_vai_tro && x.ma_vai_tro === std.ma_vai_tro))) {
-            danhSachTong.push(std);
-          }
-        });
-        luuVaoLocalStorage(danhSachTong);
-      }
+      danhSachTong = khoiTaoVaiTroChuan();
     }
   }
 
@@ -257,9 +211,6 @@ export const layChiTietVaiTro = async (id: string): Promise<VaiTro | null> => {
   } catch (e) {
     console.warn('[dich_vu_vai_tro] layChiTietVaiTro error:', e);
   }
-  const local = layTuLocalStorage();
-  const found = local.find((x) => x.id === id || x.ma_vai_tro === id);
-  if (found) return found;
 
   const std = CAC_VAI_TRO_CHUAN_HE_THONG.find((x) => x.key === id);
   if (std) {
@@ -302,28 +253,17 @@ export const taoVaiTroMoi = async (
     trang_thai_du_lieu: dto.trang_thai_du_lieu ?? 'hoat_dong'
   };
 
-  let moi: VaiTro;
+  const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
+  const moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
   try {
-    const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
-    moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
-    try {
-      await ghiNhatKyHoatDong(
-        idNguoiThucHien,
-        TEN_COLLECTION,
-        'tao_moi',
-        moi.id,
-        `Tạo vai trò "${moi.ten_vai_tro}"`
-      );
-    } catch { /* Bỏ qua nhật ký */ }
-  } catch (err) {
-    console.warn('[dich_vu_vai_tro] taoVaiTroMoi Firestore fallback:', err);
-    const mockId = `vt_${Date.now()}`;
-    moi = chuyenDoiDocThanhDoiTuong(mockId, duLieuRaw);
-  }
-
-  const dsHienTai = layTuLocalStorage();
-  const dsMoi = [moi, ...dsHienTai.filter((x) => x.id !== moi.id)];
-  luuVaoLocalStorage(dsMoi);
+    await ghiNhatKyHoatDong(
+      idNguoiThucHien,
+      TEN_COLLECTION,
+      'tao_moi',
+      moi.id,
+      `Tạo vai trò "${moi.ten_vai_tro}"`
+    );
+  } catch { /* Bỏ qua nhật ký */ }
 
   return moi;
 };
@@ -347,29 +287,18 @@ export const capNhatVaiTro = async (
   });
   patchRaw.ngay_cap_nhat = now;
 
+  await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
   try {
-    await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
-    try {
-      await ghiNhatKyHoatDong(
-        nguoiThucHien?.id,
-        TEN_COLLECTION,
-        'cap_nhat',
-        dto.id,
-        `Cập nhật vai trò "${patchRaw.ten_vai_tro || hienTai?.ten_vai_tro || dto.id}"`
-      );
-    } catch { /* Bỏ qua nhật ký */ }
-  } catch (err) {
-    console.warn('[dich_vu_vai_tro] capNhatVaiTro Firestore fallback:', err);
-  }
+    await ghiNhatKyHoatDong(
+      nguoiThucHien?.id,
+      TEN_COLLECTION,
+      'cap_nhat',
+      dto.id,
+      `Cập nhật vai trò "${patchRaw.ten_vai_tro || hienTai?.ten_vai_tro || dto.id}"`
+    );
+  } catch { /* Bỏ qua nhật ký */ }
 
-  const moi = { ...(hienTai || {}), ...patchRaw, id: dto.id } as VaiTro;
-
-  const dsHienTai = layTuLocalStorage();
-  const dsMoi = dsHienTai.map((x) => (x.id === dto.id ? moi : x));
-  if (!dsMoi.some((x) => x.id === dto.id)) dsMoi.push(moi);
-  luuVaoLocalStorage(dsMoi);
-
-  return moi;
+  return { ...(hienTai || {}), ...patchRaw, id: dto.id } as VaiTro;
 };
 
 export const xoaMemVaiTro = async (
@@ -461,14 +390,6 @@ export const capNhatQuyenHanVaiTro = async (
     ...duLieuRaw
   };
 
-  // 3. Cập nhật localStorage
-  const dsHienTai = layTuLocalStorage();
-  const dsMoi = dsHienTai.map((x) => (x.id === vaiTroId || (x.ma_vai_tro && x.ma_vai_tro === vaiTroId) ? moi : x));
-  if (!dsMoi.some((x) => x.id === vaiTroId || (x.ma_vai_tro && x.ma_vai_tro === vaiTroId))) {
-    dsMoi.push(moi);
-  }
-  luuVaoLocalStorage(dsMoi);
-
   thongBaoCapNhat();
   return moi;
 };
@@ -501,23 +422,6 @@ export const capNhatHangLoatQuyenHanVaiTro = async (
     return true;
   }
 
-  // 2. Cập nhật đồng bộ LocalStorage
-  const dsHienTai = layTuLocalStorage();
-  const now = new Date().toISOString();
-  const mapCapNhat = new Map<string, string[]>();
-  danhSachCapNhat.forEach((c) => mapCapNhat.set(c.vai_tro_id, c.danh_sach_quyen));
-
-  const dsMoi = dsHienTai.map((x) => {
-    if (mapCapNhat.has(x.id)) {
-      return { ...x, danh_sach_quyen: mapCapNhat.get(x.id)!, ngay_cap_nhat: now };
-    }
-    if (x.ma_vai_tro && mapCapNhat.has(x.ma_vai_tro)) {
-      return { ...x, danh_sach_quyen: mapCapNhat.get(x.ma_vai_tro)!, ngay_cap_nhat: now };
-    }
-    return x;
-  });
-
-  luuVaoLocalStorage(dsMoi);
   thongBaoCapNhat();
   return true;
 };
@@ -533,10 +437,14 @@ export const langNgheThayDoiDanhSachVaiTro = (
     q,
     (snap) => {
       const mangChuaSort = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
-      const local = layTuLocalStorage();
       const map = new Map<string, VaiTro>();
-      local.forEach((item) => map.set(item.id, item));
       mangChuaSort.forEach((item) => map.set(item.id, item));
+      khoiTaoVaiTroChuan().forEach((std) => {
+        const coSan =
+          map.get(std.id) ||
+          (std.ma_vai_tro && Array.from(map.values()).find((x) => x.ma_vai_tro === std.ma_vai_tro));
+        if (!coSan) map.set(std.id, std);
+      });
       const danhSachTong = Array.from(map.values());
 
       const mang = sortTrongBoNho(danhSachTong);
@@ -546,8 +454,7 @@ export const langNgheThayDoiDanhSachVaiTro = (
     },
     (err) => {
       console.warn('[dich_vu_vai_tro] onSnapshot error:', err);
-      const local = layTuLocalStorage();
-      const mang = sortTrongBoNho(local);
+      const mang = sortTrongBoNho(khoiTaoVaiTroChuan());
       const daLocTheoDieuKien = locTheoDieuKienBoNho(mang, full);
       const daLoc = locTheoTuKhoa(daLocTheoDieuKien, full.tuKhoa);
       callback(daLoc);

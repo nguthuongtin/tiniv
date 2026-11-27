@@ -37,38 +37,10 @@ import { xoaLichGapKH } from '../lich_gap_kh/dich_vu_lich_gap_kh';
 export type { YeuCauPhoiHop };
 
 const TEN_COLLECTION = 'yeu_cau_phoi_hop' as const;
-const CACHE_KEYS = [
-  'ebms_yeu_cau_phoi_hop_cache_v7',
-  'ebms_yeu_cau_phoi_hop_cache_v6',
-  'ebms_yeu_cau_phoi_hop_cache_v5',
-  'ebms_yeu_cau_phoi_hop_cache_v4',
-  'ebms_yeu_cau_phoi_hop_cache_v3',
-  'ebms_yeu_cau_phoi_hop_cache_v2',
-  'ebms_yeu_cau_phoi_hop_cache'
-];
-
-const YC_DA_XOA_KEYS = 'ebms_yeu_cau_da_xoa_ids';
-
-export const layDanhSachYCDaXoa = (): Set<string> => {
-  if (typeof window === 'undefined') return new Set();
-  try {
-    const raw = localStorage.getItem(YC_DA_XOA_KEYS);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? arr : []);
-  } catch {
-    return new Set();
-  }
-};
-
-export const ghiNhanYCDaXoa = (id: string) => {
-  if (typeof window === 'undefined' || !id) return;
-  try {
-    const set = layDanhSachYCDaXoa();
-    set.add(id);
-    localStorage.setItem(YC_DA_XOA_KEYS, JSON.stringify(Array.from(set).slice(-500)));
-  } catch {}
-};
+const _idYCDaXoaTrongPhien = new Set<string>();
+let _cacheYeuCau: YeuCauPhoiHop[] = [];
+export const layDanhSachYCDaXoa = (): Set<string> => _idYCDaXoaTrongPhien;
+export const ghiNhanYCDaXoa = (id: string) => { if (id) _idYCDaXoaTrongPhien.add(id); };
 
 export interface DieuKienLocYeuCauPhoiHop {
   du_an_id?: string | null;
@@ -123,34 +95,8 @@ export interface ChuyenBuocDTO {
 }
 
 // ==== Helpers Cache Local & Event ====
-const docCacheLocal = (): YeuCauPhoiHop[] => {
-  if (typeof window === 'undefined') return [];
-  const dsDaXoa = layDanhSachYCDaXoa();
-  try {
-    for (const key of CACHE_KEYS) {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        try {
-          const list = JSON.parse(raw);
-          if (Array.isArray(list) && list.length > 0) {
-            return list.filter((x) => x && x.id && x.trang_thai_du_lieu !== 'da_xoa' && !dsDaXoa.has(x.id));
-          }
-        } catch {}
-      }
-    }
-    return [];
-  } catch {
-    return [];
-  }
-};
-
-const ghiCacheLocal = (data: YeuCauPhoiHop[]) => {
-  if (typeof window === 'undefined') return;
-  try {
-    const serialized = JSON.stringify(data);
-    CACHE_KEYS.forEach((k) => localStorage.setItem(k, serialized));
-  } catch {}
-};
+const docCacheLocal = (): YeuCauPhoiHop[] => { const dsDaXoa = layDanhSachYCDaXoa(); return _cacheYeuCau.filter((x) => x && x.id && x.trang_thai_du_lieu !== 'da_xoa' && !dsDaXoa.has(x.id)); };
+const ghiCacheLocal = (data: YeuCauPhoiHop[]) => { _cacheYeuCau = data; };
 
 const phatSuKienCapNhat = (yc?: YeuCauPhoiHop) => {
   if (typeof window !== 'undefined') {
@@ -964,20 +910,8 @@ export const xoaYeuCauPhoiHop = async (
   // Tìm yêu cầu hiện tại để lấy thông tin đồng bộ xóa lịch và báo cáo
   const hienTai = docCacheLocal().find((x) => x.id === yeuCauId);
 
-  // 2. Dọn sạch khỏi tất cả các key local cache
-  if (typeof window !== 'undefined') {
-    CACHE_KEYS.forEach((k) => {
-      try {
-        const raw = localStorage.getItem(k);
-        if (raw) {
-          const list = JSON.parse(raw);
-          if (Array.isArray(list)) {
-            localStorage.setItem(k, JSON.stringify(list.filter((x: any) => x && x.id !== yeuCauId)));
-          }
-        }
-      } catch {}
-    });
-  }
+  // 2. Dọn sạch khỏi bộ nhớ đệm phiên
+  _cacheYeuCau = _cacheYeuCau.filter((x) => x && x.id !== yeuCauId);
   phatSuKienCapNhat({ id: yeuCauId, trang_thai_du_lieu: 'da_xoa' } as any);
 
   // 3. Ghi cập nhật Firestore & Xóa document
