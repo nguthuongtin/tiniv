@@ -632,23 +632,17 @@ export default function NoiDungBaoCaoTuan() {
             : (truoc?.nguon_tuan_nay || goiYTuanTruoc.nguon_tuan_nay)
       };
 
-      const coIdsDaChon = Boolean(baoCao.du_an_trong_diem_ids && baoCao.du_an_trong_diem_ids.length > 0);
-      const dsDATiemNang = dsDuAn.filter((d) => {
-        if (d.trang_thai === 'da_xoa') return false;
-        const thuocNV =
-          d.nguoi_phu_trach_id === nv.id ||
-          d.nguoi_quan_ly_id === nv.id ||
-          (!d.nguoi_phu_trach_id && d.nguoi_tao_id === nv.id);
-        if (!thuocNV) return false;
-        if (coIdsDaChon) {
-          return baoCao.du_an_trong_diem_ids!.includes(d.id);
-        }
-        return (
-          (d.muc_do_tiem_nang === 'rat_cao' || d.muc_do_tiem_nang === 'cao') &&
-          d.giai_doan !== 'hoan_thanh_tt_dot_2' &&
-          d.giai_doan !== 'tam_dung_huy'
-        );
-      });
+      const coIdsDaChon = Boolean(daLuu && baoCao.du_an_trong_diem_ids && baoCao.du_an_trong_diem_ids.length > 0);
+      const dsDATiemNang = coIdsDaChon
+        ? dsDuAn.filter((d) => {
+            if (d.trang_thai === 'da_xoa') return false;
+            const thuocNV =
+              d.nguoi_phu_trach_id === nv.id ||
+              d.nguoi_quan_ly_id === nv.id ||
+              (!d.nguoi_phu_trach_id && d.nguoi_tao_id === nv.id);
+            return thuocNV && baoCao.du_an_trong_diem_ids!.includes(d.id);
+          })
+        : [];
 
       return {
         nv,
@@ -742,8 +736,11 @@ export default function NoiDungBaoCaoTuan() {
 
   const dsDuAnTiemNangChiNhanh = useMemo(() => {
     const setIdsDuAnChon = new Set(
-      danhSachBaoCaoTeam.flatMap((x) => x.baoCao.du_an_trong_diem_ids || [])
+      danhSachBaoCaoTeam
+        .filter((x) => x.daGui)
+        .flatMap((x) => x.baoCao.du_an_trong_diem_ids || [])
     );
+    if (setIdsDuAnChon.size === 0) return [];
 
     const mapTenNV = new Map(dsNhanSu.map((n) => [n.id, n.ho_va_ten]));
     const mapKH = new Map(dsKhachHang.map((k) => [k.id, k]));
@@ -1621,6 +1618,8 @@ export default function NoiDungBaoCaoTuan() {
         (() => {
           const tongKQ = danhSachBaoCaoTeam.reduce(
             (acc, x) => {
+              acc.lichToi += x.lichToi.length;
+              if (!x.daGui) return acc;
               const k = x.baoCao.kpi_tuan_qua;
               acc.km += Number(k?.khach_moi_thuc_te ?? x.baoCao.thuc_hien_tiep_can_tuan_nay ?? 0);
               acc.bg += Number(k?.bao_gia_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.bao_gia ?? 0);
@@ -1635,7 +1634,6 @@ export default function NoiDungBaoCaoTuan() {
               acc.ckHD += Number(ck?.hop_dong?.target ?? 0);
               acc.ckDS += Number(ck?.doanh_so?.target ?? 0);
               acc.daTiemNang += x.dsDATiemNang.length;
-              acc.lichToi += x.lichToi.length;
               return acc;
             },
             { km: 0, bg: 0, da: 0, hd: 0, ds: 0, ckKM: 0, ckBG: 0, ckDA: 0, ckHD: 0, ckDS: 0, daTiemNang: 0, lichToi: 0 }
@@ -1823,8 +1821,13 @@ export default function NoiDungBaoCaoTuan() {
                                 </div>
                               </td>
                               <td className="py-3 px-3">
-                                <span className={cn('px-2.5 py-0.5 rounded-full text-[11px] font-semibold border', st.cls)}>
-                                  {st.label}
+                                <span
+                                  className={cn(
+                                    'px-2.5 py-0.5 rounded-full text-[11px] font-semibold border',
+                                    daGui ? st.cls : 'bg-slate-50 text-slate-500 border-slate-200'
+                                  )}
+                                >
+                                  {daGui ? st.label : 'Chưa lập'}
                                 </span>
                                 {baoCao.yeu_cau_mo_khoa && (
                                   <div className="text-[10.5px] text-amber-700 font-semibold mt-1" title={baoCao.yeu_cau_mo_khoa.ly_do}>
@@ -1832,11 +1835,57 @@ export default function NoiDungBaoCaoTuan() {
                                   </div>
                                 )}
                               </td>
-                              <td className="py-3 px-3 text-right font-mono font-bold text-blue-700 tabular-nums">{kmTT}</td>
-                              <td className="py-3 px-3 text-right font-mono font-bold text-amber-700 tabular-nums">{bgTT}</td>
-                              <td className="py-3 px-3 text-right font-mono font-bold text-indigo-700 tabular-nums">{daTT}</td>
-                              <td className="py-3 px-3 text-right font-mono font-bold text-purple-700 tabular-nums">{hdTT}</td>
-                              <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700 tabular-nums">{fmtSo(dsTT)}</td>
+                              <td className="py-3 px-3 text-right font-mono font-bold text-blue-700 tabular-nums">
+                                {daGui ? (
+                                  <>
+                                    {kmTT}
+                                    {Number(k?.khach_moi_muc_tieu || 0) > 0 && (
+                                      <span className="text-[10.5px] text-slate-400 font-normal">/{k?.khach_moi_muc_tieu}</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-slate-300 font-normal">—</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 text-right font-mono font-bold text-amber-700 tabular-nums">
+                                {daGui ? (
+                                  <>
+                                    {bgTT}
+                                    {Number(k?.bao_gia_muc_tieu || 0) > 0 && (
+                                      <span className="text-[10.5px] text-slate-400 font-normal">/{k?.bao_gia_muc_tieu}</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-slate-300 font-normal">—</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 text-right font-mono font-bold text-indigo-700 tabular-nums">
+                                {daGui ? (
+                                  <>
+                                    {daTT}
+                                    {Number(k?.du_an_lam_viec_muc_tieu || 0) > 0 && (
+                                      <span className="text-[10.5px] text-slate-400 font-normal">/{k?.du_an_lam_viec_muc_tieu}</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-slate-300 font-normal">—</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 text-right font-mono font-bold text-purple-700 tabular-nums">
+                                {daGui ? (
+                                  <>
+                                    {hdTT}
+                                    {Number(k?.hop_dong_muc_tieu || 0) > 0 && (
+                                      <span className="text-[10.5px] text-slate-400 font-normal">/{k?.hop_dong_muc_tieu}</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-slate-300 font-normal">—</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700 tabular-nums">
+                                {daGui ? fmtSo(dsTT) : <span className="text-slate-300 font-normal">—</span>}
+                              </td>
                               <td className="py-3 px-4 text-right whitespace-nowrap">
                                 <div className="inline-flex items-center gap-1.5">
                                   {baoCao.trang_thai === 'cho_duyet' && (laNguoiDuyetCap1 || laNguoiDuyetCap2) && (
@@ -1934,7 +1983,7 @@ export default function NoiDungBaoCaoTuan() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {danhSachBaoCaoTeam.map(({ nv, baoCao, lichToi, dsDATiemNang }, idx) => {
+                          {danhSachBaoCaoTeam.map(({ nv, baoCao, daGui, lichToi, dsDATiemNang }, idx) => {
                             const ck = baoCao.cam_ket_tuan_toi;
                             const tongGiaTriDA = dsDATiemNang.reduce((s, d) => s + (d.gia_tri_hop_dong || d.gia_tri_du_kien || 0), 0);
                             return (
@@ -1951,24 +2000,27 @@ export default function NoiDungBaoCaoTuan() {
                                   >
                                     {nv.ho_va_ten}
                                   </button>
+                                  <div className="text-[11px] text-slate-500">
+                                    {daGui ? NHAN_TRANG_THAI[baoCao.trang_thai].label : 'Chưa lập kế hoạch'}
+                                  </div>
                                 </td>
                                 <td className="py-3 px-3 text-right font-mono font-bold text-blue-700 tabular-nums">
-                                  {ck?.khach_moi?.target ?? 0}
+                                  {daGui ? (ck?.khach_moi?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
                                 </td>
                                 <td className="py-3 px-3 text-right font-mono font-bold text-amber-700 tabular-nums">
-                                  {ck?.bao_gia?.target ?? 0}
+                                  {daGui ? (ck?.bao_gia?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
                                 </td>
                                 <td className="py-3 px-3 text-right font-mono font-bold text-indigo-700 tabular-nums">
-                                  {ck?.du_an_lam_viec?.target ?? 0}
+                                  {daGui ? (ck?.du_an_lam_viec?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
                                 </td>
                                 <td className="py-3 px-3 text-right font-mono font-bold text-purple-700 tabular-nums">
-                                  {ck?.hop_dong?.target ?? 0}
+                                  {daGui ? (ck?.hop_dong?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
                                 </td>
                                 <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700 tabular-nums">
-                                  {fmtSo(ck?.doanh_so?.target ?? 0)}
+                                  {daGui ? fmtSo(ck?.doanh_so?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
                                 </td>
                                 <td className="py-3 px-3 text-center">
-                                  {dsDATiemNang.length > 0 ? (
+                                  {daGui && dsDATiemNang.length > 0 ? (
                                     <button
                                       type="button"
                                       onClick={() =>
@@ -1984,17 +2036,21 @@ export default function NoiDungBaoCaoTuan() {
                                       <span>{dsDATiemNang.length} DA {tongGiaTriDA > 0 ? `(${fmtSo(tongGiaTriDA)})` : ''}</span>
                                     </button>
                                   ) : (
-                                    <span className="text-slate-400 text-[11px]">—</span>
+                                    <span className="text-slate-300 text-[11px]">—</span>
                                   )}
                                 </td>
                                 <td className="py-3 px-3 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => setModalXemLichNV({ mo: true, nhanSu: nv, lich: lichToi })}
-                                    className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold cursor-pointer"
-                                  >
-                                    {lichToi.length} lịch
-                                  </button>
+                                  {lichToi.length > 0 ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setModalXemLichNV({ mo: true, nhanSu: nv, lich: lichToi })}
+                                      className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold cursor-pointer"
+                                    >
+                                      {lichToi.length} lịch
+                                    </button>
+                                  ) : (
+                                    <span className="text-slate-300 text-[11px]">—</span>
+                                  )}
                                 </td>
                               </tr>
                             );

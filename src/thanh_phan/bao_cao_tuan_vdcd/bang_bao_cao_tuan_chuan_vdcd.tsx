@@ -700,14 +700,14 @@ export default function BangBaoCaoTuanChuanVDCD({
   useEffect(() => {
     const idsCoSan = baoCaoHienTai?.du_an_trong_diem_ids || keHoachTuanToi?.du_an_trong_diem_ids;
     if (idsCoSan && idsCoSan.length > 0) {
-      // Giữ nguyên danh sách dự án đã lưu trong snapshot tuần (không loại bỏ khi dự án đổi giai đoạn về sau)
+      // Giữ nguyên danh sách dự án đã lưu trong snapshot tuần
       const idHopLe = idsCoSan.filter((id) => dsDuAnCuaNV.some((d) => d.id === id));
-      setIdsDuAnChon(idHopLe.length > 0 ? idHopLe : dsDuAnTiemNangCaoNV.slice(0, 6).map((d) => d.id));
+      setIdsDuAnChon(idHopLe);
       return;
     }
 
-    setIdsDuAnChon(dsDuAnTiemNangCaoNV.slice(0, 6).map((d) => d.id));
-  }, [baoCaoHienTai, keHoachTuanToi, dsDuAnCuaNV, dsDuAnTiemNangCaoNV]);
+    setIdsDuAnChon([]);
+  }, [baoCaoHienTai, keHoachTuanToi, dsDuAnCuaNV]);
 
   const dsDuAnTrongDiem = useMemo(() => {
     return idsDuAnChon

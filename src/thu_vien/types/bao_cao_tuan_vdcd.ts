@@ -542,10 +542,10 @@ export function taoBaoCaoTuanMacDinh(params: {
     nguon_tuan_truoc: prevNguon,
     nguon_tuan_nay: goiY.nguon_tuan_nay,
 
-    ke_hoach_dong_tien: goiY.goi_y_dong_tien.slice(0, 8),
-    ke_hoach_tiem_nang: goiY.goi_y_tiem_nang.slice(0, 12),
-    du_an_trong_diem_ids: (baoCaoTuanTruoc?.du_an_trong_diem_ids && baoCaoTuanTruoc.du_an_trong_diem_ids.length > 0) ? baoCaoTuanTruoc.du_an_trong_diem_ids : (goiY.goi_y_tiem_nang.slice(0, 6).map((x) => x.du_an_id).filter(Boolean) as string[]),
-    ke_hoach_san_xuat: goiY.goi_y_san_xuat.slice(0, 8),
+    ke_hoach_dong_tien: [],
+    ke_hoach_tiem_nang: [],
+    du_an_trong_diem_ids: [],
+    ke_hoach_san_xuat: [],
     marketing_content: [],
     marketing_performance: [],
 
