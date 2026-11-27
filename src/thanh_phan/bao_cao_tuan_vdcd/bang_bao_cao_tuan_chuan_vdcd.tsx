@@ -176,10 +176,14 @@ interface Props {
   keHoachTuanNay?: KeHoachTuan | null;
   keHoachTuanToi?: KeHoachTuan | null;
   onLuuBaoCao: (capNhat: Partial<BaoCaoTuanVDCD>, nopBaoCao: boolean) => Promise<void>;
-  onDuyetBaoCao?: (trangThai: 'da_duyet' | 'can_dieu_chinh', ghiChu?: string) => Promise<void>;
+  onDuyetBaoCao?: (trangThai: 'cho_giam_doc_duyet' | 'da_duyet' | 'can_dieu_chinh', ghiChu?: string) => Promise<void>;
   onThuHoiBaoCao?: () => Promise<void>;
+  onYeuCauMoKhoa?: (lyDo: string) => Promise<void>;
   onCapNhatKetQuaLich?: (lich: LichGapKH, ketQua: string) => Promise<void>;
   laQuanLy: boolean;
+  cheDoDuyet?: '1_cap' | '2_cap';
+  laNguoiDuyetCap1?: boolean;
+  laNguoiDuyetCap2?: boolean;
   nguoiDungHienTaiId?: string;
 }
 
@@ -199,8 +203,12 @@ export default function BangBaoCaoTuanChuanVDCD({
   onLuuBaoCao,
   onDuyetBaoCao,
   onThuHoiBaoCao,
+  onYeuCauMoKhoa,
   onCapNhatKetQuaLich,
   laQuanLy,
+  cheDoDuyet = '2_cap',
+  laNguoiDuyetCap1 = false,
+  laNguoiDuyetCap2 = false,
   nguoiDungHienTaiId
 }: Props) {
   const infoTuan = useMemo(() => phanTichTuanISO(tuan), [tuan]);
@@ -491,26 +499,26 @@ export default function BangBaoCaoTuanChuanVDCD({
     };
   }, [dsDuAnCuaNV, dsKhachHang, dsLichGap, keHoachTuanNay, infoTuan, nhanSu.id]);
 
-  // Kế hoạch tuần trước lấy từ Cam kết tuần trước (Khối III của tuần trước đưa qua)
+  // Mục tiêu tuần báo cáo lấy từ Cam kết đã duyệt của tuần trước (mặc định 0 nếu chưa có)
   const mucTieuMacDinhTuTuanTruoc = useMemo(() => {
     const ck = baoCaoTuanTruoc?.cam_ket_tuan_toi as any;
     return {
-      khachMoi: ck?.khach_moi?.target ?? 20,
-      baoGia: ck?.bao_gia?.target ?? 4,
-      duAnLamViec: ck?.du_an_lam_viec?.target ?? 5,
-      hopDong: ck?.hop_dong?.target ?? 4,
-      doanhThu: ck?.doanh_so?.target ?? ck?.doanh_thu?.target ?? 150000000
+      khachMoi: Number(ck?.khach_moi?.target ?? 0),
+      baoGia: Number(ck?.bao_gia?.target ?? 0),
+      duAnLamViec: Number(ck?.du_an_lam_viec?.target ?? 0),
+      hopDong: Number(ck?.hop_dong?.target ?? 0),
+      doanhThu: Number(ck?.doanh_so?.target ?? ck?.doanh_thu?.target ?? 0)
     };
   }, [baoCaoTuanTruoc]);
 
   // --------------------------------------------------------------------------
-  // STATE KHỐI I: ĐÁNH GIÁ KẾT QUẢ KPI TUẦN QUA (5 CHỈ SỐ)
+  // STATE KHỐI I: ĐÁNH GIÁ KẾT QUẢ KPI TUẦN (5 CHỈ SỐ)
   // --------------------------------------------------------------------------
-  const [kpiKhachMoi, setKpiKhachMoi] = useState({ keHoachTuanTruoc: 20, thucTe: 0, daSuaTay: false });
-  const [kpiBaoGia, setKpiBaoGia] = useState({ keHoachTuanTruoc: 4, thucTe: 0, daSuaTay: false });
-  const [kpiDuAnLamViec, setKpiDuAnLamViec] = useState({ keHoachTuanTruoc: 5, thucTe: 0, daSuaTay: false });
-  const [kpiHopDong, setKpiHopDong] = useState({ keHoachTuanTruoc: 4, thucTe: 0, daSuaTay: false });
-  const [kpiDoanhThu, setKpiDoanhThu] = useState({ keHoachTuanTruoc: 150000000, thucTe: 0, daSuaTay: false });
+  const [kpiKhachMoi, setKpiKhachMoi] = useState({ keHoachTuanTruoc: 0, thucTe: 0, daSuaTay: false });
+  const [kpiBaoGia, setKpiBaoGia] = useState({ keHoachTuanTruoc: 0, thucTe: 0, daSuaTay: false });
+  const [kpiDuAnLamViec, setKpiDuAnLamViec] = useState({ keHoachTuanTruoc: 0, thucTe: 0, daSuaTay: false });
+  const [kpiHopDong, setKpiHopDong] = useState({ keHoachTuanTruoc: 0, thucTe: 0, daSuaTay: false });
+  const [kpiDoanhThu, setKpiDoanhThu] = useState({ keHoachTuanTruoc: 0, thucTe: 0, daSuaTay: false });
 
   // Modal xem chi tiết số liệu Drill-down (Checklist tương tác & Thêm nhanh)
   const [modalDrillDownKPI, setModalDrillDownKPI] = useState<{
@@ -720,8 +728,8 @@ export default function BangBaoCaoTuanChuanVDCD({
   const [danhGiaTuanQuaTP, setDanhGiaTuanQuaTP] = useState<string>('');
   const [deXuatBanGiamDocTP, setDeXuatBanGiamDocTP] = useState<string>('');
   const [dieuHanhTP, setDieuHanhTP] = useState({
-    mucTieuDoanhThuPhong: 500000000,
-    soHopDongDuKien: 5,
+    mucTieuDoanhThuPhong: 0,
+    soHopDongDuKien: 0,
     trongTamDieuHanh: '',
     keHoachHoTroNhanSu: ''
   });
@@ -739,22 +747,22 @@ export default function BangBaoCaoTuanChuanVDCD({
 
     const dh = baoCaoHienTai.dinh_huong_dieu_hanh_tuan_toi as any;
     setDieuHanhTP({
-      mucTieuDoanhThuPhong: Number(dh?.mucTieuDoanhThuPhong ?? dh?.muc_tieu_doanh_thu_phong ?? 500000000),
-      soHopDongDuKien: Number(dh?.soHopDongDuKien ?? dh?.so_hop_dong_du_kien ?? 5),
+      mucTieuDoanhThuPhong: Number(dh?.mucTieuDoanhThuPhong ?? dh?.muc_tieu_doanh_thu_phong ?? 0),
+      soHopDongDuKien: Number(dh?.soHopDongDuKien ?? dh?.so_hop_dong_du_kien ?? 0),
       trongTamDieuHanh: String(dh?.trongTamDieuHanh || dh?.trong_tam_dieu_hanh || ''),
       keHoachHoTroNhanSu: String(dh?.keHoachHoTroNhanSu || dh?.ke_hoach_ho_tro_nhan_su || '')
     });
   }, [baoCaoHienTai?.id, baoCaoHienTai?.tuan]);
 
   // --------------------------------------------------------------------------
-  // STATE KHỐI III: CHỈ TIÊU CAM KẾT TUẦN TỚI (DÀNH CHO NVKD)
+  // STATE KHỐI III: CHỈ TIÊU CAM KẾT TUẦN TỚI (MẶC ĐỊNH 0)
   // --------------------------------------------------------------------------
   const [camKet, setCamKet] = useState({
-    khachMoi: { target: 20, min: 15, max: 25 },
-    baoGia: { target: 4, min: 2, max: 6 },
-    duAnLamViec: { target: 5, min: 3, max: 8 },
-    hopDong: { target: 4, min: 2, max: 6 },
-    doanhThu: { target: 180000000, min: 150000000, max: 220000000 }
+    khachMoi: { target: 0, min: 0, max: 0 },
+    baoGia: { target: 0, min: 0, max: 0 },
+    duAnLamViec: { target: 0, min: 0, max: 0 },
+    hopDong: { target: 0, min: 0, max: 0 },
+    doanhThu: { target: 0, min: 0, max: 0 }
   });
 
   const daKhoiTaoCamKetRef = useRef<string | null>(null);
@@ -768,11 +776,19 @@ export default function BangBaoCaoTuanChuanVDCD({
     if (baoCaoHienTai?.cam_ket_tuan_toi) {
       const c = baoCaoHienTai.cam_ket_tuan_toi as any;
       setCamKet({
-        khachMoi: c.khach_moi || { target: 20, min: 15, max: 25 },
-        baoGia: c.bao_gia || { target: 4, min: 2, max: 6 },
-        duAnLamViec: c.du_an_lam_viec || { target: 5, min: 3, max: 8 },
-        hopDong: c.hop_dong || { target: 4, min: 2, max: 6 },
-        doanhThu: c.doanh_so || c.doanh_thu || { target: 180000000, min: 150000000, max: 220000000 }
+        khachMoi: c.khach_moi || { target: 0, min: 0, max: 0 },
+        baoGia: c.bao_gia || { target: 0, min: 0, max: 0 },
+        duAnLamViec: c.du_an_lam_viec || { target: 0, min: 0, max: 0 },
+        hopDong: c.hop_dong || { target: 0, min: 0, max: 0 },
+        doanhThu: c.doanh_so || c.doanh_thu || { target: 0, min: 0, max: 0 }
+      });
+    } else {
+      setCamKet({
+        khachMoi: { target: 0, min: 0, max: 0 },
+        baoGia: { target: 0, min: 0, max: 0 },
+        duAnLamViec: { target: 0, min: 0, max: 0 },
+        hopDong: { target: 0, min: 0, max: 0 },
+        doanhThu: { target: 0, min: 0, max: 0 }
       });
     }
   }, [baoCaoHienTai?.id, baoCaoHienTai?.tuan]);
@@ -786,9 +802,12 @@ export default function BangBaoCaoTuanChuanVDCD({
   const laSepXemNhanVien = laQuanLy && nhanSu.id !== nguoiDungHienTaiId;
   const khoaChinhSua =
     baoCaoHienTai?.trang_thai === 'da_duyet' ||
-    (!laSepXemNhanVien && baoCaoHienTai?.trang_thai === 'cho_duyet');
+    (!laSepXemNhanVien &&
+      (baoCaoHienTai?.trang_thai === 'cho_duyet' || baoCaoHienTai?.trang_thai === 'cho_giam_doc_duyet'));
   const [modalYeuCauDieuChinh, setModalYeuCauDieuChinh] = useState(false);
   const [ghiChuYeuCau, setGhiChuYeuCau] = useState('');
+  const [modalMoKhoa, setModalMoKhoa] = useState(false);
+  const [lyDoMoKhoa, setLyDoMoKhoa] = useState('');
   const [dangDuyet, setDangDuyet] = useState(false);
 
   // Báo cáo nhanh kết quả cuộc hẹn tuần qua
@@ -1094,8 +1113,12 @@ export default function BangBaoCaoTuanChuanVDCD({
       });
 
       const tongTiepCanThucTe = kpiKhachMoi.thucTe;
-      const trangThaiMoi = nopBaoCao
-        ? (laTruongPhongKD && !laSepXemNhanVien ? 'da_duyet' : 'cho_duyet')
+      const trangThaiMoi: BaoCaoTuanVDCD['trang_thai'] = nopBaoCao
+        ? laTruongPhongKD && !laSepXemNhanVien
+          ? cheDoDuyet === '2_cap'
+            ? 'cho_giam_doc_duyet'
+            : 'da_duyet'
+          : 'cho_duyet'
         : 'nhap';
 
       await onLuuBaoCao(
@@ -1194,6 +1217,8 @@ export default function BangBaoCaoTuanChuanVDCD({
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                     : baoCaoHienTai?.trang_thai === 'can_dieu_chinh'
                     ? 'bg-rose-50 text-rose-800 border-rose-300'
+                    : baoCaoHienTai?.trang_thai === 'cho_giam_doc_duyet'
+                    ? 'bg-indigo-50 text-indigo-800 border-indigo-300'
                     : baoCaoHienTai?.trang_thai === 'cho_duyet'
                     ? 'bg-amber-50 text-amber-800 border-amber-300'
                     : 'bg-slate-100 text-slate-700 border-slate-300'
@@ -1203,8 +1228,10 @@ export default function BangBaoCaoTuanChuanVDCD({
                   ? 'Đã duyệt'
                   : baoCaoHienTai?.trang_thai === 'can_dieu_chinh'
                   ? 'Cần điều chỉnh'
+                  : baoCaoHienTai?.trang_thai === 'cho_giam_doc_duyet'
+                  ? 'Chờ Giám đốc duyệt'
                   : baoCaoHienTai?.trang_thai === 'cho_duyet'
-                  ? 'Chờ duyệt'
+                  ? (cheDoDuyet === '2_cap' ? 'Chờ TPKD duyệt' : 'Chờ duyệt')
                   : 'Bản nháp'}
               </span>
             </div>
@@ -1226,16 +1253,15 @@ export default function BangBaoCaoTuanChuanVDCD({
             <span>{dangXuatExcel ? 'Đang xuất...' : 'Xuất Excel chuẩn'}</span>
           </button>
 
-          {/* NÚT ĐIỀU HÀNH DÀNH CHO TRƯỞNG PHÒNG */}
+          {/* NÚT ĐIỀU HÀNH DÀNH CHO QUẢN LÝ */}
           {laSepXemNhanVien ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {!khoaChinhSua && (
                 <button
                   type="button"
                   onClick={() => xuLyLuu(false)}
                   disabled={dangLuu}
                   className="h-9 px-3.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold text-foreground inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                  title="Lưu các thông tin chỉnh sửa bổ sung"
                 >
                   <Save className="size-4 text-blue-600" />
                   <span>Lưu thay đổi</span>
@@ -1244,53 +1270,87 @@ export default function BangBaoCaoTuanChuanVDCD({
 
               {onDuyetBaoCao && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setModalYeuCauDieuChinh(true)}
-                    disabled={baoCaoHienTai?.trang_thai === 'nhap'}
-                    className="h-9 px-3.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
-                    title={baoCaoHienTai?.trang_thai === 'nhap' ? 'Nhân sự chưa nộp báo cáo' : 'Yêu cầu nhân sự điều chỉnh'}
-                  >
-                    <MessageSquareWarning className="size-4 text-amber-600" />
-                    <span>Yêu cầu điều chỉnh</span>
-                  </button>
+                  {(baoCaoHienTai?.trang_thai === 'cho_duyet' ||
+                    baoCaoHienTai?.trang_thai === 'cho_giam_doc_duyet' ||
+                    baoCaoHienTai?.trang_thai === 'da_duyet') && (
+                    <button
+                      type="button"
+                      onClick={() => setModalYeuCauDieuChinh(true)}
+                      className="h-9 px-3.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                    >
+                      <MessageSquareWarning className="size-4 text-amber-600" />
+                      <span>{baoCaoHienTai?.trang_thai === 'da_duyet' ? 'Mở khóa điều chỉnh' : 'Yêu cầu điều chỉnh'}</span>
+                    </button>
+                  )}
 
-                  <button
-                    type="button"
-                    disabled={dangDuyet || baoCaoHienTai?.trang_thai === 'da_duyet' || baoCaoHienTai?.trang_thai === 'nhap'}
-                    onClick={async () => {
-                      setDangDuyet(true);
-                      try {
-                        await onDuyetBaoCao('da_duyet');
-                      } finally {
-                        setDangDuyet(false);
-                      }
-                    }}
-                    className={cn(
-                      'h-9 px-4 rounded-xl text-white text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed',
-                      baoCaoHienTai?.trang_thai === 'da_duyet' || baoCaoHienTai?.trang_thai === 'nhap'
-                        ? 'bg-slate-400'
-                        : 'bg-emerald-600 hover:bg-emerald-700'
-                    )}
-                    title={baoCaoHienTai?.trang_thai === 'nhap' ? 'Nhân sự chưa nộp báo cáo để duyệt' : undefined}
-                  >
-                    <Check className="size-4" />
-                    <span>
-                      {dangDuyet
-                        ? 'Đang duyệt...'
-                        : baoCaoHienTai?.trang_thai === 'da_duyet'
-                        ? 'Đã duyệt xong'
-                        : baoCaoHienTai?.trang_thai === 'nhap'
-                        ? 'Chưa nộp'
-                        : 'Phê duyệt kế hoạch'}
+                  {baoCaoHienTai?.trang_thai === 'cho_duyet' && (laNguoiDuyetCap1 || laNguoiDuyetCap2) && (
+                    <button
+                      type="button"
+                      disabled={dangDuyet}
+                      onClick={async () => {
+                        setDangDuyet(true);
+                        try {
+                          const nextState =
+                            cheDoDuyet === '2_cap' && !laNguoiDuyetCap2
+                              ? 'cho_giam_doc_duyet'
+                              : cheDoDuyet === '2_cap' && laNguoiDuyetCap1
+                              ? 'cho_giam_doc_duyet'
+                              : 'da_duyet';
+                          await onDuyetBaoCao(nextState);
+                        } finally {
+                          setDangDuyet(false);
+                        }
+                      }}
+                      className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                    >
+                      <Check className="size-4" />
+                      <span>
+                        {dangDuyet
+                          ? 'Đang duyệt...'
+                          : cheDoDuyet === '2_cap'
+                          ? 'Duyệt & Chuyển GĐ'
+                          : 'Phê duyệt chốt'}
+                      </span>
+                    </button>
+                  )}
+
+                  {baoCaoHienTai?.trang_thai === 'cho_giam_doc_duyet' && laNguoiDuyetCap2 && (
+                    <button
+                      type="button"
+                      disabled={dangDuyet}
+                      onClick={async () => {
+                        setDangDuyet(true);
+                        try {
+                          await onDuyetBaoCao('da_duyet');
+                        } finally {
+                          setDangDuyet(false);
+                        }
+                      }}
+                      className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                    >
+                      <Check className="size-4" />
+                      <span>{dangDuyet ? 'Đang duyệt...' : 'Phê duyệt cuối'}</span>
+                    </button>
+                  )}
+
+                  {baoCaoHienTai?.trang_thai === 'da_duyet' && (
+                    <span className="h-9 px-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5">
+                      <CheckCircle2 className="size-4 text-emerald-600" />
+                      <span>Đã chốt</span>
                     </span>
-                  </button>
+                  )}
+
+                  {baoCaoHienTai?.trang_thai === 'nhap' && (
+                    <span className="h-9 px-3.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold inline-flex items-center">
+                      Nhân sự chưa nộp
+                    </span>
+                  )}
                 </>
               )}
             </div>
           ) : (
             /* NÚT THAO TÁC DÀNH CHO NHÂN VIÊN SALE / TPKD TỰ XEM */
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {baoCaoHienTai?.trang_thai === 'cho_duyet' ? (
                 <>
                   {onThuHoiBaoCao && (
@@ -1298,18 +1358,17 @@ export default function BangBaoCaoTuanChuanVDCD({
                       type="button"
                       onClick={onThuHoiBaoCao}
                       className="h-9 px-3.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                      title="Thu hồi kế hoạch về bản nháp để tự do chỉnh sửa"
                     >
                       <RotateCcw className="size-4 text-amber-600" />
                       <span>Thu hồi để sửa</span>
                     </button>
                   )}
                 </>
-              ) : baoCaoHienTai?.trang_thai === 'da_duyet' ? (
+              ) : baoCaoHienTai?.trang_thai === 'cho_giam_doc_duyet' ? (
                 <div className="flex items-center gap-2">
-                  <div className="h-9 px-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5">
-                    <CheckCircle2 className="size-4 text-emerald-600" />
-                    <span>Kế hoạch đã chốt</span>
+                  <div className="h-9 px-3.5 rounded-xl bg-indigo-50 border border-indigo-300 text-indigo-800 text-xs font-bold inline-flex items-center gap-1.5">
+                    <Clock className="size-4 text-indigo-600" />
+                    <span>Chờ Giám đốc duyệt</span>
                   </div>
                   {laTruongPhongKD && onThuHoiBaoCao && (
                     <button
@@ -1318,8 +1377,33 @@ export default function BangBaoCaoTuanChuanVDCD({
                       className="h-9 px-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer"
                     >
                       <RotateCcw className="size-3.5" />
-                      <span>Mở lại sửa</span>
+                      <span>Thu hồi</span>
                     </button>
+                  )}
+                </div>
+              ) : baoCaoHienTai?.trang_thai === 'da_duyet' ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-9 px-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5">
+                    <CheckCircle2 className="size-4 text-emerald-600" />
+                    <span>Đã chốt</span>
+                  </div>
+                  {onYeuCauMoKhoa && !baoCaoHienTai?.yeu_cau_mo_khoa && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLyDoMoKhoa('');
+                        setModalMoKhoa(true);
+                      }}
+                      className="h-9 px-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <RotateCcw className="size-3.5" />
+                      <span>Yêu cầu mở khóa</span>
+                    </button>
+                  )}
+                  {baoCaoHienTai?.yeu_cau_mo_khoa && (
+                    <span className="h-9 px-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold inline-flex items-center">
+                      Đã gửi yêu cầu mở khóa
+                    </span>
                   )}
                 </div>
               ) : (
@@ -1343,10 +1427,10 @@ export default function BangBaoCaoTuanChuanVDCD({
                     <Send className="size-4" />
                     <span>
                       {laTruongPhongKD
-                        ? 'Chốt kế hoạch điều hành'
+                        ? (cheDoDuyet === '2_cap' ? 'Nộp Giám đốc duyệt' : 'Chốt kế hoạch điều hành')
                         : baoCaoHienTai?.trang_thai === 'can_dieu_chinh'
-                        ? 'Nộp lại kế hoạch'
-                        : 'Nộp kế hoạch tuần'}
+                        ? 'Nộp lại báo cáo & kế hoạch'
+                        : 'Nộp báo cáo & kế hoạch'}
                     </span>
                   </button>
                 </>
@@ -1654,14 +1738,8 @@ export default function BangBaoCaoTuanChuanVDCD({
                           <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">{row.stt}</td>
                           <td className="py-2.5 px-4 font-bold text-foreground">{row.label}</td>
                           <td className="py-2.5 px-3 text-center text-muted-foreground">{row.dvt}</td>
-                          <td className="py-2.5 px-4 text-right">
-                            <input
-                              type="number"
-                              disabled={khoaChinhSua}
-                              value={row.state.keHoachTuanTruoc}
-                              onChange={(e) => row.setter({ ...row.state, keHoachTuanTruoc: Number(e.target.value) })}
-                              className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary disabled:opacity-70"
-                            />
+                          <td className="py-2.5 px-4 text-right font-mono text-xs font-semibold text-slate-600 tabular-nums">
+                            {row.state.keHoachTuanTruoc}
                           </td>
                           <td className="py-2.5 px-4 text-right">
                             <input
@@ -1710,13 +1788,8 @@ export default function BangBaoCaoTuanChuanVDCD({
                       <td className="py-2.5 px-3 text-center font-bold text-muted-foreground">5</td>
                       <td className="py-2.5 px-4 font-bold text-emerald-950">Doanh số hợp đồng ký mới</td>
                       <td className="py-2.5 px-3 text-center text-muted-foreground">VNĐ</td>
-                      <td className="py-2.5 px-4 text-right">
-                        <ONhapSoTien
-                          disabled={khoaChinhSua}
-                          giaTri={kpiDoanhThu.keHoachTuanTruoc}
-                          onChange={(val) => setKpiDoanhThu({ ...kpiDoanhThu, keHoachTuanTruoc: val })}
-                          className="w-32 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary disabled:opacity-70"
-                        />
+                      <td className="py-2.5 px-4 text-right font-mono text-xs font-semibold text-slate-600 tabular-nums">
+                        {fmtTien(kpiDoanhThu.keHoachTuanTruoc)}
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <ONhapSoTien
@@ -2695,6 +2768,64 @@ export default function BangBaoCaoTuanChuanVDCD({
           </div>
         </div>
       )}
+      {/* MODAL YÊU CẦU MỞ KHÓA SAU KHI ĐÃ CHỐT */}
+      {modalMoKhoa && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="p-4 border-b border-border flex items-center justify-between bg-amber-50/60">
+              <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
+                <RotateCcw className="size-4 text-amber-600" />
+                <span>Yêu cầu mở khóa báo cáo đã chốt</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalMoKhoa(false)}
+                className="p-1 rounded-lg hover:bg-amber-100 text-amber-800 cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-3 text-xs">
+              <textarea
+                rows={3}
+                value={lyDoMoKhoa}
+                onChange={(e) => setLyDoMoKhoa(e.target.value)}
+                placeholder="Nhập lý do cần mở khóa để điều chỉnh..."
+                className="w-full rounded-xl border border-border bg-background p-3 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                autoFocus
+              />
+            </div>
+            <div className="p-3 bg-muted/40 border-t border-border flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setModalMoKhoa(false)}
+                className="h-8.5 px-3.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-semibold cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                disabled={dangDuyet || !lyDoMoKhoa.trim()}
+                onClick={async () => {
+                  if (!onYeuCauMoKhoa) return;
+                  setDangDuyet(true);
+                  try {
+                    await onYeuCauMoKhoa(lyDoMoKhoa.trim());
+                    setModalMoKhoa(false);
+                    setThongBao({ loai: 'tc', nd: 'Đã gửi yêu cầu mở khóa tới Quản lý.' });
+                  } finally {
+                    setDangDuyet(false);
+                  }
+                }}
+                className="h-8.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+              >
+                Gửi yêu cầu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL YÊU CẦU ĐIỀU CHỈNH (DÀNH CHO TRƯỞNG PHÒNG) */}
       {modalYeuCauDieuChinh && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">

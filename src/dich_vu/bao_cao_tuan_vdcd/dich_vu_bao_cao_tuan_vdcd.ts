@@ -130,13 +130,24 @@ export async function duyetBaoCaoTuanVDCD(params: {
   ghiChuQuanLy?: string | null;
 }): Promise<BaoCaoTuanVDCD> {
   const now = new Date().toISOString();
+  const capNhatCap1 =
+    params.trangThai === 'cho_giam_doc_duyet'
+      ? {
+          nguoi_duyet_cap_1_id: params.nguoiDuyetId,
+          ten_nguoi_duyet_cap_1: params.tenNguoiDuyet,
+          ngay_duyet_cap_1: now
+        }
+      : {};
+
   return luuBaoCaoTuanVDCD({
     ...params.baoCao,
+    ...capNhatCap1,
     trang_thai: params.trangThai,
     nguoi_duyet_id: params.nguoiDuyetId,
     ten_nguoi_duyet: params.tenNguoiDuyet,
     ngay_duyet: now,
-    ghi_chu_quan_ly: params.ghiChuQuanLy ?? params.baoCao.ghi_chu_quan_ly ?? null
+    ghi_chu_quan_ly: params.ghiChuQuanLy ?? params.baoCao.ghi_chu_quan_ly ?? null,
+    yeu_cau_mo_khoa: params.trangThai === 'can_dieu_chinh' ? null : params.baoCao.yeu_cau_mo_khoa ?? null
   });
 }
 

@@ -34,6 +34,9 @@ export default function BangCauHinhQuyTrinhPhoiHop() {
   const [tpKhthId, setTpKhthId] = useState<string>('');
   const [tpKdId, setTpkdId] = useState<string>('');
   const [giamDocId, setGiamDocId] = useState<string>('');
+  const [cheDoDuyetTuan, setCheDoDuyetTuan] = useState<'1_cap' | '2_cap'>('2_cap');
+  const [duyetTuanCap1Id, setDuyetTuanCap1Id] = useState<string>('');
+  const [duyetTuanCap2Id, setDuyetTuanCap2Id] = useState<string>('');
 
   useEffect(() => {
     let unmounted = false;
@@ -53,6 +56,9 @@ export default function BangCauHinhQuyTrinhPhoiHop() {
         setTpKhthId(cfg.tp_khth_id || '');
         setTpkdId(cfg.tp_kd_id || '');
         setGiamDocId(cfg.giam_doc_id || '');
+        setCheDoDuyetTuan(cfg.che_do_duyet_bao_cao_tuan === '1_cap' ? '1_cap' : '2_cap');
+        setDuyetTuanCap1Id(cfg.nguoi_duyet_tuan_cap_1_id || '');
+        setDuyetTuanCap2Id(cfg.nguoi_duyet_tuan_cap_2_id || '');
       } catch (err) {
         console.error('Lỗi tải cấu hình quy trình phối hợp:', err);
       } finally {
@@ -74,6 +80,8 @@ export default function BangCauHinhQuyTrinhPhoiHop() {
       const nsTPKHTH = dsNhanSu.find((x) => x.id === tpKhthId);
       const nsTPKD = dsNhanSu.find((x) => x.id === tpKdId);
       const nsGD = dsNhanSu.find((x) => x.id === giamDocId);
+      const nsCap1 = dsNhanSu.find((x) => x.id === duyetTuanCap1Id);
+      const nsCap2 = dsNhanSu.find((x) => x.id === duyetTuanCap2Id);
 
       await capNhatCauHinhQuyTrinhPhoiHop({
         tp_khth_id: tpKhthId || null,
@@ -81,7 +89,12 @@ export default function BangCauHinhQuyTrinhPhoiHop() {
         tp_kd_id: tpKdId || null,
         ten_tp_kd: nsTPKD?.ho_va_ten || null,
         giam_doc_id: giamDocId || null,
-        ten_giam_doc: nsGD?.ho_va_ten || null
+        ten_giam_doc: nsGD?.ho_va_ten || null,
+        che_do_duyet_bao_cao_tuan: cheDoDuyetTuan,
+        nguoi_duyet_tuan_cap_1_id: duyetTuanCap1Id || null,
+        ten_nguoi_duyet_tuan_cap_1: nsCap1?.ho_va_ten || null,
+        nguoi_duyet_tuan_cap_2_id: duyetTuanCap2Id || null,
+        ten_nguoi_duyet_tuan_cap_2: nsCap2?.ho_va_ten || null
       });
 
       setThongBaoThanhCong(true);
@@ -247,6 +260,87 @@ export default function BangCauHinhQuyTrinhPhoiHop() {
               </select>
             </div>
           </div>
+        </div>
+
+        {/* Cấu hình phê duyệt Báo cáo & Kế hoạch tuần */}
+        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-2.5 pt-3">
+          Phê duyệt Báo cáo &amp; Kế hoạch tuần
+        </h4>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center p-3 rounded-xl bg-slate-50/60 border border-slate-200/60">
+            <label className="text-xs font-bold text-slate-800 block">
+              Chế độ phê duyệt tuần
+            </label>
+            <div className="md:col-span-2 flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setCheDoDuyetTuan('2_cap')}
+                className={cn(
+                  'h-9 px-3.5 rounded-xl border text-xs font-bold cursor-pointer transition',
+                  cheDoDuyetTuan === '2_cap'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                )}
+              >
+                2 cấp (TPKD duyệt → Giám đốc duyệt)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCheDoDuyetTuan('1_cap')}
+                className={cn(
+                  'h-9 px-3.5 rounded-xl border text-xs font-bold cursor-pointer transition',
+                  cheDoDuyetTuan === '1_cap'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                )}
+              >
+                1 cấp (TPKD duyệt chốt)
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center p-3 rounded-xl bg-slate-50/60 border border-slate-200/60">
+            <label className="text-xs font-bold text-slate-800 block">
+              Người duyệt Cấp 1 (TPKD)
+            </label>
+            <div className="md:col-span-2">
+              <select
+                value={duyetTuanCap1Id}
+                onChange={(e) => setDuyetTuanCap1Id(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+              >
+                <option value="">-- Dùng TPKD mục 2 hoặc theo vai trò TPKD --</option>
+                {dsNhanSu.map((ns) => (
+                  <option key={ns.id} value={ns.id}>
+                    {ns.ho_va_ten} {ns.chuc_vu ? `(${ns.chuc_vu})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {cheDoDuyetTuan === '2_cap' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center p-3 rounded-xl bg-slate-50/60 border border-slate-200/60">
+              <label className="text-xs font-bold text-slate-800 block">
+                Người duyệt Cấp 2 (Giám đốc)
+              </label>
+              <div className="md:col-span-2">
+                <select
+                  value={duyetTuanCap2Id}
+                  onChange={(e) => setDuyetTuanCap2Id(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                >
+                  <option value="">-- Dùng Giám đốc mục 3 hoặc theo vai trò GĐ --</option>
+                  {dsNhanSu.map((ns) => (
+                    <option key={ns.id} value={ns.id}>
+                      {ns.ho_va_ten} {ns.chuc_vu ? `(${ns.chuc_vu})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="pt-3 border-t border-slate-100 flex items-center justify-between">

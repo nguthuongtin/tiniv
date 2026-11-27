@@ -4,7 +4,12 @@ import type { ChiNhanh, NhanSu } from './nhan_su';
 import type { SanPhamDichVu } from './san_pham_dich_vu';
 import { layCauHinhGiaiDoanTheoKey } from '../cau_hinh/giai_doan_du_an';
 
-export type TrangThaiBaoCaoTuanVDCD = 'nhap' | 'cho_duyet' | 'da_duyet' | 'can_dieu_chinh';
+export type TrangThaiBaoCaoTuanVDCD =
+  | 'nhap'
+  | 'cho_duyet'
+  | 'cho_giam_doc_duyet'
+  | 'da_duyet'
+  | 'can_dieu_chinh';
 
 export interface DongDoanhThuTuan {
   id: string;
@@ -118,10 +123,19 @@ export interface BaoCaoTuanVDCD {
   // Duyệt lịch công tác tuần & trạng thái báo cáo
   trang_thai: TrangThaiBaoCaoTuanVDCD;
   ghi_chu_quan_ly?: string | null;
+  nguoi_duyet_cap_1_id?: string | null;
+  ten_nguoi_duyet_cap_1?: string | null;
+  ngay_duyet_cap_1?: string | null;
   nguoi_duyet_id?: string | null;
   ten_nguoi_duyet?: string | null;
   ngay_duyet?: string | null;
   ghi_chu_chung?: string | null;
+  yeu_cau_mo_khoa?: {
+    ly_do: string;
+    ngay_yeu_cau: string;
+    nguoi_yeu_cau_id: string;
+    ten_nguoi_yeu_cau: string;
+  } | null;
 
   // Dữ liệu mở rộng mẫu chuẩn Sales VDCD (Google Sheet template)
   kpi_tuan_qua?: {
@@ -491,10 +505,10 @@ export function taoBaoCaoTuanMacDinh(params: {
   const prevTT = baoCaoTuanTruoc?.tinh_trang_tuan_nay || SO_LIEU_TINH_TRANG_TRONG();
   const prevNguon = baoCaoTuanTruoc?.nguon_tuan_nay || SO_LIEU_NGUON_TRONG();
   const keHoachTuanNay =
-    baoCaoTuanTruoc?.ke_hoach_tiep_can_tuan_toi ||
-    baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi?.target ||
-    baoCaoTuanTruoc?.cam_ket_tuan_toi?.du_an_lam_viec?.target ||
-    16;
+    baoCaoTuanTruoc?.ke_hoach_tiep_can_tuan_toi ??
+    baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi?.target ??
+    baoCaoTuanTruoc?.cam_ket_tuan_toi?.du_an_lam_viec?.target ??
+    0;
 
   return {
     id: `vdcd_${tuan}_${nhanSu.id}`,
@@ -523,9 +537,7 @@ export function taoBaoCaoTuanMacDinh(params: {
     tinh_trang_tuan_nay: goiY.tinh_trang_tuan_nay,
     ke_hoach_tiep_can_tuan_nay: keHoachTuanNay,
     thuc_hien_tiep_can_tuan_nay: goiY.tinh_trang_tuan_nay.tong_tiep_can,
-    ke_hoach_tiep_can_tuan_toi:
-      baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi?.target ||
-      16,
+    ke_hoach_tiep_can_tuan_toi: 0,
 
     nguon_tuan_truoc: prevNguon,
     nguon_tuan_nay: goiY.nguon_tuan_nay,
@@ -537,29 +549,29 @@ export function taoBaoCaoTuanMacDinh(params: {
     marketing_content: [],
     marketing_performance: [],
 
-    // Khởi tạo KPI tuần qua từ thực tế CRM & Mục tiêu tuần trước
+    // Khởi tạo KPI tuần qua: Mục tiêu lấy từ Cam kết đã duyệt của tuần trước (mặc định 0 nếu chưa có)
     kpi_tuan_qua: {
-      khach_moi_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi?.target ?? 20,
+      khach_moi_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi?.target ?? 0,
       khach_moi_thuc_te: 0,
-      bao_gia_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.bao_gia?.target ?? 4,
+      bao_gia_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.bao_gia?.target ?? 0,
       bao_gia_thuc_te: goiY.tinh_trang_tuan_nay.bao_gia ?? 0,
-      du_an_lam_viec_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.du_an_lam_viec?.target ?? baoCaoTuanTruoc?.cam_ket_tuan_toi?.cuoc_hen?.target ?? 5,
+      du_an_lam_viec_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.du_an_lam_viec?.target ?? baoCaoTuanTruoc?.cam_ket_tuan_toi?.cuoc_hen?.target ?? 0,
       du_an_lam_viec_thuc_te: goiY.tinh_trang_tuan_nay.tong_tiep_can ?? 0,
-      hop_dong_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.hop_dong?.target ?? 4,
+      hop_dong_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.hop_dong?.target ?? 0,
       hop_dong_thuc_te: goiY.tinh_trang_tuan_nay.hop_dong ?? 0,
-      doanh_so_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.doanh_so?.target ?? 150000000,
+      doanh_so_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.doanh_so?.target ?? 0,
       doanh_so_thuc_te: goiY.dt_tuan_tien_ve > 0 ? goiY.dt_tuan_tien_ve : (goiY.dt_tuan_ky_ket || 0),
       cuoc_gap_muc_tieu: 0,
       cuoc_gap_thuc_te: 0
     },
 
-    // Khởi tạo Cam kết tuần tới
+    // Khởi tạo Cam kết tuần tới: Mặc định bằng 0 để nhân sự tự nhập
     cam_ket_tuan_toi: {
-      khach_moi: baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi || { target: 20, min: 0, max: 0 },
-      bao_gia: baoCaoTuanTruoc?.cam_ket_tuan_toi?.bao_gia || { target: 4, min: 0, max: 0 },
-      du_an_lam_viec: baoCaoTuanTruoc?.cam_ket_tuan_toi?.du_an_lam_viec || { target: 5, min: 0, max: 0 },
-      hop_dong: baoCaoTuanTruoc?.cam_ket_tuan_toi?.hop_dong || { target: 4, min: 0, max: 0 },
-      doanh_so: baoCaoTuanTruoc?.cam_ket_tuan_toi?.doanh_so || { target: 150000000, min: 0, max: 0 }
+      khach_moi: { target: 0, min: 0, max: 0 },
+      bao_gia: { target: 0, min: 0, max: 0 },
+      du_an_lam_viec: { target: 0, min: 0, max: 0 },
+      hop_dong: { target: 0, min: 0, max: 0 },
+      doanh_so: { target: 0, min: 0, max: 0 }
     },
 
     trang_thai: 'nhap',

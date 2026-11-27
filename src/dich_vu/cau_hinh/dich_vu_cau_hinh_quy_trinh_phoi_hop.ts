@@ -13,6 +13,11 @@ export interface CauHinhQuyTrinhPhoiHop {
   ten_tp_kd: string | null;
   giam_doc_id: string | null;
   ten_giam_doc: string | null;
+  che_do_duyet_bao_cao_tuan?: '1_cap' | '2_cap';
+  nguoi_duyet_tuan_cap_1_id?: string | null;
+  ten_nguoi_duyet_tuan_cap_1?: string | null;
+  nguoi_duyet_tuan_cap_2_id?: string | null;
+  ten_nguoi_duyet_tuan_cap_2?: string | null;
   ngay_cap_nhat?: string;
 }
 
@@ -22,7 +27,12 @@ const CAU_HINH_MAC_DINH: CauHinhQuyTrinhPhoiHop = {
   tp_kd_id: null,
   ten_tp_kd: null,
   giam_doc_id: null,
-  ten_giam_doc: null
+  ten_giam_doc: null,
+  che_do_duyet_bao_cao_tuan: '2_cap',
+  nguoi_duyet_tuan_cap_1_id: null,
+  ten_nguoi_duyet_tuan_cap_1: null,
+  nguoi_duyet_tuan_cap_2_id: null,
+  ten_nguoi_duyet_tuan_cap_2: null
 };
 
 let cacheTamCauHinh: CauHinhQuyTrinhPhoiHop | null = null;
@@ -44,6 +54,11 @@ export const layCauHinhQuyTrinhPhoiHop = async (): Promise<CauHinhQuyTrinhPhoiHo
       ten_tp_kd: data.ten_tp_kd || null,
       giam_doc_id: data.giam_doc_id || null,
       ten_giam_doc: data.ten_giam_doc || null,
+      che_do_duyet_bao_cao_tuan: data.che_do_duyet_bao_cao_tuan === '1_cap' ? '1_cap' : '2_cap',
+      nguoi_duyet_tuan_cap_1_id: data.nguoi_duyet_tuan_cap_1_id || null,
+      ten_nguoi_duyet_tuan_cap_1: data.ten_nguoi_duyet_tuan_cap_1 || null,
+      nguoi_duyet_tuan_cap_2_id: data.nguoi_duyet_tuan_cap_2_id || null,
+      ten_nguoi_duyet_tuan_cap_2: data.ten_nguoi_duyet_tuan_cap_2 || null,
       ngay_cap_nhat: data.ngay_cap_nhat || undefined
     };
     return cacheTamCauHinh;

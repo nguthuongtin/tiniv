@@ -71,6 +71,10 @@ import {
   luuBaoCaoTuanVDCD,
   luuCauHinhKPIBaoCaoTuan
 } from '../../dich_vu/bao_cao_tuan_vdcd/dich_vu_bao_cao_tuan_vdcd';
+import {
+  layCauHinhQuyTrinhPhoiHop,
+  type CauHinhQuyTrinhPhoiHop
+} from '../../dich_vu/cau_hinh/dich_vu_cau_hinh_quy_trinh_phoi_hop';
 import ModalXuatBaoCaoVDCD, { xuatExcelBaoCaoTuanVDCD } from './xuat_bao_cao_vdcd';
 import {
   taoFileExcelTongHopToanBoSaleChiNhanh,
@@ -86,7 +90,8 @@ const NHAN_TRANG_THAI: Record<
   { label: string; cls: string }
 > = {
   nhap: { label: 'Bản nháp', cls: 'bg-slate-100 text-slate-700 border-slate-200' },
-  cho_duyet: { label: 'Chờ duyệt', cls: 'bg-amber-50 text-amber-800 border-amber-200' },
+  cho_duyet: { label: 'Chờ TPKD duyệt', cls: 'bg-amber-50 text-amber-800 border-amber-200' },
+  cho_giam_doc_duyet: { label: 'Chờ GĐ duyệt', cls: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
   da_duyet: { label: 'Đã duyệt', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   can_dieu_chinh: { label: 'Cần điều chỉnh', cls: 'bg-rose-50 text-rose-700 border-rose-200' }
 };
@@ -127,6 +132,29 @@ export default function NoiDungBaoCaoTuan() {
   const [keHoachTuanNay, setKeHoachTuanNay] = useState<KeHoachTuan | null>(null);
   const [keHoachTuanToi, setKeHoachTuanToi] = useState<KeHoachTuan | null>(null);
   const [kpiCauHinh, setKpiCauHinh] = useState<CauHinhMucTieuBaoCaoTuan | null>(null);
+  const [cauHinhQuyTrinh, setCauHinhQuyTrinh] = useState<CauHinhQuyTrinhPhoiHop | null>(null);
+
+  const cheDoDuyet = cauHinhQuyTrinh?.che_do_duyet_bao_cao_tuan === '1_cap' ? '1_cap' : '2_cap';
+  const laNguoiDuyetCap1 = useMemo(() => {
+    const vt = String(nguoiDungHienTai?.vai_tro || '');
+    const cap1Id = cauHinhQuyTrinh?.nguoi_duyet_tuan_cap_1_id || cauHinhQuyTrinh?.tp_kd_id;
+    return (
+      (Boolean(cap1Id) && uid === cap1Id) ||
+      vt === 'truong_phong_kd' ||
+      vt === 'truong_phong' ||
+      vt === 'quan_tri_he_thong'
+    );
+  }, [nguoiDungHienTai?.vai_tro, cauHinhQuyTrinh, uid]);
+
+  const laNguoiDuyetCap2 = useMemo(() => {
+    const vt = String(nguoiDungHienTai?.vai_tro || '');
+    const cap2Id = cauHinhQuyTrinh?.nguoi_duyet_tuan_cap_2_id || cauHinhQuyTrinh?.giam_doc_id;
+    return (
+      (Boolean(cap2Id) && uid === cap2Id) ||
+      vt === 'giam_doc' ||
+      vt === 'quan_tri_he_thong'
+    );
+  }, [nguoiDungHienTai?.vai_tro, cauHinhQuyTrinh, uid]);
 
   // Bản nháp đang chỉnh sửa cho 1 nhân viên
   const [formBaoCao, setFormBaoCao] = useState<BaoCaoTuanVDCD | null>(null);
@@ -234,7 +262,7 @@ export default function NoiDungBaoCaoTuan() {
     setDangTai(true);
     try {
       const kpiScope = chiNhanhLocId !== 'tat_ca' ? chiNhanhLocId : nguoiDungHienTai?.chi_nhanh_id || 'toan_cong_ty';
-      const [resDA, resKH, resNLH, resNS, resCN, resSP, resLich, resBCTuan, resBCTruoc, resKPI] =
+      const [resDA, resKH, resNLH, resNS, resCN, resSP, resLich, resBCTuan, resBCTruoc, resKPI, resQT] =
         await Promise.all([
           danhSachHoSoDuAn(),
           danhSachKhachHang(),
@@ -245,7 +273,8 @@ export default function NoiDungBaoCaoTuan() {
           danhSachLichGapKH(),
           layDanhSachBaoCaoTuanVDCD(tuanChon),
           layDanhSachBaoCaoTuanVDCD(tuanTruocISO),
-          layCauHinhKPIBaoCaoTuan(kpiScope)
+          layCauHinhKPIBaoCaoTuan(kpiScope),
+          layCauHinhQuyTrinhPhoiHop()
         ]);
 
       setDsDuAn(resDA.mang || []);
@@ -258,6 +287,7 @@ export default function NoiDungBaoCaoTuan() {
       setDsBaoCaoTuan(resBCTuan || []);
       setDsBaoCaoTuanTruoc(resBCTruoc || []);
       setKpiCauHinh(resKPI);
+      setCauHinhQuyTrinh(resQT);
     } finally {
       setDangTai(false);
     }
@@ -998,7 +1028,7 @@ export default function NoiDungBaoCaoTuan() {
 
   const handleDuyetTuan = async (
     bc: BaoCaoTuanVDCD,
-    trangThai: 'da_duyet' | 'can_dieu_chinh',
+    trangThai: 'cho_giam_doc_duyet' | 'da_duyet' | 'can_dieu_chinh',
     ghiChu?: string
   ) => {
     const updated = await duyetBaoCaoTuanVDCD({
@@ -1011,7 +1041,7 @@ export default function NoiDungBaoCaoTuan() {
     setDsBaoCaoTuan((prev) => [updated, ...prev.filter((x) => x.id !== updated.id)]);
     if (formBaoCao?.id === updated.id) setFormBaoCao(updated);
 
-    // Đồng bộ duyệt lịch công tác tuần tới của nhân sự (chỉ duyệt lịch đang chờ/sắp tới, không ghi đè lịch đã hoàn thành/hủy/dời)
+    // Chỉ đồng bộ duyệt lịch công tác tuần tới khi chốt duyệt cuối (da_duyet)
     let soLichDaDuyet = 0;
     if (trangThai === 'da_duyet') {
       const tuanToi = dichChuyenTuanISO(bc.tuan, 1);
@@ -1044,10 +1074,27 @@ export default function NoiDungBaoCaoTuan() {
     hienThongBao(
       trangThai === 'da_duyet'
         ? soLichDaDuyet > 0
-          ? `Đã phê duyệt kế hoạch tuần cho ${bc.ten_nhan_vien} & đồng bộ duyệt ${soLichDaDuyet} lịch công tác tuần tới.`
-          : `Đã phê duyệt kế hoạch tuần cho ${bc.ten_nhan_vien}.`
-        : 'Đã gửi ý kiến định hướng yêu cầu điều chỉnh cho nhân sự.'
+          ? `Đã phê duyệt chốt kế hoạch tuần cho ${bc.ten_nhan_vien} & kích hoạt ${soLichDaDuyet} lịch công tác tuần tới.`
+          : `Đã phê duyệt chốt kế hoạch tuần cho ${bc.ten_nhan_vien}.`
+        : trangThai === 'cho_giam_doc_duyet'
+        ? `Đã duyệt Cấp 1 cho ${bc.ten_nhan_vien} và chuyển lên Giám đốc phê duyệt.`
+        : 'Đã gửi ý kiến yêu cầu điều chỉnh cho nhân sự.'
     );
+  };
+
+  const handleYeuCauMoKhoa = async (lyDo: string) => {
+    if (!formBaoCao) return;
+    const saved = await luuBaoCaoTuanVDCD({
+      ...formBaoCao,
+      yeu_cau_mo_khoa: {
+        ly_do: lyDo,
+        ngay_yeu_cau: new Date().toISOString(),
+        nguoi_yeu_cau_id: uid,
+        ten_nguoi_yeu_cau: nguoiDungHienTai?.ho_va_ten || formBaoCao.ten_nhan_vien
+      }
+    });
+    setFormBaoCao(saved);
+    setDsBaoCaoTuan((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)]);
   };
 
   const xuLyXuatExcelToanBoSale = async () => {
@@ -1790,6 +1837,14 @@ export default function NoiDungBaoCaoTuan() {
                           <span className={cn('px-2.5 py-0.5 rounded-full text-[11px] font-semibold border', st.cls)}>
                             {st.label}
                           </span>
+                          {baoCao.yeu_cau_mo_khoa && (
+                            <div
+                              className="text-[10.5px] text-amber-700 font-semibold mt-1"
+                              title={baoCao.yeu_cau_mo_khoa.ly_do}
+                            >
+                              Xin mở khóa: {baoCao.yeu_cau_mo_khoa.ly_do}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-3 text-right tabular-nums">
                           <div className="font-semibold text-slate-900">{fmtSo(baoCao.dt_tuan_ky_ket)}</div>
@@ -1831,17 +1886,35 @@ export default function NoiDungBaoCaoTuan() {
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5">
-                            {baoCao.trang_thai === 'cho_duyet' && (
+                            {baoCao.trang_thai === 'cho_duyet' && (laNguoiDuyetCap1 || laNguoiDuyetCap2) && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDuyetTuan(
+                                    baoCao,
+                                    cheDoDuyet === '2_cap' ? 'cho_giam_doc_duyet' : 'da_duyet'
+                                  )
+                                }
+                                className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Check className="size-3.5" />
+                                <span>{cheDoDuyet === '2_cap' ? 'Duyệt → GĐ' : 'Duyệt'}</span>
+                              </button>
+                            )}
+                            {baoCao.trang_thai === 'cho_giam_doc_duyet' && laNguoiDuyetCap2 && (
                               <button
                                 type="button"
                                 onClick={() => handleDuyetTuan(baoCao, 'da_duyet')}
                                 className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
                               >
                                 <Check className="size-3.5" />
-                                <span>Duyệt</span>
+                                <span>Duyệt cuối</span>
                               </button>
                             )}
-                            {(baoCao.trang_thai === 'cho_duyet' || baoCao.trang_thai === 'da_duyet') && (
+                            {(baoCao.trang_thai === 'cho_duyet' ||
+                              baoCao.trang_thai === 'cho_giam_doc_duyet' ||
+                              (baoCao.trang_thai === 'da_duyet' &&
+                                (laNguoiDuyetCap2 || (cheDoDuyet === '1_cap' && laNguoiDuyetCap1)))) && (
                               <button
                                 type="button"
                                 onClick={() =>
@@ -1854,7 +1927,7 @@ export default function NoiDungBaoCaoTuan() {
                                 className="h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
                               >
                                 <MessageSquareWarning className="size-3.5" />
-                                <span>{baoCao.trang_thai === 'da_duyet' ? 'Mở lại' : 'Yêu cầu sửa'}</span>
+                                <span>{baoCao.trang_thai === 'da_duyet' ? 'Mở khóa' : 'Yêu cầu sửa'}</span>
                               </button>
                             )}
                             <button
@@ -1909,6 +1982,10 @@ export default function NoiDungBaoCaoTuan() {
             onThuHoiBaoCao={async () => {
               if (formBaoCao) await handleLuuBaoCaoChuan({ trang_thai: 'nhap' }, false);
             }}
+            onYeuCauMoKhoa={handleYeuCauMoKhoa}
+            cheDoDuyet={cheDoDuyet}
+            laNguoiDuyetCap1={laNguoiDuyetCap1}
+            laNguoiDuyetCap2={laNguoiDuyetCap2}
             onCapNhatKetQuaLich={async (lich, ketQua) => {
               await capNhatLichGapKH(lich.id, { trang_thai: 'da_hoan_thanh', ket_qua: ketQua }, uid);
               setDsLichGap((prev) =>
