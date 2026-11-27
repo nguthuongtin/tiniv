@@ -2244,7 +2244,7 @@ export default function NoiDungBaoCaoTuan() {
                                   )}
                                 </td>
                                 <td className="py-3 px-3 text-center">
-                                  {lichToi.length > 0 ? (
+                                  {daDuyetKH && lichToi.length > 0 ? (
                                     <button
                                       type="button"
                                       onClick={() =>

@@ -626,7 +626,10 @@ export default function BangBaoCaoTuanChuanVDCD({
   // nếu chưa nộp thì ưu tiên số liệu thực tế hoặc số đã sửa tay.
   useEffect(() => {
     const k = baoCaoHienTai?.kpi_tuan_qua as any;
-    const daChot = baoCaoHienTai?.trang_thai === 'da_duyet' || baoCaoHienTai?.trang_thai === 'cho_duyet';
+    const daChot =
+      baoCaoHienTai?.trang_thai === 'da_duyet' ||
+      baoCaoHienTai?.trang_thai === 'cho_duyet' ||
+      baoCaoHienTai?.trang_thai === 'cho_giam_doc_duyet';
 
     setKpiKhachMoi({
       keHoachTuanTruoc: k?.khach_moi_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.khachMoi,
@@ -819,6 +822,7 @@ export default function BangBaoCaoTuanChuanVDCD({
     trangThaiKeHoach === 'da_duyet' ||
     (!laSepXemNhanVien && (trangThaiKeHoach === 'cho_duyet' || trangThaiKeHoach === 'cho_giam_doc_duyet'));
   const khoaChinhSua = tabChinh === 'bao_cao' ? khoaBaoCao : khoaKeHoach;
+  const chuaNopChoSepXem = laSepXemNhanVien && (trangThaiTab === 'nhap' || trangThaiTab === 'can_dieu_chinh');
   const [modalYeuCauDieuChinh, setModalYeuCauDieuChinh] = useState(false);
   const [ghiChuYeuCau, setGhiChuYeuCau] = useState('');
   const [modalMoKhoa, setModalMoKhoa] = useState(false);
@@ -1255,21 +1259,23 @@ export default function BangBaoCaoTuanChuanVDCD({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={xuLyXuatExcel}
-            disabled={dangXuatExcel}
-            className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-2 transition cursor-pointer shadow-2xs disabled:opacity-50"
-            title="Xuất file Excel đúng định dạng mẫu Google Sheet VDCD"
-          >
-            <Download className="size-4" />
-            <span>{dangXuatExcel ? 'Đang xuất...' : 'Xuất Excel chuẩn'}</span>
-          </button>
+          {!chuaNopChoSepXem && (
+            <button
+              type="button"
+              onClick={xuLyXuatExcel}
+              disabled={dangXuatExcel}
+              className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-2 transition cursor-pointer shadow-2xs disabled:opacity-50"
+              title="Xuất file Excel đúng định dạng mẫu Google Sheet VDCD"
+            >
+              <Download className="size-4" />
+              <span>{dangXuatExcel ? 'Đang xuất...' : 'Xuất Excel chuẩn'}</span>
+            </button>
+          )}
 
           {/* NÚT ĐIỀU HÀNH DÀNH CHO QUẢN LÝ */}
           {laSepXemNhanVien ? (
             <div className="flex items-center gap-2 flex-wrap">
-              {!khoaChinhSua && (
+              {!khoaChinhSua && !chuaNopChoSepXem && (
                 <button
                   type="button"
                   onClick={() => xuLyLuu(false)}
@@ -1561,7 +1567,20 @@ export default function BangBaoCaoTuanChuanVDCD({
       </div>
 
       {/* TAB 1: BÁO CÁO TUẦN QUA */}
-      {tabChinh === 'bao_cao' && (
+      {tabChinh === 'bao_cao' && chuaNopChoSepXem && (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-10 text-center space-y-1.5 animate-in fade-in">
+          <div className="text-sm font-bold text-slate-800">
+            {trangThaiTab === 'can_dieu_chinh'
+              ? `Đang chờ ${nhanSu.ho_va_ten} điều chỉnh và nộp lại Báo cáo ${infoTuan.nhanTieuDe}`
+              : `${nhanSu.ho_va_ten} chưa nộp Báo cáo ${infoTuan.nhanTieuDe}`}
+          </div>
+          <div className="text-xs text-slate-500">
+            Số liệu chỉ hiển thị sau khi nhân sự hoàn tất và gửi duyệt.
+          </div>
+        </div>
+      )}
+
+      {tabChinh === 'bao_cao' && !chuaNopChoSepXem && (
         <div className="space-y-4 animate-in fade-in">
           {/* =================================================================== */}
           {/* KHỐI I: TỔNG KẾT ĐIỀU HÀNH (TRƯỞNG PHÒNG) HOẶC ĐÁNH GIÁ KPI (SALE)  */}
@@ -2020,7 +2039,20 @@ export default function BangBaoCaoTuanChuanVDCD({
       )}
 
       {/* TAB 2: KẾ HOẠCH TUẦN TỚI */}
-      {tabChinh === 'ke_hoach' && (
+      {tabChinh === 'ke_hoach' && chuaNopChoSepXem && (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-10 text-center space-y-1.5 animate-in fade-in">
+          <div className="text-sm font-bold text-slate-800">
+            {trangThaiTab === 'can_dieu_chinh'
+              ? `Đang chờ ${nhanSu.ho_va_ten} điều chỉnh và nộp lại Kế hoạch ${infoTuanToi.nhanTieuDe}`
+              : `${nhanSu.ho_va_ten} chưa nộp Kế hoạch ${infoTuanToi.nhanTieuDe}`}
+          </div>
+          <div className="text-xs text-slate-500">
+            Số liệu kế hoạch chỉ hiển thị sau khi nhân sự hoàn tất và gửi duyệt.
+          </div>
+        </div>
+      )}
+
+      {tabChinh === 'ke_hoach' && !chuaNopChoSepXem && (
         <div className="space-y-4 animate-in fade-in">
           {/* =================================================================== */}
           {/* KHỐI III: ĐỊNH HƯỚNG ĐIỀU HÀNH (TRƯỞNG PHÒNG) HOẶC CAM KẾT (SALE)  */}
