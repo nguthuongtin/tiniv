@@ -120,7 +120,7 @@ export interface BaoCaoTuanVDCD {
   marketing_content?: DongMarketingContent[];
   marketing_performance?: DongMarketingPerformance[];
 
-  // Duyệt lịch công tác tuần & trạng thái báo cáo
+  // Duyệt Báo cáo Tuần X
   trang_thai: TrangThaiBaoCaoTuanVDCD;
   ghi_chu_quan_ly?: string | null;
   nguoi_duyet_cap_1_id?: string | null;
@@ -131,6 +131,22 @@ export interface BaoCaoTuanVDCD {
   ngay_duyet?: string | null;
   ghi_chu_chung?: string | null;
   yeu_cau_mo_khoa?: {
+    ly_do: string;
+    ngay_yeu_cau: string;
+    nguoi_yeu_cau_id: string;
+    ten_nguoi_yeu_cau: string;
+  } | null;
+
+  // Duyệt Kế hoạch Tuần X+1 (Tách riêng độc lập với Báo cáo Tuần X)
+  trang_thai_ke_hoach?: TrangThaiBaoCaoTuanVDCD;
+  ghi_chu_ke_hoach?: string | null;
+  nguoi_duyet_ke_hoach_cap_1_id?: string | null;
+  ten_nguoi_duyet_ke_hoach_cap_1?: string | null;
+  ngay_duyet_ke_hoach_cap_1?: string | null;
+  nguoi_duyet_ke_hoach_id?: string | null;
+  ten_nguoi_duyet_ke_hoach?: string | null;
+  ngay_duyet_ke_hoach?: string | null;
+  yeu_cau_mo_khoa_ke_hoach?: {
     ly_do: string;
     ngay_yeu_cau: string;
     nguoi_yeu_cau_id: string;
@@ -575,6 +591,7 @@ export function taoBaoCaoTuanMacDinh(params: {
     },
 
     trang_thai: 'nhap',
+    trang_thai_ke_hoach: 'nhap',
     ghi_chu_quan_ly: null,
     nguoi_duyet_id: null,
     ten_nguoi_duyet: null,

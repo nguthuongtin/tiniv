@@ -211,6 +211,7 @@ export default function NoiDungBaoCaoTuan() {
     mo: boolean;
     nhanSu: NhanSu | null;
     lich: LichGapKH[];
+    tieuDe?: string;
   }>({ mo: false, nhanSu: null, lich: [] });
 
   const [modalXemDANhanVien, setModalXemDANhanVien] = useState<{
@@ -223,7 +224,8 @@ export default function NoiDungBaoCaoTuan() {
     mo: boolean;
     baoCao: BaoCaoTuanVDCD | null;
     ghiChu: string;
-  }>({ mo: false, baoCao: null, ghiChu: '' });
+    phanDuyet?: 'bao_cao' | 'ke_hoach';
+  }>({ mo: false, baoCao: null, ghiChu: '', phanDuyet: 'bao_cao' });
 
   const [modalChiTietChiNhanh, setModalChiTietChiNhanh] = useState<{
     mo: boolean;
@@ -524,6 +526,13 @@ export default function NoiDungBaoCaoTuan() {
   const danhSachBaoCaoTeam = useMemo(() => {
     return dsSaleTeam.map((nv) => {
       const daLuu = dsBaoCaoTuan.find((b) => b.nhan_vien_id === nv.id);
+      const lichTuanNay = dsLichGap.filter(
+        (l) =>
+          !l.da_xoa &&
+          l.ngay >= infoTuan.ngayBatDau &&
+          l.ngay <= infoTuan.ngayKetThuc &&
+          (l.nguoi_phu_trach_id === nv.id || l.nguoi_tao_id === nv.id)
+      );
       const lichToi = dsLichGap.filter(
         (l) =>
           !l.da_xoa &&
@@ -632,7 +641,12 @@ export default function NoiDungBaoCaoTuan() {
             : (truoc?.nguon_tuan_nay || goiYTuanTruoc.nguon_tuan_nay)
       };
 
-      const coIdsDaChon = Boolean(daLuu && baoCao.du_an_trong_diem_ids && baoCao.du_an_trong_diem_ids.length > 0);
+      const coIdsDaChon = Boolean(
+        daLuu &&
+          (baoCao.trang_thai_ke_hoach === 'da_duyet') &&
+          baoCao.du_an_trong_diem_ids &&
+          baoCao.du_an_trong_diem_ids.length > 0
+      );
       const dsDATiemNang = coIdsDaChon
         ? dsDuAn.filter((d) => {
             if (d.trang_thai === 'da_xoa') return false;
@@ -648,6 +662,7 @@ export default function NoiDungBaoCaoTuan() {
         nv,
         baoCao,
         daGui: Boolean(daLuu),
+        lichTuanNay,
         lichToi,
         dsDATiemNang
       };
@@ -657,6 +672,7 @@ export default function NoiDungBaoCaoTuan() {
     dsBaoCaoTuan,
     dsBaoCaoTuanTruoc,
     dsLichGap,
+    infoTuan,
     infoTuanToi,
     dsDuAn,
     tuanChon,
@@ -737,7 +753,7 @@ export default function NoiDungBaoCaoTuan() {
   const dsDuAnTiemNangChiNhanh = useMemo(() => {
     const setIdsDuAnChon = new Set(
       danhSachBaoCaoTeam
-        .filter((x) => x.daGui)
+        .filter((x) => x.daGui && x.baoCao.trang_thai_ke_hoach === 'da_duyet')
         .flatMap((x) => x.baoCao.du_an_trong_diem_ids || [])
     );
     if (setIdsDuAnChon.size === 0) return [];
@@ -1025,10 +1041,12 @@ export default function NoiDungBaoCaoTuan() {
   const handleDuyetTuan = async (
     bc: BaoCaoTuanVDCD,
     trangThai: 'cho_giam_doc_duyet' | 'da_duyet' | 'can_dieu_chinh',
-    ghiChu?: string
+    ghiChu?: string,
+    phanDuyet: 'bao_cao' | 'ke_hoach' = 'bao_cao'
   ) => {
     const updated = await duyetBaoCaoTuanVDCD({
       baoCao: bc,
+      phanDuyet,
       trangThai,
       nguoiDuyetId: uid,
       tenNguoiDuyet: nguoiDungHienTai?.ho_va_ten || 'Quản lý',
@@ -1037,9 +1055,9 @@ export default function NoiDungBaoCaoTuan() {
     setDsBaoCaoTuan((prev) => [updated, ...prev.filter((x) => x.id !== updated.id)]);
     if (formBaoCao?.id === updated.id) setFormBaoCao(updated);
 
-    // Chỉ đồng bộ duyệt lịch công tác tuần tới khi chốt duyệt cuối (da_duyet)
+    // Chỉ kích hoạt lịch công tác tuần tới khi phê duyệt chốt Kế hoạch (phanDuyet === 'ke_hoach' && trangThai === 'da_duyet')
     let soLichDaDuyet = 0;
-    if (trangThai === 'da_duyet') {
+    if (phanDuyet === 'ke_hoach' && trangThai === 'da_duyet') {
       const tuanToi = dichChuyenTuanISO(bc.tuan, 1);
       const infoTuanToi = phanTichTuanISO(tuanToi);
       const lichCanDuyet = dsLichGap.filter(
@@ -1067,27 +1085,29 @@ export default function NoiDungBaoCaoTuan() {
       }
     }
 
+    const tenPhan = phanDuyet === 'ke_hoach' ? 'kế hoạch' : 'báo cáo';
     hienThongBao(
       trangThai === 'da_duyet'
         ? soLichDaDuyet > 0
-          ? `Đã phê duyệt chốt kế hoạch tuần cho ${bc.ten_nhan_vien} & kích hoạt ${soLichDaDuyet} lịch công tác tuần tới.`
-          : `Đã phê duyệt chốt kế hoạch tuần cho ${bc.ten_nhan_vien}.`
+          ? `Đã phê duyệt chốt ${tenPhan} tuần cho ${bc.ten_nhan_vien} & kích hoạt ${soLichDaDuyet} lịch công tác tuần tới.`
+          : `Đã phê duyệt chốt ${tenPhan} tuần cho ${bc.ten_nhan_vien}.`
         : trangThai === 'cho_giam_doc_duyet'
-        ? `Đã duyệt Cấp 1 cho ${bc.ten_nhan_vien} và chuyển lên Giám đốc phê duyệt.`
-        : 'Đã gửi ý kiến yêu cầu điều chỉnh cho nhân sự.'
+        ? `Đã duyệt Cấp 1 (${tenPhan}) cho ${bc.ten_nhan_vien} và chuyển lên Giám đốc.`
+        : `Đã gửi yêu cầu điều chỉnh ${tenPhan} cho ${bc.ten_nhan_vien}.`
     );
   };
 
-  const handleYeuCauMoKhoa = async (lyDo: string) => {
+  const handleYeuCauMoKhoa = async (lyDo: string, phanDuyet: 'bao_cao' | 'ke_hoach' = 'bao_cao') => {
     if (!formBaoCao) return;
+    const reqObj = {
+      ly_do: lyDo,
+      ngay_yeu_cau: new Date().toISOString(),
+      nguoi_yeu_cau_id: uid,
+      ten_nguoi_yeu_cau: nguoiDungHienTai?.ho_va_ten || formBaoCao.ten_nhan_vien
+    };
     const saved = await luuBaoCaoTuanVDCD({
       ...formBaoCao,
-      yeu_cau_mo_khoa: {
-        ly_do: lyDo,
-        ngay_yeu_cau: new Date().toISOString(),
-        nguoi_yeu_cau_id: uid,
-        ten_nguoi_yeu_cau: nguoiDungHienTai?.ho_va_ten || formBaoCao.ten_nhan_vien
-      }
+      ...(phanDuyet === 'ke_hoach' ? { yeu_cau_mo_khoa_ke_hoach: reqObj } : { yeu_cau_mo_khoa: reqObj })
     });
     setFormBaoCao(saved);
     setDsBaoCaoTuan((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)]);
@@ -1618,28 +1638,49 @@ export default function NoiDungBaoCaoTuan() {
         (() => {
           const tongKQ = danhSachBaoCaoTeam.reduce(
             (acc, x) => {
-              acc.lichToi += x.lichToi.length;
-              if (!x.daGui) return acc;
-              const k = x.baoCao.kpi_tuan_qua;
-              acc.km += Number(k?.khach_moi_thuc_te ?? x.baoCao.thuc_hien_tiep_can_tuan_nay ?? 0);
-              acc.bg += Number(k?.bao_gia_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.bao_gia ?? 0);
-              acc.da += Number(k?.du_an_lam_viec_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.dang_tiep_can ?? 0);
-              acc.hd += Number(k?.hop_dong_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.hop_dong ?? 0);
-              acc.ds += Number(k?.doanh_so_thuc_te ?? x.baoCao.dt_tuan_ky_ket ?? 0);
+              const bcDuyet = x.baoCao.trang_thai === 'da_duyet';
+              const khDuyet = (x.baoCao.trang_thai_ke_hoach || 'nhap') === 'da_duyet';
 
-              const ck = x.baoCao.cam_ket_tuan_toi;
-              acc.ckKM += Number(ck?.khach_moi?.target ?? 0);
-              acc.ckBG += Number(ck?.bao_gia?.target ?? 0);
-              acc.ckDA += Number(ck?.du_an_lam_viec?.target ?? 0);
-              acc.ckHD += Number(ck?.hop_dong?.target ?? 0);
-              acc.ckDS += Number(ck?.doanh_so?.target ?? 0);
-              acc.daTiemNang += x.dsDATiemNang.length;
+              if (bcDuyet) {
+                acc.soBaoCaoDuyet += 1;
+                const k = x.baoCao.kpi_tuan_qua;
+                acc.km += Number(k?.khach_moi_thuc_te ?? x.baoCao.thuc_hien_tiep_can_tuan_nay ?? 0);
+                acc.bg += Number(k?.bao_gia_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.bao_gia ?? 0);
+                acc.da += Number(k?.du_an_lam_viec_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.dang_tiep_can ?? 0);
+                acc.hd += Number(k?.hop_dong_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.hop_dong ?? 0);
+                acc.ds += Number(k?.doanh_so_thuc_te ?? x.baoCao.dt_tuan_ky_ket ?? 0);
+              }
+
+              if (khDuyet) {
+                acc.soKeHoachDuyet += 1;
+                const ck = x.baoCao.cam_ket_tuan_toi;
+                acc.ckKM += Number(ck?.khach_moi?.target ?? 0);
+                acc.ckBG += Number(ck?.bao_gia?.target ?? 0);
+                acc.ckDA += Number(ck?.du_an_lam_viec?.target ?? 0);
+                acc.ckHD += Number(ck?.hop_dong?.target ?? 0);
+                acc.ckDS += Number(ck?.doanh_so?.target ?? 0);
+                acc.daTiemNang += x.dsDATiemNang.length;
+                acc.lichToi += x.lichToi.length;
+              }
               return acc;
             },
-            { km: 0, bg: 0, da: 0, hd: 0, ds: 0, ckKM: 0, ckBG: 0, ckDA: 0, ckHD: 0, ckDS: 0, daTiemNang: 0, lichToi: 0 }
+            {
+              soBaoCaoDuyet: 0,
+              soKeHoachDuyet: 0,
+              km: 0,
+              bg: 0,
+              da: 0,
+              hd: 0,
+              ds: 0,
+              ckKM: 0,
+              ckBG: 0,
+              ckDA: 0,
+              ckHD: 0,
+              ckDS: 0,
+              daTiemNang: 0,
+              lichToi: 0
+            }
           );
-
-          const soDaNop = danhSachBaoCaoTeam.filter((x) => x.baoCao.trang_thai !== 'nhap').length;
 
           return (
             <div className="space-y-4">
@@ -1651,7 +1692,9 @@ export default function NoiDungBaoCaoTuan() {
                       {baoCaoTongChiNhanh.ten_chi_nhanh || 'Chi nhánh'}
                     </h2>
                     <div className="text-[11px] text-slate-500">
-                      Đã nộp: <b className="text-slate-800">{soDaNop}/{danhSachBaoCaoTeam.length}</b> nhân sự
+                      {tabTongHop === 'bao_cao'
+                        ? `Báo cáo đã chốt: ${tongKQ.soBaoCaoDuyet}/${danhSachBaoCaoTeam.length} nhân sự`
+                        : `Kế hoạch đã chốt: ${tongKQ.soKeHoachDuyet}/${danhSachBaoCaoTeam.length} nhân sự`}
                     </div>
                   </div>
 
@@ -1666,7 +1709,7 @@ export default function NoiDungBaoCaoTuan() {
                           : 'text-slate-600 hover:text-slate-900'
                       )}
                     >
-                      Báo cáo {infoTuan.nhanTieuDe} ({infoTuan.khoangNgayNhan})
+                      1. Báo cáo &amp; KQ làm việc {infoTuan.nhanTieuDe}
                     </button>
                     <button
                       type="button"
@@ -1678,7 +1721,7 @@ export default function NoiDungBaoCaoTuan() {
                           : 'text-slate-600 hover:text-slate-900'
                       )}
                     >
-                      Kế hoạch {infoTuanToi.nhanTieuDe} ({infoTuanToi.khoangNgayNhan})
+                      2. Kế hoạch {infoTuanToi.nhanTieuDe}
                     </button>
                   </div>
                 </div>
@@ -1711,20 +1754,21 @@ export default function NoiDungBaoCaoTuan() {
               </div>
 
               {tabTongHop === 'bao_cao' ? (
-                /* BẢNG 1: BÁO CÁO KẾT QUẢ TUẦN (TỪNG NGƯỜI Ở TRÊN -> TỔNG CHI NHÁNH Ở DƯỚI) */
+                /* BẢNG 1: BÁO CÁO & KQ LÀM VIỆC TUẦN X (CHỈ HIỆN SỐ ĐÃ DUYỆT CHỐT CUỐI) */
                 <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
                           <th className="py-3 px-3 text-center w-12">STT</th>
-                          <th className="py-3 px-4 min-w-[170px]">Nhân sự</th>
-                          <th className="py-3 px-3 w-[130px]">Trạng thái</th>
-                          <th className="py-3 px-3 w-[95px] text-right">KH mới</th>
-                          <th className="py-3 px-3 w-[95px] text-right">Báo giá</th>
-                          <th className="py-3 px-3 w-[95px] text-right">Dự án</th>
-                          <th className="py-3 px-3 w-[95px] text-right">Hợp đồng</th>
-                          <th className="py-3 px-4 w-[140px] text-right">Doanh số (VNĐ)</th>
+                          <th className="py-3 px-4 min-w-[165px]">Nhân sự</th>
+                          <th className="py-3 px-3 w-[130px]">Trạng thái BC</th>
+                          <th className="py-3 px-3 w-[110px] text-center">KQ làm việc</th>
+                          <th className="py-3 px-3 w-[85px] text-right">KH mới</th>
+                          <th className="py-3 px-3 w-[85px] text-right">Báo giá</th>
+                          <th className="py-3 px-3 w-[85px] text-right">Dự án</th>
+                          <th className="py-3 px-3 w-[85px] text-right">Hợp đồng</th>
+                          <th className="py-3 px-4 w-[135px] text-right">Doanh số (VNĐ)</th>
                           <th className="py-3 px-4 w-[1%] whitespace-nowrap text-right">Thao tác</th>
                         </tr>
                       </thead>
@@ -1732,6 +1776,14 @@ export default function NoiDungBaoCaoTuan() {
                         {tpKinhDoanh && (() => {
                           const bcTP = dsBaoCaoTuan.find((b) => b.nhan_vien_id === tpKinhDoanh.id);
                           const stTP = NHAN_TRANG_THAI[bcTP?.trang_thai || 'nhap'];
+                          const lichTPNay = dsLichGap.filter(
+                            (l) =>
+                              !l.da_xoa &&
+                              l.ngay >= infoTuan.ngayBatDau &&
+                              l.ngay <= infoTuan.ngayKetThuc &&
+                              (l.nguoi_phu_trach_id === tpKinhDoanh.id || l.nguoi_tao_id === tpKinhDoanh.id)
+                          );
+                          const lichTPXong = lichTPNay.filter((l) => l.trang_thai === 'da_hoan_thanh').length;
                           return (
                             <tr className="bg-amber-50/30 hover:bg-amber-50/50">
                               <td className="py-3 px-3 text-center font-bold text-amber-700">—</td>
@@ -1753,8 +1805,26 @@ export default function NoiDungBaoCaoTuan() {
                                   {stTP.label}
                                 </span>
                               </td>
+                              <td className="py-3 px-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setModalXemLichNV({
+                                      mo: true,
+                                      nhanSu: tpKinhDoanh,
+                                      lich: lichTPNay,
+                                      tieuDe: `KQ làm việc ${infoTuan.nhanTieuDe} — ${tpKinhDoanh.ho_va_ten}`
+                                    })
+                                  }
+                                  className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-[11px] font-semibold cursor-pointer"
+                                >
+                                  {lichTPXong}/{lichTPNay.length} lịch
+                                </button>
+                              </td>
                               <td colSpan={5} className="py-3 px-3 text-[11px] text-slate-600">
-                                {bcTP?.danh_gia_tuan_qua ? bcTP.danh_gia_tuan_qua : 'Báo cáo điều hành phòng Kinh doanh'}
+                                {bcTP?.trang_thai === 'da_duyet' && bcTP?.danh_gia_tuan_qua
+                                  ? bcTP.danh_gia_tuan_qua
+                                  : 'Báo cáo điều hành phòng Kinh doanh'}
                               </td>
                               <td className="py-3 px-4 text-right whitespace-nowrap">
                                 {bcTP && (
@@ -1762,7 +1832,7 @@ export default function NoiDungBaoCaoTuan() {
                                     {bcTP.trang_thai === 'cho_giam_doc_duyet' && laNguoiDuyetCap2 && (
                                       <button
                                         type="button"
-                                        onClick={() => handleDuyetTuan(bcTP, 'da_duyet')}
+                                        onClick={() => handleDuyetTuan(bcTP, 'da_duyet', undefined, 'bao_cao')}
                                         className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
                                       >
                                         <Check className="size-3.5" />
@@ -1777,7 +1847,8 @@ export default function NoiDungBaoCaoTuan() {
                                           setModalYeuCauSua({
                                             mo: true,
                                             baoCao: bcTP,
-                                            ghiChu: bcTP.ghi_chu_quan_ly || ''
+                                            ghiChu: bcTP.ghi_chu_quan_ly || '',
+                                            phanDuyet: 'bao_cao'
                                           })
                                         }
                                         className="h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
@@ -1793,14 +1864,16 @@ export default function NoiDungBaoCaoTuan() {
                           );
                         })()}
 
-                        {danhSachBaoCaoTeam.map(({ nv, baoCao, daGui }, idx) => {
+                        {danhSachBaoCaoTeam.map(({ nv, baoCao, daGui, lichTuanNay }, idx) => {
                           const st = NHAN_TRANG_THAI[baoCao.trang_thai];
+                          const daDuyet = baoCao.trang_thai === 'da_duyet';
                           const k = baoCao.kpi_tuan_qua;
                           const kmTT = Number(k?.khach_moi_thuc_te ?? baoCao.thuc_hien_tiep_can_tuan_nay ?? 0);
                           const bgTT = Number(k?.bao_gia_thuc_te ?? baoCao.tinh_trang_tuan_nay?.bao_gia ?? 0);
                           const daTT = Number(k?.du_an_lam_viec_thuc_te ?? baoCao.tinh_trang_tuan_nay?.dang_tiep_can ?? 0);
                           const hdTT = Number(k?.hop_dong_thuc_te ?? baoCao.tinh_trang_tuan_nay?.hop_dong ?? 0);
                           const dsTT = Number(k?.doanh_so_thuc_te ?? baoCao.dt_tuan_ky_ket ?? 0);
+                          const lichXong = lichTuanNay.filter((l) => l.trang_thai === 'da_hoan_thanh').length;
 
                           return (
                             <tr key={nv.id} className="hover:bg-slate-50/60">
@@ -1816,9 +1889,6 @@ export default function NoiDungBaoCaoTuan() {
                                 >
                                   {nv.ho_va_ten}
                                 </button>
-                                <div className="text-[11px] text-slate-500">
-                                  {daGui ? 'Đã lưu dữ liệu' : 'Chưa lập báo cáo'}
-                                </div>
                               </td>
                               <td className="py-3 px-3">
                                 <span
@@ -1835,8 +1905,28 @@ export default function NoiDungBaoCaoTuan() {
                                   </div>
                                 )}
                               </td>
+                              <td className="py-3 px-3 text-center">
+                                {lichTuanNay.length > 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setModalXemLichNV({
+                                        mo: true,
+                                        nhanSu: nv,
+                                        lich: lichTuanNay,
+                                        tieuDe: `KQ làm việc ${infoTuan.nhanTieuDe} — ${nv.ho_va_ten}`
+                                      })
+                                    }
+                                    className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-[11px] font-semibold cursor-pointer tabular-nums"
+                                  >
+                                    {lichXong}/{lichTuanNay.length} lịch
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-300 text-[11px]">—</span>
+                                )}
+                              </td>
                               <td className="py-3 px-3 text-right font-mono font-bold text-blue-700 tabular-nums">
-                                {daGui ? (
+                                {daDuyet ? (
                                   <>
                                     {kmTT}
                                     {Number(k?.khach_moi_muc_tieu || 0) > 0 && (
@@ -1848,7 +1938,7 @@ export default function NoiDungBaoCaoTuan() {
                                 )}
                               </td>
                               <td className="py-3 px-3 text-right font-mono font-bold text-amber-700 tabular-nums">
-                                {daGui ? (
+                                {daDuyet ? (
                                   <>
                                     {bgTT}
                                     {Number(k?.bao_gia_muc_tieu || 0) > 0 && (
@@ -1860,7 +1950,7 @@ export default function NoiDungBaoCaoTuan() {
                                 )}
                               </td>
                               <td className="py-3 px-3 text-right font-mono font-bold text-indigo-700 tabular-nums">
-                                {daGui ? (
+                                {daDuyet ? (
                                   <>
                                     {daTT}
                                     {Number(k?.du_an_lam_viec_muc_tieu || 0) > 0 && (
@@ -1872,7 +1962,7 @@ export default function NoiDungBaoCaoTuan() {
                                 )}
                               </td>
                               <td className="py-3 px-3 text-right font-mono font-bold text-purple-700 tabular-nums">
-                                {daGui ? (
+                                {daDuyet ? (
                                   <>
                                     {hdTT}
                                     {Number(k?.hop_dong_muc_tieu || 0) > 0 && (
@@ -1884,7 +1974,7 @@ export default function NoiDungBaoCaoTuan() {
                                 )}
                               </td>
                               <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700 tabular-nums">
-                                {daGui ? fmtSo(dsTT) : <span className="text-slate-300 font-normal">—</span>}
+                                {daDuyet ? fmtSo(dsTT) : <span className="text-slate-300 font-normal">—</span>}
                               </td>
                               <td className="py-3 px-4 text-right whitespace-nowrap">
                                 <div className="inline-flex items-center gap-1.5">
@@ -1894,7 +1984,9 @@ export default function NoiDungBaoCaoTuan() {
                                       onClick={() =>
                                         handleDuyetTuan(
                                           baoCao,
-                                          cheDoDuyet === '2_cap' ? 'cho_giam_doc_duyet' : 'da_duyet'
+                                          cheDoDuyet === '2_cap' ? 'cho_giam_doc_duyet' : 'da_duyet',
+                                          undefined,
+                                          'bao_cao'
                                         )
                                       }
                                       className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
@@ -1906,7 +1998,7 @@ export default function NoiDungBaoCaoTuan() {
                                   {baoCao.trang_thai === 'cho_giam_doc_duyet' && laNguoiDuyetCap2 && (
                                     <button
                                       type="button"
-                                      onClick={() => handleDuyetTuan(baoCao, 'da_duyet')}
+                                      onClick={() => handleDuyetTuan(baoCao, 'da_duyet', undefined, 'bao_cao')}
                                       className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
                                     >
                                       <Check className="size-3.5" />
@@ -1923,7 +2015,8 @@ export default function NoiDungBaoCaoTuan() {
                                         setModalYeuCauSua({
                                           mo: true,
                                           baoCao,
-                                          ghiChu: baoCao.ghi_chu_quan_ly || ''
+                                          ghiChu: baoCao.ghi_chu_quan_ly || '',
+                                          phanDuyet: 'bao_cao'
                                         })
                                       }
                                       className="h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
@@ -1936,7 +2029,7 @@ export default function NoiDungBaoCaoTuan() {
                                     type="button"
                                     onClick={() => xuLyXuatExcelMotSale(nv, baoCao)}
                                     className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
-                                    title="Xuất Excel báo cáo tuần chuẩn của nhân sự này"
+                                    title="Xuất Excel báo cáo tuần chuẩn"
                                   >
                                     <Download className="size-3.5" />
                                     <span>Xuất Excel</span>
@@ -1947,10 +2040,10 @@ export default function NoiDungBaoCaoTuan() {
                           );
                         })}
 
-                        {/* Dòng TỔNG CHI NHÁNH */}
+                        {/* Dòng TỔNG CHI NHÁNH (Chỉ tính báo cáo Đã duyệt) */}
                         <tr className="bg-red-50/70 border-t-2 border-red-200 font-extrabold text-xs">
-                          <td colSpan={3} className="py-3 px-4 text-red-900 uppercase">
-                            Tổng chi nhánh ({danhSachBaoCaoTeam.length} nhân sự)
+                          <td colSpan={4} className="py-3 px-4 text-red-900 uppercase">
+                            Tổng chi nhánh (Đã duyệt: {tongKQ.soBaoCaoDuyet}/{danhSachBaoCaoTeam.length})
                           </td>
                           <td className="py-3 px-3 text-right font-mono text-blue-800 tabular-nums">{tongKQ.km}</td>
                           <td className="py-3 px-3 text-right font-mono text-amber-800 tabular-nums">{tongKQ.bg}</td>
@@ -1964,7 +2057,7 @@ export default function NoiDungBaoCaoTuan() {
                   </div>
                 </div>
               ) : (
-                /* BẢNG 2: KẾ HOẠCH TUẦN TỚI (TỪNG NGƯỜI Ở TRÊN -> TỔNG CHI NHÁNH Ở DƯỚI) + DỰ ÁN TRỌNG ĐIỂM */
+                /* BẢNG 2: KẾ HOẠCH TUẦN TỚI (CHỈ HIỆN SỐ ĐÃ DUYỆT CHỐT CUỐI) + DỰ ÁN TRỌNG ĐIỂM */
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
                     <div className="overflow-x-auto">
@@ -1972,20 +2065,119 @@ export default function NoiDungBaoCaoTuan() {
                         <thead>
                           <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
                             <th className="py-3 px-3 text-center w-12">STT</th>
-                            <th className="py-3 px-4 min-w-[170px]">Nhân sự</th>
-                            <th className="py-3 px-3 w-[95px] text-right">KH mới</th>
-                            <th className="py-3 px-3 w-[95px] text-right">Báo giá</th>
-                            <th className="py-3 px-3 w-[95px] text-right">Dự án</th>
-                            <th className="py-3 px-3 w-[95px] text-right">Hợp đồng</th>
-                            <th className="py-3 px-4 w-[145px] text-right">DS dự kiến (VNĐ)</th>
-                            <th className="py-3 px-3 w-[135px] text-center">DA trọng điểm</th>
-                            <th className="py-3 px-3 w-[120px] text-center">Lịch tuần tới</th>
+                            <th className="py-3 px-4 min-w-[165px]">Nhân sự</th>
+                            <th className="py-3 px-3 w-[130px]">Trạng thái KH</th>
+                            <th className="py-3 px-3 w-[85px] text-right">KH mới</th>
+                            <th className="py-3 px-3 w-[85px] text-right">Báo giá</th>
+                            <th className="py-3 px-3 w-[85px] text-right">Dự án</th>
+                            <th className="py-3 px-3 w-[85px] text-right">Hợp đồng</th>
+                            <th className="py-3 px-4 w-[135px] text-right">DS dự kiến (VNĐ)</th>
+                            <th className="py-3 px-3 w-[125px] text-center">DA trọng điểm</th>
+                            <th className="py-3 px-3 w-[100px] text-center">Lịch tuần tới</th>
+                            <th className="py-3 px-4 w-[1%] whitespace-nowrap text-right">Thao tác</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
+                          {tpKinhDoanh && (() => {
+                            const bcTP = dsBaoCaoTuan.find((b) => b.nhan_vien_id === tpKinhDoanh.id);
+                            const stKH = bcTP?.trang_thai_ke_hoach || 'nhap';
+                            const stTP = NHAN_TRANG_THAI[stKH];
+                            const dh = bcTP?.dinh_huong_dieu_hanh_tuan_toi;
+                            const lichTPToi = dsLichGap.filter(
+                              (l) =>
+                                !l.da_xoa &&
+                                l.trang_thai !== 'huy' &&
+                                l.ngay >= infoTuanToi.ngayBatDau &&
+                                l.ngay <= infoTuanToi.ngayKetThuc &&
+                                (l.nguoi_phu_trach_id === tpKinhDoanh.id || l.nguoi_tao_id === tpKinhDoanh.id)
+                            );
+                            return (
+                              <tr className="bg-amber-50/30 hover:bg-amber-50/50">
+                                <td className="py-3 px-3 text-center font-bold text-amber-700">—</td>
+                                <td className="py-3 px-4">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setNhanVienDangXemId(tpKinhDoanh.id);
+                                      setTabChinh('ca_nhan');
+                                    }}
+                                    className="font-bold text-slate-900 hover:text-blue-700 cursor-pointer text-left"
+                                  >
+                                    {tpKinhDoanh.ho_va_ten}
+                                  </button>
+                                  <div className="text-[11px] text-amber-700 font-semibold">Trưởng phòng KD</div>
+                                </td>
+                                <td className="py-3 px-3">
+                                  <span className={cn('px-2.5 py-0.5 rounded-full text-[11px] font-semibold border', stTP.cls)}>
+                                    {stTP.label}
+                                  </span>
+                                </td>
+                                <td colSpan={5} className="py-3 px-3 text-[11px] text-slate-600 tabular-nums">
+                                  {stKH === 'da_duyet' && dh?.muc_tieu_doanh_thu_phong
+                                    ? `Định hướng phòng: ${fmtSo(dh.muc_tieu_doanh_thu_phong)} đ (${dh.so_hop_dong_du_kien || 0} HĐ)`
+                                    : 'Kế hoạch điều hành phòng'}
+                                </td>
+                                <td className="py-3 px-3 text-center text-slate-300">—</td>
+                                <td className="py-3 px-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setModalXemLichNV({
+                                        mo: true,
+                                        nhanSu: tpKinhDoanh,
+                                        lich: lichTPToi,
+                                        tieuDe: `Lịch ${infoTuanToi.nhanTieuDe} — ${tpKinhDoanh.ho_va_ten}`
+                                      })
+                                    }
+                                    className="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold cursor-pointer"
+                                  >
+                                    {lichTPToi.length} lịch
+                                  </button>
+                                </td>
+                                <td className="py-3 px-4 text-right whitespace-nowrap">
+                                  {bcTP && (
+                                    <div className="inline-flex items-center gap-1.5">
+                                      {stKH === 'cho_giam_doc_duyet' && laNguoiDuyetCap2 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDuyetTuan(bcTP, 'da_duyet', undefined, 'ke_hoach')}
+                                          className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <Check className="size-3.5" />
+                                          <span>Duyệt cuối</span>
+                                        </button>
+                                      )}
+                                      {(stKH === 'cho_giam_doc_duyet' || (stKH === 'da_duyet' && laNguoiDuyetCap2)) && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setModalYeuCauSua({
+                                              mo: true,
+                                              baoCao: bcTP,
+                                              ghiChu: bcTP.ghi_chu_ke_hoach || '',
+                                              phanDuyet: 'ke_hoach'
+                                            })
+                                          }
+                                          className="h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <MessageSquareWarning className="size-3.5" />
+                                          <span>{stKH === 'da_duyet' ? 'Mở khóa' : 'Yêu cầu sửa'}</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+
                           {danhSachBaoCaoTeam.map(({ nv, baoCao, daGui, lichToi, dsDATiemNang }, idx) => {
+                            const ttKH = baoCao.trang_thai_ke_hoach || 'nhap';
+                            const st = NHAN_TRANG_THAI[ttKH];
+                            const daDuyetKH = ttKH === 'da_duyet';
                             const ck = baoCao.cam_ket_tuan_toi;
                             const tongGiaTriDA = dsDATiemNang.reduce((s, d) => s + (d.gia_tri_hop_dong || d.gia_tri_du_kien || 0), 0);
+
                             return (
                               <tr key={nv.id} className="hover:bg-slate-50/60">
                                 <td className="py-3 px-3 text-center font-bold text-slate-400">{idx + 1}</td>
@@ -2000,27 +2192,39 @@ export default function NoiDungBaoCaoTuan() {
                                   >
                                     {nv.ho_va_ten}
                                   </button>
-                                  <div className="text-[11px] text-slate-500">
-                                    {daGui ? NHAN_TRANG_THAI[baoCao.trang_thai].label : 'Chưa lập kế hoạch'}
-                                  </div>
+                                </td>
+                                <td className="py-3 px-3">
+                                  <span
+                                    className={cn(
+                                      'px-2.5 py-0.5 rounded-full text-[11px] font-semibold border',
+                                      daGui ? st.cls : 'bg-slate-50 text-slate-500 border-slate-200'
+                                    )}
+                                  >
+                                    {daGui ? st.label : 'Chưa lập'}
+                                  </span>
+                                  {baoCao.yeu_cau_mo_khoa_ke_hoach && (
+                                    <div className="text-[10.5px] text-amber-700 font-semibold mt-1" title={baoCao.yeu_cau_mo_khoa_ke_hoach.ly_do}>
+                                      Xin mở khóa: {baoCao.yeu_cau_mo_khoa_ke_hoach.ly_do}
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="py-3 px-3 text-right font-mono font-bold text-blue-700 tabular-nums">
-                                  {daGui ? (ck?.khach_moi?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
+                                  {daDuyetKH ? (ck?.khach_moi?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
                                 </td>
                                 <td className="py-3 px-3 text-right font-mono font-bold text-amber-700 tabular-nums">
-                                  {daGui ? (ck?.bao_gia?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
+                                  {daDuyetKH ? (ck?.bao_gia?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
                                 </td>
                                 <td className="py-3 px-3 text-right font-mono font-bold text-indigo-700 tabular-nums">
-                                  {daGui ? (ck?.du_an_lam_viec?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
+                                  {daDuyetKH ? (ck?.du_an_lam_viec?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
                                 </td>
                                 <td className="py-3 px-3 text-right font-mono font-bold text-purple-700 tabular-nums">
-                                  {daGui ? (ck?.hop_dong?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
+                                  {daDuyetKH ? (ck?.hop_dong?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
                                 </td>
                                 <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700 tabular-nums">
-                                  {daGui ? fmtSo(ck?.doanh_so?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
+                                  {daDuyetKH ? fmtSo(ck?.doanh_so?.target ?? 0) : <span className="text-slate-300 font-normal">—</span>}
                                 </td>
                                 <td className="py-3 px-3 text-center">
-                                  {daGui && dsDATiemNang.length > 0 ? (
+                                  {daDuyetKH && dsDATiemNang.length > 0 ? (
                                     <button
                                       type="button"
                                       onClick={() =>
@@ -2043,7 +2247,14 @@ export default function NoiDungBaoCaoTuan() {
                                   {lichToi.length > 0 ? (
                                     <button
                                       type="button"
-                                      onClick={() => setModalXemLichNV({ mo: true, nhanSu: nv, lich: lichToi })}
+                                      onClick={() =>
+                                        setModalXemLichNV({
+                                          mo: true,
+                                          nhanSu: nv,
+                                          lich: lichToi,
+                                          tieuDe: `Lịch ${infoTuanToi.nhanTieuDe} — ${nv.ho_va_ten}`
+                                        })
+                                      }
                                       className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold cursor-pointer"
                                     >
                                       {lichToi.length} lịch
@@ -2052,14 +2263,65 @@ export default function NoiDungBaoCaoTuan() {
                                     <span className="text-slate-300 text-[11px]">—</span>
                                   )}
                                 </td>
+                                <td className="py-3 px-4 text-right whitespace-nowrap">
+                                  <div className="inline-flex items-center gap-1.5">
+                                    {ttKH === 'cho_duyet' && (laNguoiDuyetCap1 || laNguoiDuyetCap2) && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleDuyetTuan(
+                                            baoCao,
+                                            cheDoDuyet === '2_cap' ? 'cho_giam_doc_duyet' : 'da_duyet',
+                                            undefined,
+                                            'ke_hoach'
+                                          )
+                                        }
+                                        className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Check className="size-3.5" />
+                                        <span>{cheDoDuyet === '2_cap' ? 'Duyệt → GĐ' : 'Duyệt'}</span>
+                                      </button>
+                                    )}
+                                    {ttKH === 'cho_giam_doc_duyet' && laNguoiDuyetCap2 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDuyetTuan(baoCao, 'da_duyet', undefined, 'ke_hoach')}
+                                        className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Check className="size-3.5" />
+                                        <span>Duyệt cuối</span>
+                                      </button>
+                                    )}
+                                    {(ttKH === 'cho_duyet' ||
+                                      ttKH === 'cho_giam_doc_duyet' ||
+                                      (ttKH === 'da_duyet' &&
+                                        (laNguoiDuyetCap2 || (cheDoDuyet === '1_cap' && laNguoiDuyetCap1)))) && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setModalYeuCauSua({
+                                            mo: true,
+                                            baoCao,
+                                            ghiChu: baoCao.ghi_chu_ke_hoach || '',
+                                            phanDuyet: 'ke_hoach'
+                                          })
+                                        }
+                                        className="h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <MessageSquareWarning className="size-3.5" />
+                                        <span>{ttKH === 'da_duyet' ? 'Mở khóa' : 'Yêu cầu sửa'}</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
                               </tr>
                             );
                           })}
 
-                          {/* Dòng TỔNG CHI NHÁNH */}
+                          {/* Dòng TỔNG CHI NHÁNH (Chỉ tính kế hoạch Đã duyệt) */}
                           <tr className="bg-blue-50/70 border-t-2 border-blue-200 font-extrabold text-xs">
-                            <td colSpan={2} className="py-3 px-4 text-blue-950 uppercase">
-                              Tổng cam kết chi nhánh
+                            <td colSpan={3} className="py-3 px-4 text-blue-950 uppercase">
+                              Tổng kế hoạch chi nhánh (Đã duyệt: {tongKQ.soKeHoachDuyet}/{danhSachBaoCaoTeam.length})
                             </td>
                             <td className="py-3 px-3 text-right font-mono text-blue-800 tabular-nums">{tongKQ.ckKM}</td>
                             <td className="py-3 px-3 text-right font-mono text-amber-800 tabular-nums">{tongKQ.ckBG}</td>
@@ -2068,6 +2330,7 @@ export default function NoiDungBaoCaoTuan() {
                             <td className="py-3 px-4 text-right font-mono text-emerald-800 tabular-nums text-sm">{fmtSo(tongKQ.ckDS)}</td>
                             <td className="py-3 px-3 text-center font-bold text-rose-700">{tongKQ.daTiemNang} DA</td>
                             <td className="py-3 px-3 text-center font-bold text-blue-700">{tongKQ.lichToi} lịch</td>
+                            <td className="py-3 px-4"></td>
                           </tr>
                         </tbody>
                       </table>
@@ -2186,11 +2449,16 @@ export default function NoiDungBaoCaoTuan() {
             keHoachTuanNay={keHoachTuanNay}
             keHoachTuanToi={keHoachTuanToi}
             onLuuBaoCao={handleLuuBaoCaoChuan}
-            onDuyetBaoCao={async (trangThai, ghiChu) => {
-              if (formBaoCao) await handleDuyetTuan(formBaoCao, trangThai, ghiChu);
+            onDuyetBaoCao={async (trangThai, ghiChu, phanDuyet) => {
+              if (formBaoCao) await handleDuyetTuan(formBaoCao, trangThai, ghiChu, phanDuyet || 'bao_cao');
             }}
-            onThuHoiBaoCao={async () => {
-              if (formBaoCao) await handleLuuBaoCaoChuan({ trang_thai: 'nhap' }, false);
+            onThuHoiBaoCao={async (phanDuyet) => {
+              if (formBaoCao) {
+                await handleLuuBaoCaoChuan(
+                  phanDuyet === 'ke_hoach' ? { trang_thai_ke_hoach: 'nhap' } : { trang_thai: 'nhap' },
+                  false
+                );
+              }
             }}
             onYeuCauMoKhoa={handleYeuCauMoKhoa}
             cheDoDuyet={cheDoDuyet}
@@ -2478,7 +2746,7 @@ export default function NoiDungBaoCaoTuan() {
               <div className="flex items-center gap-2">
                 <UserCheck className="size-4 text-blue-600" />
                 <h3 className="text-sm font-bold text-slate-900">
-                  Lịch {infoTuanToi.nhanTieuDe} — {modalXemLichNV.nhanSu.ho_va_ten}
+                  {modalXemLichNV.tieuDe || `Lịch ${infoTuanToi.nhanTieuDe} — ${modalXemLichNV.nhanSu.ho_va_ten}`}
                 </h3>
               </div>
               <button
@@ -2491,20 +2759,32 @@ export default function NoiDungBaoCaoTuan() {
             </div>
             {modalXemLichNV.lich.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-400">
-                Nhân sự chưa có lịch công tác nào trong tuần tới.
+                Nhân sự chưa có lịch công tác nào.
               </div>
             ) : (
               <div className="divide-y divide-slate-100 max-h-[360px] overflow-y-auto">
                 {modalXemLichNV.lich.map((l) => (
-                  <div key={l.id} className="py-2.5 text-xs space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-blue-700">{l.ngay}</span>
-                      <span className="text-slate-500">
-                        {l.gio_bat_dau} - {l.gio_ket_thuc}
-                      </span>
-                      <span className="font-bold text-slate-900">{l.ten_khach_hang}</span>
+                  <div key={l.id} className="py-2.5 text-xs space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-blue-700">{l.ngay}</span>
+                        <span className="text-slate-500">
+                          {l.gio_bat_dau} - {l.gio_ket_thuc}
+                        </span>
+                        <span className="font-bold text-slate-900">{l.ten_khach_hang}</span>
+                      </div>
+                      {l.trang_thai === 'da_hoan_thanh' && (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                          Đã xong
+                        </span>
+                      )}
                     </div>
                     <div className="text-slate-600">{l.noi_dung || l.tieu_de}</div>
+                    {l.ket_qua && (
+                      <div className="text-emerald-700 font-medium bg-emerald-50/70 px-2 py-1 rounded-lg">
+                        KQ: {l.ket_qua}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2620,8 +2900,13 @@ export default function NoiDungBaoCaoTuan() {
             onSubmit={async (e) => {
               e.preventDefault();
               if (!modalYeuCauSua.baoCao) return;
-              await handleDuyetTuan(modalYeuCauSua.baoCao, 'can_dieu_chinh', modalYeuCauSua.ghiChu);
-              setModalYeuCauSua({ mo: false, baoCao: null, ghiChu: '' });
+              await handleDuyetTuan(
+                modalYeuCauSua.baoCao,
+                'can_dieu_chinh',
+                modalYeuCauSua.ghiChu,
+                modalYeuCauSua.phanDuyet || 'bao_cao'
+              );
+              setModalYeuCauSua({ mo: false, baoCao: null, ghiChu: '', phanDuyet: 'bao_cao' });
             }}
             className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl space-y-3"
           >
