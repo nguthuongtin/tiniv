@@ -1183,26 +1183,29 @@ export default function NoiDungBaoCaoTuan() {
         const bcTruoc = dsBaoCaoTuanTruoc.find((b) => b.nhan_vien_id === nv.id);
 
         const daCuaSale = dsDuAnTiemNangChiNhanh.filter(
-          (d) => d.duAnGoc.nguoi_phu_trach_id === nv.id || d.duAnGoc.nguoi_tao_id === nv.id
+          (d) =>
+            d.duAnGoc.nguoi_phu_trach_id === nv.id ||
+            d.duAnGoc.nguoi_quan_ly_id === nv.id ||
+            d.duAnGoc.nguoi_tao_id === nv.id
         );
 
-        // Mục tiêu tuần qua: Ưu tiên lấy từ kpi_tuan_qua của báo cáo, fallback từ cam_ket_tuan_toi của tuần trước
-        const mtKhachMoi = Number(bc.kpi_tuan_qua?.khach_moi_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.khach_moi?.target ?? 20);
-        const mtBaoGia = Number(bc.kpi_tuan_qua?.bao_gia_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.bao_gia?.target ?? 4);
-        const mtDuAn = Number(bc.kpi_tuan_qua?.du_an_lam_viec_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.du_an_lam_viec?.target ?? bcTruoc?.cam_ket_tuan_toi?.cuoc_hen?.target ?? 5);
-        const mtHopDong = Number(bc.kpi_tuan_qua?.hop_dong_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.hop_dong?.target ?? 4);
-        const mtDoanhThu = Number(bc.kpi_tuan_qua?.doanh_so_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.doanh_so?.target ?? 150000000);
+        // Mục tiêu tuần: Lấy từ kpi_tuan_qua của báo cáo hoặc cam_ket_tuan_toi của tuần trước (mặc định 0)
+        const mtKhachMoi = Number(bc.kpi_tuan_qua?.khach_moi_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.khach_moi?.target ?? 0);
+        const mtBaoGia = Number(bc.kpi_tuan_qua?.bao_gia_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.bao_gia?.target ?? 0);
+        const mtDuAn = Number(bc.kpi_tuan_qua?.du_an_lam_viec_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.du_an_lam_viec?.target ?? bcTruoc?.cam_ket_tuan_toi?.cuoc_hen?.target ?? 0);
+        const mtHopDong = Number(bc.kpi_tuan_qua?.hop_dong_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.hop_dong?.target ?? 0);
+        const mtDoanhThu = Number(bc.kpi_tuan_qua?.doanh_so_muc_tieu ?? bcTruoc?.cam_ket_tuan_toi?.doanh_so?.target ?? 0);
 
-        // Số thực tế đạt được: Đọc trực tiếp từ kpi_tuan_qua của báo cáo hoặc fallback từ CRM
-        const ttKhachMoi = Number(bc.kpi_tuan_qua?.khach_moi_thuc_te ?? bc.tinh_trang_tuan_nay.dang_tiep_can ?? 0);
+        // Số thực tế đạt được: Đọc trực tiếp từ kpi_tuan_qua của báo cáo (mặc định 0)
+        const ttKhachMoi = Number(bc.kpi_tuan_qua?.khach_moi_thuc_te ?? bc.thuc_hien_tiep_can_tuan_nay ?? 0);
         const ttBaoGia = Number(bc.kpi_tuan_qua?.bao_gia_thuc_te ?? bc.tinh_trang_tuan_nay.bao_gia ?? 0);
-        const ttDuAn = Number(bc.kpi_tuan_qua?.du_an_lam_viec_thuc_te ?? bc.tinh_trang_tuan_nay.tong_tiep_can ?? 0);
+        const ttDuAn = Number(bc.kpi_tuan_qua?.du_an_lam_viec_thuc_te ?? bc.tinh_trang_tuan_nay.dang_tiep_can ?? 0);
         const ttHopDong = Number(bc.kpi_tuan_qua?.hop_dong_thuc_te ?? bc.tinh_trang_tuan_nay.hop_dong ?? 0);
         const ttDoanhThu = Number(bc.kpi_tuan_qua?.doanh_so_thuc_te ?? (bc.dt_tuan_ky_ket || 0));
 
         danhSachBaoCaoSale.push({
           tuan: bc.tuan,
-          nhanTieuDeTuan: infoTuan.nhanTieuDe,
+          nhanTieuDeTuan: `${infoTuan.nhanTieuDe} (${infoTuan.khoangNgayNhan}/${infoTuan.nam})`,
           nhanVien: {
             id: nv.id,
             ho_va_ten: nv.ho_va_ten,
@@ -1232,11 +1235,11 @@ export default function NoiDungBaoCaoTuan() {
             xacSuatPct: d.xacSuatPct
           })),
           camKetTuanToi: {
-            khachHangMoi: bc.cam_ket_tuan_toi?.khach_moi || { target: 20, min: 0, max: 0 },
-            baoGia: bc.cam_ket_tuan_toi?.bao_gia || { target: 4, min: 0, max: 0 },
-            duAnLamViec: bc.cam_ket_tuan_toi?.du_an_lam_viec || bc.cam_ket_tuan_toi?.cuoc_hen || { target: 5, min: 0, max: 0 },
-            hopDongMoi: bc.cam_ket_tuan_toi?.hop_dong || { target: 4, min: 0, max: 0 },
-            doanhThu: bc.cam_ket_tuan_toi?.doanh_so || { target: 150000000, min: 0, max: 0 }
+            khachHangMoi: bc.cam_ket_tuan_toi?.khach_moi || { target: 0, min: 0, max: 0 },
+            baoGia: bc.cam_ket_tuan_toi?.bao_gia || { target: 0, min: 0, max: 0 },
+            duAnLamViec: bc.cam_ket_tuan_toi?.du_an_lam_viec || bc.cam_ket_tuan_toi?.cuoc_hen || { target: 0, min: 0, max: 0 },
+            hopDongMoi: bc.cam_ket_tuan_toi?.hop_dong || { target: 0, min: 0, max: 0 },
+            doanhThu: bc.cam_ket_tuan_toi?.doanh_so || { target: 0, min: 0, max: 0 }
           },
           lichLamViecTuanToi: infoTuanToi.danhSachNgay.map((d, idx) => {
             const lichNgay = lichTuanToiToanTeam.filter(

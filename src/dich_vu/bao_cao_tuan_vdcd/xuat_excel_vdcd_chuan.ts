@@ -203,12 +203,12 @@ function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanV
       {
         stt: 5,
         tieuDe: 'Đánh giá tổng quan tình hình kinh doanh của Phòng',
-        noiDung: duLieu.danhGiaTuanQuaTP || 'Đội ngũ bám sát kế hoạch, duy trì nhịp độ làm việc và phối hợp xử lý hồ sơ tốt.'
+        noiDung: duLieu.danhGiaTuanQuaTP || '—'
       },
       {
         stt: 6,
         tieuDe: 'Khó khăn, vướng mắc & Đề xuất gửi lên Ban Giám đốc',
-        noiDung: duLieu.deXuatBanGiamDocTP || 'Không có vướng mắc đặc biệt trong tuần này.'
+        noiDung: duLieu.deXuatBanGiamDocTP || '—'
       }
     ];
 
@@ -236,9 +236,9 @@ function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanV
     });
   } else {
     const rSec1 = ws.addRow([]);
-    styleSectionHeader(rSec1, 'I. ĐÁNH GIÁ KẾT QUẢ THỰC HIỆN CHỈ TIÊU TUẦN QUA');
+    styleSectionHeader(rSec1, `I. KẾT QUẢ CHỈ TIÊU (${duLieu.nhanTieuDeTuan})`);
 
-    const rHead1 = ws.addRow(['', 'STT', 'Chỉ tiêu đánh giá tuần qua', '', 'ĐVT', 'Kế hoạch tuần trước', 'Thực tế đạt', '']);
+    const rHead1 = ws.addRow(['', 'STT', 'Chỉ tiêu đánh giá', '', 'ĐVT', 'Mục tiêu', 'Thực tế đạt', '']);
     styleTableHeader(rHead1);
     ws.mergeCells(`C${rHead1.number}:D${rHead1.number}`);
     ws.mergeCells(`G${rHead1.number}:H${rHead1.number}`);

@@ -257,9 +257,9 @@ export async function xuatExcelBaoCaoTuanVDCD(
   const khTiepCanEx =
     Number(baoCao.ke_hoach_tiep_can_tuan_nay) > 0
       ? Number(baoCao.ke_hoach_tiep_can_tuan_nay)
-      : Number(kpiEx?.khach_moi_muc_tieu || kpiEx?.du_an_lam_viec_muc_tieu || 16);
-  const khBaoGiaEx = Number(kpiEx?.bao_gia_muc_tieu || Math.round(khTiepCanEx * 0.25) || 4);
-  const khHopDongEx = Number(kpiEx?.hop_dong_muc_tieu || Math.round(khTiepCanEx * 0.15) || 2);
+      : Number(kpiEx?.khach_moi_muc_tieu || kpiEx?.du_an_lam_viec_muc_tieu || 0);
+  const khBaoGiaEx = Number(kpiEx?.bao_gia_muc_tieu || 0);
+  const khHopDongEx = Number(kpiEx?.hop_dong_muc_tieu || 0);
   const thTiepCanEx =
     Number(baoCao.thuc_hien_tiep_can_tuan_nay) > 0
       ? Number(baoCao.thuc_hien_tiep_can_tuan_nay)
@@ -741,7 +741,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
   const khTiepCan =
     laBaoCaoTong && tongTeamThucHien && tongTeamThucHien.tiepCanMT > 0
       ? tongTeamThucHien.tiepCanMT
-      : Number(kpi?.khach_moi_muc_tieu || baoCao.ke_hoach_tiep_can_tuan_nay || 16);
+      : Number(kpi?.khach_moi_muc_tieu || baoCao.ke_hoach_tiep_can_tuan_nay || 0);
 
   const thTiepCan =
     laBaoCaoTong && tongTeamThucHien && tongTeamThucHien.tiepCanTT > 0
