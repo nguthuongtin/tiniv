@@ -15,7 +15,7 @@ import {
   type DocumentData,
   onSnapshot
 } from 'firebase/firestore';
-import type { NguoiLienHe } from '../../thu_vien/types/khach_hang';
+import type { NguoiLienHe, KhachHang } from '../../thu_vien/types/khach_hang';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
 import {
   thamChieuCollection,
@@ -167,7 +167,8 @@ export interface TaoMoiNguoiLienHeDTO {
 
 export const taoNguoiLienHeMoi = async (
   dto: TaoMoiNguoiLienHeDTO,
-  nguoiThucHien: Pick<NhanSu, 'id'> | null | undefined
+  nguoiThucHien: Pick<NhanSu, 'id'> | null | undefined,
+  thongTinKhachHang?: Pick<KhachHang, 'ten_khach_hang'> | null
 ): Promise<NguoiLienHe> => {
   if (!dto.ho_va_ten || !dto.ho_va_ten.trim()) {
     throw new Error('Họ và tên liên hệ không được để trống.');
@@ -193,7 +194,7 @@ export const taoNguoiLienHeMoi = async (
     'khach_hang',
     'tao_moi',
     moi.khach_hang_id,
-    `Thêm liên hệ "${moi.ho_va_ten}" cho khách hàng`
+    `Thêm liên hệ "${moi.ho_va_ten}" cho khách hàng "${thongTinKhachHang?.ten_khach_hang ?? moi.khach_hang_id}"`
   );
   return moi;
 };
@@ -232,19 +233,56 @@ export const capNhatNguoiLienHe = async (
 
 export const xoaNguoiLienHe = async (
   id: string,
-  nguoiThucHien: Pick<NhanSu, 'id'> | null | undefined
+  nguoiThucHien: Pick<NhanSu, 'id'> | null | undefined,
+  hoVaTenCu?: string | null
 ): Promise<void> => {
   const hienTai = await layChiTietNguoiLienHe(id);
-  if (!hienTai) return;
+  if (!hienTai && !hoVaTenCu) return;
   await deleteDoc(thamChieuBanGhi(TEN_COLLECTION, id));
   dongBoXoaCacheNLH(id);
   void ghiNhatKyHoatDong(
     nguoiThucHien?.id,
     'khach_hang',
     'xoa',
-    hienTai.khach_hang_id,
-    `Xóa liên hệ "${hienTai.ho_va_ten}"`
+    hienTai?.khach_hang_id ?? id,
+    `Xóa liên hệ "${hienTai?.ho_va_ten ?? hoVaTenCu ?? id}"`
   );
+};
+
+export const layDanhSachNguoiLienHeTheoKhachHang = async (
+  khach_hang_id: string
+): Promise<NguoiLienHe[]> => {
+  if (!khach_hang_id) return [];
+  const cached = layCacheNguoiLienHeDongBo({ khach_hang_id });
+  if (cached) {
+    const mang = [...cached.mang];
+    mang.sort((a, b) => (b.ngay_tao ?? '').localeCompare(a.ngay_tao ?? ''));
+    return mang;
+  }
+  const q = query(
+    thamChieuCollection(TEN_COLLECTION),
+    where('khach_hang_id', '==', khach_hang_id)
+  );
+  const snap = await getDocs(q);
+  const mang = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+  mang.sort((a, b) => (b.ngay_tao ?? '').localeCompare(a.ngay_tao ?? ''));
+  return mang;
+};
+
+export const langNgheThayDoiNguoiLienHeTheoKhachHang = (
+  khach_hang_id: string,
+  callback: (mang: NguoiLienHe[]) => void
+): (() => void) => {
+  if (!khach_hang_id) return () => {};
+  const q = query(
+    thamChieuCollection(TEN_COLLECTION),
+    where('khach_hang_id', '==', khach_hang_id)
+  );
+  return onSnapshot(q, (snap) => {
+    const mang = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+    mang.sort((a, b) => (b.ngay_tao ?? '').localeCompare(a.ngay_tao ?? ''));
+    callback(mang);
+  });
 };
 
 export const langNgheThayDoiDanhSachNguoiLienHe = (

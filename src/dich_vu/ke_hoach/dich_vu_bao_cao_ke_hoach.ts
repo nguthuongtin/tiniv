@@ -22,24 +22,6 @@ import {
 const COLLECTION_BC_TUAN = 'bao_cao_ke_hoach_tuan' as const;
 const COLLECTION_BC_THANG = 'bao_cao_ke_hoach_thang' as const;
 
-// Helper localStorage cache
-const layCacheLocal = <T>(key: string): T | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
-const luuCacheLocal = <T>(key: string, val: T): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(key, JSON.stringify(val));
-  } catch { /* ignore */ }
-};
-
 function loaiBoUndefined<T extends Record<string, any>>(obj: T): T {
   if (obj === null || typeof obj !== 'object') return obj;
   const res: any = Array.isArray(obj) ? [] : {};
@@ -61,10 +43,6 @@ export const layBaoCaoKeHoachTuan = async (
   nhanVienId: string,
   tuan: string
 ): Promise<BaoCaoKeHoachTuan | null> => {
-  const cacheKey = `ebms_bc_kh_tuan_${nhanVienId}_${tuan}`;
-  let itemRemote: BaoCaoKeHoachTuan | null = null;
-  let remoteFound = false;
-
   try {
     const q = query(
       thamChieuCollection(COLLECTION_BC_TUAN),
@@ -81,20 +59,13 @@ export const layBaoCaoKeHoachTuan = async (
     });
 
     if (foundDoc) {
-      remoteFound = true;
-      itemRemote = { id: foundDoc.id, ...(foundDoc.data() as Omit<BaoCaoKeHoachTuan, 'id'>) };
+      return { id: foundDoc.id, ...(foundDoc.data() as Omit<BaoCaoKeHoachTuan, 'id'>) };
     }
   } catch (err) {
     console.warn('[dich_vu_bao_cao_ke_hoach] layBaoCaoKeHoachTuan Firestore catch:', err);
   }
 
-  if (remoteFound && itemRemote) {
-    luuCacheLocal(cacheKey, itemRemote);
-    return itemRemote;
-  }
-
-  const itemLocal = layCacheLocal<BaoCaoKeHoachTuan>(cacheKey);
-  return itemRemote || itemLocal;
+  return null;
 };
 
 export const luuBaoCaoKeHoachTuan = async (
@@ -107,7 +78,6 @@ export const luuBaoCaoKeHoachTuan = async (
 ): Promise<BaoCaoKeHoachTuan> => {
   const now = new Date().toISOString();
   const docId = bc.id || null;
-  const cacheKey = `ebms_bc_kh_tuan_${bc.nhan_vien_id}_${bc.tuan}`;
 
   const rawCopy = { ...bc };
   delete rawCopy.id;
@@ -151,7 +121,6 @@ export const luuBaoCaoKeHoachTuan = async (
     };
   }
 
-  luuCacheLocal(cacheKey, ketQua);
   return ketQua;
 };
 
@@ -182,10 +151,6 @@ export const layBaoCaoKeHoachThang = async (
   nhanVienId: string,
   thang: string
 ): Promise<BaoCaoKeHoachThang | null> => {
-  const cacheKey = `ebms_bc_kh_thang_${nhanVienId}_${thang}`;
-  let itemRemote: BaoCaoKeHoachThang | null = null;
-  let remoteFound = false;
-
   try {
     const q = query(
       thamChieuCollection(COLLECTION_BC_THANG),
@@ -202,20 +167,13 @@ export const layBaoCaoKeHoachThang = async (
     });
 
     if (foundDoc) {
-      remoteFound = true;
-      itemRemote = { id: foundDoc.id, ...(foundDoc.data() as Omit<BaoCaoKeHoachThang, 'id'>) };
+      return { id: foundDoc.id, ...(foundDoc.data() as Omit<BaoCaoKeHoachThang, 'id'>) };
     }
   } catch (err) {
     console.warn('[dich_vu_bao_cao_ke_hoach] layBaoCaoKeHoachThang Firestore catch:', err);
   }
 
-  if (remoteFound && itemRemote) {
-    luuCacheLocal(cacheKey, itemRemote);
-    return itemRemote;
-  }
-
-  const itemLocal = layCacheLocal<BaoCaoKeHoachThang>(cacheKey);
-  return itemRemote || itemLocal;
+  return null;
 };
 
 export const luuBaoCaoKeHoachThang = async (
@@ -228,7 +186,6 @@ export const luuBaoCaoKeHoachThang = async (
 ): Promise<BaoCaoKeHoachThang> => {
   const now = new Date().toISOString();
   const docId = bc.id || null;
-  const cacheKey = `ebms_bc_kh_thang_${bc.nhan_vien_id}_${bc.thang}`;
 
   const rawCopy = { ...bc };
   delete rawCopy.id;
@@ -272,7 +229,6 @@ export const luuBaoCaoKeHoachThang = async (
     };
   }
 
-  luuCacheLocal(cacheKey, ketQua);
   return ketQua;
 };
 

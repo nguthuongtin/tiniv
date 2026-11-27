@@ -7,7 +7,7 @@ import type { NhanSu } from '../../thu_vien/types/nhan_su';
 import {
   taoNguoiLienHeMoi,
   capNhatNguoiLienHe
-} from '../../dich_vu/khach_hang/dich_vu_nguoi_lien_he';
+} from '../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 
 interface ModalNguoiLienHeProps {
   mo: boolean;

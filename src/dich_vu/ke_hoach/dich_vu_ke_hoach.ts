@@ -26,24 +26,6 @@ import {
 const COLLECTION_THANG = 'ke_hoach_thang' as const;
 const COLLECTION_TUAN = 'ke_hoach_tuan' as const;
 
-// Helper localStorage cache
-const layCacheLocal = <T>(key: string): T | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-
-const luuCacheLocal = <T>(key: string, val: T): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(key, JSON.stringify(val));
-  } catch { /* ignore */ }
-};
-
 // Helper tu dong sanitize tat ca bien undefined truoc khi gui Firestore
 function loaiBoUndefined<T extends Record<string, any>>(obj: T): T {
   if (obj === null || typeof obj !== 'object') return obj;
@@ -66,10 +48,6 @@ export const layKeHoachThang = async (
   nhanVienId: string,
   thang: string
 ): Promise<KeHoachThang | null> => {
-  const cacheKey = `ebms_ke_hoach_thang_${nhanVienId}_${thang}`;
-  let itemRemote: KeHoachThang | null = null;
-  let remoteFound = false;
-
   try {
     const q = query(
       thamChieuCollection(COLLECTION_THANG),
@@ -86,20 +64,13 @@ export const layKeHoachThang = async (
     });
 
     if (foundDoc) {
-      remoteFound = true;
-      itemRemote = { id: foundDoc.id, ...(foundDoc.data() as Omit<KeHoachThang, 'id'>) };
+      return { id: foundDoc.id, ...(foundDoc.data() as Omit<KeHoachThang, 'id'>) };
     }
   } catch (err) {
     console.warn('[dich_vu_ke_hoach] layKeHoachThang Firestore catch:', err);
   }
 
-  if (remoteFound && itemRemote) {
-    luuCacheLocal(cacheKey, itemRemote);
-    return itemRemote;
-  }
-
-  const itemLocal = layCacheLocal<KeHoachThang>(cacheKey);
-  return itemRemote || itemLocal;
+  return null;
 };
 
 export const luuKeHoachThang = async (
@@ -113,7 +84,6 @@ export const luuKeHoachThang = async (
 ): Promise<KeHoachThang> => {
   const now = new Date().toISOString();
   const docId = kh.id || null;
-  const cacheKey = `ebms_ke_hoach_thang_${kh.nhan_vien_id}_${kh.thang}`;
   
   const rawCopy = { ...kh };
   delete rawCopy.id;
@@ -157,7 +127,6 @@ export const luuKeHoachThang = async (
     };
   }
 
-  luuCacheLocal(cacheKey, ketQua);
   return ketQua;
 };
 
@@ -188,10 +157,6 @@ export const layKeHoachTuan = async (
   nhanVienId: string,
   tuan: string
 ): Promise<KeHoachTuan | null> => {
-  const cacheKey = `ebms_ke_hoach_tuan_${nhanVienId}_${tuan}`;
-  let itemRemote: KeHoachTuan | null = null;
-  let remoteFound = false;
-
   try {
     const q = query(
       thamChieuCollection(COLLECTION_TUAN),
@@ -208,20 +173,13 @@ export const layKeHoachTuan = async (
     });
 
     if (foundDoc) {
-      remoteFound = true;
-      itemRemote = { id: foundDoc.id, ...(foundDoc.data() as Omit<KeHoachTuan, 'id'>) };
+      return { id: foundDoc.id, ...(foundDoc.data() as Omit<KeHoachTuan, 'id'>) };
     }
   } catch (err) {
     console.warn('[dich_vu_ke_hoach] layKeHoachTuan Firestore catch:', err);
   }
 
-  if (remoteFound && itemRemote) {
-    luuCacheLocal(cacheKey, itemRemote);
-    return itemRemote;
-  }
-
-  const itemLocal = layCacheLocal<KeHoachTuan>(cacheKey);
-  return itemRemote || itemLocal;
+  return null;
 };
 
 export const luuKeHoachTuan = async (
@@ -235,7 +193,6 @@ export const luuKeHoachTuan = async (
 ): Promise<KeHoachTuan> => {
   const now = new Date().toISOString();
   const docId = kh.id || null;
-  const cacheKey = `ebms_ke_hoach_tuan_${kh.nhan_vien_id}_${kh.tuan}`;
 
   const rawCopy = { ...kh };
   delete rawCopy.id;
@@ -279,7 +236,6 @@ export const luuKeHoachTuan = async (
     };
   }
 
-  luuCacheLocal(cacheKey, ketQua);
   return ketQua;
 };
 
@@ -296,23 +252,6 @@ export const danhSachKeHoachTuanTheoFilter = async (
       .filter((x) => x.trang_thai_du_lieu === 'hoat_dong' || !x.trang_thai_du_lieu);
   } catch (err) {
     console.warn('[dich_vu_ke_hoach] danhSachKeHoachTuanTheoFilter catch:', err);
-  }
-
-  // Scanner fallback từ localStorage nếu Firestore chưa đồng bộ hoặc offline
-  if (typeof window !== 'undefined' && window.localStorage) {
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('ebms_ke_hoach_tuan_')) {
-          const item = layCacheLocal<KeHoachTuan>(key);
-          if (item && item.tuan === tuan && !res.some((r) => r.nhan_vien_id === item.nhan_vien_id)) {
-            res.push(item);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('localStorage scan error:', e);
-    }
   }
 
   if (chiNhanhId) {

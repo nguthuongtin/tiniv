@@ -41,9 +41,9 @@ import {
 } from '../../../../dich_vu/khach_hang/dich_vu_khach_hang';
 import {
   layDanhSachNguoiLienHeTheoKhachHang,
-  xoaNguoiLienHe
-} from '../../../../dich_vu/khach_hang/dich_vu_nguoi_lien_he';
-import { layCacheNguoiLienHeDongBo } from '../../../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
+  xoaNguoiLienHe,
+  layCacheNguoiLienHeDongBo
+} from '../../../../dich_vu/nguoi_lien_he/dich_vu_nguoi_lien_he';
 import {
   danhSachHoSoDuAn,
   layCacheHoSoDuAnDongBo,
