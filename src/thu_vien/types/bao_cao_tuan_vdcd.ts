@@ -341,35 +341,31 @@ export function tinhSoLieuTuCRM(params: {
   const goiYTiemNang: DongKeHoachDuAnTuan[] = [];
   const goiYSanXuat: DongKeHoachDuAnTuan[] = [];
 
+  const thuocKhoang = (ngayStr: string | null | undefined, tu: string, den: string): boolean => {
+    const d = (ngayStr || '').slice(0, 10);
+    return Boolean(d && d >= tu && d <= den);
+  };
+
   for (const da of dsDuAn) {
     if (da.trang_thai === 'da_xoa') continue;
     const gd = String(da.giai_doan || '');
-    const ngayTao = (da.ngay_tao || '').slice(0, 10);
-    const ngayCapNhat = (da.ngay_cap_nhat || da.ngay_tao || '').slice(0, 10);
-    const trongTuanNay = ngayCapNhat >= infoTuan.ngayBatDau && ngayCapNhat <= infoTuan.ngayKetThuc;
-    const coTacNghiepTrongTuan =
-      trongTuanNay || (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc);
+    const ngayTao = (da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10);
 
-    // Slide 3: Tình trạng dự án Triển khai trong tuần
-    // - Chỉ tính các dự án có triển khai / tác nghiệp / cập nhật hoặc tạo mới trong tuần
+    // Chỉ tính các dự án thực sự phát sinh mốc trong tuần (tạo mới, tiếp cận, gửi báo giá, hoặc ký HĐ)
+    // Tuyệt đối không dùng ngay_cap_nhat để tránh đếm lại dự án cũ khi sửa ghi chú
     const coHoatDongTrongTuan =
-      coTacNghiepTrongTuan ||
-      (ngayCapNhat >= infoTuan.ngayBatDau && ngayCapNhat <= infoTuan.ngayKetThuc) ||
-      (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc);
+      thuocKhoang(ngayTao, infoTuan.ngayBatDau, infoTuan.ngayKetThuc) ||
+      thuocKhoang(da.ngay_tiep_can, infoTuan.ngayBatDau, infoTuan.ngayKetThuc) ||
+      thuocKhoang(da.ngay_gui_bao_gia, infoTuan.ngayBatDau, infoTuan.ngayKetThuc) ||
+      thuocKhoang(da.ngay_ky_hop_dong, infoTuan.ngayBatDau, infoTuan.ngayKetThuc);
 
-    const daKetThucKyTruoc =
-      (gd === 'hoan_thanh' || gd === 'hoan_thanh_tt_dot_2' || gd === 'nghiem_thu' || GIAI_DOAN_KHONG_PHU_HOP.has(gd)) &&
-      ngayCapNhat < infoTuan.ngayBatDau;
-
-    if (coHoatDongTrongTuan && !daKetThucKyTruoc) {
+    if (coHoatDongTrongTuan) {
       if (GIAI_DOAN_KHONG_PHU_HOP.has(gd)) {
         tinhTrang.khong_phu_hop += 1;
       } else if (GIAI_DOAN_HOP_DONG.has(gd)) {
         tinhTrang.hop_dong += 1;
       } else if (GIAI_DOAN_BAO_GIA.has(gd)) {
         tinhTrang.bao_gia += 1;
-      } else if (GIAI_DOAN_DANG_TIEP_CAN.has(gd)) {
-        tinhTrang.dang_tiep_can += 1;
       } else {
         tinhTrang.dang_tiep_can += 1;
       }
@@ -387,22 +383,23 @@ export function tinhSoLieuTuCRM(params: {
     const tenDonVi =
       (da.chi_nhanh_id && mapCN.get(da.chi_nhanh_id)) ||
       (da.nguoi_phu_trach_id && mapNS.get(da.nguoi_phu_trach_id)) ||
-      'An Giang';
+      '—';
 
     const gtHD = Number(da.gia_tri_hop_dong || 0);
     const gtDuKien = Number(da.gia_tri_du_kien || 0);
     const tienVe = Number(da.tien_ve_thuc_te || 0);
+    const mocKyHD = da.ngay_ky_hop_dong || (GIAI_DOAN_HOP_DONG.has(gd) ? ngayTao : '');
 
     if (GIAI_DOAN_HOP_DONG.has(gd) && (gtHD > 0 || tienVe > 0)) {
-      if (ngayCapNhat >= dauNam && ngayCapNhat <= infoTuan.ngayKetThuc) {
+      if (thuocKhoang(mocKyHD, dauNam, infoTuan.ngayKetThuc)) {
         ytdKy += gtHD;
         ytdVe += tienVe;
       }
-      if (ngayCapNhat >= dauThang && ngayCapNhat <= infoTuan.ngayKetThuc) {
+      if (thuocKhoang(mocKyHD, dauThang, infoTuan.ngayKetThuc)) {
         mtdKy += gtHD;
         mtdVe += tienVe;
       }
-      if (trongTuanNay) {
+      if (thuocKhoang(mocKyHD, infoTuan.ngayBatDau, infoTuan.ngayKetThuc)) {
         dtTuanKy += gtHD;
         dtTuanVe += tienVe;
         chiTietDoanhThu.push({
@@ -505,7 +502,7 @@ export function taoBaoCaoTuanMacDinh(params: {
     nhan_vien_id: nhanSu.id,
     ten_nhan_vien: nhanSu.ho_va_ten || 'Nhân viên',
     chi_nhanh_id: nhanSu.chi_nhanh_id || null,
-    ten_chi_nhanh: tenChiNhanh || 'An Giang',
+    ten_chi_nhanh: tenChiNhanh || '',
     phong_ban_id: nhanSu.phong_ban_id || null,
 
     dt_tuan_ky_ket: goiY.dt_tuan_ky_ket,
@@ -543,7 +540,7 @@ export function taoBaoCaoTuanMacDinh(params: {
     // Khởi tạo KPI tuần qua từ thực tế CRM & Mục tiêu tuần trước
     kpi_tuan_qua: {
       khach_moi_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.khach_moi?.target ?? 20,
-      khach_moi_thuc_te: goiY.tinh_trang_tuan_nay.dang_tiep_can ?? 0,
+      khach_moi_thuc_te: 0,
       bao_gia_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.bao_gia?.target ?? 4,
       bao_gia_thuc_te: goiY.tinh_trang_tuan_nay.bao_gia ?? 0,
       du_an_lam_viec_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.du_an_lam_viec?.target ?? baoCaoTuanTruoc?.cam_ket_tuan_toi?.cuoc_hen?.target ?? 5,
@@ -551,7 +548,7 @@ export function taoBaoCaoTuanMacDinh(params: {
       hop_dong_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.hop_dong?.target ?? 4,
       hop_dong_thuc_te: goiY.tinh_trang_tuan_nay.hop_dong ?? 0,
       doanh_so_muc_tieu: baoCaoTuanTruoc?.cam_ket_tuan_toi?.doanh_so?.target ?? 150000000,
-      doanh_so_thuc_te: (goiY.dt_tuan_ky_ket || 0) + (goiY.dt_tuan_tien_ve || 0),
+      doanh_so_thuc_te: goiY.dt_tuan_tien_ve > 0 ? goiY.dt_tuan_tien_ve : (goiY.dt_tuan_ky_ket || 0),
       cuoc_gap_muc_tieu: 0,
       cuoc_gap_thuc_te: 0
     },

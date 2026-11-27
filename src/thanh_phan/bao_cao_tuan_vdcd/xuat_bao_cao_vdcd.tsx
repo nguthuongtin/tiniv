@@ -552,7 +552,7 @@ const ModalXuatBaoCaoVDCD: React.FC<Props> = ({
         const daMT = Number(k?.du_an_lam_viec_muc_tieu ?? 0);
         const hdTT = Number(k?.hop_dong_thuc_te ?? x.baoCao.tinh_trang_tuan_nay?.hop_dong ?? 0);
         const hdMT = Number(k?.hop_dong_muc_tieu ?? 0);
-        const dsTT = Number(k?.doanh_so_thuc_te ?? (x.baoCao.dt_tuan_ky_ket || 0) + (x.baoCao.dt_tuan_tien_ve || 0));
+        const dsTT = Number(k?.doanh_so_thuc_te ?? (x.baoCao.dt_tuan_ky_ket || 0));
         const dsMT = Number(k?.doanh_so_muc_tieu ?? 0);
 
         acc.tiepCanTT += kmTT;

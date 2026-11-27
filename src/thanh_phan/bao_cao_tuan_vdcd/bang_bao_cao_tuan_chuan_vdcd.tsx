@@ -249,152 +249,60 @@ export default function BangBaoCaoTuanChuanVDCD({
   }, [dsDuAn, nhanSu, laTruongPhongKD]);
 
   // --------------------------------------------------------------------------
-  // CƠ CHẾ THEO DÕI TỰ ĐỘNG THÔNG MINH TỪ BÀN LÀM VIỆC & CRM (KHỐI I)
-  // Thứ tự 5 chỉ số:
-  // 1. Số lượng KH mới tiếp cận (từ Bàn làm việc & Lịch gặp)
-  // 2. Tổng số báo giá đã gửi trong tuần (dự án chuyển sang báo giá & việc gửi BG)
-  // 3. Tổng số dự án đã làm việc trong tuần (tập hợp dự án có tác nghiệp/bám sát)
-  // 4. Số hợp đồng ký kết trong tuần (sự kiện ký HĐ thật sự & việc hoàn thành)
-  // 5. Tổng doanh thu đã thu về trong tuần (Doanh số HĐ mới ký + dòng tiền thực về)
+  // CƠ CHẾ TỔNG HỢP 5 CHỈ SỐ PHỄU BÁN HÀNG TỪ DỮ LIỆU TƯỜNG MINH (KHỐI I)
+  // Nguyên tắc: Chỉ dựa vào mốc ngày nghiệp vụ & phân loại tường minh,
+  // KHÔNG quét từ khóa text tự do, KHÔNG dựa vào ngay_cap_nhat để tránh đếm lại dự án cũ.
   // --------------------------------------------------------------------------
   const soLieuThucTeTuBanLamViec = useMemo(() => {
     const viecTuanNay = keHoachTuanNay?.danh_sach_tac_chien || [];
+    const thuocTuan = (ngayStr?: string | null): boolean => {
+      const d = (ngayStr || '').slice(0, 10);
+      return Boolean(d && d >= infoTuan.ngayBatDau && d <= infoTuan.ngayKetThuc);
+    };
+    const lichHopLeTrongTuan = dsLichGap.filter(
+      (l) =>
+        !l.da_xoa &&
+        l.trang_thai !== 'huy' &&
+        l.trang_thai !== 'doi_lich' &&
+        thuocTuan(l.ngay) &&
+        (l.nguoi_phu_trach_id === nhanSu.id ||
+          l.nguoi_tao_id === nhanSu.id ||
+          (Array.isArray(l.nguoi_tham_gia_ids) && l.nguoi_tham_gia_ids.includes(nhanSu.id)))
+    );
 
     // 1. Khách hàng mới tiếp cận:
-    // Căn cứ vào Lịch công tác:
-    // - Lịch gặp có dấu check tiếp cận KH mới (la_tiep_can_moi)
-    // - Hoặc KH trong lịch gặp CHƯA BAO GIỜ GẶP TRƯỚC ĐÂY (không có cuộc gặp nào trong quá khứ trước tuần này)
-    // - Hoặc KH mới được tạo trên CRM trong tuần
-    // - Bàn làm việc có tác nghiệp tạo KH mới / tiếp cận KH mới
-    const khDaTungGapTruocTuanNay = new Set<string>();
-    dsLichGap.forEach((l) => {
-      if (!l.da_xoa && l.ngay < infoTuan.ngayBatDau) {
-        if (l.khach_hang_id) khDaTungGapTruocTuanNay.add(l.khach_hang_id);
-        const tenNorm = (l.ten_khach_hang || '').toLowerCase().trim();
-        if (tenNorm) khDaTungGapTruocTuanNay.add(tenNorm);
-      }
-    });
-
+    // - Lịch công tác trong tuần được đánh dấu tường minh la_tiep_can_moi === true
+    // - Khách hàng thuộc phụ trách/tạo bởi nhân sự có ngay_tao trong tuần
+    // - Nhật ký Bàn làm việc trong tuần có loai_tac_nghiep === 'tao_khach_hang'
     const mapKhachMoi = new Map<string, MucChiTietKPI>();
 
-    // 1.1 Quét từ Lịch công tác trong tuần
-    dsLichGap.forEach((l) => {
-      if (
-        l.da_xoa ||
-        l.ngay < infoTuan.ngayBatDau ||
-        l.ngay > infoTuan.ngayKetThuc ||
-        (l.nguoi_phu_trach_id !== nhanSu.id &&
-          l.nguoi_tao_id !== nhanSu.id &&
-          (!Array.isArray(l.nguoi_tham_gia_ids) || !l.nguoi_tham_gia_ids.includes(nhanSu.id)))
-      ) {
-        return;
-      }
-
+    lichHopLeTrongTuan.forEach((l) => {
+      if (!l.la_tiep_can_moi) return;
       const tenNorm = (l.ten_khach_hang || '').toLowerCase().trim();
-      const chuaTungGapTruocDay =
-        (!l.khach_hang_id || !khDaTungGapTruocTuanNay.has(l.khach_hang_id)) &&
-        (!tenNorm || !khDaTungGapTruocTuanNay.has(tenNorm));
-
-      const khObj = l.khach_hang_id ? mapKH.get(l.khach_hang_id) : null;
-      const khMoiTaoTrongTuan = khObj && (khObj.ngay_tao || '').slice(0, 10) >= infoTuan.ngayBatDau;
-
-      const txt = (
-        (l.tieu_de || '') + ' ' +
-        (l.noi_dung || '') + ' ' +
-        (l.ket_qua || '') + ' ' +
-        (l.ten_khach_hang || '')
-      ).toLowerCase();
-
-      const coTuKhoaTiepCan =
-        txt.includes('tiếp cận') ||
-        txt.includes('kh mới') ||
-        txt.includes('khách mới') ||
-        txt.includes('khách hàng mới') ||
-        txt.includes('chào sân') ||
-        txt.includes('gặp mới') ||
-        txt.includes('làm quen');
-
-      const laTiepCan = Boolean(l.la_tiep_can_moi) || chuaTungGapTruocDay || khMoiTaoTrongTuan || coTuKhoaTiepCan;
-
-      if (laTiepCan) {
-        const key = l.khach_hang_id || tenNorm || `lich_${l.id}`;
-        if (!mapKhachMoi.has(key)) {
-          const lyDo = l.la_tiep_can_moi
-            ? 'Đánh dấu tiếp cận mới'
-            : chuaTungGapTruocDay
-            ? 'Lần đầu tiên gặp KH này'
-            : khMoiTaoTrongTuan
-            ? 'KH mới tạo trong tuần'
-            : 'Nội dung tiếp cận KH mới';
-          mapKhachMoi.set(key, {
-            id: `lich_${l.id}`,
-            tieuDe: l.ten_khach_hang || 'Khách hàng mới',
-            moTa: `Lịch công tác ${l.ngay}${l.gio_bat_dau ? ` [${l.gio_bat_dau}]` : ''}: ${l.noi_dung || l.tieu_de || 'Gặp gỡ trao đổi'} (${lyDo})`,
-            loaiNguon: 'Lịch làm việc',
-            daChon: true
-          });
-        }
+      const key = l.khach_hang_id || tenNorm || `lich_${l.id}`;
+      if (!mapKhachMoi.has(key)) {
+        mapKhachMoi.set(key, {
+          id: `lich_${l.id}`,
+          tieuDe: l.ten_khach_hang || 'Khách hàng mới',
+          moTa: `Lịch công tác ${l.ngay}${l.gio_bat_dau ? ` [${l.gio_bat_dau}]` : ''}: ${l.noi_dung || l.tieu_de || 'Tiếp cận mới'}`,
+          loaiNguon: 'Lịch làm việc',
+          daChon: true
+        });
       }
     });
 
-    // 1.2 Quét từ Bàn làm việc tuần này
-    viecTuanNay.forEach((item) => {
-      const coKqTaoKH =
-        item.danh_sach_ket_qua &&
-        item.danh_sach_ket_qua.some((kq) => kq.loai_tac_nghiep === 'tao_khach_hang');
-      const khObj = item.khach_hang_id ? mapKH.get(item.khach_hang_id) : null;
-      const khMoiTao = khObj && (khObj.ngay_tao || '').slice(0, 10) >= infoTuan.ngayBatDau;
-
-      const txt = (
-        (item.ten_khach_hang_du_an || '') + ' ' +
-        (item.noi_dung_tuan || '') + ' ' +
-        (item.hanh_dong_tuan || '') + ' ' +
-        (item.dau_ra_cam_ket || '')
-      ).toLowerCase();
-
-      const laTiepCanViec =
-        item.loai_cong_viec === 'khach_hang' ||
-        coKqTaoKH ||
-        khMoiTao ||
-        txt.includes('tiếp cận') ||
-        txt.includes('kh mới') ||
-        txt.includes('khách mới') ||
-        txt.includes('tìm khách');
-
-      if (laTiepCanViec) {
-        const key = item.khach_hang_id || (item.ten_khach_hang_du_an || '').toLowerCase().trim() || `viec_${item.id}`;
-        if (!mapKhachMoi.has(key)) {
-          const ht = item.hinh_thuc === 'gap_mat' ? 'Gặp trực tiếp' : item.hinh_thuc === 'goi_dien' ? 'Gọi điện' : 'Tác nghiệp';
-          mapKhachMoi.set(key, {
-            id: `viec_${item.id}`,
-            tieuDe: item.ten_khach_hang_du_an || 'Khách hàng mới',
-            moTa: `Bàn làm việc [${ht}]: ${item.noi_dung_tuan || item.hanh_dong_tuan || 'Tiếp cận khách hàng mới'}`,
-            loaiNguon: 'Bàn làm việc',
-            daChon: true
-          });
-        }
-      }
-    });
-
-    const dsChiTietKhachMoi = Array.from(mapKhachMoi.values());
-    const tongKhachMoi = dsChiTietKhachMoi.length;
-
-    // 2. Tổng số báo giá đã gửi trong tuần
-    const mapBaoGia = new Map<string, MucChiTietKPI>();
-
-    dsDuAnCuaNV.forEach((d) => {
-      const ngayBG = d.ngay_gui_bao_gia || (
-        d.giai_doan === 'bao_gia'
-          ? (d.ngay_cap_nhat || d.ngay_tao_ho_so || d.ngay_tao || '').slice(0, 10)
-          : ''
-      );
-      const trongTuan = ngayBG >= infoTuan.ngayBatDau && ngayBG <= infoTuan.ngayKetThuc;
-
-      if (trongTuan || (d.giai_doan === 'bao_gia' && (d.ngay_cap_nhat || '').slice(0, 10) >= infoTuan.ngayBatDau && (d.ngay_cap_nhat || '').slice(0, 10) <= infoTuan.ngayKetThuc)) {
-        mapBaoGia.set(d.id, {
-          id: `da_bg_${d.id}`,
-          tieuDe: d.ten_du_an,
-          moTa: `Báo giá dự án • Giá trị dự kiến: ${fmtTien(d.gia_tri_du_kien || d.gia_tri_hop_dong)}`,
+    dsKhachHang.forEach((kh) => {
+      if (kh.trang_thai === 'da_xoa') return;
+      const thuocNV =
+        kh.nguoi_phu_trach_id === nhanSu.id ||
+        (!kh.nguoi_phu_trach_id && kh.nguoi_tao_id === nhanSu.id);
+      if (!thuocNV || !thuocTuan(kh.ngay_tao)) return;
+      const key = kh.id;
+      if (!mapKhachMoi.has(key)) {
+        mapKhachMoi.set(key, {
+          id: `kh_${kh.id}`,
+          tieuDe: kh.ten_khach_hang,
+          moTa: `Khách hàng mới tạo trên CRM ngày ${kh.ngay_tao.slice(0, 10)}`,
           loaiNguon: 'Hồ sơ dự án',
           daChon: true
         });
@@ -402,65 +310,64 @@ export default function BangBaoCaoTuanChuanVDCD({
     });
 
     viecTuanNay.forEach((item) => {
-      const txt = (
-        (item.noi_dung_tuan || '') + ' ' +
-        (item.hanh_dong_tuan || '') + ' ' +
-        (item.dau_ra_cam_ket || '')
-      ).toLowerCase();
-
-      const laBaoGia =
-        txt.includes('báo giá') ||
-        txt.includes('gửi bg') ||
-        txt.includes('chào giá') ||
-        txt.includes('lên bg');
-
-      if (laBaoGia) {
-        const key = item.du_an_id || item.khach_hang_id || (item.ten_khach_hang_du_an || 'bg_viec').trim().toLowerCase();
-        if (!mapBaoGia.has(key)) {
-          mapBaoGia.set(key, {
-            id: `viec_bg_${item.id}`,
-            tieuDe: item.ten_khach_hang_du_an || 'Gửi báo giá',
-            moTa: `Bàn làm việc: ${item.noi_dung_tuan || item.hanh_dong_tuan || 'Gửi báo giá'}`,
-            loaiNguon: 'Bàn làm việc',
-            daChon: true
-          });
-        }
-      }
-    });
-    // 2.1 Quét từ Lịch làm việc (việc VP gửi báo giá hoặc lịch gặp báo giá)
-    dsLichGap.forEach((l) => {
-      if (
-        !l.da_xoa &&
-        l.ngay >= infoTuan.ngayBatDau &&
-        l.ngay <= infoTuan.ngayKetThuc &&
-        (l.nguoi_phu_trach_id === nhanSu.id || l.nguoi_tao_id === nhanSu.id)
-      ) {
-        const txt = ((l.tieu_de || '') + ' ' + (l.noi_dung || '') + ' ' + (l.ket_qua || '')).toLowerCase();
-        const laBaoGia =
-          l.loai_viec_vp === 'gui_bao_gia' ||
-          txt.includes('báo giá') ||
-          txt.includes('gửi bg') ||
-          txt.includes('chào giá');
-        if (laBaoGia) {
-          const key = l.du_an_id || l.khach_hang_id || (l.ten_khach_hang || 'bg_lich').trim().toLowerCase();
-          if (!mapBaoGia.has(key)) {
-            mapBaoGia.set(key, {
-              id: `lich_bg_${l.id}`,
-              tieuDe: l.ten_khach_hang || l.tieu_de || 'Gửi báo giá',
-              moTa: `Lịch làm việc ${l.ngay}: ${l.noi_dung || l.tieu_de || 'Gửi báo giá'}`,
-              loaiNguon: 'Lịch làm việc',
-              daChon: true
-            });
-          }
-        }
+      const kqTaoKH = (item.danh_sach_ket_qua || []).find(
+        (kq) => kq.loai_tac_nghiep === 'tao_khach_hang' && (!kq.ngay_ghi_nhan || thuocTuan(kq.ngay_ghi_nhan))
+      );
+      if (!kqTaoKH) return;
+      const key = kqTaoKH.khach_hang_id || item.khach_hang_id || `viec_${item.id}`;
+      if (!mapKhachMoi.has(key)) {
+        mapKhachMoi.set(key, {
+          id: `viec_${item.id}`,
+          tieuDe: kqTaoKH.ten_khach_hang || item.ten_khach_hang_du_an || 'Khách hàng mới',
+          moTa: `Bàn làm việc: ${kqTaoKH.noi_dung || item.noi_dung_tuan || 'Tạo khách hàng mới'}`,
+          loaiNguon: 'Bàn làm việc',
+          daChon: true
+        });
       }
     });
 
+    const dsChiTietKhachMoi = Array.from(mapKhachMoi.values());
+    const tongKhachMoi = dsChiTietKhachMoi.length;
+
+    // 2. Tổng số báo giá đã gửi trong tuần:
+    // - Dự án có ngay_gui_bao_gia trong tuần (hoặc giai_doan === 'bao_gia' và ngay_tao_ho_so trong tuần)
+    // - Lịch làm việc VP có loai_viec_vp === 'gui_bao_gia' trong tuần
+    const mapBaoGia = new Map<string, MucChiTietKPI>();
+
+    dsDuAnCuaNV.forEach((d) => {
+      const ngayBG = d.ngay_gui_bao_gia || (d.giai_doan === 'bao_gia' ? (d.ngay_tao_ho_so || d.ngay_tao) : '');
+      if (thuocTuan(ngayBG)) {
+        mapBaoGia.set(d.id, {
+          id: `da_bg_${d.id}`,
+          tieuDe: d.ten_du_an,
+          moTa: `Gửi báo giá (${(ngayBG || '').slice(0, 10)}) • Giá trị dự kiến: ${fmtTien(d.gia_tri_du_kien || d.gia_tri_hop_dong)}`,
+          loaiNguon: 'Hồ sơ dự án',
+          daChon: true
+        });
+      }
+    });
+
+    lichHopLeTrongTuan.forEach((l) => {
+      if (l.loai_viec_vp !== 'gui_bao_gia') return;
+      const key = l.du_an_id || l.khach_hang_id || `lich_bg_${l.id}`;
+      if (!mapBaoGia.has(key)) {
+        mapBaoGia.set(key, {
+          id: `lich_bg_${l.id}`,
+          tieuDe: l.ten_khach_hang || l.tieu_de || 'Gửi báo giá',
+          moTa: `Lịch làm việc ${l.ngay}: ${l.noi_dung || l.tieu_de || 'Gửi báo giá'}`,
+          loaiNguon: 'Lịch làm việc',
+          daChon: true
+        });
+      }
+    });
 
     const dsChiTietBaoGia = Array.from(mapBaoGia.values());
     const tongBaoGia = dsChiTietBaoGia.length;
 
-    // 3. Tổng số dự án đã làm việc trong tuần
+    // 3. Tổng số dự án đã làm việc trong tuần:
+    // - Dự án gắn với công việc trên Bàn làm việc tuần này
+    // - Dự án gắn với Lịch công tác hợp lệ trong tuần
+    // - Dự án có mốc tạo mới / tiếp cận / gửi báo giá / ký HĐ trong tuần
     const mapDuAnLamViec = new Map<string, MucChiTietKPI>();
 
     viecTuanNay.forEach((item) => {
@@ -478,14 +385,8 @@ export default function BangBaoCaoTuanChuanVDCD({
       }
     });
 
-    dsLichGap.forEach((l) => {
-      if (
-        !l.da_xoa &&
-        l.ngay >= infoTuan.ngayBatDau &&
-        l.ngay <= infoTuan.ngayKetThuc &&
-        (l.nguoi_phu_trach_id === nhanSu.id || l.nguoi_tao_id === nhanSu.id) &&
-        l.du_an_id
-      ) {
+    lichHopLeTrongTuan.forEach((l) => {
+      if (l.du_an_id) {
         const da = dsDuAnCuaNV.find((d) => d.id === l.du_an_id);
         if (da && !mapDuAnLamViec.has(da.id)) {
           mapDuAnLamViec.set(da.id, {
@@ -500,16 +401,16 @@ export default function BangBaoCaoTuanChuanVDCD({
     });
 
     dsDuAnCuaNV.forEach((da) => {
-      const ngayTao = (da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10);
-      const ngayCN = (da.ngay_cap_nhat || '').slice(0, 10);
-      const coCapNhat =
-        (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc) ||
-        (ngayCN >= infoTuan.ngayBatDau && ngayCN <= infoTuan.ngayKetThuc);
-      if (coCapNhat && !mapDuAnLamViec.has(da.id)) {
+      const coMocTrongTuan =
+        thuocTuan(da.ngay_tao_ho_so || da.ngay_tao) ||
+        thuocTuan(da.ngay_tiep_can) ||
+        thuocTuan(da.ngay_gui_bao_gia) ||
+        thuocTuan(da.ngay_ky_hop_dong);
+      if (coMocTrongTuan && !mapDuAnLamViec.has(da.id)) {
         mapDuAnLamViec.set(da.id, {
           id: `da_lam_${da.id}`,
           tieuDe: da.ten_du_an,
-          moTa: `Cập nhật tiến độ dự án • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
+          moTa: `Phát sinh mốc dự án trong tuần • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
           loaiNguon: 'Hồ sơ dự án',
           daChon: true
         });
@@ -519,23 +420,19 @@ export default function BangBaoCaoTuanChuanVDCD({
     const dsChiTietDuAnLamViec = Array.from(mapDuAnLamViec.values());
     const tongDuAnDaLamViec = dsChiTietDuAnLamViec.length;
 
-    // 4. Số hợp đồng ký kết trong tuần
+    // 4. Số hợp đồng ký kết trong tuần:
+    // Chỉ tính dự án có ngay_ky_hop_dong rơi vào tuần (hoặc mới tạo ở giai đoạn ky_hop_dong trong tuần)
     const mapHopDong = new Map<string, MucChiTietKPI>();
 
     dsDuAnCuaNV.forEach((da) => {
-      const ngayKy = da.ngay_ky_hop_dong || (
-        (da.giai_doan === 'ky_hop_dong' || da.giai_doan === 'tt_dot_1' || da.giai_doan === 'trien_khai')
-          ? (da.ngay_cap_nhat || da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10)
-          : ''
-      );
-      const trongTuan = ngayKy >= infoTuan.ngayBatDau && ngayKy <= infoTuan.ngayKetThuc;
+      const ngayKy = da.ngay_ky_hop_dong || (da.giai_doan === 'ky_hop_dong' ? (da.ngay_tao_ho_so || da.ngay_tao) : '');
       const giaTriHD = Number(da.gia_tri_hop_dong || 0);
 
-      if (trongTuan && giaTriHD > 0) {
+      if (thuocTuan(ngayKy) && giaTriHD > 0) {
         mapHopDong.set(da.id, {
           id: `hd_${da.id}`,
           tieuDe: `Hợp đồng: ${da.ten_du_an}`,
-          moTa: `Ký kết thành công ${ngayKy ? `(Ngày ${ngayKy})` : ''} • Giá trị: ${fmtTien(giaTriHD)} • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
+          moTa: `Ký kết ngày ${(ngayKy || '').slice(0, 10)} • Giá trị: ${fmtTien(giaTriHD)} • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
           loaiNguon: 'Hồ sơ dự án',
           soTien: giaTriHD,
           daChon: true
@@ -543,102 +440,20 @@ export default function BangBaoCaoTuanChuanVDCD({
       }
     });
 
-    viecTuanNay.forEach((item) => {
-      const txt = (
-        (item.noi_dung_tuan || '') + ' ' +
-        (item.hanh_dong_tuan || '') + ' ' +
-        (item.dau_ra_cam_ket || '')
-      ).toLowerCase();
-      const laViecKyHD =
-        txt.includes('ký hợp đồng') ||
-        txt.includes('ký hđ') ||
-        txt.includes('chốt hđ') ||
-        txt.includes('chốt hợp đồng');
-      const daXong = item.da_hoan_thanh || item.trang_thai_ket_qua === 'dat_muc_tieu';
-
-      if (laViecKyHD && daXong) {
-        const key = item.du_an_id || item.khach_hang_id || (item.ten_khach_hang_du_an || 'hd_viec').trim().toLowerCase();
-        if (!mapHopDong.has(key)) {
-          mapHopDong.set(key, {
-            id: `hd_viec_${item.id}`,
-            tieuDe: item.ten_khach_hang_du_an || 'Ký hợp đồng mới',
-            moTa: `Bàn làm việc: ${item.noi_dung_tuan || item.hanh_dong_tuan} (Đã hoàn thành)`,
-            loaiNguon: 'Bàn làm việc',
-            soTien: 0,
-            daChon: true
-          });
-        }
-      }
-    });
-    // 4.1 Quét từ Lịch làm việc (soạn / chốt hợp đồng)
-    dsLichGap.forEach((l) => {
-      if (
-        !l.da_xoa &&
-        l.ngay >= infoTuan.ngayBatDau &&
-        l.ngay <= infoTuan.ngayKetThuc &&
-        (l.nguoi_phu_trach_id === nhanSu.id || l.nguoi_tao_id === nhanSu.id)
-      ) {
-        const txt = ((l.tieu_de || '') + ' ' + (l.noi_dung || '') + ' ' + (l.ket_qua || '')).toLowerCase();
-        const laHopDong =
-          l.loai_viec_vp === 'soan_hop_dong' ||
-          txt.includes('ký hợp đồng') ||
-          txt.includes('ký hđ') ||
-          txt.includes('chốt hđ') ||
-          txt.includes('chốt hợp đồng');
-        const daXong = l.trang_thai === 'da_hoan_thanh' || Boolean(l.ket_qua);
-        if (laHopDong && daXong) {
-          const key = l.du_an_id || l.khach_hang_id || (l.ten_khach_hang || 'hd_lich').trim().toLowerCase();
-          if (!mapHopDong.has(key)) {
-            mapHopDong.set(key, {
-              id: `lich_hd_${l.id}`,
-              tieuDe: l.ten_khach_hang || l.tieu_de || 'Ký kết hợp đồng',
-              moTa: `Lịch làm việc ${l.ngay}: ${l.noi_dung || l.tieu_de || 'Ký kết hợp đồng'}${l.ket_qua ? ` (KQ: ${l.ket_qua})` : ''}`,
-              loaiNguon: 'Lịch làm việc',
-              soTien: 0,
-              daChon: true
-            });
-          }
-        }
-      }
-    });
-
-
     const dsChiTietHopDong = Array.from(mapHopDong.values());
     const tongHopDong = dsChiTietHopDong.length;
 
-    // 5. Tổng doanh thu đã thu về trong tuần
+    // 5. Doanh số ký kết trong tuần (không cộng trùng gia_tri_hop_dong + tien_ve_thuc_te lũy kế)
     const mapDoanhThu = new Map<string, MucChiTietKPI>();
 
-    // 5.1 Doanh số từ hợp đồng mới ký
     dsChiTietHopDong.forEach((hd) => {
       if (hd.soTien && hd.soTien > 0) {
         mapDoanhThu.set(hd.id, {
           id: `dt_${hd.id}`,
           tieuDe: hd.tieuDe,
-          moTa: `Doanh số từ hợp đồng ký mới: ${fmtTien(hd.soTien)}`,
+          moTa: `Giá trị hợp đồng ký mới trong tuần: ${fmtTien(hd.soTien)}`,
           loaiNguon: 'Hợp đồng ký mới',
           soTien: hd.soTien,
-          daChon: true
-        });
-      }
-    });
-
-    // 5.2 Dòng tiền về thực tế trong tuần (tien_ve_thuc_te)
-    dsDuAnCuaNV.forEach((da) => {
-      const ngayTao = (da.ngay_tao_ho_so || da.ngay_tao || '').slice(0, 10);
-      const ngayCN = (da.ngay_cap_nhat || '').slice(0, 10);
-      const trongTuan =
-        (ngayTao >= infoTuan.ngayBatDau && ngayTao <= infoTuan.ngayKetThuc) ||
-        (ngayCN >= infoTuan.ngayBatDau && ngayCN <= infoTuan.ngayKetThuc);
-      const tienThucTe = Number(da.tien_ve_thuc_te || 0);
-
-      if (trongTuan && tienThucTe > 0 && !mapDoanhThu.has(`dt_hd_${da.id}`)) {
-        mapDoanhThu.set(`tienve_${da.id}`, {
-          id: `dt_tienve_${da.id}`,
-          tieuDe: `Dòng tiền về: ${da.ten_du_an}`,
-          moTa: `Thực thu đợt thanh toán: ${fmtTien(tienThucTe)} • Giai đoạn: ${layCauHinhGiaiDoanTheoKey(da.giai_doan).nhan_day_du}`,
-          loaiNguon: 'Dòng tiền về thực tế',
-          soTien: tienThucTe,
           daChon: true
         });
       }
@@ -650,17 +465,17 @@ export default function BangBaoCaoTuanChuanVDCD({
     return {
       khachMoi: {
         thucTe: tongKhachMoi,
-        chiTiet: `${tongKhachMoi} KH mới (quét từ Lịch làm việc & CRM)`,
+        chiTiet: `${tongKhachMoi} KH mới (Lịch tiếp cận mới & CRM)`,
         danhSach: dsChiTietKhachMoi
       },
       baoGia: {
         thucTe: tongBaoGia,
-        chiTiet: `${tongBaoGia} báo giá (từ mốc dự án & công việc)`,
+        chiTiet: `${tongBaoGia} báo giá (ngày gửi BG & việc gửi BG)`,
         danhSach: dsChiTietBaoGia
       },
       duAnLamViec: {
         thucTe: tongDuAnDaLamViec,
-        chiTiet: `${tongDuAnDaLamViec} dự án có tác nghiệp trong tuần`,
+        chiTiet: `${tongDuAnDaLamViec} dự án tác nghiệp trong tuần`,
         danhSach: dsChiTietDuAnLamViec
       },
       hopDong: {
@@ -670,11 +485,11 @@ export default function BangBaoCaoTuanChuanVDCD({
       },
       doanhThu: {
         thucTe: tongDoanhThu,
-        chiTiet: `${fmtTien(tongDoanhThu)} (Doanh số HĐ mới & thực thu)`,
+        chiTiet: `${fmtTien(tongDoanhThu)} (Giá trị HĐ ký mới trong tuần)`,
         danhSach: dsChiTietDoanhThu
       }
     };
-  }, [dsDuAnCuaNV, dsLichGap, keHoachTuanNay, infoTuan, nhanSu.id, mapKH]);
+  }, [dsDuAnCuaNV, dsKhachHang, dsLichGap, keHoachTuanNay, infoTuan, nhanSu.id]);
 
   // Kế hoạch tuần trước lấy từ Cam kết tuần trước (Khối III của tuần trước đưa qua)
   const mucTieuMacDinhTuTuanTruoc = useMemo(() => {
@@ -793,15 +608,15 @@ export default function BangBaoCaoTuanChuanVDCD({
     });
   };
 
-  // Khởi tạo số liệu: Luôn ưu tiên hiển thị số liệu thực tế sống động từ hệ thống
-  // Đảm bảo số hiển thị trên ô Thực tế ĐẠT luôn khớp 100% với danh sách Drill-down khi mở popup
-  // Chỉ dùng số đã lưu nếu người dùng đã chủ động chỉnh sửa (daSuaTay === true)
+  // Khởi tạo số liệu: Nếu báo cáo đã nộp/đã duyệt thì luôn giữ nguyên snapshot đã chốt;
+  // nếu chưa nộp thì ưu tiên số liệu thực tế hoặc số đã sửa tay.
   useEffect(() => {
     const k = baoCaoHienTai?.kpi_tuan_qua as any;
+    const daChot = baoCaoHienTai?.trang_thai === 'da_duyet' || baoCaoHienTai?.trang_thai === 'cho_duyet';
 
     setKpiKhachMoi({
       keHoachTuanTruoc: k?.khach_moi_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.khachMoi,
-      thucTe: (k?.da_sua_tay_khach_moi && typeof k?.khach_moi_thuc_te === 'number')
+      thucTe: ((daChot || k?.da_sua_tay_khach_moi) && typeof k?.khach_moi_thuc_te === 'number')
         ? k.khach_moi_thuc_te
         : soLieuThucTeTuBanLamViec.khachMoi.thucTe,
       daSuaTay: Boolean(k?.da_sua_tay_khach_moi)
@@ -809,7 +624,7 @@ export default function BangBaoCaoTuanChuanVDCD({
 
     setKpiBaoGia({
       keHoachTuanTruoc: k?.bao_gia_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.baoGia,
-      thucTe: (k?.da_sua_tay_bao_gia && typeof k?.bao_gia_thuc_te === 'number')
+      thucTe: ((daChot || k?.da_sua_tay_bao_gia) && typeof k?.bao_gia_thuc_te === 'number')
         ? k.bao_gia_thuc_te
         : soLieuThucTeTuBanLamViec.baoGia.thucTe,
       daSuaTay: Boolean(k?.da_sua_tay_bao_gia)
@@ -817,7 +632,7 @@ export default function BangBaoCaoTuanChuanVDCD({
 
     setKpiDuAnLamViec({
       keHoachTuanTruoc: k?.du_an_lam_viec_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.duAnLamViec,
-      thucTe: (k?.da_sua_tay_du_an_lam_viec && typeof k?.du_an_lam_viec_thuc_te === 'number')
+      thucTe: ((daChot || k?.da_sua_tay_du_an_lam_viec) && typeof k?.du_an_lam_viec_thuc_te === 'number')
         ? k.du_an_lam_viec_thuc_te
         : soLieuThucTeTuBanLamViec.duAnLamViec.thucTe,
       daSuaTay: Boolean(k?.da_sua_tay_du_an_lam_viec)
@@ -825,7 +640,7 @@ export default function BangBaoCaoTuanChuanVDCD({
 
     setKpiHopDong({
       keHoachTuanTruoc: k?.hop_dong_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.hopDong,
-      thucTe: (k?.da_sua_tay_hop_dong && typeof k?.hop_dong_thuc_te === 'number')
+      thucTe: ((daChot || k?.da_sua_tay_hop_dong) && typeof k?.hop_dong_thuc_te === 'number')
         ? k.hop_dong_thuc_te
         : soLieuThucTeTuBanLamViec.hopDong.thucTe,
       daSuaTay: Boolean(k?.da_sua_tay_hop_dong)
@@ -833,7 +648,7 @@ export default function BangBaoCaoTuanChuanVDCD({
 
     setKpiDoanhThu({
       keHoachTuanTruoc: k?.doanh_so_muc_tieu ?? k?.doanh_thu_muc_tieu ?? mucTieuMacDinhTuTuanTruoc.doanhThu,
-      thucTe: (k?.da_sua_tay_doanh_so && typeof (k?.doanh_so_thuc_te ?? k?.doanh_thu_thuc_te) === 'number')
+      thucTe: ((daChot || k?.da_sua_tay_doanh_so) && typeof (k?.doanh_so_thuc_te ?? k?.doanh_thu_thuc_te) === 'number')
         ? Number(k.doanh_so_thuc_te ?? k.doanh_thu_thuc_te)
         : soLieuThucTeTuBanLamViec.doanhThu.thucTe,
       daSuaTay: Boolean(k?.da_sua_tay_doanh_so)
@@ -877,21 +692,20 @@ export default function BangBaoCaoTuanChuanVDCD({
   useEffect(() => {
     const idsCoSan = baoCaoHienTai?.du_an_trong_diem_ids || keHoachTuanToi?.du_an_trong_diem_ids;
     if (idsCoSan && idsCoSan.length > 0) {
-      const idHopLe = idsCoSan.filter((id) =>
-        dsDuAnTiemNangCaoNV.some((d) => d.id === id)
-      );
+      // Giữ nguyên danh sách dự án đã lưu trong snapshot tuần (không loại bỏ khi dự án đổi giai đoạn về sau)
+      const idHopLe = idsCoSan.filter((id) => dsDuAnCuaNV.some((d) => d.id === id));
       setIdsDuAnChon(idHopLe.length > 0 ? idHopLe : dsDuAnTiemNangCaoNV.slice(0, 6).map((d) => d.id));
       return;
     }
 
     setIdsDuAnChon(dsDuAnTiemNangCaoNV.slice(0, 6).map((d) => d.id));
-  }, [baoCaoHienTai, keHoachTuanToi, dsDuAnTiemNangCaoNV]);
+  }, [baoCaoHienTai, keHoachTuanToi, dsDuAnCuaNV, dsDuAnTiemNangCaoNV]);
 
   const dsDuAnTrongDiem = useMemo(() => {
     return idsDuAnChon
-      .map((id) => dsDuAnTiemNangCaoNV.find((d) => d.id === id))
+      .map((id) => dsDuAnCuaNV.find((d) => d.id === id))
       .filter(Boolean) as HoSoDuAn[];
-  }, [idsDuAnChon, dsDuAnTiemNangCaoNV]);
+  }, [idsDuAnChon, dsDuAnCuaNV]);
 
   const tongGiaTriDealTrongDiem = useMemo(() => {
     return dsDuAnTrongDiem.reduce((acc, d) => {
@@ -968,8 +782,11 @@ export default function BangBaoCaoTuanChuanVDCD({
   // --------------------------------------------------------------------------
   const [tabChinh, setTabChinh] = useState<'bao_cao' | 'ke_hoach'>('bao_cao');
 
-  // Trạng thái phê duyệt & Điều hành
+  // Trạng thái phê duyệt & Khóa chỉnh sửa
   const laSepXemNhanVien = laQuanLy && nhanSu.id !== nguoiDungHienTaiId;
+  const khoaChinhSua =
+    baoCaoHienTai?.trang_thai === 'da_duyet' ||
+    (!laSepXemNhanVien && baoCaoHienTai?.trang_thai === 'cho_duyet');
   const [modalYeuCauDieuChinh, setModalYeuCauDieuChinh] = useState(false);
   const [ghiChuYeuCau, setGhiChuYeuCau] = useState('');
   const [dangDuyet, setDangDuyet] = useState(false);
@@ -1031,10 +848,8 @@ export default function BangBaoCaoTuanChuanVDCD({
   const [ghiChuLichNgay, setGhiChuLichNgay] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (baoCaoHienTai?.ghi_chu_lich_ngay) {
-      setGhiChuLichNgay(baoCaoHienTai.ghi_chu_lich_ngay);
-    }
-  }, [baoCaoHienTai]);
+    setGhiChuLichNgay(baoCaoHienTai?.ghi_chu_lich_ngay || {});
+  }, [baoCaoHienTai?.id, baoCaoHienTai?.tuan]);
 
   // Quét các lịch hẹn tuần tới của nhân viên từ Lịch công tác (Khử trùng tuyệt đối theo ID & nội dung)
   const dsLichTuanToiCuaNV = useMemo(() => {
@@ -1262,6 +1077,27 @@ export default function BangBaoCaoTuanChuanVDCD({
   const xuLyLuu = async (nopBaoCao: boolean) => {
     setDangLuu(true);
     try {
+      const keHoachTiemNangSnapshot = dsDuAnTrongDiem.map((d) => {
+        const kh = d.khach_hang_id ? mapKH.get(d.khach_hang_id) : null;
+        const sp = d.san_pham_dich_vu_id ? mapSP.get(d.san_pham_dich_vu_id) : d.san_pham_khac_mo_ta;
+        const cfgGD = layCauHinhGiaiDoanTheoKey(d.giai_doan);
+        return {
+          id: `tn_${d.id}`,
+          du_an_id: d.id,
+          ten_khach_hang: kh?.ten_khach_hang || d.ten_du_an,
+          giam_doc_du_an: nhanSu.ho_va_ten,
+          san_pham: sp || d.ten_du_an,
+          trang_thai: cfgGD.nhan_ngan,
+          doanh_thu_ky_ket: Number(d.gia_tri_hop_dong || d.gia_tri_du_kien || 0),
+          doanh_thu_tien_ve: Number(d.tien_ve_thuc_te || 0)
+        };
+      });
+
+      const tongTiepCanThucTe = kpiKhachMoi.thucTe;
+      const trangThaiMoi = nopBaoCao
+        ? (laTruongPhongKD && !laSepXemNhanVien ? 'da_duyet' : 'cho_duyet')
+        : 'nhap';
+
       await onLuuBaoCao(
         {
           danh_gia_tuan_qua: laTruongPhongKD ? danhGiaTuanQuaTP : undefined,
@@ -1274,6 +1110,18 @@ export default function BangBaoCaoTuanChuanVDCD({
                 ke_hoach_ho_tro_nhan_su: dieuHanhTP.keHoachHoTroNhanSu
               }
             : undefined,
+          dt_tuan_ky_ket: kpiDoanhThu.thucTe,
+          thuc_hien_tiep_can_tuan_nay: tongTiepCanThucTe,
+          ke_hoach_tiep_can_tuan_nay: kpiKhachMoi.keHoachTuanTruoc,
+          ke_hoach_tiep_can_tuan_toi: camKet.khachMoi.target,
+          tinh_trang_tuan_nay: {
+            tong_tiep_can: Math.max(tongTiepCanThucTe, kpiDuAnLamViec.thucTe),
+            dang_tiep_can: kpiDuAnLamViec.thucTe,
+            bao_gia: kpiBaoGia.thucTe,
+            hop_dong: kpiHopDong.thucTe,
+            khong_phu_hop: baoCaoHienTai?.tinh_trang_tuan_nay?.khong_phu_hop || 0
+          },
+          ke_hoach_tiem_nang: keHoachTiemNangSnapshot,
           kpi_tuan_qua: {
             khach_moi_muc_tieu: kpiKhachMoi.keHoachTuanTruoc,
             khach_moi_thuc_te: kpiKhachMoi.thucTe,
@@ -1308,19 +1156,19 @@ export default function BangBaoCaoTuanChuanVDCD({
             cuoc_hen: { target: 0, min: 0, max: 0 }
           } as any,
           ghi_chu_lich_ngay: ghiChuLichNgay,
-          trang_thai: nopBaoCao ? 'cho_duyet' : 'nhap'
+          trang_thai: trangThaiMoi
         },
         nopBaoCao
       );
       setThongBao({
         loai: 'tc',
         nd: nopBaoCao
-          ? (laTruongPhongKD ? 'Đã nộp kế hoạch điều hành tuần thành công!' : 'Đã nộp báo cáo tuần cho Trưởng phòng phê duyệt thành công!')
+          ? (laTruongPhongKD ? 'Đã lưu & chốt kế hoạch điều hành tuần thành công!' : 'Đã nộp báo cáo tuần cho Trưởng phòng phê duyệt thành công!')
           : 'Đã lưu bản nháp báo cáo tuần.'
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setThongBao({ loai: 'loi', nd: 'Có lỗi khi lưu báo cáo.' });
+      setThongBao({ loai: 'loi', nd: err?.message || 'Có lỗi khi lưu báo cáo lên máy chủ.' });
     } finally {
       setDangLuu(false);
     }
@@ -1381,23 +1229,27 @@ export default function BangBaoCaoTuanChuanVDCD({
           {/* NÚT ĐIỀU HÀNH DÀNH CHO TRƯỞNG PHÒNG */}
           {laSepXemNhanVien ? (
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => xuLyLuu(false)}
-                disabled={dangLuu}
-                className="h-9 px-3.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold text-foreground inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                title="Lưu các thông tin chỉnh sửa bổ sung"
-              >
-                <Save className="size-4 text-blue-600" />
-                <span>Lưu thay đổi</span>
-              </button>
+              {!khoaChinhSua && (
+                <button
+                  type="button"
+                  onClick={() => xuLyLuu(false)}
+                  disabled={dangLuu}
+                  className="h-9 px-3.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold text-foreground inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                  title="Lưu các thông tin chỉnh sửa bổ sung"
+                >
+                  <Save className="size-4 text-blue-600" />
+                  <span>Lưu thay đổi</span>
+                </button>
+              )}
 
               {onDuyetBaoCao && (
                 <>
                   <button
                     type="button"
                     onClick={() => setModalYeuCauDieuChinh(true)}
-                    className="h-9 px-3.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                    disabled={baoCaoHienTai?.trang_thai === 'nhap'}
+                    className="h-9 px-3.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={baoCaoHienTai?.trang_thai === 'nhap' ? 'Nhân sự chưa nộp báo cáo' : 'Yêu cầu nhân sự điều chỉnh'}
                   >
                     <MessageSquareWarning className="size-4 text-amber-600" />
                     <span>Yêu cầu điều chỉnh</span>
@@ -1405,7 +1257,7 @@ export default function BangBaoCaoTuanChuanVDCD({
 
                   <button
                     type="button"
-                    disabled={dangDuyet || baoCaoHienTai?.trang_thai === 'da_duyet'}
+                    disabled={dangDuyet || baoCaoHienTai?.trang_thai === 'da_duyet' || baoCaoHienTai?.trang_thai === 'nhap'}
                     onClick={async () => {
                       setDangDuyet(true);
                       try {
@@ -1415,32 +1267,32 @@ export default function BangBaoCaoTuanChuanVDCD({
                       }
                     }}
                     className={cn(
-                      'h-9 px-4 rounded-xl text-white text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50',
-                      baoCaoHienTai?.trang_thai === 'da_duyet'
-                        ? 'bg-slate-400 cursor-not-allowed'
+                      'h-9 px-4 rounded-xl text-white text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed',
+                      baoCaoHienTai?.trang_thai === 'da_duyet' || baoCaoHienTai?.trang_thai === 'nhap'
+                        ? 'bg-slate-400'
                         : 'bg-emerald-600 hover:bg-emerald-700'
                     )}
+                    title={baoCaoHienTai?.trang_thai === 'nhap' ? 'Nhân sự chưa nộp báo cáo để duyệt' : undefined}
                   >
                     <Check className="size-4" />
-                    <span>{dangDuyet ? 'Đang duyệt...' : baoCaoHienTai?.trang_thai === 'da_duyet' ? 'Đã duyệt xong' : 'Phê duyệt kế hoạch'}</span>
+                    <span>
+                      {dangDuyet
+                        ? 'Đang duyệt...'
+                        : baoCaoHienTai?.trang_thai === 'da_duyet'
+                        ? 'Đã duyệt xong'
+                        : baoCaoHienTai?.trang_thai === 'nhap'
+                        ? 'Chưa nộp'
+                        : 'Phê duyệt kế hoạch'}
+                    </span>
                   </button>
                 </>
               )}
             </div>
           ) : (
-            /* NÚT THAO TÁC DÀNH CHO NHÂN VIÊN SALE */
+            /* NÚT THAO TÁC DÀNH CHO NHÂN VIÊN SALE / TPKD TỰ XEM */
             <div className="flex items-center gap-2">
               {baoCaoHienTai?.trang_thai === 'cho_duyet' ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => xuLyLuu(false)}
-                    disabled={dangLuu}
-                    className="h-9 px-3.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold text-foreground inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                  >
-                    <Save className="size-4 text-blue-600" />
-                    <span>Lưu cập nhật</span>
-                  </button>
                   {onThuHoiBaoCao && (
                     <button
                       type="button"
@@ -1454,9 +1306,21 @@ export default function BangBaoCaoTuanChuanVDCD({
                   )}
                 </>
               ) : baoCaoHienTai?.trang_thai === 'da_duyet' ? (
-                <div className="h-9 px-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="size-4 text-emerald-600" />
-                  <span>Kế hoạch đã chốt</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-9 px-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5">
+                    <CheckCircle2 className="size-4 text-emerald-600" />
+                    <span>Kế hoạch đã chốt</span>
+                  </div>
+                  {laTruongPhongKD && onThuHoiBaoCao && (
+                    <button
+                      type="button"
+                      onClick={onThuHoiBaoCao}
+                      className="h-9 px-3 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <RotateCcw className="size-3.5" />
+                      <span>Mở lại sửa</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
@@ -1477,7 +1341,13 @@ export default function BangBaoCaoTuanChuanVDCD({
                     className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
                   >
                     <Send className="size-4" />
-                    <span>{baoCaoHienTai?.trang_thai === 'can_dieu_chinh' ? 'Nộp lại kế hoạch' : 'Nộp kế hoạch tuần'}</span>
+                    <span>
+                      {laTruongPhongKD
+                        ? 'Chốt kế hoạch điều hành'
+                        : baoCaoHienTai?.trang_thai === 'can_dieu_chinh'
+                        ? 'Nộp lại kế hoạch'
+                        : 'Nộp kế hoạch tuần'}
+                    </span>
                   </button>
                 </>
               )}
@@ -1708,15 +1578,17 @@ export default function BangBaoCaoTuanChuanVDCD({
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={dongBoLaiKPITuBanLamViec}
-                  className="h-8 px-3 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                  title="Quét lại kết quả thực tế mới nhất từ Bàn làm việc và CRM"
-                >
-                  <RefreshCw className="size-3.5" />
-                  <span>Lấy tự động từ Lịch làm việc &amp; CRM</span>
-                </button>
+                {!khoaChinhSua && (
+                  <button
+                    type="button"
+                    onClick={dongBoLaiKPITuBanLamViec}
+                    className="h-8 px-3 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                    title="Quét lại kết quả thực tế mới nhất từ Lịch làm việc và CRM"
+                  >
+                    <RefreshCw className="size-3.5" />
+                    <span>Lấy tự động từ Lịch làm việc &amp; CRM</span>
+                  </button>
+                )}
               </div>
 
               {/* 5 EXECUTIVE KPI CARDS TRỰC QUAN */}
@@ -1920,21 +1792,23 @@ export default function BangBaoCaoTuanChuanVDCD({
                       <td className="py-2.5 px-4 text-right">
                         <input
                           type="number"
+                          disabled={khoaChinhSua}
                           value={kpiKhachMoi.keHoachTuanTruoc}
                           onChange={(e) => setKpiKhachMoi({ ...kpiKhachMoi, keHoachTuanTruoc: Number(e.target.value) })}
-                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary disabled:opacity-70"
                         />
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <input
                           type="number"
+                          disabled={khoaChinhSua}
                           value={kpiKhachMoi.thucTe}
                           onChange={(e) =>
                             setKpiKhachMoi({ ...kpiKhachMoi, thucTe: Number(e.target.value), daSuaTay: true })
                           }
-                          className="w-24 text-right font-mono text-xs font-bold text-blue-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                          className="w-24 text-right font-mono text-xs font-bold text-blue-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary disabled:opacity-70"
                         />
-                        {kpiKhachMoi.daSuaTay && (
+                        {kpiKhachMoi.daSuaTay && !khoaChinhSua && (
                           <button
                             type="button"
                             onClick={() =>
@@ -1972,21 +1846,23 @@ export default function BangBaoCaoTuanChuanVDCD({
                       <td className="py-2.5 px-4 text-right">
                         <input
                           type="number"
+                          disabled={khoaChinhSua}
                           value={kpiBaoGia.keHoachTuanTruoc}
                           onChange={(e) => setKpiBaoGia({ ...kpiBaoGia, keHoachTuanTruoc: Number(e.target.value) })}
-                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary disabled:opacity-70"
                         />
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <input
                           type="number"
+                          disabled={khoaChinhSua}
                           value={kpiBaoGia.thucTe}
                           onChange={(e) =>
                             setKpiBaoGia({ ...kpiBaoGia, thucTe: Number(e.target.value), daSuaTay: true })
                           }
-                          className="w-24 text-right font-mono text-xs font-bold text-amber-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                          className="w-24 text-right font-mono text-xs font-bold text-amber-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary disabled:opacity-70"
                         />
-                        {kpiBaoGia.daSuaTay && (
+                        {kpiBaoGia.daSuaTay && !khoaChinhSua && (
                           <button
                             type="button"
                             onClick={() =>
@@ -2024,21 +1900,23 @@ export default function BangBaoCaoTuanChuanVDCD({
                       <td className="py-2.5 px-4 text-right">
                         <input
                           type="number"
+                          disabled={khoaChinhSua}
                           value={kpiDuAnLamViec.keHoachTuanTruoc}
                           onChange={(e) => setKpiDuAnLamViec({ ...kpiDuAnLamViec, keHoachTuanTruoc: Number(e.target.value) })}
-                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary disabled:opacity-70"
                         />
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <input
                           type="number"
+                          disabled={khoaChinhSua}
                           value={kpiDuAnLamViec.thucTe}
                           onChange={(e) =>
                             setKpiDuAnLamViec({ ...kpiDuAnLamViec, thucTe: Number(e.target.value), daSuaTay: true })
                           }
-                          className="w-24 text-right font-mono text-xs font-bold text-indigo-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                          className="w-24 text-right font-mono text-xs font-bold text-indigo-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary disabled:opacity-70"
                         />
-                        {kpiDuAnLamViec.daSuaTay && (
+                        {kpiDuAnLamViec.daSuaTay && !khoaChinhSua && (
                           <button
                             type="button"
                             onClick={() =>
@@ -2076,21 +1954,23 @@ export default function BangBaoCaoTuanChuanVDCD({
                       <td className="py-2.5 px-4 text-right">
                         <input
                           type="number"
+                          disabled={khoaChinhSua}
                           value={kpiHopDong.keHoachTuanTruoc}
                           onChange={(e) => setKpiHopDong({ ...kpiHopDong, keHoachTuanTruoc: Number(e.target.value) })}
-                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                          className="w-24 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary disabled:opacity-70"
                         />
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <input
                           type="number"
+                          disabled={khoaChinhSua}
                           value={kpiHopDong.thucTe}
                           onChange={(e) =>
                             setKpiHopDong({ ...kpiHopDong, thucTe: Number(e.target.value), daSuaTay: true })
                           }
-                          className="w-24 text-right font-mono text-xs font-bold text-purple-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary"
+                          className="w-24 text-right font-mono text-xs font-bold text-purple-600 bg-transparent border border-border/80 rounded px-1.5 py-0.5 focus:border-primary disabled:opacity-70"
                         />
-                        {kpiHopDong.daSuaTay && (
+                        {kpiHopDong.daSuaTay && !khoaChinhSua && (
                           <button
                             type="button"
                             onClick={() =>
@@ -2127,18 +2007,20 @@ export default function BangBaoCaoTuanChuanVDCD({
                       <td className="py-2.5 px-3 text-center text-muted-foreground font-medium">VNĐ</td>
                       <td className="py-2.5 px-4 text-right">
                         <ONhapSoTien
+                          disabled={khoaChinhSua}
                           giaTri={kpiDoanhThu.keHoachTuanTruoc}
                           onChange={(val) => setKpiDoanhThu({ ...kpiDoanhThu, keHoachTuanTruoc: val })}
-                          className="w-32 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary"
+                          className="w-32 text-right font-mono text-xs font-semibold bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary disabled:opacity-70"
                         />
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <ONhapSoTien
+                          disabled={khoaChinhSua}
                           giaTri={kpiDoanhThu.thucTe}
                           onChange={(val) => setKpiDoanhThu({ ...kpiDoanhThu, thucTe: val, daSuaTay: true })}
-                          className="w-32 text-right font-mono text-xs font-bold text-emerald-600 bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary"
+                          className="w-32 text-right font-mono text-xs font-bold text-emerald-600 bg-transparent border border-border/80 rounded px-2 py-0.5 focus:border-primary disabled:opacity-70"
                         />
-                        {kpiDoanhThu.daSuaTay && (
+                        {kpiDoanhThu.daSuaTay && !khoaChinhSua && (
                           <button
                             type="button"
                             onClick={() =>
@@ -3115,14 +2997,16 @@ export default function BangBaoCaoTuanChuanVDCD({
                   >
                     Đóng
                   </button>
-                  <button
-                    type="button"
-                    onClick={apDungVaoBaoCao}
-                    className="h-8.5 px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                  >
-                    <Check className="size-3.5" />
-                    <span>Áp dụng vào báo cáo</span>
-                  </button>
+                  {!khoaChinhSua && (
+                    <button
+                      type="button"
+                      onClick={apDungVaoBaoCao}
+                      className="h-8.5 px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Check className="size-3.5" />
+                      <span>Áp dụng vào báo cáo</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

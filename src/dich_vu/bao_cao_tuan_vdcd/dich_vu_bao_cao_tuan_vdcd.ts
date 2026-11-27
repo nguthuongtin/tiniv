@@ -48,15 +48,6 @@ const ghiLocalKPI = (item: CauHinhMucTieuBaoCaoTuan) => {
 };
 
 export async function layDanhSachBaoCaoTuanVDCD(tuan: string): Promise<BaoCaoTuanVDCD[]> {
-  const localMap = docLocalBaoCao();
-  const map = new Map<string, BaoCaoTuanVDCD>();
-
-  for (const item of Object.values(localMap)) {
-    if (item && item.tuan === tuan && !item.id.startsWith('kpi_')) {
-      map.set(item.id, item);
-    }
-  }
-
   try {
     const res = await fetch(`/api/bao-cao-tuan-vdcd?tuan=${encodeURIComponent(tuan)}`, {
       cache: 'no-store'
@@ -64,19 +55,21 @@ export async function layDanhSachBaoCaoTuanVDCD(tuan: string): Promise<BaoCaoTua
     if (res.ok) {
       const data = await res.json();
       if (data?.ok && Array.isArray(data.items)) {
-        for (const item of data.items as BaoCaoTuanVDCD[]) {
-          if (!item?.id || item.id.startsWith('kpi_')) continue;
-          const cur = map.get(item.id);
-          if (!cur || (item.ngay_cap_nhat || '') >= (cur.ngay_cap_nhat || '')) {
-            map.set(item.id, item);
-            ghiLocalBaoCao(item);
-          }
-        }
+        const items = (data.items as BaoCaoTuanVDCD[]).filter(
+          (item) => item?.id && !item.id.startsWith('kpi_')
+        );
+        items.forEach((item) => ghiLocalBaoCao(item));
+        return items;
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[layDanhSachBaoCaoTuanVDCD] Fallback localStorage:', err);
+  }
 
-  return Array.from(map.values());
+  const localMap = docLocalBaoCao();
+  return Object.values(localMap).filter(
+    (item) => item && item.tuan === tuan && !item.id.startsWith('kpi_')
+  );
 }
 
 export async function layMotBaoCaoTuanVDCD(
@@ -84,7 +77,6 @@ export async function layMotBaoCaoTuanVDCD(
   nhanVienId: string
 ): Promise<BaoCaoTuanVDCD | null> {
   const id = `vdcd_${tuan}_${nhanVienId}`;
-  const localItem = docLocalBaoCao()[id] || null;
 
   try {
     const res = await fetch(`/api/bao-cao-tuan-vdcd?id=${encodeURIComponent(id)}`, {
@@ -92,17 +84,20 @@ export async function layMotBaoCaoTuanVDCD(
     });
     if (res.ok) {
       const data = await res.json();
-      if (data?.ok && data.item) {
-        const remote = data.item as BaoCaoTuanVDCD;
-        if (!localItem || (remote.ngay_cap_nhat || '') >= (localItem.ngay_cap_nhat || '')) {
+      if (data?.ok) {
+        if (data.item) {
+          const remote = data.item as BaoCaoTuanVDCD;
           ghiLocalBaoCao(remote);
           return remote;
         }
+        return null;
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[layMotBaoCaoTuanVDCD] Fallback localStorage:', err);
+  }
 
-  return localItem;
+  return docLocalBaoCao()[id] || null;
 }
 
 export async function luuBaoCaoTuanVDCD(baoCao: BaoCaoTuanVDCD): Promise<BaoCaoTuanVDCD> {
@@ -111,17 +106,20 @@ export async function luuBaoCaoTuanVDCD(baoCao: BaoCaoTuanVDCD): Promise<BaoCaoT
     ngay_cap_nhat: new Date().toISOString()
   };
 
-  ghiLocalBaoCao(payload);
+  const res = await fetch('/api/bao-cao-tuan-vdcd', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
 
-  try {
-    await fetch('/api/bao-cao-tuan-vdcd', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch {}
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.error || 'Không thể lưu báo cáo lên máy chủ. Vui lòng thử lại.');
+  }
 
-  return payload;
+  const saved = (data.item as BaoCaoTuanVDCD) || payload;
+  ghiLocalBaoCao(saved);
+  return saved;
 }
 
 export async function duyetBaoCaoTuanVDCD(params: {
@@ -173,15 +171,18 @@ export async function luuCauHinhKPIBaoCaoTuan(
     id: `kpi_${kpi.pham_vi_id}`,
     ngay_cap_nhat: new Date().toISOString()
   };
+
+  const res = await fetch('/api/bao-cao-tuan-vdcd', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.error || 'Không thể lưu cấu hình KPI lên máy chủ.');
+  }
+
   ghiLocalKPI(payload);
-
-  try {
-    await fetch('/api/bao-cao-tuan-vdcd', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch {}
-
   return payload;
 }

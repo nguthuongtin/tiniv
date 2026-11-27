@@ -603,19 +603,23 @@ export default function NoiDungBaoCaoTuan() {
             : (truoc?.nguon_tuan_nay || goiYTuanTruoc.nguon_tuan_nay)
       };
 
-      const dsDATiemNang = dsDuAn.filter(
-        (d) =>
-          d.trang_thai !== 'da_xoa' &&
-          (d.nguoi_phu_trach_id === nv.id ||
-            d.nguoi_quan_ly_id === nv.id ||
-            (!d.nguoi_phu_trach_id && d.nguoi_tao_id === nv.id)) &&
+      const coIdsDaChon = Boolean(baoCao.du_an_trong_diem_ids && baoCao.du_an_trong_diem_ids.length > 0);
+      const dsDATiemNang = dsDuAn.filter((d) => {
+        if (d.trang_thai === 'da_xoa') return false;
+        const thuocNV =
+          d.nguoi_phu_trach_id === nv.id ||
+          d.nguoi_quan_ly_id === nv.id ||
+          (!d.nguoi_phu_trach_id && d.nguoi_tao_id === nv.id);
+        if (!thuocNV) return false;
+        if (coIdsDaChon) {
+          return baoCao.du_an_trong_diem_ids!.includes(d.id);
+        }
+        return (
           (d.muc_do_tiem_nang === 'rat_cao' || d.muc_do_tiem_nang === 'cao') &&
           d.giai_doan !== 'hoan_thanh_tt_dot_2' &&
-          d.giai_doan !== 'tam_dung_huy' &&
-          (baoCao.du_an_trong_diem_ids && baoCao.du_an_trong_diem_ids.length > 0
-            ? baoCao.du_an_trong_diem_ids.includes(d.id)
-            : true)
-      );
+          d.giai_doan !== 'tam_dung_huy'
+        );
+      });
 
       return {
         nv,
@@ -1007,7 +1011,8 @@ export default function NoiDungBaoCaoTuan() {
     setDsBaoCaoTuan((prev) => [updated, ...prev.filter((x) => x.id !== updated.id)]);
     if (formBaoCao?.id === updated.id) setFormBaoCao(updated);
 
-    // Đồng bộ duyệt lịch công tác tuần tới của nhân sự khi duyệt kế hoạch tuần
+    // Đồng bộ duyệt lịch công tác tuần tới của nhân sự (chỉ duyệt lịch đang chờ/sắp tới, không ghi đè lịch đã hoàn thành/hủy/dời)
+    let soLichDaDuyet = 0;
     if (trangThai === 'da_duyet') {
       const tuanToi = dichChuyenTuanISO(bc.tuan, 1);
       const infoTuanToi = phanTichTuanISO(tuanToi);
@@ -1017,11 +1022,12 @@ export default function NoiDungBaoCaoTuan() {
           l.ngay >= infoTuanToi.ngayBatDau &&
           l.ngay <= infoTuanToi.ngayKetThuc &&
           (l.nguoi_phu_trach_id === bc.nhan_vien_id || l.nguoi_tao_id === bc.nhan_vien_id) &&
-          l.trang_thai !== 'da_duyet'
+          (l.trang_thai === 'cho_duyet' || l.trang_thai === 'sap_toi' || l.trang_thai === 'can_dieu_chinh')
       );
       for (const l of lichCanDuyet) {
         try {
           await capNhatLichGapKH(l.id, { trang_thai: 'da_duyet', nguoi_duyet_id: uid }, uid);
+          soLichDaDuyet += 1;
         } catch (e) {
           console.error(e);
         }
@@ -1037,7 +1043,9 @@ export default function NoiDungBaoCaoTuan() {
 
     hienThongBao(
       trangThai === 'da_duyet'
-        ? `Đã phê duyệt kế hoạch tuần cho ${bc.ten_nhan_vien} & đồng bộ duyệt ${dsLichGap.filter(l => l.ngay >= phanTichTuanISO(dichChuyenTuanISO(bc.tuan, 1)).ngayBatDau && l.ngay <= phanTichTuanISO(dichChuyenTuanISO(bc.tuan, 1)).ngayKetThuc && (l.nguoi_phu_trach_id === bc.nhan_vien_id || l.nguoi_tao_id === bc.nhan_vien_id)).length} lịch công tác tuần tới.`
+        ? soLichDaDuyet > 0
+          ? `Đã phê duyệt kế hoạch tuần cho ${bc.ten_nhan_vien} & đồng bộ duyệt ${soLichDaDuyet} lịch công tác tuần tới.`
+          : `Đã phê duyệt kế hoạch tuần cho ${bc.ten_nhan_vien}.`
         : 'Đã gửi ý kiến định hướng yêu cầu điều chỉnh cho nhân sự.'
     );
   };
@@ -1089,7 +1097,7 @@ export default function NoiDungBaoCaoTuan() {
             },
             doanhThu: {
               mucTieu: baoCaoTongChiNhanh.kpi_thang_ky_ket || 0,
-              thucTe: (baoCaoTongChiNhanh.dt_tuan_ky_ket || 0) + (baoCaoTongChiNhanh.dt_tuan_tien_ve || 0)
+              thucTe: baoCaoTongChiNhanh.dt_tuan_ky_ket || 0
             }
           },
           danhSachDuAnTrongDiem: [],
@@ -1143,7 +1151,7 @@ export default function NoiDungBaoCaoTuan() {
         const ttBaoGia = Number(bc.kpi_tuan_qua?.bao_gia_thuc_te ?? bc.tinh_trang_tuan_nay.bao_gia ?? 0);
         const ttDuAn = Number(bc.kpi_tuan_qua?.du_an_lam_viec_thuc_te ?? bc.tinh_trang_tuan_nay.tong_tiep_can ?? 0);
         const ttHopDong = Number(bc.kpi_tuan_qua?.hop_dong_thuc_te ?? bc.tinh_trang_tuan_nay.hop_dong ?? 0);
-        const ttDoanhThu = Number(bc.kpi_tuan_qua?.doanh_so_thuc_te ?? ((bc.dt_tuan_ky_ket || 0) + (bc.dt_tuan_tien_ve || 0)));
+        const ttDoanhThu = Number(bc.kpi_tuan_qua?.doanh_so_thuc_te ?? (bc.dt_tuan_ky_ket || 0));
 
         danhSachBaoCaoSale.push({
           tuan: bc.tuan,
@@ -1823,7 +1831,7 @@ export default function NoiDungBaoCaoTuan() {
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="inline-flex items-center gap-1.5">
-                            {baoCao.trang_thai !== 'da_duyet' && (
+                            {baoCao.trang_thai === 'cho_duyet' && (
                               <button
                                 type="button"
                                 onClick={() => handleDuyetTuan(baoCao, 'da_duyet')}
@@ -1833,20 +1841,22 @@ export default function NoiDungBaoCaoTuan() {
                                 <span>Duyệt</span>
                               </button>
                             )}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setModalYeuCauSua({
-                                  mo: true,
-                                  baoCao,
-                                  ghiChu: baoCao.ghi_chu_quan_ly || ''
-                                })
-                              }
-                              className="h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <MessageSquareWarning className="size-3.5" />
-                              <span>Yêu cầu sửa</span>
-                            </button>
+                            {(baoCao.trang_thai === 'cho_duyet' || baoCao.trang_thai === 'da_duyet') && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setModalYeuCauSua({
+                                    mo: true,
+                                    baoCao,
+                                    ghiChu: baoCao.ghi_chu_quan_ly || ''
+                                  })
+                                }
+                                className="h-7 px-2.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <MessageSquareWarning className="size-3.5" />
+                                <span>{baoCao.trang_thai === 'da_duyet' ? 'Mở lại' : 'Yêu cầu sửa'}</span>
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() =>
