@@ -102,21 +102,21 @@ function tinhChieuCaoHang(noiDung: string, doRongCotUocTinh: number = 60, minHei
 /**
  * Helper tạo và định dạng 1 Sheet chuẩn Sales / Trưởng phòng VDCD
  */
-function cauHinhInA4Doc(ws: ExcelJS.Worksheet) {
+function cauHinhInA4Doc(ws: ExcelJS.Worksheet, fitToHeight: number = 0) {
   ws.pageSetup = {
     paperSize: 9, // A4
     orientation: 'portrait',
     fitToPage: true,
     fitToWidth: 1,
-    fitToHeight: 0,
+    fitToHeight,
     horizontalCentered: true,
     margins: {
-      left: 0.25,
-      right: 0.25,
-      top: 0.35,
-      bottom: 0.35,
-      header: 0.15,
-      footer: 0.15
+      left: 0.2,
+      right: 0.2,
+      top: 0.25,
+      bottom: 0.25,
+      header: 0.1,
+      footer: 0.1
     }
   };
 }
@@ -714,41 +714,46 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   wb.modified = new Date();
 
   // =========================================================================
-  // SHEET 1: TỔNG QUAN CHI NHÁNH
+  // SHEET 1: TỔNG QUAN CHI NHÁNH (Vừa 1 trang A4 dọc, chữ to rõ, ngắn gọn)
   // =========================================================================
   const sTong = wb.addWorksheet('Tổng Quan Chi Nhánh', {
     views: [{ showGridLines: true }]
   });
 
-  cauHinhInA4Doc(sTong);
+  cauHinhInA4Doc(sTong, 1);
 
   sTong.columns = [
-    { key: 'colA', width: 1.2 },
+    { key: 'colA', width: 1.0 },
     { key: 'stt', width: 5 },
-    { key: 'colC', width: 24 },
-    { key: 'colD', width: 18 },
-    { key: 'colE', width: 17 },
-    { key: 'colF', width: 17 },
-    { key: 'colG', width: 15 },
-    { key: 'colH', width: 19 }
+    { key: 'colC', width: 23 },
+    { key: 'colD', width: 15 },
+    { key: 'colE', width: 14 },
+    { key: 'colF', width: 14 },
+    { key: 'colG', width: 13 },
+    { key: 'colH', width: 20 }
   ];
+
+  const themDongCachTong = () => {
+    const r = sTong.addRow([]);
+    r.height = 8;
+  };
 
   const styleSectionHeaderTong = (row: ExcelJS.Row, tieuDe: string) => {
     sTong.mergeCells(`B${row.number}:H${row.number}`);
     const cell = row.getCell(2);
     cell.value = tieuDe;
-    cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF1F2937' } };
+    cell.font = { name: 'Calibri', size: 12, bold: true, color: { argb: 'FF1F2937' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
     cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-    row.height = 28;
+    row.height = 26;
     for (let c = 2; c <= 8; c++) row.getCell(c).border = borderThin;
   };
 
   const styleTableHeaderTong = (row: ExcelJS.Row) => {
-    row.height = 30;
+    row.height = 28;
     for (let c = 2; c <= 8; c++) {
       const cell = row.getCell(c);
-      cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.font = { name: 'Calibri', size: 11.5, bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB91C1C' } };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       cell.border = {
@@ -764,28 +769,28 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   const rT1 = sTong.addRow([]);
   sTong.mergeCells('B1:H1');
   const cT1 = rT1.getCell(2);
-  cT1.value = `BÁO CÁO TỔNG HỢP KINH DOANH CHI NHÁNH ${tenChiNhanh.toUpperCase()} — VDCD`;
-  cT1.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  cT1.value = `BÁO CÁO TUẦN KINH DOANH — ${tenChiNhanh.toUpperCase()}`;
+  cT1.font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
   cT1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD11317' } };
   cT1.alignment = { vertical: 'middle', horizontal: 'center' };
-  rT1.height = 36;
+  rT1.height = 34;
 
   const rT2 = sTong.addRow([]);
   sTong.mergeCells('B2:H2');
   const cT2 = rT2.getCell(2);
   const soSale = danhSachBaoCaoSale.filter((x) => !x.laTruongPhong).length;
   const coTP = danhSachBaoCaoSale.some((x) => x.laTruongPhong);
-  cT2.value = `Kỳ: ${nhanTieuDeTuan}  |  Đơn vị: ${tenChiNhanh}  |  Tổng hợp ${soSale} Chuyên viên Kinh doanh${coTP ? ' (kèm 01 Báo cáo Điều hành Trưởng phòng)' : ''}`;
-  cT2.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
+  cT2.value = `${nhanTieuDeTuan}  ·  ${tenChiNhanh}  ·  ${soSale} NVKD${coTP ? ' + 1 TP' : ''}`;
+  cT2.font = { name: 'Calibri', size: 11, italic: true, color: { argb: 'FF475569' } };
   cT2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
   cT2.alignment = { vertical: 'middle', horizontal: 'center' };
-  rT2.height = 24;
+  rT2.height = 22;
 
-  // I. TỔNG KẾT DOANH THU TOÀN PHÒNG
+  // I. DOANH THU TOÀN PHÒNG TUẦN QUA
   const rSecT1 = sTong.addRow([]);
-  styleSectionHeaderTong(rSecT1, 'I. TỔNG KẾT DOANH THU TOÀN PHÒNG TUẦN QUA');
+  styleSectionHeaderTong(rSecT1, 'I. DOANH THU TOÀN PHÒNG TUẦN QUA');
 
-  const rHeadT1 = sTong.addRow(['', 'STT', 'Chỉ tiêu doanh thu', 'DT Tuần (VNĐ)', 'MTD (VNĐ)', 'YTD (VNĐ)', '%/KPI Tháng', '%/KPI Năm']);
+  const rHeadT1 = sTong.addRow(['', 'STT', 'Chỉ tiêu', 'DT Tuần (VNĐ)', 'MTD (VNĐ)', 'YTD (VNĐ)', '% Tháng', '% Năm']);
   styleTableHeaderTong(rHeadT1);
 
   const dataDTTong = [
@@ -820,41 +825,40 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
       item.pctThang,
       item.pctNam
     ]);
-    row.height = 26;
+    row.height = 24;
     for (let c = 2; c <= 8; c++) {
       const cell = row.getCell(c);
-      cell.font = { name: 'Calibri', size: 10 };
+      cell.font = { name: 'Calibri', size: 11 };
       cell.border = borderThin;
       if (c === 2 || c === 7 || c === 8) cell.alignment = { vertical: 'middle', horizontal: 'center' };
       else if (c === 3) {
         cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-        cell.font = { name: 'Calibri', size: 10, bold: true };
+        cell.font = { name: 'Calibri', size: 11, bold: true };
       } else {
         cell.alignment = { vertical: 'middle', horizontal: 'right' };
-        cell.font = { name: 'Calibri', size: 10, bold: true };
+        cell.font = { name: 'Calibri', size: 11, bold: true };
       }
     }
   });
 
-  sTong.addRow([]);
+  themDongCachTong();
 
-  // II. BẢNG TỔNG HỢP KẾT QUẢ TỪNG NHÂN VIÊN KINH DOANH
+  // II. KẾT QUẢ TUẦN QUA THEO NHÂN SỰ
   const rSecT2 = sTong.addRow([]);
-  styleSectionHeaderTong(rSecT2, 'II. BẢNG TỔNG HỢP KẾT QUẢ & CHỈ SỐ TỪNG NHÂN VIÊN KINH DOANH TUẦN QUA');
+  styleSectionHeaderTong(rSecT2, 'II. KẾT QUẢ TUẦN QUA THEO NHÂN SỰ');
 
   const rHeadT2 = sTong.addRow([
     '',
     'STT',
-    'Họ và tên Chuyên viên Kinh doanh',
-    'Số lượng KH tiếp cận mới',
-    'Tổng số báo giá đã gửi',
-    'Tổng số dự án đã làm việc',
-    'Số hợp đồng ký kết',
-    'Tổng doanh thu thực tế tuần (VNĐ)'
+    'Nhân sự',
+    'KH mới',
+    'Báo giá',
+    'Dự án',
+    'Hợp đồng',
+    'Doanh thu (VNĐ)'
   ]);
   styleTableHeaderTong(rHeadT2);
 
-  // Chỉ tổng hợp các bạn Chuyên viên Kinh doanh (Loại trừ Trưởng phòng vì TP không nhận KPI sale cá nhân)
   const dsSaleThucTe = danhSachBaoCaoSale.filter((x) => !x.laTruongPhong);
 
   let tongKhachMoiThuc = 0;
@@ -868,11 +872,11 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   let tongDTThuc = 0;
   let tongDTMT = 0;
 
-  const fmtChiSoSale = (thucTe: number, mucTieu?: number, dvt: string = '') => {
+  const fmtChiSoSale = (thucTe: number, mucTieu?: number) => {
     if (mucTieu && mucTieu > 0) {
-      return `${thucTe}${dvt ? ` ${dvt}` : ''} (MT: ${mucTieu})`;
+      return `${thucTe} / ${mucTieu}`;
     }
-    return `${thucTe}${dvt ? ` ${dvt}` : ''}`;
+    return `${thucTe}`;
   };
 
   dsSaleThucTe.forEach((sale, idx) => {
@@ -892,49 +896,44 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
       '',
       idx + 1,
       sale.nhanVien.ho_va_ten,
-      fmtChiSoSale(kp.khachHangMoi.thucTe, kp.khachHangMoi.mucTieu, 'KH'),
-      fmtChiSoSale(kp.baoGia.thucTe, kp.baoGia.mucTieu, 'báo giá'),
-      fmtChiSoSale(kp.duAnLamViec.thucTe, kp.duAnLamViec.mucTieu, 'dự án'),
-      fmtChiSoSale(kp.hopDongKy.thucTe, kp.hopDongKy.mucTieu, 'HĐ'),
-      kp.doanhThu.mucTieu > 0
-        ? `${formatTienTe(kp.doanhThu.thucTe)} (MT: ${formatTienTe(kp.doanhThu.mucTieu)})`
-        : formatTienTe(kp.doanhThu.thucTe)
+      fmtChiSoSale(kp.khachHangMoi.thucTe, kp.khachHangMoi.mucTieu),
+      fmtChiSoSale(kp.baoGia.thucTe, kp.baoGia.mucTieu),
+      fmtChiSoSale(kp.duAnLamViec.thucTe, kp.duAnLamViec.mucTieu),
+      fmtChiSoSale(kp.hopDongKy.thucTe, kp.hopDongKy.mucTieu),
+      formatTienTe(kp.doanhThu.thucTe)
     ]);
-    row.height = 26;
+    row.height = 24;
     for (let c = 2; c <= 8; c++) {
       const cell = row.getCell(c);
-      cell.font = { name: 'Calibri', size: 10 };
+      cell.font = { name: 'Calibri', size: 11 };
       cell.border = borderThin;
       if (c === 2) cell.alignment = { vertical: 'middle', horizontal: 'center' };
       else if (c === 3) {
         cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-        cell.font = { name: 'Calibri', size: 10, bold: true };
+        cell.font = { name: 'Calibri', size: 11, bold: true };
       } else if (c === 8) {
         cell.alignment = { vertical: 'middle', horizontal: 'right' };
-        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF047857' } };
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF047857' } };
       } else {
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
       }
     }
   });
 
-  // Dòng tổng cộng NVKD (Có viền kép kế toán ở đáy, in đầy đủ cả Thực tế và Mục tiêu)
   const rTongSale = sTong.addRow([
     '',
     '',
-    'TỔNG CỘNG TOÀN ĐỘI NGŨ KINH DOANH',
-    fmtChiSoSale(tongKhachMoiThuc, tongKhachMoiMT, 'KH'),
-    fmtChiSoSale(tongBaoGiaThuc, tongBaoGiaMT, 'báo giá'),
-    fmtChiSoSale(tongDuAnThuc, tongDuAnMT, 'dự án'),
-    fmtChiSoSale(tongHopDongThuc, tongHopDongMT, 'HĐ'),
-    tongDTMT > 0
-      ? `${formatTienTe(tongDTThuc)} (MT: ${formatTienTe(tongDTMT)})`
-      : formatTienTe(tongDTThuc)
+    'TỔNG CỘNG',
+    fmtChiSoSale(tongKhachMoiThuc, tongKhachMoiMT),
+    fmtChiSoSale(tongBaoGiaThuc, tongBaoGiaMT),
+    fmtChiSoSale(tongDuAnThuc, tongDuAnMT),
+    fmtChiSoSale(tongHopDongThuc, tongHopDongMT),
+    formatTienTe(tongDTThuc)
   ]);
-  rTongSale.height = 28;
+  rTongSale.height = 26;
   for (let c = 2; c <= 8; c++) {
     const cell = rTongSale.getCell(c);
-    cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF991B1B' } };
+    cell.font = { name: 'Calibri', size: 11.5, bold: true, color: { argb: 'FF991B1B' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
     cell.border = {
       top: { style: 'thin', color: { argb: 'FF991B1B' } },
@@ -947,21 +946,21 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     else cell.alignment = { vertical: 'middle', horizontal: 'center' };
   }
 
-  sTong.addRow([]);
+  themDongCachTong();
 
-  // III. BẢNG TỔNG HỢP CHỈ TIÊU CAM KẾT TUẦN TỚI TỪNG NHÂN SỰ
+  // III. CAM KẾT TUẦN TỚI THEO NHÂN SỰ
   const rSecT3 = sTong.addRow([]);
-  styleSectionHeaderTong(rSecT3, 'III. BẢNG TỔNG HỢP CHỈ TIÊU CAM KẾT TUẦN TỚI TỪNG NHÂN SỰ');
+  styleSectionHeaderTong(rSecT3, 'III. CAM KẾT TUẦN TỚI THEO NHÂN SỰ');
 
   const rHeadT3 = sTong.addRow([
     '',
     'STT',
-    'Họ và tên Chuyên viên Kinh doanh',
-    'Số lượng KH tiếp cận mới',
-    'Tổng số báo giá dự kiến gửi',
-    'Tổng số dự án dự kiến làm việc',
-    'Số hợp đồng / đơn hàng ký mới',
-    'Tổng doanh thu dự kiến thu về (VNĐ)'
+    'Nhân sự',
+    'KH mới',
+    'Báo giá',
+    'Dự án',
+    'Hợp đồng',
+    'DT dự kiến (VNĐ)'
   ]);
   styleTableHeaderTong(rHeadT3);
 
@@ -989,18 +988,18 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
       ck.hopDongMoi.target,
       formatTienTe(ck.doanhThu.target)
     ]);
-    row.height = 26;
+    row.height = 24;
     for (let c = 2; c <= 8; c++) {
       const cell = row.getCell(c);
-      cell.font = { name: 'Calibri', size: 10 };
+      cell.font = { name: 'Calibri', size: 11 };
       cell.border = borderThin;
       if (c === 2) cell.alignment = { vertical: 'middle', horizontal: 'center' };
       else if (c === 3) {
         cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-        cell.font = { name: 'Calibri', size: 10, bold: true };
+        cell.font = { name: 'Calibri', size: 11, bold: true };
       } else if (c === 8) {
         cell.alignment = { vertical: 'middle', horizontal: 'right' };
-        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF1E40AF' } };
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF1E40AF' } };
       } else {
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
       }
@@ -1010,17 +1009,17 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   const rTongCK = sTong.addRow([
     '',
     '',
-    'TỔNG CỘNG CAM KẾT TOÀN ĐỘI NGŨ',
-    `${tongKhachCK} khách`,
-    `${tongBaoGiaCK} báo giá`,
-    `${tongDuAnCK} dự án`,
-    `${tongHopDongCK} hợp đồng`,
+    'TỔNG CAM KẾT',
+    tongKhachCK,
+    tongBaoGiaCK,
+    tongDuAnCK,
+    tongHopDongCK,
     formatTienTe(tongDTCK)
   ]);
-  rTongCK.height = 28;
+  rTongCK.height = 26;
   for (let c = 2; c <= 8; c++) {
     const cell = rTongCK.getCell(c);
-    cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF1E40AF' } };
+    cell.font = { name: 'Calibri', size: 11.5, bold: true, color: { argb: 'FF1E40AF' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
     cell.border = {
       top: { style: 'thin', color: { argb: 'FF1E40AF' } },
@@ -1033,38 +1032,38 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     else cell.alignment = { vertical: 'middle', horizontal: 'center' };
   }
 
-  sTong.addRow([]);
+  themDongCachTong();
 
-  // IV. DANH SÁCH DỰ ÁN TRỌNG ĐIỂM TOÀN CHI NHÁNH
+  // IV. DỰ ÁN TRỌNG ĐIỂM TOÀN CHI NHÁNH
   const rSecT4 = sTong.addRow([]);
-  styleSectionHeaderTong(rSecT4, 'IV. DANH SÁCH DỰ ÁN TRỌNG ĐIỂM TOÀN CHI NHÁNH ĐANG BÁM SÁT (TIỀM NĂNG CAO)');
+  styleSectionHeaderTong(rSecT4, 'IV. DỰ ÁN TRỌNG ĐIỂM TOÀN CHI NHÁNH');
 
   const rHeadT4 = sTong.addRow([
     '',
     'STT',
-    'Tên dự án & Khách hàng / CĐT',
-    'Nhân sự phụ trách & SĐT',
-    'Giá trị deal / HĐ (VNĐ)',
+    'Dự án & Khách hàng',
+    'Phụ trách',
+    'Giá trị (VNĐ)',
     'Giai đoạn',
-    'Mức tiềm năng',
+    'Tiềm năng',
     'Dịch vụ'
   ]);
   styleTableHeaderTong(rHeadT4);
 
   let tongGTDuAnCN = 0;
   if (danhSachDuAnTrongDiemChiNhanh.length === 0) {
-    const rE = sTong.addRow(['', 1, 'Chưa có dự án trọng điểm nào được chọn', '—', '0 ₫', 'Đang cập nhật', '—', '—']);
-    rE.height = 25;
+    const rE = sTong.addRow(['', 1, 'Chưa có dự án trọng điểm', '—', '0 ₫', 'Đang cập nhật', '—', '—']);
+    rE.height = 24;
     for (let c = 2; c <= 8; c++) {
       rE.getCell(c).border = borderThin;
-      rE.getCell(c).font = { name: 'Calibri', size: 10, italic: true };
+      rE.getCell(c).font = { name: 'Calibri', size: 11, italic: true };
       rE.getCell(c).alignment = { vertical: 'middle', horizontal: c === 2 ? 'center' : 'left', indent: c === 2 ? 0 : 1 };
     }
   } else {
     danhSachDuAnTrongDiemChiNhanh.forEach((d, idx) => {
       tongGTDuAnCN += Number(d.giaTriDeal || 0);
-      const thongTin = d.nguoiPhuTrach ? `${d.nguoiPhuTrach}${d.soDienThoai ? ` (${d.soDienThoai})` : ''}` : (d.soDienThoai || '—');
-      const tenFull = `${d.tenDuAn}${d.tenKhachHang ? ` - CĐT: ${d.tenKhachHang}` : ''}`;
+      const thongTin = d.nguoiPhuTrach ? `${d.nguoiPhuTrach}${d.soDienThoai ? `\n${d.soDienThoai}` : ''}` : (d.soDienThoai || '—');
+      const tenFull = `${d.tenDuAn}${d.tenKhachHang ? ` (${d.tenKhachHang})` : ''}`;
 
       const row = sTong.addRow([
         '',
@@ -1077,26 +1076,26 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
         d.sanPhamDichVu || 'Khảo sát / Đo đạc'
       ]);
 
-      const h1 = tinhChieuCaoHang(tenFull, 32, 26);
-      const h2 = tinhChieuCaoHang(thongTin, 22, 26);
+      const h1 = tinhChieuCaoHang(tenFull, 22, 24);
+      const h2 = tinhChieuCaoHang(thongTin, 15, 24);
       row.height = Math.max(h1, h2);
 
       for (let c = 2; c <= 8; c++) {
         const cell = row.getCell(c);
-        cell.font = { name: 'Calibri', size: 10 };
+        cell.font = { name: 'Calibri', size: 11 };
         cell.border = borderThin;
         if (c === 2) cell.alignment = { vertical: 'middle', horizontal: 'center' };
         else if (c === 3) {
           cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
-          cell.font = { name: 'Calibri', size: 10, bold: true };
+          cell.font = { name: 'Calibri', size: 11, bold: true };
         } else if (c === 4) {
           cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
         } else if (c === 5) {
           cell.alignment = { vertical: 'middle', horizontal: 'right' };
-          cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF1E40AF' } };
+          cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF1E40AF' } };
         } else if (c === 6 || c === 7) {
-          cell.alignment = { vertical: 'middle', horizontal: 'center' };
-          if (c === 7) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF047857' } };
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          if (c === 7) cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF047857' } };
         } else {
           cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
         }
@@ -1107,49 +1106,52 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
   const rTongDA = sTong.addRow([
     '',
     '',
-    'TỔNG GIÁ TRỊ DỰ ÁN TRỌNG ĐIỂM TOÀN CHI NHÁNH',
+    'TỔNG GIÁ TRỊ DỰ ÁN',
     '',
     formatTienTe(tongGTDuAnCN),
-    'Số lượng deal:',
-    `${danhSachDuAnTrongDiemChiNhanh.length} dự án`,
+    'Tổng số:',
+    `${danhSachDuAnTrongDiemChiNhanh.length} DA`,
     ''
   ]);
-  rTongDA.height = 28;
+  rTongDA.height = 26;
   for (let c = 2; c <= 8; c++) {
     const cell = rTongDA.getCell(c);
-    cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF1E40AF' } };
+    cell.font = { name: 'Calibri', size: 11.5, bold: true, color: { argb: 'FF1E40AF' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
-    cell.border = borderThin;
-    if (c === 5) cell.alignment = { vertical: 'middle', horizontal: 'right' };
-    else if (c === 6 || c === 7) cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    else cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF1E40AF' } },
+      left: { style: 'thin', color: { argb: 'FF1E40AF' } },
+      bottom: { style: 'double', color: { argb: 'FF1E40AF' } },
+      right: { style: 'thin', color: { argb: 'FF1E40AF' } }
+    };
+    if (c === 3) cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    else if (c === 5) cell.alignment = { vertical: 'middle', horizontal: 'right' };
+    else cell.alignment = { vertical: 'middle', horizontal: 'center' };
   }
 
-  sTong.addRow([]);
+  themDongCachTong();
 
-  // V. LỊCH CÔNG TÁC TỔNG HỢP TOÀN PHÒNG TUẦN TỚI (NHÓM THEO TỪNG NHÂN SỰ)
+  // V. LỊCH CÔNG TÁC TUẦN TỚI TOÀN PHÒNG
   if (lichTuanToiToanChiNhanh.length > 0) {
     const rSecT5 = sTong.addRow([]);
-    styleSectionHeaderTong(rSecT5, 'V. LỊCH CÔNG TÁC TỔNG HỢP TOÀN PHÒNG TUẦN TỚI (THEO TỪNG NHÂN SỰ)');
+    styleSectionHeaderTong(rSecT5, 'V. LỊCH CÔNG TÁC TUẦN TỚI TOÀN PHÒNG');
 
     const rHeadT5 = sTong.addRow([
       '',
       'STT',
       'Ngày & Giờ',
       'Nhân sự',
-      'Khách hàng / Địa bàn',
+      'Khách hàng',
+      'Nội dung chi tiết',
       '',
-      'Nội dung công tác chi tiết',
       ''
     ]);
     styleTableHeaderTong(rHeadT5);
-    sTong.mergeCells(`E${rHeadT5.number}:F${rHeadT5.number}`);
-    sTong.mergeCells(`G${rHeadT5.number}:H${rHeadT5.number}`);
+    sTong.mergeCells(`F${rHeadT5.number}:H${rHeadT5.number}`);
 
-    // Nhóm theo từng nhân sự
     const mapNhomLich = new Map<string, typeof lichTuanToiToanChiNhanh>();
     lichTuanToiToanChiNhanh.forEach((l) => {
-      const ten = l.ten_nhan_vien || 'Chuyên viên Kinh doanh';
+      const ten = l.ten_nhan_vien || 'Chuyên viên KD';
       if (!mapNhomLich.has(ten)) mapNhomLich.set(ten, []);
       mapNhomLich.get(ten)!.push(l);
     });
@@ -1165,13 +1167,12 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     let sttTong = 0;
     dsNhanSuSorted.forEach((tenNV) => {
       const ds = mapNhomLich.get(tenNV)!;
-      // Dòng tiêu đề nhân sự
-      const rNhom = sTong.addRow(['', '', `👤 ${tenNV.toUpperCase()} (${ds.length} buổi công tác)`, '', '', '', '', '']);
+      const rNhom = sTong.addRow(['', '', `${tenNV.toUpperCase()} (${ds.length} lịch)`, '', '', '', '', '']);
       sTong.mergeCells(`C${rNhom.number}:H${rNhom.number}`);
       rNhom.height = 24;
       for (let c = 2; c <= 8; c++) {
         const cell = rNhom.getCell(c);
-        cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF991B1B' } };
+        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF991B1B' } };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
         cell.border = borderThin;
         if (c === 3) cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
@@ -1179,9 +1180,9 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
 
       ds.forEach((l) => {
         sttTong += 1;
-        const thoiGian = `${l.ngay} (${l.gio_bat_dau || ''} - ${l.gio_ket_thuc || ''})`;
-        const khachHang = `${l.ten_khach_hang}${l.dia_diem ? ` (${l.dia_diem})` : ''}`;
-        const noiDung = l.noi_dung || l.tieu_de || 'Lịch gặp khách hàng theo kế hoạch';
+        const thoiGian = `${l.ngay.slice(5)} (${l.gio_bat_dau || ''})`;
+        const khachHang = `${l.ten_khach_hang}${l.dia_diem ? ` - ${l.dia_diem}` : ''}`;
+        const noiDung = l.noi_dung || l.tieu_de || 'Gặp khách hàng';
 
         const row = sTong.addRow([
           '',
@@ -1189,27 +1190,23 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
           thoiGian,
           tenNV,
           khachHang,
-          '',
           noiDung,
+          '',
           ''
         ]);
         const rIdx = row.number;
-        sTong.mergeCells(`E${rIdx}:F${rIdx}`);
-        sTong.mergeCells(`G${rIdx}:H${rIdx}`);
-        row.height = tinhChieuCaoHang(noiDung, 44, 26);
+        sTong.mergeCells(`F${rIdx}:H${rIdx}`);
+        row.height = tinhChieuCaoHang(noiDung, 45, 24);
 
         for (let c = 2; c <= 8; c++) {
           const cell = row.getCell(c);
-          cell.font = { name: 'Calibri', size: 10 };
+          cell.font = { name: 'Calibri', size: 11 };
           cell.border = borderThin;
-          if (c === 2) cell.alignment = { vertical: 'middle', horizontal: 'center' };
-          else if (c === 3) cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          if (c === 2 || c === 3) cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
           else if (c === 4) {
-            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-            cell.font = { name: 'Calibri', size: 10, bold: true };
-          } else if (c === 5) {
             cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
-          } else if (c === 7) {
+            cell.font = { name: 'Calibri', size: 11, bold: true };
+          } else if (c === 5 || c === 6) {
             cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
           }
         }
