@@ -100,6 +100,9 @@ export const danhSachLichGapKH = async (
   dieuKien?: DieuKienLocLichGap
 ): Promise<LichGapKH[]> => {
   const dsIdDaXoa = layDanhSachIdDaXoa();
+  if (!dieuKien && _cacheDanhSachLich && Date.now() - _cacheDanhSachLich.time < CACHE_TTL_MS) {
+    return _cacheDanhSachLich.data.filter((x) => !x.da_xoa && !dsIdDaXoa.has(x.id));
+  }
   const local = docCacheLocal().filter((x) => !x.da_xoa && !dsIdDaXoa.has(x.id));
   const map = new Map<string, LichGapKH>();
   local.forEach((x) => {
@@ -108,7 +111,8 @@ export const danhSachLichGapKH = async (
 
   // 1. Luôn đọc từ collection chính 'lich_gap_kh'
   try {
-    const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
+    const tuNgayMacDinh = dieuKien?.tu_ngay || new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const q = query(thamChieuCollection(TEN_COLLECTION), where('ngay', '>=', tuNgayMacDinh), limit(GIOI_HAN_MAC_DINH));
     const snap = await getDocs(q);
     snap.docs.forEach((d) => {
       const lich = chuyenDoiDocThanhLichGap(d.id, d.data());
@@ -207,7 +211,8 @@ export const langNgheLichGapKH = (
   // 2. Lắng nghe real-time qua onSnapshot trên Firestore
   let unsubFirestore = () => {};
   try {
-    const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
+    const tuNgayMacDinh = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const q = query(thamChieuCollection(TEN_COLLECTION), where('ngay', '>=', tuNgayMacDinh), limit(GIOI_HAN_MAC_DINH));
     unsubFirestore = onSnapshot(
       q,
       (snap) => {

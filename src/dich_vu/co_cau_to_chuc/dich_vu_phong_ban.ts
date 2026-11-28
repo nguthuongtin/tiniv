@@ -20,6 +20,7 @@ import {
   thamChieuBanGhi,
   ghiNhatKyHoatDong
 } from '../../thu_vien/firebase/client_firebase';
+import { layDanhMucTuServerCache, xoaCacheServerDanhMuc } from '../../thu_vien/utils/cache_danh_muc_client';
 
 const TEN_COLLECTION = 'phong_ban' as const;
 const GIOI_HAN_MAC_DINH = 200;
@@ -78,21 +79,28 @@ const sapXepVaLocThem = (mang: PhongBan[], loc?: DieuKienLocPhongBan): PhongBan[
   });
 };
 
+let _rawCachePB: { mang: PhongBan[]; ts: number } | null = null;
+const CACHE_TTL_PB = 10 * 60 * 1000;
+
 export const danhSachPhongBan = async (
   loc?: DieuKienLocPhongBan
 ): Promise<{ mang: PhongBan[]; tong_so?: number }> => {
-  const mangRangBuoc: QueryConstraint[] = [limit(GIOI_HAN_MAC_DINH)];
-  if (loc?.chi_nhanh_id) {
-    mangRangBuoc.unshift(where('chi_nhanh_id', '==', loc.chi_nhanh_id));
+  const ttDuLieu = loc?.trang_thai_du_lieu ?? 'hoat_dong';
+  if (_rawCachePB && Date.now() - _rawCachePB.ts < CACHE_TTL_PB) {
+    const mangDaLoc = sapXepVaLocThem(_rawCachePB.mang, { ...loc, trang_thai_du_lieu: ttDuLieu });
+    mangDaLoc.sort((a, b) => (a.ten_phong_ban ?? '').localeCompare(b.ten_phong_ban ?? '', 'vi'));
+    return { mang: mangDaLoc, tong_so: mangDaLoc.length };
   }
-  const ttDuLieu = loc?.trang_thai_du_lieu && loc.trang_thai_du_lieu !== 'tat_ca'
-    ? loc.trang_thai_du_lieu
-    : 'hoat_dong';
-  mangRangBuoc.unshift(where('trang_thai_du_lieu', '==', ttDuLieu));
+
   try {
-    const snap = await getDocs(query(thamChieuCollection(TEN_COLLECTION), ...mangRangBuoc));
-    const mangRaw = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
-    const mangDaLoc = sapXepVaLocThem(mangRaw, loc);
+    const serverItems = await layDanhMucTuServerCache('phong_ban');
+    const mangRaw = serverItems
+      ? serverItems.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d))
+      : (
+          await getDocs(query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH)))
+        ).docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+    _rawCachePB = { mang: mangRaw, ts: Date.now() };
+    const mangDaLoc = sapXepVaLocThem(mangRaw, { ...loc, trang_thai_du_lieu: ttDuLieu });
     mangDaLoc.sort((a, b) => (a.ten_phong_ban ?? '').localeCompare(b.ten_phong_ban ?? '', 'vi'));
     return { mang: mangDaLoc, tong_so: mangDaLoc.length };
   } catch {
@@ -137,6 +145,8 @@ export const taoPhongBanMoi = async (
     moi.id,
     `Tao phong ban "${moi.ten_phong_ban}"`
   );
+  _rawCachePB = null;
+  xoaCacheServerDanhMuc('phong_ban');
   return moi;
 };
 
@@ -170,6 +180,8 @@ export const capNhatPhongBan = async (
     moi.id,
     `Cap nhat phong ban "${moi.ten_phong_ban}"`
   );
+  _rawCachePB = null;
+  xoaCacheServerDanhMuc('phong_ban');
   return moi;
 };
 

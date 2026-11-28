@@ -20,6 +20,7 @@ import {
   thamChieuBanGhi,
   ghiNhatKyHoatDong
 } from '../../thu_vien/firebase/client_firebase';
+import { layDanhMucTuServerCache, xoaCacheServerDanhMuc } from '../../thu_vien/utils/cache_danh_muc_client';
 
 const TEN_COLLECTION = 'chi_nhanh' as const;
 const GIOI_HAN_MAC_DINH = 100;
@@ -106,8 +107,12 @@ export const danhSachChiNhanh = async (
     if (!_dangTaiCNPromise) {
       _dangTaiCNPromise = (async () => {
         try {
-          const snap = await getDocs(query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH)));
-          const mangRaw = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+          const serverItems = await layDanhMucTuServerCache('chi_nhanh');
+          const mangRaw = serverItems
+            ? serverItems.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d))
+            : (await getDocs(query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH)))).docs.map((d) =>
+                chuyenDoiDocThanhDoiTuong(d.id, d.data())
+              );
           mangRaw.sort((a, b) => (a.ten_chi_nhanh ?? '').localeCompare(b.ten_chi_nhanh ?? '', 'vi'));
           _rawCacheCN = { mang: mangRaw, ts: Date.now() };
           return mangRaw;
@@ -160,6 +165,7 @@ export const taoChiNhanhMoi = async (
   };
   const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
   const moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
+  xoaCacheServerDanhMuc('chi_nhanh');
   if (_rawCacheCN) {
     _rawCacheCN = {
       mang: [..._rawCacheCN.mang.filter((c) => c.id !== moi.id), moi].sort((a, b) =>
@@ -199,6 +205,7 @@ export const capNhatChiNhanh = async (
   patchRaw.ngay_cap_nhat = now;
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
   const moi = { ...hienTai, ...patchRaw } as ChiNhanh;
+  xoaCacheServerDanhMuc('chi_nhanh');
   if (_rawCacheCN) {
     const idx = _rawCacheCN.mang.findIndex((c) => c.id === moi.id);
     const mangMoi = [..._rawCacheCN.mang];

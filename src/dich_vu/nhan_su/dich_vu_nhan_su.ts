@@ -15,6 +15,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase/app';
+import { layDanhMucTuServerCache, xoaCacheServerDanhMuc } from '../../thu_vien/utils/cache_danh_muc_client';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -233,9 +234,11 @@ export const layCacheNhanSuDongBo = (
 
 export const xoaCacheNhanSu = () => {
   _rawCacheNS = null;
+  xoaCacheServerDanhMuc('nhan_su');
 };
 
 const dongBoThemHoacCapNhatCacheNS = (ns: NhanSu) => {
+  xoaCacheServerDanhMuc('nhan_su');
   if (!_rawCacheNS) return;
   const idx = _rawCacheNS.mang.findIndex((x) => x.id === ns.id);
   const mangMoi = [..._rawCacheNS.mang];
@@ -256,8 +259,12 @@ export const danhSachNhanSu = async (
     if (!_dangTaiNSPromise) {
       _dangTaiNSPromise = (async () => {
         try {
-          const snap = await getDocs(query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH)));
-          const mangRaw = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+          const serverItems = await layDanhMucTuServerCache('nhan_su');
+          const mangRaw = serverItems
+            ? serverItems.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d))
+            : (await getDocs(query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH)))).docs.map((d) =>
+                chuyenDoiDocThanhDoiTuong(d.id, d.data())
+              );
           mangRaw.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
           _rawCacheNS = { mang: mangRaw, ts: Date.now() };
           return mangRaw;

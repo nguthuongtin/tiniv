@@ -23,6 +23,7 @@ import {
   ghiNhatKyHoatDong,
   firebaseAuth
 } from '../../thu_vien/firebase/client_firebase';
+import { layDanhMucTuServerCache, xoaCacheServerDanhMuc } from '../../thu_vien/utils/cache_danh_muc_client';
 
 const TEN_COLLECTION = 'san_pham_dich_vu' as const;
 const GIOI_HAN_MAC_DINH = 500;
@@ -119,10 +120,23 @@ const locTheoTuKhoa = (mang: SanPhamDichVu[], tuKhoa: string | null | undefined)
   );
 };
 
+let _rawCacheSP: { mang: SanPhamDichVu[]; ts: number } | null = null;
+const CACHE_TTL_SP = 10 * 60 * 1000;
+
 export const danhSachSanPhamDichVu = async (dk: DieuKienLocSanPhamDichVu = {}): Promise<KetQuaDanhSachSanPhamDichVu> => {
   const full: DieuKienLocSanPhamDichVu = { tuKhoa: null, loai: 'tat_ca', trang_thai_du_lieu: 'hoat_dong', gioiHan: null, ...dk };
-  const snap = await getDocs(query(thamChieuCollection(TEN_COLLECTION), ...taoDieuKien(full)));
-  const mangChuaSort = snap.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+  let mangChuaSort: SanPhamDichVu[];
+  if (_rawCacheSP && Date.now() - _rawCacheSP.ts < CACHE_TTL_SP) {
+    mangChuaSort = _rawCacheSP.mang;
+  } else {
+    const serverItems = await layDanhMucTuServerCache('san_pham_dich_vu');
+    mangChuaSort = serverItems
+      ? serverItems.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d))
+      : (await getDocs(query(thamChieuCollection(TEN_COLLECTION), ...taoDieuKien(full)))).docs.map((d) =>
+          chuyenDoiDocThanhDoiTuong(d.id, d.data())
+        );
+    _rawCacheSP = { mang: mangChuaSort, ts: Date.now() };
+  }
   const mang = sortSanPhamTrongBoNho(mangChuaSort);
   const daLocTheoDieuKien = locTheoDieuKienCoSoDuLieuBoNho(mang, full);
   const daLoc = locTheoTuKhoa(daLocTheoDieuKien, full.tuKhoa);
@@ -171,6 +185,8 @@ export const taoSanPhamDichVuMoi = async (dto: TaoMoiSanPhamDichVuDTO, nguoiThuc
   } catch {
     /* ignore */
   }
+  _rawCacheSP = null;
+  xoaCacheServerDanhMuc('san_pham_dich_vu');
   return { id: ref.id, ...duLieuGoi };
 };
 
@@ -204,6 +220,8 @@ export const capNhatSanPhamDichVu = async (dto: CapNhatSanPhamDichVuDTO, nguoiTh
   } catch {
     /* ignore */
   }
+  _rawCacheSP = null;
+  xoaCacheServerDanhMuc('san_pham_dich_vu');
   return banSau;
 };
 
