@@ -67,5 +67,20 @@ export { ToLichNgay } from './to_lich_ngay';
 export { ThanhSoLieu } from './thanh_so_lieu';
 export type { MucSoLieu, MauSoLieu, ThanhSoLieuProps } from './thanh_so_lieu';
 
-export { KhungDanhSach, DanhSachTheMobile, TheMobile, PhanTrang, NutIcon } from './khung_danh_sach';
-export type { KhungDanhSachProps, PhanTrangProps } from './khung_danh_sach';
+export {
+  KhungDanhSach,
+  DanhSachTheMobile,
+  TheMobile,
+  TheDuLieuMobile,
+  PhanTrang,
+  NutIcon
+} from './khung_danh_sach';
+export type { KhungDanhSachProps, TheDuLieuMobileProps, PhanTrangProps } from './khung_danh_sach';
+
+export { ThanhLocChuan, MenuHanhDongMobile } from './bo_loc_mobile';
+export type {
+  ThanhLocChuanProps,
+  ChipLocNhanh,
+  TuyChonSapXep,
+  MucHanhDongMobile
+} from './bo_loc_mobile';

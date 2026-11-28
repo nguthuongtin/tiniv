@@ -81,7 +81,8 @@ import {
   ODauBang,
   OBang,
   DanhSachTheMobile,
-  TheMobile
+  TheDuLieuMobile,
+  MenuHanhDongMobile
 } from '../../../thanh_phan/ui';
 import { DANH_SACH_GIAI_DOAN_MAC_DINH, layCauHinhGiaiDoanTheoKey, layDanhSachGiaiDoan } from '../../../thu_vien/cau_hinh/giai_doan_du_an';
 import { langNgheCauHinhGiaiDoanDuAn } from '../../../dich_vu/cau_hinh/dich_vu_cau_hinh_giai_doan_du_an';
@@ -655,24 +656,41 @@ function TrangHoSoDuAn() {
           so_luong={danhSachDaSapXep.length}
           hanh_dong={
             <>
+              <MenuHanhDongMobile
+                tieu_de="Tùy chọn dự án"
+                muc={[
+                  {
+                    khoa: 'xuat_excel',
+                    nhan:
+                      dsDuAnDaChonIds.size > 0
+                        ? `Xuất Excel (${dsDuAnDaChonIds.size} đã chọn)`
+                        : 'Xuất Excel danh sách',
+                    icon: FileSpreadsheet,
+                    khi_bam: () => {
+                      setCheDoXuatMacDinh(dsDuAnDaChonIds.size > 0 ? 'da_chon' : undefined);
+                      setMoModalXuatExcel(true);
+                    }
+                  }
+                ]}
+              />
               <Nut
                 kieu="outline"
                 kich_thuoc="sm"
                 icon_trai={FileSpreadsheet}
+                className="hidden sm:inline-flex"
                 onClick={() => {
                   setCheDoXuatMacDinh(dsDuAnDaChonIds.size > 0 ? 'da_chon' : undefined);
                   setMoModalXuatExcel(true);
                 }}
               >
-                <span className="sm:hidden">Xuất</span>
-                <span className="hidden sm:inline">Xuất Excel</span>
+                <span>Xuất Excel</span>
                 {dsDuAnDaChonIds.size > 0 && (
                   <span className="size-4.5 rounded-full bg-primary text-white text-nhan font-bold flex items-center justify-center">
                     {dsDuAnDaChonIds.size}
                   </span>
                 )}
               </Nut>
-              <Nut kieu="primary" kich_thuoc="sm" icon_trai={Plus} onClick={moThemMoi}>
+              <Nut kieu="primary" kich_thuoc="sm" icon_trai={Plus} onClick={moThemMoi} aria-label="Thêm dự án">
                 <span className="hidden sm:inline">Thêm dự án</span>
               </Nut>
             </>
@@ -893,81 +911,67 @@ function TrangHoSoDuAn() {
               const nguoiLead = idLead ? dsNhanSu.find((n) => n.id === idLead) ?? null : null;
               const giaTri = laBackOffice ? '***' : DINH_DANG_TIEN_NGAN_GON(hda.gia_tri_du_kien || hda.gia_tri_hop_dong);
               const tiemNang = MAP_TIEM_NANG[hda.muc_do_tiem_nang];
+              const giaiDoanTen = tenGiaiDoan[hda.giai_doan] || hda.giai_doan;
 
               return (
-                <TheMobile
+                <TheDuLieuMobile
                   key={hda.id}
                   mo_di={hda.trang_thai === 'da_xoa'}
                   onClick={() => router.push(`/ho-so-du-an/${hda.id}`)}
-                  className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:border-emerald-300/80 transition-all cursor-pointer active:scale-[0.99] flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Hàng 1: Tên dự án & Đổi nhanh tiềm năng & Ngày tạo */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2">
-                          {hda.ten_du_an}
-                        </h3>
-                        <div
-                          className="mt-1.5 flex items-center gap-1.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="relative inline-flex items-center group/select">
-                            <select
-                              value={hda.muc_do_tiem_nang || 'trung_binh'}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                void xuLyDoiTiemNangNhanh(hda.id, e.target.value as MucDoTiemNangKyHopDong);
-                              }}
-                              className={cn(
-                                "appearance-none pl-2 pr-5 py-0.5 rounded-full text-[11px] font-bold border cursor-pointer outline-none",
-                                tiemNang?.lop || "bg-slate-100 text-slate-600 border-slate-200"
-                              )}
-                            >
-                              <option value="rat_cao">🔴 Rất cao</option>
-                              <option value="cao">🟠 Cao</option>
-                              <option value="trung_binh">🔵 Trung bình</option>
-                              <option value="thap">⚪ Thấp</option>
-                              <option value="rat_thap">⚪ Rất thấp</option>
-                            </select>
-                            <ChevronDown className="size-2.5 absolute right-1.5 pointer-events-none opacity-60" />
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-xs text-slate-400 font-medium shrink-0 pt-0.5 tabular-nums">
-                        {hda.ngay_tao ? formatNgay(hda.ngay_tao.slice(0, 10)) : '—'}
-                      </span>
+                  tieu_de={hda.ten_du_an}
+                  trang_thai={
+                    <div
+                      className="relative inline-flex items-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <select
+                        value={hda.muc_do_tiem_nang || 'trung_binh'}
+                        aria-label="Mức tiềm năng dự án"
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          void xuLyDoiTiemNangNhanh(hda.id, e.target.value as MucDoTiemNangKyHopDong);
+                        }}
+                        className={cn(
+                          'appearance-none pl-2 pr-5 py-0.5 rounded-full text-[11px] font-bold border cursor-pointer outline-none',
+                          tiemNang?.lop || 'bg-slate-100 text-slate-600 border-slate-200'
+                        )}
+                      >
+                        <option value="rat_cao">Rất cao</option>
+                        <option value="cao">Cao</option>
+                        <option value="trung_binh">Trung bình</option>
+                        <option value="thap">Thấp</option>
+                        <option value="rat_thap">Rất thấp</option>
+                      </select>
+                      <ChevronDown className="size-2.5 absolute right-1.5 pointer-events-none opacity-60" />
                     </div>
-
-                    {/* Hàng 2: Khách hàng */}
-                    {kh && (
-                      <div className="mt-1.5 flex items-center gap-1.5 text-xs sm:text-[13px] font-medium text-slate-500 truncate">
-                        <Building2 className="size-3.5 shrink-0 text-slate-400" />
-                        <span className="truncate">{kh.ten_khach_hang}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Hàng 3: Làm nổi bật số tiền & Người phụ trách */}
-                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <div className="flex items-baseline gap-1.5 min-w-0">
-                      <span className="text-xs text-slate-400 font-medium shrink-0">Giá trị:</span>
-                      <span className="text-[15px] sm:text-base font-black text-emerald-600 tracking-tight tabular-nums truncate">
-                        {giaTri}
-                      </span>
-                    </div>
-                    {nguoiLead ? (
-                      <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                  }
+                  thong_tin_phu={
+                    [
+                      kh?.ten_khach_hang || null,
+                      giaiDoanTen || null,
+                      hda.ngay_tao ? formatNgay(hda.ngay_tao.slice(0, 10)) : null
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  }
+                  chan_trai={
+                    <span className="text-[15px] font-black text-emerald-600 tracking-tight tabular-nums truncate">
+                      {giaTri}
+                    </span>
+                  }
+                  chan_phai={
+                    nguoiLead ? (
+                      <div className="flex items-center gap-1.5">
                         <DaiDien ten={nguoiLead.ho_va_ten} kich_thuoc="sm" />
-                        <span className="text-xs font-semibold text-slate-700 truncate max-w-[100px]">
+                        <span className="text-xs font-semibold text-slate-700 truncate max-w-[96px]">
                           {nguoiLead.ho_va_ten.split(' ').pop()}
                         </span>
                       </div>
                     ) : (
                       <span className="text-xs text-slate-400 italic">Chưa gán</span>
-                    )}
-                  </div>
-                </TheMobile>
+                    )
+                  }
+                />
               );
             })}
           </DanhSachTheMobile>

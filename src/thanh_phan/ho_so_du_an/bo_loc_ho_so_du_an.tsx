@@ -1,8 +1,8 @@
 'use client';
 
-import { X, Filter, Search, XCircle, ChevronDown, Building2, UserRound, Users, Calendar, ArrowUpDown, Check } from 'lucide-react';
+import { X, Search, ChevronDown, Building2, UserRound, Users, Calendar, Check } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { cn } from '../../thu_vien/utils/cn';
+import { ThanhLocChuan } from '../ui';
 import type { DieuKienLocHoSoDuAn } from '../../dich_vu/ho_so_du_an/dich_vu_ho_so_du_an';
 import type {
   GiaiDoanDuAn,
@@ -58,7 +58,6 @@ export default function BoLocHoSoDuAn({
   kieu_sap_xep = 'tiem_nang',
   khi_doi_sap_xep
 }: BoLocHoSoDuAnProps) {
-  const [moRong, setMoRong] = useState(false);
   const [tuKhoaKH, setTuKhoaKH] = useState('');
   const [moDropdownKH, setMoDropdownKH] = useState(false);
 
@@ -118,299 +117,284 @@ export default function BoLocHoSoDuAn({
     });
   };
 
+  const chipsNhanh = useMemo(
+    () => [
+      {
+        khoa: 'tat_ca',
+        nhan: 'Tất cả',
+        dang_chon:
+          (!gia_tri_hien_tai.giai_doan || gia_tri_hien_tai.giai_doan === 'tat_ca') &&
+          (!gia_tri_hien_tai.muc_do_tiem_nang || gia_tri_hien_tai.muc_do_tiem_nang === 'tat_ca'),
+        khi_bam: () =>
+          khi_thay_doi({
+            ...gia_tri_hien_tai,
+            giai_doan: 'tat_ca',
+            muc_do_tiem_nang: 'tat_ca'
+          })
+      },
+      {
+        khoa: 'rat_cao',
+        nhan: 'Tiềm năng rất cao',
+        dang_chon: gia_tri_hien_tai.muc_do_tiem_nang === 'rat_cao',
+        khi_bam: () =>
+          datGiaTri(
+            'muc_do_tiem_nang',
+            gia_tri_hien_tai.muc_do_tiem_nang === 'rat_cao' ? 'tat_ca' : 'rat_cao'
+          )
+      },
+      {
+        khoa: 'bao_gia',
+        nhan: 'Báo giá',
+        dang_chon: gia_tri_hien_tai.giai_doan === 'bao_gia',
+        khi_bam: () =>
+          datGiaTri('giai_doan', gia_tri_hien_tai.giai_doan === 'bao_gia' ? 'tat_ca' : 'bao_gia')
+      },
+      {
+        khoa: 'ky_hop_dong',
+        nhan: 'Ký HĐ',
+        dang_chon: gia_tri_hien_tai.giai_doan === 'ky_hop_dong',
+        khi_bam: () =>
+          datGiaTri(
+            'giai_doan',
+            gia_tri_hien_tai.giai_doan === 'ky_hop_dong' ? 'tat_ca' : 'ky_hop_dong'
+          )
+      }
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [gia_tri_hien_tai]
+  );
+
   return (
-    <div>
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 min-w-0">
-          <Search className="size-4 pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={tuKhoa}
-            onChange={(e) => datGiaTri('tuKhoa', e.target.value)}
-            placeholder="Tìm tên dự án, khách hàng..."
-            className="w-full h-10 sm:h-11 rounded-full sm:rounded-2xl border border-slate-200/90 bg-white pl-10 pr-9 text-noi-dung font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-nhe transition"
-          />
-          {tuKhoa && (
-            <button
-              type="button"
-              onClick={() => datGiaTri('tuKhoa', '')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Nút Icon Sắp xếp kế bên nút Bộ lọc */}
-        {khi_doi_sap_xep && (
-          <div
-            className={cn(
-              'relative size-10 sm:size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0',
-              kieu_sap_xep !== 'tiem_nang'
-                ? 'bg-emerald-50 border-emerald-300 text-primary'
-                : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 shadow-nhe'
-            )}
-            title="Sắp xếp danh sách"
-          >
-            <ArrowUpDown className="size-[18px] pointer-events-none" />
-            <select
-              value={kieu_sap_xep}
-              onChange={(e) => khi_doi_sap_xep(e.target.value as any)}
-              aria-label="Sắp xếp danh sách dự án"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            >
-              <option value="tiem_nang">Sắp xếp: Tiềm năng cao → thấp</option>
-              <option value="moi_nhat">Sắp xếp: Mới nhất</option>
-              <option value="cu_nhat">Sắp xếp: Cũ nhất</option>
-              <option value="gia_tri_cao">Sắp xếp: Giá trị cao</option>
-              <option value="ten_az">Sắp xếp: Tên A-Z</option>
-            </select>
-          </div>
-        )}
-
-        {/* Nút biểu tượng Phễu lọc tinh gọn bên cạnh ô tìm kiếm */}
-        <button
-          type="button"
-          onClick={() => setMoRong((m) => !m)}
-          title={moRong ? 'Đóng bộ lọc' : 'Mở bộ lọc'}
-          className={cn(
-            'relative size-10 sm:size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0 cursor-pointer',
-            moRong || soLuongDieuKienKhacMacDinh > 0
-              ? 'bg-primary border-primary text-white shadow-sm shadow-emerald-700/20'
-              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-nhe'
-          )}
-        >
-          <Filter className="size-[18px]" />
-          {soLuongDieuKienKhacMacDinh > 0 && (
-            <span className={cn(
-              "absolute -top-1 -right-1 size-5 rounded-full text-nhan font-bold flex items-center justify-center border-2 border-white",
-              moRong ? "bg-amber-400 text-slate-900" : "bg-primary text-white"
-            )}>
-              {soLuongDieuKienKhacMacDinh}
-            </span>
-          )}
-        </button>
-
-        {/* Nút reset nhanh nếu đang có điều kiện lọc */}
-        {soLuongDieuKienKhacMacDinh > 0 && (
-          <button
-            type="button"
-            onClick={xoaTatCa}
-            title="Xóa tất cả điều kiện lọc"
-            className="size-10 sm:size-11 rounded-full sm:rounded-2xl border border-rose-200/80 bg-rose-50/60 flex items-center justify-center text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.95] shrink-0 cursor-pointer"
-          >
-            <XCircle className="size-5" />
-          </button>
-        )}
-      </div>
-      {moRong && (
-        <div className="mt-2.5 grid gap-3.5 md:grid-cols-2 lg:grid-cols-3 p-4 sm:p-5 rounded-[24px] border border-slate-200/90 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
-          <BoLocMuc label={<><Building2 className="size-3.5 text-slate-500" /> Khách hàng (Công ty)</>}>
+    <ThanhLocChuan
+      tu_khoa={tuKhoa}
+      khi_doi_tu_khoa={(v) => datGiaTri('tuKhoa', v)}
+      placeholder="Tìm tên dự án, khách hàng..."
+      so_dieu_kien={soLuongDieuKienKhacMacDinh}
+      khi_xoa_tat_ca={xoaTatCa}
+      chips_nhanh={chipsNhanh}
+      tieu_de_bo_loc="Bộ lọc hồ sơ dự án"
+      sap_xep={
+        khi_doi_sap_xep
+          ? {
+              gia_tri: kieu_sap_xep,
+              mac_dinh: 'tiem_nang',
+              khi_doi: (v) => khi_doi_sap_xep(v as NonNullable<BoLocHoSoDuAnProps['kieu_sap_xep']>),
+              aria_label: 'Sắp xếp danh sách dự án',
+              tuy_chon: [
+                { gia_tri: 'tiem_nang', nhan: 'Sắp xếp: Tiềm năng cao → thấp' },
+                { gia_tri: 'moi_nhat', nhan: 'Sắp xếp: Mới nhất' },
+                { gia_tri: 'cu_nhat', nhan: 'Sắp xếp: Cũ nhất' },
+                { gia_tri: 'gia_tri_cao', nhan: 'Sắp xếp: Giá trị cao' },
+                { gia_tri: 'ten_az', nhan: 'Sắp xếp: Tên A-Z' }
+              ]
+            }
+          : undefined
+      }
+    >
+      <BoLocMuc label={<><Building2 className="size-3.5 text-slate-500" /> Khách hàng (Công ty)</>}>
+        <div className="relative">
+          {khachHangDangChon ? (
+            <div className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 flex items-center justify-between text-xs font-semibold">
+              <span className="truncate text-slate-800 dark:text-slate-200">{khachHangDangChon.ten_khach_hang}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  datGiaTri('khach_hang_id', null);
+                  setTuKhoaKH('');
+                  setMoDropdownKH(false);
+                }}
+                className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer ml-1"
+                title="Bỏ chọn"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ) : (
             <div className="relative">
-              {khachHangDangChon ? (
-                <div className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 flex items-center justify-between text-xs font-semibold">
-                  <span className="truncate text-slate-800 dark:text-slate-200">{khachHangDangChon.ten_khach_hang}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      datGiaTri('khach_hang_id', null);
-                      setTuKhoaKH('');
-                      setMoDropdownKH(false);
-                    }}
-                    className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer ml-1"
-                    title="Bỏ chọn"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <div className="relative">
-                    <Search className="size-3.5 absolute left-3 top-3 text-slate-400" />
-                    <input
-                      type="text"
-                      value={tuKhoaKH}
-                      onChange={(e) => {
-                        setTuKhoaKH(e.target.value);
-                        setMoDropdownKH(true);
-                      }}
-                      onFocus={() => setMoDropdownKH(true)}
-                      placeholder="Tìm theo tên hoặc MST khách hàng..."
-                      className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8.5 pr-8 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden focus:border-emerald-600"
-                    />
-                    <ChevronDown className="size-3.5 absolute right-3 top-3 text-slate-400 pointer-events-none" />
-                  </div>
+              <div className="relative">
+                <Search className="size-3.5 absolute left-3 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  value={tuKhoaKH}
+                  onChange={(e) => {
+                    setTuKhoaKH(e.target.value);
+                    setMoDropdownKH(true);
+                  }}
+                  onFocus={() => setMoDropdownKH(true)}
+                  placeholder="Tìm theo tên hoặc MST khách hàng..."
+                  className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8.5 pr-8 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden focus:border-emerald-600"
+                />
+                <ChevronDown className="size-3.5 absolute right-3 top-3 text-slate-400 pointer-events-none" />
+              </div>
 
-                  {moDropdownKH && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-30"
-                        onClick={() => setMoDropdownKH(false)}
-                      />
-                      <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-52 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl divide-y divide-slate-100 dark:divide-slate-700">
+              {moDropdownKH && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setMoDropdownKH(false)}
+                  />
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-52 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl divide-y divide-slate-100 dark:divide-slate-700">
+                    <div
+                      onClick={() => {
+                        datGiaTri('khach_hang_id', null);
+                        setMoDropdownKH(false);
+                      }}
+                      className="p-2.5 text-xs text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/60 cursor-pointer italic"
+                    >
+                      Tất cả khách hàng
+                    </div>
+                    {dsKHLoc.length === 0 ? (
+                      <div className="p-2.5 text-xs text-slate-400 italic text-center">
+                        Không tìm thấy khách hàng
+                      </div>
+                    ) : (
+                      dsKHLoc.map((kh) => (
                         <div
+                          key={kh.id}
                           onClick={() => {
-                            datGiaTri('khach_hang_id', null);
+                            datGiaTri('khach_hang_id', kh.id);
                             setMoDropdownKH(false);
                           }}
-                          className="p-2.5 text-xs text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/60 cursor-pointer italic"
+                          className="p-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/60 cursor-pointer flex items-center justify-between gap-2"
                         >
-                          Tất cả khách hàng
-                        </div>
-                        {dsKHLoc.length === 0 ? (
-                          <div className="p-2.5 text-xs text-slate-400 italic text-center">
-                            Không tìm thấy khách hàng
-                          </div>
-                        ) : (
-                          dsKHLoc.map((kh) => (
-                            <div
-                              key={kh.id}
-                              onClick={() => {
-                                datGiaTri('khach_hang_id', kh.id);
-                                setMoDropdownKH(false);
-                              }}
-                              className="p-2.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/60 cursor-pointer flex items-center justify-between gap-2"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
-                                  {kh.ten_khach_hang}
-                                </div>
-                                {kh.ma_so_thue && (
-                                  <div className="text-[10.5px] text-slate-400 font-mono">
-                                    MST: {kh.ma_so_thue}
-                                  </div>
-                                )}
-                              </div>
-                              {gia_tri_hien_tai.khach_hang_id === kh.id && (
-                                <Check className="size-3.5 text-emerald-600 shrink-0" />
-                              )}
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                              {kh.ten_khach_hang}
                             </div>
-                          ))
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
+                            {kh.ma_so_thue && (
+                              <div className="text-[10.5px] text-slate-400 font-mono">
+                                MST: {kh.ma_so_thue}
+                              </div>
+                            )}
+                          </div>
+                          {gia_tri_hien_tai.khach_hang_id === kh.id && (
+                            <Check className="size-3.5 text-emerald-600 shrink-0" />
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
               )}
             </div>
-          </BoLocMuc>
-          <BoLocMuc label={<><UserRound className="size-3.5 text-slate-500" /> Giai đoạn dự án</>}>
-            <select
-              value={(gia_tri_hien_tai.giai_doan as string) ?? 'tat_ca'}
-              onChange={(e) =>
-                datGiaTri('giai_doan', e.target.value as DieuKienLocHoSoDuAn['giai_doan'])
-              }
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
-            >
-              {CAC_GIAI_DOAN.map((x) => (
-                <option key={x.gia_tri} value={x.gia_tri}>
-                  {x.nhan}
-                </option>
-              ))}
-            </select>
-          </BoLocMuc>
-          <BoLocMuc label={<><UserRound className="size-3.5 text-slate-500" /> Mức tiềm năng ký</>}>
-            <select
-              value={(gia_tri_hien_tai.muc_do_tiem_nang as string) ?? 'tat_ca'}
-              onChange={(e) =>
-                datGiaTri(
-                  'muc_do_tiem_nang',
-                  e.target.value as DieuKienLocHoSoDuAn['muc_do_tiem_nang']
-                )
-              }
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
-            >
-              {CAC_MUC_TIEM_NANG.map((x) => (
-                <option key={x.gia_tri} value={x.gia_tri}>
-                  {x.nhan}
-                </option>
-              ))}
-            </select>
-          </BoLocMuc>
-          <BoLocMuc label={<><Users className="size-3.5 text-slate-500" /> Người quản lý</>}>
-            <select
-              value={gia_tri_hien_tai.nguoi_quan_ly_id ?? ''}
-              onChange={(e) => datGiaTri('nguoi_quan_ly_id', e.target.value ? e.target.value : null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
-            >
-              <option value="">Tất cả người quản lý</option>
-              {ds_nhan_su.map((ns) => (
-                <option key={ns.id} value={ns.id}>
-                  {ns.ho_va_ten}
-                  {ns.chuc_vu ? ` — ${ns.chuc_vu}` : ''}
-                </option>
-              ))}
-            </select>
-          </BoLocMuc>
-          <BoLocMuc label={<><Users className="size-3.5 text-slate-500" /> Người phụ trách chính (PIC)</>}>
-            <select
-              value={gia_tri_hien_tai.nguoi_phu_trach_id ?? ''}
-              onChange={(e) => datGiaTri('nguoi_phu_trach_id', e.target.value ? e.target.value : null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
-            >
-              <option value="">Tất cả người phụ trách</option>
-              {ds_nhan_su.map((ns) => (
-                <option key={ns.id} value={ns.id}>
-                  {ns.ho_va_ten}
-                  {ns.vai_tro ? ` — ${String(ns.vai_tro).replace(/_/g, ' ')}` : ''}
-                </option>
-              ))}
-            </select>
-          </BoLocMuc>
-          <BoLocMuc label="Trạng thái hồ sơ">
-            <select
-              value={(gia_tri_hien_tai.trang_thai as string) ?? 'hoat_dong'}
-              onChange={(e) =>
-                datGiaTri('trang_thai', e.target.value as DieuKienLocHoSoDuAn['trang_thai'])
-              }
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
-            >
-              {CAC_TRANG_THAI.filter(Boolean).map((x) => (
-                <option key={x!.gia_tri} value={x!.gia_tri as string}>
-                  {x!.nhan}
-                </option>
-              ))}
-            </select>
-          </BoLocMuc>
-
-          <div className="col-span-full h-px bg-slate-200/80 my-1" />
-
-          <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tiếp cận từ ngày</>}>
-            <input
-              type="date"
-              value={gia_tri_hien_tai.ngay_tao_tu_ngay ?? ''}
-              onChange={(e) => datGiaTri('ngay_tao_tu_ngay', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
-            />
-          </BoLocMuc>
-          <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tiếp cận đến ngày</>}>
-            <input
-              type="date"
-              value={gia_tri_hien_tai.ngay_tao_den_ngay ?? ''}
-              onChange={(e) => datGiaTri('ngay_tao_den_ngay', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
-            />
-          </BoLocMuc>
-          <div className="hidden lg:block h-10" />
-          <BoLocMuc label={<><Calendar className="size-3.5 text-[#FF9500]" /> Dự kiến ký HĐ từ ngày</>}>
-            <input
-              type="date"
-              value={gia_tri_hien_tai.thoi_han_hoan_thanh_tu_ngay ?? ''}
-              onChange={(e) => datGiaTri('thoi_han_hoan_thanh_tu_ngay', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-[#FF9500]/30 bg-amber-50/40 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] shadow-2xs"
-            />
-          </BoLocMuc>
-          <BoLocMuc label={<><Calendar className="size-3.5 text-[#FF9500]" /> Dự kiến ký HĐ đến ngày</>}>
-            <input
-              type="date"
-              value={gia_tri_hien_tai.thoi_han_hoan_thanh_den_ngay ?? ''}
-              onChange={(e) => datGiaTri('thoi_han_hoan_thanh_den_ngay', e.target.value || null)}
-              className="w-full h-10 rounded-xl border border-[#FF9500]/30 bg-amber-50/40 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] shadow-2xs"
-            />
-          </BoLocMuc>
+          )}
         </div>
-      )}
-    </div>
+      </BoLocMuc>
+      <BoLocMuc label={<><UserRound className="size-3.5 text-slate-500" /> Giai đoạn dự án</>}>
+        <select
+          value={(gia_tri_hien_tai.giai_doan as string) ?? 'tat_ca'}
+          onChange={(e) =>
+            datGiaTri('giai_doan', e.target.value as DieuKienLocHoSoDuAn['giai_doan'])
+          }
+          className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
+        >
+          {CAC_GIAI_DOAN.map((x) => (
+            <option key={x.gia_tri} value={x.gia_tri}>
+              {x.nhan}
+            </option>
+          ))}
+        </select>
+      </BoLocMuc>
+      <BoLocMuc label={<><UserRound className="size-3.5 text-slate-500" /> Mức tiềm năng ký</>}>
+        <select
+          value={(gia_tri_hien_tai.muc_do_tiem_nang as string) ?? 'tat_ca'}
+          onChange={(e) =>
+            datGiaTri(
+              'muc_do_tiem_nang',
+              e.target.value as DieuKienLocHoSoDuAn['muc_do_tiem_nang']
+            )
+          }
+          className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
+        >
+          {CAC_MUC_TIEM_NANG.map((x) => (
+            <option key={x.gia_tri} value={x.gia_tri}>
+              {x.nhan}
+            </option>
+          ))}
+        </select>
+      </BoLocMuc>
+      <BoLocMuc label={<><Users className="size-3.5 text-slate-500" /> Người quản lý</>}>
+        <select
+          value={gia_tri_hien_tai.nguoi_quan_ly_id ?? ''}
+          onChange={(e) => datGiaTri('nguoi_quan_ly_id', e.target.value ? e.target.value : null)}
+          className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
+        >
+          <option value="">Tất cả người quản lý</option>
+          {ds_nhan_su.map((ns) => (
+            <option key={ns.id} value={ns.id}>
+              {ns.ho_va_ten}
+              {ns.chuc_vu ? ` — ${ns.chuc_vu}` : ''}
+            </option>
+          ))}
+        </select>
+      </BoLocMuc>
+      <BoLocMuc label={<><Users className="size-3.5 text-slate-500" /> Người phụ trách chính (PIC)</>}>
+        <select
+          value={gia_tri_hien_tai.nguoi_phu_trach_id ?? ''}
+          onChange={(e) => datGiaTri('nguoi_phu_trach_id', e.target.value ? e.target.value : null)}
+          className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
+        >
+          <option value="">Tất cả người phụ trách</option>
+          {ds_nhan_su.map((ns) => (
+            <option key={ns.id} value={ns.id}>
+              {ns.ho_va_ten}
+              {ns.vai_tro ? ` — ${String(ns.vai_tro).replace(/_/g, ' ')}` : ''}
+            </option>
+          ))}
+        </select>
+      </BoLocMuc>
+      <BoLocMuc label="Trạng thái hồ sơ">
+        <select
+          value={(gia_tri_hien_tai.trang_thai as string) ?? 'hoat_dong'}
+          onChange={(e) =>
+            datGiaTri('trang_thai', e.target.value as DieuKienLocHoSoDuAn['trang_thai'])
+          }
+          className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
+        >
+          {CAC_TRANG_THAI.filter(Boolean).map((x) => (
+            <option key={x!.gia_tri} value={x!.gia_tri as string}>
+              {x!.nhan}
+            </option>
+          ))}
+        </select>
+      </BoLocMuc>
+
+      <div className="col-span-full h-px bg-slate-200/80 my-1" />
+
+      <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tiếp cận từ ngày</>}>
+        <input
+          type="date"
+          value={gia_tri_hien_tai.ngay_tao_tu_ngay ?? ''}
+          onChange={(e) => datGiaTri('ngay_tao_tu_ngay', e.target.value || null)}
+          className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
+        />
+      </BoLocMuc>
+      <BoLocMuc label={<><Calendar className="size-3.5 text-slate-500" /> Ngày tiếp cận đến ngày</>}>
+        <input
+          type="date"
+          value={gia_tri_hien_tai.ngay_tao_den_ngay ?? ''}
+          onChange={(e) => datGiaTri('ngay_tao_den_ngay', e.target.value || null)}
+          className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
+        />
+      </BoLocMuc>
+      <div className="hidden lg:block h-10" />
+      <BoLocMuc label={<><Calendar className="size-3.5 text-[#FF9500]" /> Dự kiến ký HĐ từ ngày</>}>
+        <input
+          type="date"
+          value={gia_tri_hien_tai.thoi_han_hoan_thanh_tu_ngay ?? ''}
+          onChange={(e) => datGiaTri('thoi_han_hoan_thanh_tu_ngay', e.target.value || null)}
+          className="w-full h-10 rounded-xl border border-[#FF9500]/30 bg-amber-50/40 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] shadow-2xs"
+        />
+      </BoLocMuc>
+      <BoLocMuc label={<><Calendar className="size-3.5 text-[#FF9500]" /> Dự kiến ký HĐ đến ngày</>}>
+        <input
+          type="date"
+          value={gia_tri_hien_tai.thoi_han_hoan_thanh_den_ngay ?? ''}
+          onChange={(e) => datGiaTri('thoi_han_hoan_thanh_den_ngay', e.target.value || null)}
+          className="w-full h-10 rounded-xl border border-[#FF9500]/30 bg-amber-50/40 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FF9500]/20 focus:border-[#FF9500] shadow-2xs"
+        />
+      </BoLocMuc>
+    </ThanhLocChuan>
   );
 }
 

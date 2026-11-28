@@ -58,7 +58,8 @@ import {
   ThanhSoLieu,
   KhungDanhSach,
   DanhSachTheMobile,
-  TheMobile,
+  TheDuLieuMobile,
+  MenuHanhDongMobile,
   PhanTrang,
   NutIcon,
   Bang,
@@ -438,13 +439,24 @@ export default function TrangKhachHang() {
           so_luong={danhSachDaSapXep.length}
           hanh_dong={
             <div className="flex items-center gap-2">
+              <MenuHanhDongMobile
+                tieu_de="Tùy chọn khách hàng"
+                muc={[
+                  {
+                    khoa: 'ban_do',
+                    nhan: 'Bản đồ địa bàn (102 xã/phường)',
+                    icon: MapPin,
+                    khi_bam: () => router.push('/ban-do-3d')
+                  }
+                ]}
+              />
               <Link
                 href="/ban-do-3d"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition active:scale-95"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition active:scale-95"
                 title="Xem bản đồ 102 xã phường địa bàn An Giang"
               >
                 <MapPin className="size-3.5 text-sky-600" />
-                <span className="hidden sm:inline">Bản đồ địa bàn</span>
+                <span>Bản đồ địa bàn</span>
               </Link>
               <Nut
                 kich_thuoc="sm"
@@ -622,8 +634,7 @@ export default function TrangKhachHang() {
           </div>
 
           <DanhSachTheMobile>
-            {danhSachTrangHienTai.map((kh, index) => {
-              const stt = (trangHienTai - 1) * SO_BAN_GHI_MOI_TRANG + index + 1;
+            {danhSachTrangHienTai.map((kh) => {
               const soLuongDa = mapSoLuongDuAnTheoKhachHang.get(kh.id) || 0;
               const nguoiPhuTrach = kh.nguoi_phu_trach_id ? mapNhanSu.get(kh.nguoi_phu_trach_id) : null;
               const tenPhuTrachNgan = nguoiPhuTrach?.ho_va_ten
@@ -632,64 +643,54 @@ export default function TrangKhachHang() {
               const loaiKhNhan = TEN_LOAI_KH[kh.loai_khach_hang]?.nhan || 'Khách hàng';
 
               return (
-                <TheMobile key={kh.id} mo_di={kh.trang_thai === 'da_xoa'}>
-                  <div className="flex items-start gap-2">
-                    <span className="text-slate-400 text-nhan font-extrabold tabular-nums mt-0.5 shrink-0">
-                      {stt}.
+                <TheDuLieuMobile
+                  key={kh.id}
+                  mo_di={kh.trang_thai === 'da_xoa'}
+                  onClick={() => router.push(`/khach-hang/${kh.id}`)}
+                  tieu_de={kh.ten_khach_hang}
+                  trang_thai={
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/70 whitespace-nowrap">
+                      {loaiKhNhan}
                     </span>
-                    <Link href={`/khach-hang/${kh.id}`} className="flex-1 min-w-0">
-                      <div className="text-noi-dung leading-snug">
-                        <span className="font-bold text-slate-900">{kh.ten_khach_hang}</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-nhan font-semibold bg-slate-100 text-slate-500 border border-slate-200/70 ml-1.5 align-middle whitespace-nowrap">
-                          {loaiKhNhan}
-                        </span>
-                      </div>
-                    </Link>
-
-                    {kh.trang_thai === 'da_xoa' && (
+                  }
+                  thong_tin_phu={
+                    [
+                      `${soLuongDa} dự án`,
+                      kh.so_dien_thoai || null,
+                      kh.ma_so_thue ? `MST: ${kh.ma_so_thue}` : null
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')
+                  }
+                  chan_trai={
+                    <span className="text-xs font-semibold text-slate-600 truncate">
+                      {tenPhuTrachNgan || 'Chưa gán phụ trách'}
+                    </span>
+                  }
+                  chan_phai={
+                    kh.trang_thai === 'da_xoa' ? (
                       <NutIcon
                         icon={RotateCcw}
                         nhan="Khôi phục khách hàng"
                         sac="primary"
-                        className="shrink-0 -my-1"
                         disabled={Boolean(dang_xu_ly_khac[`khoi_phuc_${kh.id}`])}
-                        onClick={() => xu_ly_khoi_phuc(kh)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          xu_ly_khoi_phuc(kh);
+                        }}
                       />
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-slate-100">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Link
-                        href={`/khach-hang/${kh.id}#du-an`}
-                        className={cn(
-                          'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-phu font-extrabold shrink-0 border',
-                          soLuongDa > 0
-                            ? 'bg-emerald-50/80 text-primary border-emerald-200/60'
-                            : 'bg-slate-100 text-slate-500 border-slate-200/60'
-                        )}
+                    ) : kh.so_dien_thoai ? (
+                      <a
+                        href={`tel:${kh.so_dien_thoai}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 h-8 px-2.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-[#107555] text-xs font-bold active:scale-95 transition"
                       >
-                        <FolderKanban className="size-3" />
-                        <span>{soLuongDa} DA</span>
-                      </Link>
-                      {kh.so_dien_thoai && (
-                        <a
-                          href={`tel:${kh.so_dien_thoai}`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200/70 text-slate-600 text-nhan font-semibold hover:bg-emerald-50 hover:text-emerald-700 truncate"
-                        >
-                          <Phone className="size-2.5 text-slate-400 shrink-0" />
-                          <span className="truncate">{kh.so_dien_thoai}</span>
-                        </a>
-                      )}
-                    </div>
-
-                    {tenPhuTrachNgan && (
-                      <span className="bg-slate-100 px-2 py-0.5 rounded-full text-nhan font-semibold text-slate-700 shrink-0">
-                        {tenPhuTrachNgan}
-                      </span>
-                    )}
-                  </div>
-                </TheMobile>
+                        <Phone className="size-3 shrink-0" />
+                        <span>Gọi</span>
+                      </a>
+                    ) : null
+                  }
+                />
               );
             })}
           </DanhSachTheMobile>

@@ -571,7 +571,7 @@ export default function TrangTongQuanLanhDao() {
       {/* ========================================================================= */}
       {/* 2. 4 THƯỚC ĐO SỨC KHỎE KINH DOANH (KPI CARDS VỚI DRILL-DOWN)              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* 1. Tổng quy mô Pipeline */}
         <div
           onClick={() =>

@@ -1,9 +1,10 @@
 'use client';
 
-import { X, ExternalLink, Flame, Award, Building2, User, Layers, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, User } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '../../thu_vien/utils/cn';
 import { DINH_DANG_TIEN_NGAN_GON } from '../../thu_vien/utils/format_tien';
+import { Ban_Ve, Nut } from '../ui';
 import type { HoSoDuAn } from '../../thu_vien/types/du_an';
 import type { NhanSu } from '../../thu_vien/types/nhan_su';
 
@@ -16,8 +17,8 @@ interface Props {
 }
 
 const NHAN_MUC_DO_TIEM_NANG: Record<string, { label: string; bg: string; text: string }> = {
-  rat_cao: { label: 'Tiềm năng rất cao', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700' },
-  cao: { label: 'Tiềm năng cao', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700' },
+  rat_cao: { label: 'Rất cao', bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700' },
+  cao: { label: 'Cao', bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700' },
   trung_binh: { label: 'Trung bình', bg: 'bg-slate-50 border-slate-200', text: 'text-slate-600' },
   thap: { label: 'Thấp', bg: 'bg-slate-50 border-slate-200', text: 'text-slate-400' },
   rat_thap: { label: 'Rất thấp', bg: 'bg-slate-50 border-slate-200', text: 'text-slate-400' }
@@ -47,135 +48,117 @@ export default function ModalDanhSachDuAn({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div
-        className="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50">
-          <div>
-            <h3 className="font-bold text-slate-800 text-base sm:text-lg flex items-center gap-2">
-              <span>{tieuDe}</span>
-              <span className="px-2 py-0.5 rounded-full bg-[#185942]/10 text-[#185942] text-xs font-bold">
-                {danhSachDuAn.length}
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {moTaPhu ? `${moTaPhu} • ` : ''}Tổng giá trị dự kiến:{' '}
-              <strong className="text-emerald-700 font-semibold">{DINH_DANG_TIEN_NGAN_GON(tongGiaTri)}</strong>
-            </p>
+    <Ban_Ve
+      mo={true}
+      onDong={onDong}
+      kich_thuoc="lg"
+      tieu_de={
+        <span className="flex items-center gap-2 flex-wrap">
+          <span>{tieuDe}</span>
+          <span className="px-2 py-0.5 rounded-full bg-[#185942]/10 text-[#185942] text-xs font-bold">
+            {danhSachDuAn.length}
+          </span>
+        </span>
+      }
+      phu_de={
+        <>
+          {moTaPhu ? `${moTaPhu} • ` : ''}Tổng giá trị dự kiến:{' '}
+          <strong className="text-emerald-700 font-semibold">{DINH_DANG_TIEN_NGAN_GON(tongGiaTri)}</strong>
+        </>
+      }
+      cuoi={
+        <Nut kieu="outline" kich_thuoc="sm" onClick={onDong} className="w-full sm:w-auto">
+          Đóng
+        </Nut>
+      }
+    >
+      <div className="space-y-2.5">
+        {danhSachDuAn.length === 0 ? (
+          <div className="py-12 text-center text-slate-400 text-xs">
+            Không có dự án nào trong mục này.
           </div>
-          <button
-            type="button"
-            onClick={onDong}
-            className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        ) : (
+          danhSachDuAn.map((da) => {
+            const nguoiPhuTrach = danhSachNhanSu.find((ns) => ns.id === da.nguoi_phu_trach_id);
+            const tiemNangInfo = NHAN_MUC_DO_TIEM_NANG[da.muc_do_tiem_nang] || {
+              label: da.muc_do_tiem_nang || 'Chưa phân loại',
+              bg: 'bg-slate-50 border-slate-200',
+              text: 'text-slate-600'
+            };
+            const giaiDoanInfo = NHAN_GIAI_DOAN[da.giai_doan] || {
+              label: da.giai_doan || 'Đang cập nhật',
+              bg: 'bg-slate-50 border-slate-200',
+              text: 'text-slate-600'
+            };
 
-        {/* Danh sách dự án */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-2.5">
-          {danhSachDuAn.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-xs">
-              Không có dự án nào trong mục này.
-            </div>
-          ) : (
-            danhSachDuAn.map((da) => {
-              const nguoiPhuTrach = danhSachNhanSu.find((ns) => ns.id === da.nguoi_phu_trach_id);
-              const tiemNangInfo = NHAN_MUC_DO_TIEM_NANG[da.muc_do_tiem_nang] || {
-                label: da.muc_do_tiem_nang || 'Chưa phân loại',
-                bg: 'bg-slate-50 border-slate-200',
-                text: 'text-slate-600'
-              };
-              const giaiDoanInfo = NHAN_GIAI_DOAN[da.giai_doan] || {
-                label: da.giai_doan || 'Đang cập nhật',
-                bg: 'bg-slate-50 border-slate-200',
-                text: 'text-slate-600'
-              };
-
-              return (
-                <div
-                  key={da.id}
-                  className="p-3.5 sm:p-4 rounded-xl border border-slate-200/90 bg-white hover:border-[#185942]/30 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="space-y-1.5 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-semibold">
-                        {da.ma_ho_so || 'DA'}
-                      </span>
-                      <Link
-                        href={`/ho-so-du-an/${da.id}`}
-                        className="font-bold text-base text-slate-800 hover:text-[#185942] transition-colors truncate"
-                      >
-                        {da.ten_du_an}
-                      </Link>
-                    </div>
-
-                    <div className="flex items-center gap-2.5 flex-wrap text-sm text-slate-600">
-                      {nguoiPhuTrach && (
-                        <span className="inline-flex items-center gap-1 font-medium text-slate-700">
-                          <User className="w-4 h-4 text-slate-400" />
-                          {nguoiPhuTrach.ho_va_ten}
-                        </span>
-                      )}
-                      <span>•</span>
-                      <span className="font-bold text-emerald-700">
-                        {DINH_DANG_TIEN_NGAN_GON(Number(da.gia_tri_du_kien) || 0)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* Badge tiềm năng */}
+            return (
+              <Link
+                key={da.id}
+                href={`/ho-so-du-an/${da.id}`}
+                className="p-3.5 sm:p-4 rounded-xl border border-slate-200/90 bg-white hover:border-[#185942]/30 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+              >
+                <div className="space-y-1 flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm sm:text-base text-slate-800 truncate">
+                      {da.ten_du_an}
+                    </span>
                     <span
                       className={cn(
-                        'px-2.5 py-1 rounded-lg text-xs font-semibold border',
+                        'sm:hidden px-2 py-0.5 rounded-full text-[11px] font-semibold border shrink-0',
                         tiemNangInfo.bg,
                         tiemNangInfo.text
                       )}
                     >
                       {tiemNangInfo.label}
                     </span>
+                  </div>
 
-                    {/* Badge giai đoạn */}
-                    <span
-                      className={cn(
-                        'px-2.5 py-1 rounded-lg text-xs font-semibold border',
-                        giaiDoanInfo.bg,
-                        giaiDoanInfo.text
-                      )}
-                    >
-                      {giaiDoanInfo.label}
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-600 truncate">
+                    <span className="font-bold text-emerald-700 shrink-0">
+                      {DINH_DANG_TIEN_NGAN_GON(Number(da.gia_tri_du_kien) || 0)}
                     </span>
-
-                    {/* Nút mở dự án */}
-                    <Link
-                      href={`/ho-so-du-an/${da.id}`}
-                      className="p-2 rounded-lg text-slate-400 hover:text-[#185942] hover:bg-slate-100 transition-colors"
-                      title="Xem chi tiết dự án"
-                    >
-                      <ArrowUpRight className="w-4 h-4" />
-                    </Link>
+                    <span>·</span>
+                    <span className="truncate">{giaiDoanInfo.label}</span>
+                    {nguoiPhuTrach && (
+                      <>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-1 truncate">
+                          <User className="size-3.5 text-slate-400 shrink-0" />
+                          {nguoiPhuTrach.ho_va_ten.split(' ').pop()}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
-              );
-            })
-          )}
-        </div>
 
-        {/* Footer */}
-        <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
-          <button
-            type="button"
-            onClick={onDong}
-            className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-          >
-            Đóng
-          </button>
-        </div>
+                <div className="hidden sm:flex items-center gap-2 shrink-0">
+                  <span
+                    className={cn(
+                      'px-2.5 py-1 rounded-lg text-xs font-semibold border',
+                      tiemNangInfo.bg,
+                      tiemNangInfo.text
+                    )}
+                  >
+                    {tiemNangInfo.label}
+                  </span>
+                  <span
+                    className={cn(
+                      'px-2.5 py-1 rounded-lg text-xs font-semibold border',
+                      giaiDoanInfo.bg,
+                      giaiDoanInfo.text
+                    )}
+                  >
+                    {giaiDoanInfo.label}
+                  </span>
+                  <span className="p-2 rounded-lg text-slate-400">
+                    <ArrowUpRight className="w-4 h-4" />
+                  </span>
+                </div>
+              </Link>
+            );
+          })
+        )}
       </div>
-    </div>
+    </Ban_Ve>
   );
 }

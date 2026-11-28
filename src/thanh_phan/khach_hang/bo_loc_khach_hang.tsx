@@ -1,8 +1,8 @@
 'use client';
 
-import { X, Filter, Search, XCircle, Building2, UserRound, Users, Calendar, ShieldCheck, ArrowUpDown } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { cn } from '../../thu_vien/utils/cn';
+import { Building2, UserRound, Users, Calendar, ShieldCheck } from 'lucide-react';
+import { useMemo } from 'react';
+import { ThanhLocChuan } from '../ui';
 import type { DieuKienLocKhachHang } from '../../dich_vu/khach_hang/dich_vu_khach_hang';
 import type { LoaiKhachHang } from '../../thu_vien/types/khach_hang';
 import type { ChiNhanh, NhanSu } from '../../thu_vien/types/nhan_su';
@@ -41,7 +41,6 @@ export default function BoLocKhachHang({
   kieu_sap_xep = 'moi_nhat',
   khi_doi_sap_xep
 }: BoLocKhachHangProps) {
-  const [moRong, setMoRong] = useState(false);
   const tuKhoa = gia_tri_hien_tai.tuKhoa ?? '';
   const soLuongDieuKienKhacMacDinh = useMemo(() => {
     let dem = 0;
@@ -71,96 +70,75 @@ export default function BoLocKhachHang({
     });
   };
 
+  const chipsNhanh = useMemo(
+    () => [
+      {
+        khoa: 'tat_ca',
+        nhan: 'Tất cả',
+        dang_chon: !gia_tri_hien_tai.loai_khach_hang || gia_tri_hien_tai.loai_khach_hang === 'tat_ca',
+        khi_bam: () => datGiaTri('loai_khach_hang', 'tat_ca')
+      },
+      {
+        khoa: 'doanh_nghiep',
+        nhan: 'Doanh nghiệp',
+        dang_chon: gia_tri_hien_tai.loai_khach_hang === 'doanh_nghiep',
+        khi_bam: () =>
+          datGiaTri(
+            'loai_khach_hang',
+            gia_tri_hien_tai.loai_khach_hang === 'doanh_nghiep' ? 'tat_ca' : 'doanh_nghiep'
+          )
+      },
+      {
+        khoa: 'ca_nhan',
+        nhan: 'Cá nhân',
+        dang_chon: gia_tri_hien_tai.loai_khach_hang === 'ca_nhan',
+        khi_bam: () =>
+          datGiaTri(
+            'loai_khach_hang',
+            gia_tri_hien_tai.loai_khach_hang === 'ca_nhan' ? 'tat_ca' : 'ca_nhan'
+          )
+      },
+      {
+        khoa: 'to_chuc',
+        nhan: 'Tổ chức',
+        dang_chon: gia_tri_hien_tai.loai_khach_hang === 'to_chuc',
+        khi_bam: () =>
+          datGiaTri(
+            'loai_khach_hang',
+            gia_tri_hien_tai.loai_khach_hang === 'to_chuc' ? 'tat_ca' : 'to_chuc'
+          )
+      }
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [gia_tri_hien_tai]
+  );
+
   return (
-    <div>
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 min-w-0">
-          <Search className="size-4 pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={tuKhoa}
-            onChange={(e) => datGiaTri('tuKhoa', e.target.value)}
-            placeholder="Tìm tên, MST, SĐT khách hàng..."
-            className="w-full h-11 rounded-full sm:rounded-2xl border border-slate-200/90 bg-white pl-10 pr-9 text-[13px] sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-[0_2px_8px_rgba(15,23,42,0.03)] transition"
-          />
-          {tuKhoa && (
-            <button
-              type="button"
-              onClick={() => datGiaTri('tuKhoa', '')}
-              aria-label="Xóa từ khóa tìm kiếm"
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Nút biểu tượng Sắp xếp kế nút Bộ lọc */}
-        {khi_doi_sap_xep && (
-          <div
-            title="Sắp xếp danh sách"
-            className={cn(
-              'relative size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0',
-              kieu_sap_xep !== 'moi_nhat'
-                ? 'bg-emerald-50 border-emerald-400 text-[#107555]'
-                : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_2px_8px_rgba(15,23,42,0.03)]'
-            )}
-          >
-            <ArrowUpDown className="size-[18px] pointer-events-none" />
-            <select
-              value={kieu_sap_xep}
-              onChange={(e) => khi_doi_sap_xep(e.target.value as KieuSapXepKhachHang)}
-              aria-label="Sắp xếp khách hàng"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            >
-              <option value="moi_nhat">Sắp xếp: Mới nhất</option>
-              <option value="cu_nhat">Sắp xếp: Cũ nhất</option>
-              <option value="ten_az">Sắp xếp: Tên A-Z</option>
-            </select>
-          </div>
-        )}
-
-        {/* Nút biểu tượng Phễu lọc tinh gọn bên cạnh ô tìm kiếm */}
-        <button
-          type="button"
-          onClick={() => setMoRong((m) => !m)}
-          title={moRong ? 'Đóng bộ lọc' : 'Mở bộ lọc'}
-          className={cn(
-            'relative size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0 cursor-pointer',
-            moRong || soLuongDieuKienKhacMacDinh > 0
-              ? 'bg-[#107555] border-[#107555] text-white shadow-sm shadow-emerald-700/20'
-              : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-[0_2px_8px_rgba(15,23,42,0.03)]'
-          )}
-        >
-          <Filter className="size-[18px]" />
-          {soLuongDieuKienKhacMacDinh > 0 && (
-            <span
-              className={cn(
-                'absolute -top-1 -right-1 size-5 rounded-full text-[10px] font-extrabold flex items-center justify-center border-2 border-white',
-                moRong ? 'bg-amber-400 text-slate-900' : 'bg-[#107555] text-white'
-              )}
-            >
-              {soLuongDieuKienKhacMacDinh}
-            </span>
-          )}
-        </button>
-
-        {/* Nút reset nhanh nếu đang có điều kiện lọc */}
-        {soLuongDieuKienKhacMacDinh > 0 && (
-          <button
-            type="button"
-            onClick={xoaTatCa}
-            title="Xóa tất cả điều kiện lọc"
-            className="size-11 rounded-full sm:rounded-2xl border border-rose-200/80 bg-rose-50/60 flex items-center justify-center text-rose-600 hover:bg-rose-100/60 transition active:scale-[0.95] shrink-0 cursor-pointer"
-          >
-            <XCircle className="size-5" />
-          </button>
-        )}
-      </div>
-
-      {moRong && (
-        <div className="mt-2.5 grid gap-3.5 md:grid-cols-2 lg:grid-cols-3 p-4 sm:p-5 rounded-[24px] border border-slate-200/90 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
-          <BoLocMuc label={<><Users className="size-3.5 text-slate-500" /> Loại khách hàng</>}>
+    <ThanhLocChuan
+      tu_khoa={tuKhoa}
+      khi_doi_tu_khoa={(v) => datGiaTri('tuKhoa', v)}
+      placeholder="Tìm tên, MST, SĐT khách hàng..."
+      so_dieu_kien={soLuongDieuKienKhacMacDinh}
+      khi_xoa_tat_ca={xoaTatCa}
+      chips_nhanh={chipsNhanh}
+      tieu_de_bo_loc="Bộ lọc khách hàng"
+      sap_xep={
+        khi_doi_sap_xep
+          ? {
+              gia_tri: kieu_sap_xep,
+              mac_dinh: 'moi_nhat',
+              khi_doi: (v) => khi_doi_sap_xep(v as KieuSapXepKhachHang),
+              aria_label: 'Sắp xếp khách hàng',
+              tuy_chon: [
+                { gia_tri: 'moi_nhat', nhan: 'Sắp xếp: Mới nhất' },
+                { gia_tri: 'cu_nhat', nhan: 'Sắp xếp: Cũ nhất' },
+                { gia_tri: 'ten_az', nhan: 'Sắp xếp: Tên A-Z' }
+              ]
+            }
+          : undefined
+      }
+    >
+      <BoLocMuc label={<><Users className="size-3.5 text-slate-500" /> Loại khách hàng</>}>
             <select
               value={(gia_tri_hien_tai.loai_khach_hang as string) ?? 'tat_ca'}
               onChange={(e) =>
@@ -243,9 +221,7 @@ export default function BoLocKhachHang({
               className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 shadow-2xs"
             />
           </BoLocMuc>
-        </div>
-      )}
-    </div>
+    </ThanhLocChuan>
   );
 }
 

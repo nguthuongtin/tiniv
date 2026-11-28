@@ -95,6 +95,57 @@ export function TheMobile({
   );
 }
 
+export interface TheDuLieuMobileProps extends React.HTMLAttributes<HTMLDivElement> {
+  tieu_de: React.ReactNode;
+  trang_thai?: React.ReactNode;
+  thong_tin_phu?: React.ReactNode;
+  chan_trai?: React.ReactNode;
+  chan_phai?: React.ReactNode;
+  mo_di?: boolean;
+}
+
+/**
+ * Thẻ dữ liệu Mobile chuẩn 3 hàng tối giản:
+ * - Hàng 1: Tiêu đề + 1 badge trạng thái
+ * - Hàng 2: 1 dòng thông tin phụ (cách nhau bằng dấu ·)
+ * - Hàng 3: Người phụ trách / giá trị + tối đa 1 hành động nhanh
+ */
+export function TheDuLieuMobile({
+  tieu_de,
+  trang_thai,
+  thong_tin_phu,
+  chan_trai,
+  chan_phai,
+  mo_di,
+  className,
+  ...con_lai
+}: TheDuLieuMobileProps) {
+  const coChan = Boolean(chan_trai || chan_phai);
+  return (
+    <TheMobile mo_di={mo_di} className={cn('space-y-2', className)} {...con_lai}>
+      <div className="flex items-start justify-between gap-2 min-w-0">
+        <div className="text-[15px] font-bold text-slate-900 leading-snug line-clamp-2 min-w-0 flex-1">
+          {tieu_de}
+        </div>
+        {trang_thai ? <div className="shrink-0">{trang_thai}</div> : null}
+      </div>
+
+      {thong_tin_phu ? (
+        <div className="text-xs font-medium text-slate-500 truncate">
+          {thong_tin_phu}
+        </div>
+      ) : null}
+
+      {coChan ? (
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 min-w-0">
+          <div className="min-w-0 flex items-center gap-1.5">{chan_trai}</div>
+          {chan_phai ? <div className="shrink-0 flex items-center gap-1.5">{chan_phai}</div> : null}
+        </div>
+      ) : null}
+    </TheMobile>
+  );
+}
+
 export interface PhanTrangProps {
   trang?: number;
   trang_hien_tai?: number;
