@@ -46,8 +46,8 @@ interface BoLocHoSoDuAnProps {
   khi_thay_doi: (gia_tri_moi: DieuKienLocHoSoDuAn) => void;
   ds_khach_hang?: KhachHang[];
   ds_nhan_su?: NhanSu[];
-  kieu_sap_xep?: 'moi_nhat' | 'cu_nhat' | 'gia_tri_cao' | 'ten_az';
-  khi_doi_sap_xep?: (kieu: 'moi_nhat' | 'cu_nhat' | 'gia_tri_cao' | 'ten_az') => void;
+  kieu_sap_xep?: 'tiem_nang' | 'moi_nhat' | 'cu_nhat' | 'gia_tri_cao' | 'ten_az';
+  khi_doi_sap_xep?: (kieu: 'tiem_nang' | 'moi_nhat' | 'cu_nhat' | 'gia_tri_cao' | 'ten_az') => void;
 }
 
 export default function BoLocHoSoDuAn({
@@ -55,7 +55,7 @@ export default function BoLocHoSoDuAn({
   khi_thay_doi,
   ds_khach_hang = [],
   ds_nhan_su = [],
-  kieu_sap_xep = 'moi_nhat',
+  kieu_sap_xep = 'tiem_nang',
   khi_doi_sap_xep
 }: BoLocHoSoDuAnProps) {
   const [moRong, setMoRong] = useState(false);
@@ -146,7 +146,7 @@ export default function BoLocHoSoDuAn({
           <div
             className={cn(
               'relative size-10 sm:size-11 rounded-full sm:rounded-2xl border flex items-center justify-center transition active:scale-[0.95] shrink-0',
-              kieu_sap_xep !== 'moi_nhat'
+              kieu_sap_xep !== 'tiem_nang'
                 ? 'bg-emerald-50 border-emerald-300 text-primary'
                 : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 shadow-nhe'
             )}
@@ -159,6 +159,7 @@ export default function BoLocHoSoDuAn({
               aria-label="Sắp xếp danh sách dự án"
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             >
+              <option value="tiem_nang">Sắp xếp: Tiềm năng cao → thấp</option>
               <option value="moi_nhat">Sắp xếp: Mới nhất</option>
               <option value="cu_nhat">Sắp xếp: Cũ nhất</option>
               <option value="gia_tri_cao">Sắp xếp: Giá trị cao</option>

@@ -204,7 +204,7 @@ function TrangHoSoDuAn() {
   const [dsToast, setDsToast] = useState<ThongBaoToast[]>([]);
   const [dangXuLyKhac, setDangXuLyKhac] = useState<string | null>(null);
   const [tenGiaiDoan, setTenGiaiDoan] = useState(TEN_GIAI_DOAN_MAC_DINH);
-  const [kieuSapXep, setKieuSapXep] = useState<'moi_nhat' | 'cu_nhat' | 'gia_tri_cao' | 'ten_az'>('moi_nhat');
+  const [kieuSapXep, setKieuSapXep] = useState<'tiem_nang' | 'moi_nhat' | 'cu_nhat' | 'gia_tri_cao' | 'ten_az'>('tiem_nang');
 
   // Phân trang danh sách
   const [trangHienTai, setTrangHienTai] = useState(1);
@@ -236,7 +236,14 @@ function TrangHoSoDuAn() {
 
   const danhSachDaSapXep = useMemo(() => {
     const ds = [...danhSach];
-    if (kieuSapXep === 'moi_nhat') {
+    const THU_TU_TIEM_NANG: Record<string, number> = { rat_cao: 5, cao: 4, trung_binh: 3, thap: 2, rat_thap: 1 };
+    if (kieuSapXep === 'tiem_nang') {
+      ds.sort((a, b) => {
+        const diff = (THU_TU_TIEM_NANG[b.muc_do_tiem_nang] ?? 0) - (THU_TU_TIEM_NANG[a.muc_do_tiem_nang] ?? 0);
+        if (diff !== 0) return diff;
+        return (b.ngay_tao ?? '').localeCompare(a.ngay_tao ?? '');
+      });
+    } else if (kieuSapXep === 'moi_nhat') {
       ds.sort((a, b) => (b.ngay_tao ?? '').localeCompare(a.ngay_tao ?? ''));
     } else if (kieuSapXep === 'cu_nhat') {
       ds.sort((a, b) => (a.ngay_tao ?? '').localeCompare(b.ngay_tao ?? ''));
