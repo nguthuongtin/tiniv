@@ -911,10 +911,10 @@ export function NoiDungLichCongTac({
     // Tìm thông tin lịch cần xóa từ dsLichTongHop (chứa cả lich_gap_kh và yeu_cau_phoi_hop)
     const lichCanXoa = dsLichTongHop.find((l) => l.id === id) || dsLich.find((l) => l.id === id);
 
-    // Kiểm tra quyền: Chỉ Ban Giám đốc hoặc Trưởng phòng trực tiếp của nhân sự phòng mình mới được xóa
+    // Kiểm tra quyền: Người tạo/phụ trách được xóa nếu chưa phê duyệt; đã duyệt thì chỉ Ban Giám đốc hoặc Trưởng phòng
     const coQuyenXoa = duocXoaLichCongTac(nguoiDungHienTai, lichCanXoa, mapNhanSu);
     if (!coQuyenXoa) {
-      alert('Chỉ Ban Giám đốc hoặc Trưởng phòng phụ trách nhân sự của phòng mình mới có quyền xóa lịch làm việc/công tác.');
+      alert('Lịch đã được phê duyệt hoặc thuộc nhân sự khác. Chỉ Ban Giám đốc hoặc Trưởng phòng phụ trách mới có quyền xóa.');
       return;
     }
     if (!confirm(`Bạn có chắc muốn xóa lịch gặp "${tenKH}"?`)) return;

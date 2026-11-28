@@ -369,8 +369,8 @@ export const laTruongPhongCuaNhanSu = (
 /**
  * Kiểm tra xem người dùng hiện tại có được phép xóa một lịch công tác/làm việc hay không:
  * - Ban Giám đốc / Quản trị hệ thống: Xóa được tất cả lịch.
+ * - Nhân viên (người tạo / người phụ trách lịch): Được xóa lịch của mình khi chưa phê duyệt ('cho_duyet' hoặc 'can_dieu_chinh').
  * - Trưởng phòng trở lên: CHỈ ĐƯỢC XÓA lịch của nhân sự thuộc phòng ban mình điều hành (hoặc lịch của chính mình).
- * - Nhân viên thông thường: TUYỆT ĐỐI KHÔNG được xóa (chỉ được đổi trạng thái như 'Đã hủy', 'Dời lịch').
  */
 export const duocXoaLichCongTac = (
   nguoiDung: NguoiDungXacThuc,
@@ -379,6 +379,7 @@ export const duocXoaLichCongTac = (
     nguoi_tao_id?: string | null;
     chi_nhanh_id?: string | null;
     phong_ban_id?: string | null;
+    trang_thai?: string | null;
   } | null | undefined,
   mapNhanSu?: Map<string, NhanSu>,
   dsVaiTro?: VaiTro[]
@@ -398,7 +399,18 @@ export const duocXoaLichCongTac = (
 
   if (laLanhDaoCapCao) return true;
 
-  // 2. Kiểm tra có phải là Trưởng phòng trở lên không
+  // 2. Nhân viên (người tạo hoặc người phụ trách) được xóa lịch của mình nếu chưa phê duyệt
+  const laChuaPheDuyet =
+    !lich.trang_thai ||
+    lich.trang_thai === 'cho_duyet' ||
+    lich.trang_thai === 'can_dieu_chinh';
+  const laNguoiCuaLich =
+    (lich.nguoi_tao_id && lich.nguoi_tao_id === nguoiDung.id) ||
+    (lich.nguoi_phu_trach_id && lich.nguoi_phu_trach_id === nguoiDung.id);
+
+  if (laChuaPheDuyet && laNguoiCuaLich) return true;
+
+  // 3. Kiểm tra có phải là Trưởng phòng trở lên không
   const laTruongPhong =
     vaiTroKey === 'truong_phong' ||
     vaiTroKey.startsWith('truong_phong_') ||
