@@ -760,12 +760,16 @@ export default function NoiDungBaoCaoTuan() {
   }, [dsLichGap, dsNhanSu, dsSaleTeam, tpKinhDoanh, infoTuanToi]);
 
   const dsDuAnTiemNangChiNhanh = useMemo(() => {
-    const setIdsDuAnChon = new Set(
-      danhSachBaoCaoTeam
-        .filter((x) => x.daGui && x.baoCao.trang_thai_ke_hoach === 'da_duyet')
-        .flatMap((x) => x.baoCao.du_an_trong_diem_ids || [])
+    const baoCaoDaDuyet = danhSachBaoCaoTeam.filter(
+      (x) => x.daGui && x.baoCao.trang_thai_ke_hoach === 'da_duyet'
     );
-    if (setIdsDuAnChon.size === 0) return [];
+    const nguonBaoCao = baoCaoDaDuyet.length > 0
+      ? baoCaoDaDuyet
+      : danhSachBaoCaoTeam.filter((x) => x.daGui);
+
+    const setIdsDuAnChon = new Set(
+      nguonBaoCao.flatMap((x) => x.baoCao.du_an_trong_diem_ids || [])
+    );
 
     const mapTenNV = new Map(dsNhanSu.map((n) => [n.id, n.ho_va_ten]));
     const mapKH = new Map(dsKhachHang.map((k) => [k.id, k]));
@@ -788,12 +792,14 @@ export default function NoiDungBaoCaoTuan() {
         d.giai_doan !== 'tam_dung_huy'
     );
 
-    const ketQua = dsTiemNang
-      .filter((d) => (setIdsDuAnChon.size > 0 ? setIdsDuAnChon.has(d.id) : true))
-      .sort((a, b) => {
-        const score = (tn?: string) => (tn === 'rat_cao' ? 5 : 4);
-        return score(b.muc_do_tiem_nang) - score(a.muc_do_tiem_nang);
-      });
+    const dsChon = setIdsDuAnChon.size > 0
+      ? dsDuAnDonVi.filter((d) => setIdsDuAnChon.has(d.id) && d.giai_doan !== 'tam_dung_huy')
+      : [];
+
+    const ketQua = (dsChon.length > 0 ? dsChon : dsTiemNang).sort((a, b) => {
+      const score = (tn?: string) => (tn === 'rat_cao' ? 5 : tn === 'cao' ? 4 : 3);
+      return score(b.muc_do_tiem_nang) - score(a.muc_do_tiem_nang);
+    });
 
     return ketQua.map((d, idx) => {
       const kh = d.khach_hang_id ? mapKH.get(d.khach_hang_id) : null;

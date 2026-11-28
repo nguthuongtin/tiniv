@@ -1139,14 +1139,15 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     const rHeadT5 = sTong.addRow([
       '',
       'STT',
-      'Ngày & Giờ',
-      'Nhân sự',
+      'Ngày',
       'Khách hàng',
+      '',
       'Nội dung chi tiết',
       '',
       ''
     ]);
     styleTableHeaderTong(rHeadT5);
+    sTong.mergeCells(`D${rHeadT5.number}:E${rHeadT5.number}`);
     sTong.mergeCells(`F${rHeadT5.number}:H${rHeadT5.number}`);
 
     const mapNhomLich = new Map<string, typeof lichTuanToiToanChiNhanh>();
@@ -1180,33 +1181,32 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
 
       ds.forEach((l) => {
         sttTong += 1;
-        const thoiGian = `${l.ngay.slice(5)} (${l.gio_bat_dau || ''})`;
+        const ngayParts = (l.ngay || '').split('-');
+        const ngayHienThi = ngayParts.length === 3 ? `${ngayParts[2]}/${ngayParts[1]}` : (l.ngay || '');
         const khachHang = `${l.ten_khach_hang}${l.dia_diem ? ` - ${l.dia_diem}` : ''}`;
         const noiDung = l.noi_dung || l.tieu_de || 'Gặp khách hàng';
 
         const row = sTong.addRow([
           '',
           sttTong,
-          thoiGian,
-          tenNV,
+          ngayHienThi,
           khachHang,
+          '',
           noiDung,
           '',
           ''
         ]);
         const rIdx = row.number;
+        sTong.mergeCells(`D${rIdx}:E${rIdx}`);
         sTong.mergeCells(`F${rIdx}:H${rIdx}`);
-        row.height = tinhChieuCaoHang(noiDung, 45, 24);
+        row.height = Math.max(tinhChieuCaoHang(noiDung, 45, 24), tinhChieuCaoHang(khachHang, 26, 24));
 
         for (let c = 2; c <= 8; c++) {
           const cell = row.getCell(c);
           cell.font = { name: 'Calibri', size: 11 };
           cell.border = borderThin;
           if (c === 2 || c === 3) cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-          else if (c === 4) {
-            cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
-            cell.font = { name: 'Calibri', size: 11, bold: true };
-          } else if (c === 5 || c === 6) {
+          else if (c === 4 || c === 6) {
             cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
           }
         }
