@@ -259,24 +259,19 @@ export default function NoiDungBaoCaoTuan() {
     }
   }, [uid, nhanVienDangXemId]);
 
-  const taiDuLieu = useCallback(async () => {
+  // Tải danh mục nền CRM 1 lần duy nhất khi mở trang (không tải lại khi đổi tuần/chi nhánh)
+  const taiDuLieuNen = useCallback(async () => {
     setDangTai(true);
     try {
-      const kpiScope = chiNhanhLocId !== 'tat_ca' ? chiNhanhLocId : nguoiDungHienTai?.chi_nhanh_id || 'toan_cong_ty';
-      const [resDA, resKH, resNLH, resNS, resCN, resSP, resLich, resBCTuan, resBCTruoc, resKPI, resQT] =
-        await Promise.all([
-          danhSachHoSoDuAn(),
-          danhSachKhachHang(),
-          danhSachNguoiLienHe().catch(() => ({ mang: [] as NguoiLienHe[] })),
-          danhSachNhanSu(),
-          danhSachChiNhanh(),
-          danhSachSanPhamDichVu().catch(() => ({ mang: [] as SanPhamDichVu[] })),
-          danhSachLichGapKH(),
-          layDanhSachBaoCaoTuanVDCD(tuanChon),
-          layDanhSachBaoCaoTuanVDCD(tuanTruocISO),
-          layCauHinhKPIBaoCaoTuan(kpiScope),
-          layCauHinhQuyTrinhPhoiHop()
-        ]);
+      const [resDA, resKH, resNLH, resNS, resCN, resSP, resQT] = await Promise.all([
+        danhSachHoSoDuAn(),
+        danhSachKhachHang(),
+        danhSachNguoiLienHe().catch(() => ({ mang: [] as NguoiLienHe[] })),
+        danhSachNhanSu(),
+        danhSachChiNhanh(),
+        danhSachSanPhamDichVu().catch(() => ({ mang: [] as SanPhamDichVu[] })),
+        layCauHinhQuyTrinhPhoiHop()
+      ]);
 
       setDsDuAn(resDA.mang || []);
       setDsKhachHang(resKH.mang || []);
@@ -284,15 +279,29 @@ export default function NoiDungBaoCaoTuan() {
       setDsNhanSu((resNS.mang || []).filter((n) => n.trang_thai_du_lieu !== 'da_xoa'));
       setDsChiNhanh(resCN.mang || []);
       setDsSanPham(resSP.mang || []);
-      setDsLichGap(resLich || []);
-      setDsBaoCaoTuan(resBCTuan || []);
-      setDsBaoCaoTuanTruoc(resBCTruoc || []);
-      setKpiCauHinh(resKPI);
       setCauHinhQuyTrinh(resQT);
     } finally {
       setDangTai(false);
     }
-  }, [tuanChon, tuanTruocISO, chiNhanhLocId, nguoiDungHienTai?.chi_nhanh_id]);
+  }, []);
+
+  // Chỉ tải báo cáo tuần hiện tại & tuần trước khi chuyển tuần
+  const taiDuLieu = useCallback(async () => {
+    try {
+      const [resBCTuan, resBCTruoc] = await Promise.all([
+        layDanhSachBaoCaoTuanVDCD(tuanChon),
+        layDanhSachBaoCaoTuanVDCD(tuanTruocISO)
+      ]);
+      setDsBaoCaoTuan(resBCTuan || []);
+      setDsBaoCaoTuanTruoc(resBCTruoc || []);
+    } catch (err: any) {
+      hienThongBao(err?.message || 'Không thể tải dữ liệu báo cáo tuần từ máy chủ.');
+    }
+  }, [tuanChon, tuanTruocISO]);
+
+  useEffect(() => {
+    void taiDuLieuNen();
+  }, [taiDuLieuNen]);
 
   useEffect(() => {
     void taiDuLieu();
@@ -876,7 +885,8 @@ export default function NoiDungBaoCaoTuan() {
     const next: BaoCaoTuanVDCD = {
       ...formBaoCao,
       ...capNhat,
-      trang_thai: nopBaoCao ? 'cho_duyet' : (capNhat.trang_thai || formBaoCao.trang_thai)
+      trang_thai: capNhat.trang_thai ?? formBaoCao.trang_thai,
+      trang_thai_ke_hoach: capNhat.trang_thai_ke_hoach ?? formBaoCao.trang_thai_ke_hoach
     };
     setDangLuu(true);
     try {
@@ -885,9 +895,12 @@ export default function NoiDungBaoCaoTuan() {
       setDsBaoCaoTuan((prev) => [saved, ...prev.filter((x) => x.id !== saved.id)]);
       hienThongBao(
         nopBaoCao
-          ? 'Đã gửi báo cáo & lịch tuần lên Quản lý duyệt.'
-          : 'Đã lưu báo cáo kế hoạch tuần.'
+          ? 'Đã gửi báo cáo/kế hoạch tuần lên Quản lý duyệt.'
+          : 'Đã lưu bản nháp thành công.'
       );
+    } catch (err: any) {
+      hienThongBao(err?.message || 'Lỗi lưu dữ liệu lên máy chủ.');
+      throw err;
     } finally {
       setDangLuu(false);
     }
