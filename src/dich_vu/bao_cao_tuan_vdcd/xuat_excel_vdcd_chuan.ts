@@ -102,17 +102,38 @@ function tinhChieuCaoHang(noiDung: string, doRongCotUocTinh: number = 60, minHei
 /**
  * Helper tạo và định dạng 1 Sheet chuẩn Sales / Trưởng phòng VDCD
  */
+function cauHinhInA4Doc(ws: ExcelJS.Worksheet) {
+  ws.pageSetup = {
+    paperSize: 9, // A4
+    orientation: 'portrait',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    horizontalCentered: true,
+    margins: {
+      left: 0.25,
+      right: 0.25,
+      top: 0.35,
+      bottom: 0.35,
+      header: 0.15,
+      footer: 0.15
+    }
+  };
+}
+
 function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanVDCDChuan) {
-  // Thiết lập độ rộng cột chuẩn
+  cauHinhInA4Doc(ws);
+
+  // Thiết lập độ rộng cột tối ưu cho trang in A4 dọc (tổng ~115 ký tự)
   ws.columns = [
-    { key: 'colA', width: 3 },  // A: Lề
-    { key: 'stt', width: 7 },   // B: STT
-    { key: 'colC', width: 40 }, // C: Tên Chỉ tiêu / Tên Dự án & KH / Lịch ngày
-    { key: 'colD', width: 28 }, // D: ĐVT / Người liên hệ & SĐT / Người phụ trách
-    { key: 'colE', width: 24 }, // E: Mục tiêu / Giá trị deal / Target
-    { key: 'colF', width: 30 }, // F: Thực tế / Giai đoạn / Nội dung chi tiết
-    { key: 'colG', width: 22 }, // G: Tỷ lệ % / Mức tiềm năng
-    { key: 'colH', width: 26 }  // H: Dịch vụ
+    { key: 'colA', width: 1.2 }, // A: Lề mảnh
+    { key: 'stt', width: 5 },    // B: STT
+    { key: 'colC', width: 24 },  // C: Ngày / Chỉ tiêu / Dự án
+    { key: 'colD', width: 20 },  // D: ĐVT / Liên hệ & SĐT / Bắt đầu nội dung
+    { key: 'colE', width: 17 },  // E: Mục tiêu / Giá trị deal
+    { key: 'colF', width: 17 },  // F: Thực tế / Giai đoạn
+    { key: 'colG', width: 13 },  // G: Tiềm năng %
+    { key: 'colH', width: 18 }   // H: Dịch vụ
   ];
 
   const styleSectionHeader = (row: ExcelJS.Row, tieuDe: string) => {
@@ -499,10 +520,9 @@ function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanV
       : 'III. KẾ HOẠCH LỊCH LÀM VIỆC TUẦN TỚI (LẤY TỪ LỊCH TÁC NGHIỆP CÓ SẴN)'
   );
 
-  const rHead3 = ws.addRow(['', 'STT', 'Lịch tuần / Ngày', '', '', 'Nội dung công việc chi tiết', '', '']);
+  const rHead3 = ws.addRow(['', 'STT', 'Lịch tuần / Ngày', 'Nội dung công việc chi tiết', '', '', '', '']);
   styleTableHeader(rHead3);
-  ws.mergeCells(`C${rHead3.number}:E${rHead3.number}`);
-  ws.mergeCells(`F${rHead3.number}:H${rHead3.number}`);
+  ws.mergeCells(`D${rHead3.number}:H${rHead3.number}`);
 
   const dsLich = duLieu.lichLamViecTuanToi || [];
   dsLich.forEach((l, idx) => {
@@ -514,16 +534,15 @@ function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanV
       '',
       idx + 1,
       l.tenThuNgay,
-      '',
-      '',
       finalContent,
+      '',
+      '',
       '',
       ''
     ]);
     const rIdx = row.number;
-    ws.mergeCells(`C${rIdx}:E${rIdx}`);
-    ws.mergeCells(`F${rIdx}:H${rIdx}`);
-    row.height = tinhChieuCaoHang(finalContent, 72, 28);
+    ws.mergeCells(`D${rIdx}:H${rIdx}`);
+    row.height = tinhChieuCaoHang(finalContent, 80, 28);
 
     for (let c = 2; c <= 8; c++) {
       const cell = row.getCell(c);
@@ -533,8 +552,8 @@ function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanV
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
       } else if (c === 3) {
         cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF1F2937' } };
-        cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-      } else if (c === 6) {
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      } else if (c === 4) {
         cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1, wrapText: true };
       }
     }
@@ -592,8 +611,8 @@ function taoSheetBaoCaoTuanVDCD(ws: ExcelJS.Worksheet, duLieu: DuLieuBaoCaoTuanV
           d.sanPhamDichVu || 'Khảo sát / Đo đạc'
         ]);
 
-        const h1 = tinhChieuCaoHang(tenDuAnFull, 38, 26);
-        const h2 = tinhChieuCaoHang(thongTinLienHe, 26, 26);
+        const h1 = tinhChieuCaoHang(tenDuAnFull, 22, 26);
+        const h2 = tinhChieuCaoHang(thongTinLienHe, 18, 26);
         rDeal.height = Math.max(h1, h2);
 
         for (let c = 2; c <= 8; c++) {
@@ -701,15 +720,17 @@ export async function taoFileExcelTongHopToanBoSaleChiNhanh(
     views: [{ showGridLines: true }]
   });
 
+  cauHinhInA4Doc(sTong);
+
   sTong.columns = [
-    { key: 'colA', width: 3 },
-    { key: 'stt', width: 7 },
-    { key: 'colC', width: 32 },
-    { key: 'colD', width: 22 },
-    { key: 'colE', width: 22 },
-    { key: 'colF', width: 22 },
-    { key: 'colG', width: 20 },
-    { key: 'colH', width: 24 }
+    { key: 'colA', width: 1.2 },
+    { key: 'stt', width: 5 },
+    { key: 'colC', width: 24 },
+    { key: 'colD', width: 18 },
+    { key: 'colE', width: 17 },
+    { key: 'colF', width: 17 },
+    { key: 'colG', width: 15 },
+    { key: 'colH', width: 19 }
   ];
 
   const styleSectionHeaderTong = (row: ExcelJS.Row, tieuDe: string) => {
