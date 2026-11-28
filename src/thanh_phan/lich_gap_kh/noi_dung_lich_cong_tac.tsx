@@ -753,6 +753,12 @@ export function NoiDungLichCongTac({
         lichDaLuu = await taoLichGapKHMoi(dto as TaoMoiLichGapDTO);
       }
       if (lichDaLuu) {
+        setDsLich((prev) => {
+          const tonTai = prev.some((x) => x.id === lichDaLuu!.id);
+          return tonTai
+            ? prev.map((x) => (x.id === lichDaLuu!.id ? lichDaLuu! : x))
+            : [lichDaLuu!, ...prev];
+        });
         void dongBoLichGapSangKeHoachTuanVaBaoCaoNgay({
           lich: lichDaLuu,
           nguoiThucHien: nguoiDungHienTai
@@ -764,7 +770,6 @@ export function NoiDungLichCongTac({
       }
       setMoModal(false);
       setLichDangSua(null);
-      await taiDanhSachLich();
     } catch {
       alert('Không thể lưu lịch gặp. Vui lòng thử lại!');
     } finally {

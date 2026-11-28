@@ -45,7 +45,8 @@ export type CapNhatLichGapDTO = Partial<TaoMoiLichGapDTO>;
 
 let _cacheDanhSachLich: { data: LichGapKH[]; time: number } | null = null;
 let _suDungFallbackCongViec = false;
-const CACHE_TTL_MS = 15_000;
+let _daTaiFallbackCongViec = false;
+const CACHE_TTL_MS = 60_000;
 
 const docCacheLocal = (): LichGapKH[] => _cacheDanhSachLich?.data ?? [];
 const ghiCacheLocal = (ds: LichGapKH[]) => { _cacheDanhSachLich = { data: ds, time: Date.now() }; };
@@ -87,6 +88,11 @@ const chuyenDoiDocThanhLichGap = (id: string, raw: DocumentData | undefined | nu
     la_tiep_can_moi: Boolean(r.la_tiep_can_moi),
     loai_lich: r.loai_lich || 'cong_tac_di_chuyen',
     loai_viec_vp: r.loai_viec_vp || undefined,
+    ghi_chu_duyet: r.ghi_chu_duyet || null,
+    nguoi_duyet_id: r.nguoi_duyet_id || null,
+    ten_nguoi_duyet: r.ten_nguoi_duyet || null,
+    ngay_duyet: r.ngay_duyet || null,
+    ly_do_doi_huy: r.ly_do_doi_huy || null,
     nguon_lead_id: r.nguon_lead_id || null,
     du_an_id: r.du_an_id || null,
     nguoi_tao_id: r.nguoi_tao_id || '',
@@ -200,13 +206,41 @@ export const danhSachLichGapKH = async (
 export const langNgheLichGapKH = (
   callback: (danhSach: LichGapKH[]) => void
 ): (() => void) => {
-  // 1. Phục vụ ngay từ cache / fetch đầu tiên
-  danhSachLichGapKH()
-    .then((ds) => callback(ds))
-    .catch(() => {
-      const local = docCacheLocal().filter((x) => !x.da_xoa);
-      callback(local);
-    });
+  // 1. Phục vụ ngay từ cache (0 read) và chỉ đọc fallback cong_viec tối đa 1 lần/phiên
+  const cached = docCacheLocal().filter((x) => !x.da_xoa && !layDanhSachIdDaXoa().has(x.id));
+  if (cached.length > 0) {
+    callback(cached);
+  }
+  if (!_daTaiFallbackCongViec) {
+    _daTaiFallbackCongViec = true;
+    const dsIdDaXoa = layDanhSachIdDaXoa();
+    getDocs(
+      query(
+        thamChieuCollection(COLLECTION_FALLBACK),
+        where('loai_ban_ghi', '==', LOAI_BAN_GHI_LICH),
+        limit(GIOI_HAN_MAC_DINH)
+      )
+    )
+      .then((snapFallback) => {
+        if (snapFallback.empty) return;
+        const map = new Map<string, LichGapKH>();
+        docCacheLocal().forEach((x) => {
+          if (x && x.id && !x.da_xoa && !dsIdDaXoa.has(x.id)) map.set(x.id, x);
+        });
+        snapFallback.docs.forEach((d) => {
+          const lich = chuyenDoiDocThanhLichGap(d.id, d.data());
+          if (!lich.da_xoa && !dsIdDaXoa.has(lich.id) && !map.has(lich.id)) {
+            map.set(lich.id, lich);
+          }
+        });
+        const merged = Array.from(map.values()).sort((a, b) =>
+          a.ngay !== b.ngay ? a.ngay.localeCompare(b.ngay) : a.gio_bat_dau.localeCompare(b.gio_bat_dau)
+        );
+        ghiCacheLocal(merged);
+        callback(merged);
+      })
+      .catch(() => {});
+  }
 
   // 2. Lắng nghe real-time qua onSnapshot trên Firestore
   let unsubFirestore = () => {};
@@ -329,7 +363,6 @@ export const taoLichGapKHMoi = async (dto: TaoMoiLichGapDTO): Promise<LichGapKH>
   const banGhiMoi = chuyenDoiDocThanhLichGap(docId, payload);
   const dsHienTai = [...docCacheLocal().filter((x) => x.id !== docId), banGhiMoi];
   ghiCacheLocal(dsHienTai);
-  xoaCacheLichGapKH();
   phatSuKienCapNhat(banGhiMoi);
 
   await ghiNhatKyHoatDong(
@@ -394,13 +427,13 @@ export const capNhatLichGapKH = async (
 
   const dsLocal = docCacheLocal().map((x) => (x.id === id ? { ...x, ...patch } : x));
   ghiCacheLocal(dsLocal);
-  xoaCacheLichGapKH();
   let banGhiCapNhat = dsLocal.find((x) => x.id === id);
   if (!banGhiCapNhat) {
     try {
       const snap = await getDoc(thamChieuBanGhi(TEN_COLLECTION, id));
       if (snap.exists()) {
-        banGhiCapNhat = { id: snap.id, ...snap.data(), ...patch } as LichGapKH;
+        banGhiCapNhat = chuyenDoiDocThanhLichGap(snap.id, { ...snap.data(), ...patch });
+        ghiCacheLocal([...dsLocal, banGhiCapNhat]);
       }
     } catch {}
   }
@@ -483,10 +516,9 @@ export const xoaLichGapKH = async (id: string, nguoiXoaId?: string): Promise<voi
     // fallback collection
   }
 
-  // 3. Dọn sạch khỏi toàn bộ localStorage cache
+  // 3. Dọn sạch khỏi cache local (giữ nguyên các lịch khác để phản hồi 0ms)
   const dsLocal = docCacheLocal().filter((x) => x.id !== id);
   ghiCacheLocal(dsLocal);
-  xoaCacheLichGapKH();
 
   // 4. Phát event cập nhật tức thời 0ms cho các component đang mở
   phatSuKienCapNhat({ id, da_xoa: true } as any);
