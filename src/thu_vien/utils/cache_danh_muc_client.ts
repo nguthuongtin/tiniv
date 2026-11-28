@@ -1,4 +1,11 @@
-export type LoaiDanhMucCache = 'chi_nhanh' | 'phong_ban' | 'nhan_su' | 'san_pham_dich_vu';
+export type LoaiDanhMucCache =
+  | 'chi_nhanh'
+  | 'phong_ban'
+  | 'nhan_su'
+  | 'san_pham_dich_vu'
+  | 'ho_so_du_an'
+  | 'khach_hang'
+  | 'nguoi_lien_he';
 
 export async function layDanhMucTuServerCache(loai: LoaiDanhMucCache): Promise<any[] | null> {
   if (typeof window === 'undefined') return null;

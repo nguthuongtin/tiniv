@@ -23,6 +23,7 @@ import {
   thamChieuBanGhi,
   ghiNhatKyHoatDong
 } from '../../thu_vien/firebase/client_firebase';
+import { layDanhMucTuServerCache, xoaCacheServerDanhMuc } from '../../thu_vien/utils/cache_danh_muc_client';
 
 const TEN_COLLECTION = 'khach_hang' as const;
 const GIOI_HAN_MAC_DINH = 2000;
@@ -129,6 +130,7 @@ export const layCacheKhachHangDongBo = (
 
 export const xoaCacheKhachHang = () => {
   _rawCacheKH = null;
+  xoaCacheServerDanhMuc('khach_hang');
 };
 
 const napRawDanhSachKhachHang = async (forceRefresh = false): Promise<KhachHang[]> => {
@@ -141,11 +143,14 @@ const napRawDanhSachKhachHang = async (forceRefresh = false): Promise<KhachHang[
 
   _dangTaiKHPromise = (async () => {
     try {
-      const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
-      const snapshot = await getDocs(q);
-      const rawResults: KhachHang[] = [];
-      for (const d of snapshot.docs) {
-        rawResults.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+      const serverItems = await layDanhMucTuServerCache('khach_hang');
+      let rawResults: KhachHang[];
+      if (serverItems) {
+        rawResults = serverItems.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d));
+      } else {
+        const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
+        const snapshot = await getDocs(q);
+        rawResults = snapshot.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
       }
       rawResults.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
       _rawCacheKH = { mang: rawResults, ts: Date.now() };
@@ -321,6 +326,7 @@ export const taoKhachHangMoi = async (
   const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
   const moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
   // Cập nhật trực tiếp vào RAM cache mà không cần xóa cache bắt tải lại toàn bộ
+  xoaCacheServerDanhMuc('khach_hang');
   if (_rawCacheKH) {
     _rawCacheKH = {
       mang: [moi, ..._rawCacheKH.mang.filter((k) => k.id !== moi.id)],
@@ -386,6 +392,7 @@ export const capNhatKhachHang = async (
   await setDoc(thamChieuBanGhi(TEN_COLLECTION, dto.id), patchRaw as any, { merge: true });
   const moi = { ...hienTai, ...patchRaw } as KhachHang;
   // Cập nhật trực tiếp vào RAM cache mà không cần xóa cache bắt tải lại toàn bộ
+  xoaCacheServerDanhMuc('khach_hang');
   if (_rawCacheKH) {
     const idx = _rawCacheKH.mang.findIndex((k) => k.id === moi.id);
     const mangMoi = [..._rawCacheKH.mang];

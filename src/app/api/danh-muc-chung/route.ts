@@ -5,10 +5,15 @@ const CAC_LOAI_HOP_LE = new Set([
   'chi_nhanh',
   'phong_ban',
   'nhan_su',
-  'san_pham_dich_vu'
+  'san_pham_dich_vu',
+  'ho_so_du_an',
+  'khach_hang',
+  'nguoi_lien_he'
 ]);
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 phút dùng chung cho toàn bộ người dùng
+const TTL_MAC_DINH_MS = 5 * 60 * 1000; // 5 phút cho danh mục tĩnh
+const TTL_NGHIEP_VU_MS = 3 * 60 * 1000; // 3 phút cho dự án / khách hàng / liên hệ
+const LOAI_NGHIEP_VU = new Set(['ho_so_du_an', 'khach_hang', 'nguoi_lien_he']);
 const cacheDanhMuc = new Map<string, { items: Record<string, any>[]; ts: number }>();
 
 export async function GET(req: NextRequest) {
@@ -17,8 +22,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Loại danh mục không hợp lệ', items: [] }, { status: 400 });
   }
 
+  const ttlMs = LOAI_NGHIEP_VU.has(loai) ? TTL_NGHIEP_VU_MS : TTL_MAC_DINH_MS;
   const cached = cacheDanhMuc.get(loai);
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+  if (cached && Date.now() - cached.ts < ttlMs) {
     return NextResponse.json({ ok: true, items: cached.items, cached: true });
   }
 

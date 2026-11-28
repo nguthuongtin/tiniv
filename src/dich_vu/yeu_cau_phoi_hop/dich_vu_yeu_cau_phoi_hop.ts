@@ -9,6 +9,8 @@ import {
   deleteDoc,
   query,
   where,
+  orderBy,
+  limit,
   onSnapshot
 } from 'firebase/firestore';
 import {
@@ -343,7 +345,11 @@ export const langNgheYeuCauPhoiHop = (
   // 2. Lắng nghe real-time qua onSnapshot trực tiếp từ Firestore Client
   let unsubscribeFirestore = () => {};
   try {
-    const colRef = thamChieuCollection(TEN_COLLECTION);
+    const colRef = query(
+      thamChieuCollection(TEN_COLLECTION),
+      orderBy('ngay_cap_nhat', 'desc'),
+      limit(200)
+    );
     unsubscribeFirestore = onSnapshot(
       colRef,
       (snapshot) => {
@@ -421,7 +427,11 @@ export const danhSachYeuCauPhoiHop = async (
   let danhSach: YeuCauPhoiHop[] = [...local];
 
   try {
-    const colRef = thamChieuCollection(TEN_COLLECTION);
+    const colRef = query(
+      thamChieuCollection(TEN_COLLECTION),
+      orderBy('ngay_cap_nhat', 'desc'),
+      limit(300)
+    );
     const snap = await getDocs(colRef);
     const tuRemote: YeuCauPhoiHop[] = [];
     snap.forEach((d) => {

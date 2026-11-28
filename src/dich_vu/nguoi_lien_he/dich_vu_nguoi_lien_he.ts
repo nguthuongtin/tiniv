@@ -22,6 +22,7 @@ import {
   thamChieuBanGhi,
   ghiNhatKyHoatDong
 } from '../../thu_vien/firebase/client_firebase';
+import { layDanhMucTuServerCache, xoaCacheServerDanhMuc } from '../../thu_vien/utils/cache_danh_muc_client';
 
 const TEN_COLLECTION = 'nguoi_lien_he' as const;
 const GIOI_HAN_MAC_DINH = 2000;
@@ -85,9 +86,11 @@ export const layCacheNguoiLienHeDongBo = (
 
 export const xoaCacheNguoiLienHe = () => {
   _rawCacheNLH = null;
+  xoaCacheServerDanhMuc('nguoi_lien_he');
 };
 
 export const dongBoThemHoacCapNhatCacheNLH = (nlh: NguoiLienHe) => {
+  xoaCacheServerDanhMuc('nguoi_lien_he');
   if (!_rawCacheNLH) return;
   const idx = _rawCacheNLH.mang.findIndex((x) => x.id === nlh.id);
   const mangMoi = [..._rawCacheNLH.mang];
@@ -97,6 +100,7 @@ export const dongBoThemHoacCapNhatCacheNLH = (nlh: NguoiLienHe) => {
 };
 
 export const dongBoXoaCacheNLH = (id: string) => {
+  xoaCacheServerDanhMuc('nguoi_lien_he');
   if (!_rawCacheNLH) return;
   _rawCacheNLH = {
     mang: _rawCacheNLH.mang.filter((x) => x.id !== id),
@@ -127,11 +131,14 @@ export const danhSachNguoiLienHe = async (
   if (!_dangTaiNLHPromise) {
     _dangTaiNLHPromise = (async () => {
       try {
-        const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
-        const snapshot = await getDocs(q);
-        const resultsRaw: NguoiLienHe[] = [];
-        for (const d of snapshot.docs) {
-          resultsRaw.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+        const serverItems = await layDanhMucTuServerCache('nguoi_lien_he');
+        let resultsRaw: NguoiLienHe[];
+        if (serverItems) {
+          resultsRaw = serverItems.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d));
+        } else {
+          const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
+          const snapshot = await getDocs(q);
+          resultsRaw = snapshot.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
         }
         resultsRaw.sort((a, b) => a.ho_va_ten.localeCompare(b.ho_va_ten, 'vi'));
         _rawCacheNLH = { mang: resultsRaw, ts: Date.now() };

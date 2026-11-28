@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import {
   addDoc,
@@ -24,6 +24,7 @@ import {
   thamChieuBanGhi,
   ghiNhatKyHoatDong
 } from '../../thu_vien/firebase/client_firebase';
+import { layDanhMucTuServerCache, xoaCacheServerDanhMuc } from '../../thu_vien/utils/cache_danh_muc_client';
 
 const TEN_COLLECTION = 'ho_so_du_an' as const;
 const GIOI_HAN_MAC_DINH = 2000;
@@ -141,6 +142,7 @@ export const layCacheHoSoDuAnDongBo = (
 
 export const xoaCacheHoSoDuAn = () => {
   _rawCacheHDA = null;
+  xoaCacheServerDanhMuc('ho_so_du_an');
 };
 
 export const danhSachHoSoDuAn = async (
@@ -154,11 +156,14 @@ export const danhSachHoSoDuAn = async (
     if (!_dangTaiHDAPromise) {
       _dangTaiHDAPromise = (async () => {
         try {
-          const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
-          const snapshot = await getDocs(q);
-          const resultsRaw: HoSoDuAn[] = [];
-          for (const d of snapshot.docs) {
-            resultsRaw.push(chuyenDoiDocThanhDoiTuong(d.id, d.data()));
+          const serverItems = await layDanhMucTuServerCache('ho_so_du_an');
+          let resultsRaw: HoSoDuAn[];
+          if (serverItems) {
+            resultsRaw = serverItems.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d));
+          } else {
+            const q = query(thamChieuCollection(TEN_COLLECTION), limit(GIOI_HAN_MAC_DINH));
+            const snapshot = await getDocs(q);
+            resultsRaw = snapshot.docs.map((d) => chuyenDoiDocThanhDoiTuong(d.id, d.data()));
           }
           resultsRaw.sort((a, b) => (b.ngay_cap_nhat ?? '').localeCompare(a.ngay_cap_nhat ?? ''));
           _rawCacheHDA = { mang: resultsRaw, ts: Date.now() };
@@ -286,6 +291,7 @@ export const taoHoSoDuAnMoi = async (
   };
   const thamChieu = await addDoc(thamChieuCollection(TEN_COLLECTION), duLieuRaw as any);
   const moi = chuyenDoiDocThanhDoiTuong(thamChieu.id, duLieuRaw);
+  xoaCacheServerDanhMuc('ho_so_du_an');
   if (_rawCacheHDA) {
     _rawCacheHDA = {
       mang: [moi, ..._rawCacheHDA.mang.filter((x) => x.id !== moi.id)],
@@ -351,6 +357,7 @@ export const capNhatHoSoDuAn = async (
     console.warn('[capNhatHoSoDuAn] KhÃ´ng thá»ƒ káº¿t ná»‘i Firestore backend, lÆ°u local cache:', err);
   }
   const moi = { ...hienTai, ...patchRaw } as HoSoDuAn;
+  xoaCacheServerDanhMuc('ho_so_du_an');
   if (_rawCacheHDA) {
     const idx = _rawCacheHDA.mang.findIndex((x) => x.id === moi.id);
     const mangMoi = [..._rawCacheHDA.mang];
